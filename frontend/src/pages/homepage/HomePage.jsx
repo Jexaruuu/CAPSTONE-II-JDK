@@ -1,12 +1,12 @@
 import React from 'react';
-import Navigation from '../../components/Navigation';
-import HeroSection from '../../components/HeroSection';
-import WhyChooseUsSection from '../../components/WhyChooseUsSection';
-import AvailableServiceSection from '../../components/AvailableServiceSection';
-import WorkingProcessSection from '../../components/WorkingProcessSection';
-import Footer from '../../components/Footer'
-import ContactUsSection from '../../components/ContactUsSection';
-import FAQSection from '../../components/FAQSection';
+import Navigation from '../../homecomponents/Navigation';
+import HeroSection from '../../homecomponents/HeroSection';
+import WhyChooseUsSection from '../../homecomponents/WhyChooseUsSection';
+import AvailableServiceSection from '../../homecomponents/AvailableServiceSection';
+import WorkingProcessSection from '../../homecomponents/WorkingProcessSection';
+import Footer from '../../homecomponents/Footer'
+import ContactUsSection from '../../homecomponents/ContactUsSection';
+import FAQSection from '../../homecomponents/FAQSection';
 
 const HomePage = () => {
   return (
