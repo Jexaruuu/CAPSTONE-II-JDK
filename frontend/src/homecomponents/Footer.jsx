@@ -42,10 +42,6 @@ const Footer = () => {
           <h3 className="text-lg font-semibold mb-4 ml-16">For Clients</h3>
           <ul className="space-y-2 text-sm text-gray-400 ml-16">
             <li><a href="#" className="hover:text-white">How to hire</a></li>
-            <li><a href="#" className="hover:text-white">Talent Marketplace</a></li>
-            <li><a href="#" className="hover:text-white">Project Catalog</a></li>
-            <li><a href="#" className="hover:text-white">Hire an agency</a></li>
-            <li><a href="#" className="hover:text-white">Enterprise</a></li>
           </ul>
         </div>
 
@@ -53,10 +49,6 @@ const Footer = () => {
           <h3 className="text-lg font-semibold mb-4 ml-16">For Workers</h3>
           <ul className="space-y-2 text-sm text-gray-400 ml-16">
             <li><a href="#" className="hover:text-white">How to find work</a></li>
-            <li><a href="#" className="hover:text-white">Direct Contracts</a></li>
-            <li><a href="#" className="hover:text-white">Find freelance jobs worldwide</a></li>
-            <li><a href="#" className="hover:text-white">Win work with ads</a></li>
-            <li><a href="#" className="hover:text-white">Exclusive resources with Freelancer Plus</a></li>
           </ul>
         </div>
       </div>
