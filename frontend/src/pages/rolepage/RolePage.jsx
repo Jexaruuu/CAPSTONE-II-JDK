@@ -6,7 +6,7 @@ const RolePage = () => {
 
   return (
    <div className="min-h-screen flex flex-col bg-white overflow-hidden">
-      <div className="bg-white">
+      <div className="bg-white z-50">
         <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
           <div className="flex items-center space-x-6">
          <Link to="/">
@@ -20,14 +20,13 @@ const RolePage = () => {
         </div>
       </div>
 
-      <div className="flex justify-center items-center flex-grow px-4 py-6">
+      <div className="flex justify-center items-center flex-grow px-4 py-6 -mt-24">
         <div className="bg-white p-8 rounded-xl max-w-lg w-full">
-          <h2 className="text-3xl font-bold text-center mb-6">Join as a Client or Worker</h2>
-          
+          <h2 className="text-3xl font-semibold text-center mb-6">Join as a <span className='text-[#008cfc]'>Client</span> or <span className='text-[#008cfc]'>Worker</span></h2>
           <div className="space-y-4 mb-6">
             <div 
               onClick={() => setRole('client')}
-              className={`cursor-pointer p-6 border-2 rounded-md ${role === 'client' ? 'border-blue-500' : 'border-gray-300'} hover:border-blue-500 transition-colors`}
+              className={`cursor-pointer p-6 border-2 rounded-md ${role === 'client' ? 'border-[#008cfc]' : 'border-gray-300'} hover:border-[#008cfc] transition-colors`}
             >
               <div className="flex items-center space-x-2">
                 <input 
@@ -36,7 +35,7 @@ const RolePage = () => {
                   value="client" 
                   checked={role === 'client'} 
                   onChange={() => setRole('client')} 
-                  className="form-radio text-blue-500"
+                  className="form-radio text-[#008cfc]"
                 />
                 <span className="text-lg font-semibold">I'm a client, hiring for a service</span>
               </div>
@@ -44,7 +43,7 @@ const RolePage = () => {
             
             <div 
               onClick={() => setRole('worker')}
-              className={`cursor-pointer p-6 border-2 rounded-md ${role === 'worker' ? 'border-green-500' : 'border-gray-300'} hover:border-green-500 transition-colors`}
+              className={`cursor-pointer p-6 border-2 rounded-md ${role === 'worker' ? 'border-[#008cfc]' : 'border-gray-300'} hover:border-[#008cfc] transition-colors`}
             >
               <div className="flex items-center space-x-2">
                 <input 
@@ -64,7 +63,7 @@ const RolePage = () => {
             <Link to="/signup">
               <button
                 disabled={!role}
-                className={`py-2 px-6 rounded-md w-full ${role === '' ? 'bg-gray-300 text-gray-500' : role === 'client' ? 'bg-blue-500' : 'bg-green-500'} text-white ${role === '' ? 'cursor-not-allowed' : ''} transition duration-300`}
+                className={`py-2 px-6 rounded-md w-full ${role === '' ? 'bg-gray-300 text-gray-500' : role === 'client' ? 'bg-[#008cfc]' : 'bg-[#008cfc]'} text-white ${role === '' ? 'cursor-not-allowed' : ''} transition duration-300`}
               >
                 {role === '' ? "Create Account" : `Create Account as ${role.charAt(0).toUpperCase() + role.slice(1)}`}
               </button>
