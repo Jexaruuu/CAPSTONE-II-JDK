@@ -7,8 +7,8 @@ const RolePage = () => {
   return (
    <div className="min-h-screen flex flex-col bg-white overflow-hidden">
       <div className="bg-white">
-        <div className="max-w-[1535px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
-          <div className="flex items-center space-x-6 ml-0.5">
+        <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
+          <div className="flex items-center space-x-6">
          <Link to="/">
   <img
     src="/jdklogo.png"
@@ -20,7 +20,7 @@ const RolePage = () => {
         </div>
       </div>
 
-      <div className="flex justify-center items-center flex-grow px-4 py-6 -mt-96">
+      <div className="flex justify-center items-center flex-grow px-4 py-6">
         <div className="bg-white p-8 rounded-xl max-w-lg w-full">
           <h2 className="text-3xl font-bold text-center mb-6">Join as a Client or Worker</h2>
           

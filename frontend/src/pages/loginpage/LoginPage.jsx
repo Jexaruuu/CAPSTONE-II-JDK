@@ -1,23 +1,22 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import Footer from '../../homecomponents/Footer';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   return (
-    <div className="min-h-screen flex flex-col bg-white overflow-hidden">
+   <div className="min-h-screen flex flex-col bg-white overflow-hidden">
       <div className="bg-white">
-        <div className="max-w-[1535px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
-          <div className="flex items-center space-x-6 ml-2.5">
-            <Link to="/">
-            <img
-              src="/jdklogo.png"
-              alt="Logo"
-              className="h-48 w-48 object-contain"
-            />
-            </Link>
+        <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
+          <div className="flex items-center space-x-6">
+         <Link to="/">
+  <img
+    src="/jdklogo.png"
+    alt="Logo"
+    className="h-48 w-48 object-contain"
+  />
+</Link>
           </div>
         </div>
       </div>
@@ -79,7 +78,6 @@ const LoginPage = () => {
           </div>
         </div>
       </div>
-      <Footer />
     </div>
   );
 };
