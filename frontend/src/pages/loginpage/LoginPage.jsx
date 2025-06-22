@@ -56,21 +56,14 @@ const LoginPage = () => {
           </div>
 
           <div className="flex space-x-4 mt-4">
-            <button className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 border-[#008cfc] text-[#008cfc]">
-              <img src="/google-logo.png" alt="Google Logo" className="h-5 w-5 mr-2" />
+            <button className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 transition hover:bg-[#008cfc] border-[#008cfc] text-[#008cfc] hover:text-white">
+              <img src="/Google.png" alt="Google Logo" className="h-5 w-5 mr-2" />
               Continue with Google
             </button>
           </div>
 
-          <div className="flex space-x-4 mt-4">
-            <button className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 border-black text-black">
-              <img src="/apple-logo.png" alt="Apple Logo" className="h-5 w-5 mr-2" />
-              Continue with Apple
-            </button>
-          </div>
-
           <div className="text-center mt-6">
-            <span>Don't have an Upwork account? </span>
+            <span>Don't have an account? </span>
             <Link to="/role" className="text-blue-500 underline">
               Sign Up
             </Link>

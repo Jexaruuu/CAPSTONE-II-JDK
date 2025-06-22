@@ -46,7 +46,7 @@ const ContactUsSection = () => {
                     value={formData.name}
                     onChange={handleInputChange}
                     placeholder="Your Name"
-                    className="px-4 py-2 rounded-md text-gray-800 mb-4 w-full"
+                    className="px-4 py-2 rounded-md text-gray-800 mb-4 w-full focus:outline-none focus:ring-2 focus:ring-[#0e375d]"
                     required
                   />
                   <input
@@ -55,7 +55,7 @@ const ContactUsSection = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     placeholder="Your Email"
-                    className="px-4 py-2 rounded-md text-gray-800 mb-4 w-full"
+                    className="px-4 py-2 rounded-md text-gray-800 mb-4 w-full focus:outline-none focus:ring-2 focus:ring-[#0e375d]"
                     required
                   />
                 </div>
@@ -67,7 +67,7 @@ const ContactUsSection = () => {
                     value={formData.message}
                     onChange={handleInputChange}
                     placeholder="Your Message"
-                    className="px-4 py-2 rounded-md text-gray-800 mb-4 w-full h-[150px]"
+                    className="px-4 py-2 rounded-md text-gray-800 mb-4 w-full h-[150px] focus:outline-none focus:ring-2 focus:ring-[#0e375d]"
                     required
                   />
                 </div>
@@ -77,7 +77,7 @@ const ContactUsSection = () => {
               <div className="flex justify-start -mt-14">
                 <button
                   type="submit"
-                  className="bg-white text-[#008CFC] font-semibold py-2 px-6 rounded-md"
+                  className="bg-white text-[#008CFC] hover:text-white hover:bg-blue-700 transition font-semibold py-2 px-6 rounded-md"
                 >
                   Send Message
                 </button>
