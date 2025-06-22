@@ -5,15 +5,17 @@ const RolePage = () => {
   const [role, setRole] = useState('');
 
   return (
-    <div className="min-h-screen flex flex-col bg-white overflow-hidden">
+   <div className="min-h-screen flex flex-col bg-white overflow-hidden">
       <div className="bg-white">
         <div className="max-w-[1535px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
           <div className="flex items-center space-x-6 ml-0.5">
-            <img
-              src="/jdklogo.png"
-              alt="Logo"
-              className="h-48 w-48 object-contain"
-            />
+         <Link to="/">
+  <img
+    src="/jdklogo.png"
+    alt="Logo"
+    className="h-48 w-48 object-contain"
+  />
+</Link>
           </div>
         </div>
       </div>
@@ -70,11 +72,11 @@ const RolePage = () => {
           </div>
 
          <div className="text-center mt-4">
-  <span>Already have an account? </span>
-  <Link to="/login" className="text-blue-500 underline">
-    Log In
-  </Link>
-</div>
+            <span>Already have an account? </span>
+            <Link to="/login" className="text-blue-500 underline">
+              Log In
+            </Link>
+          </div>
         </div>
       </div>
     </div>

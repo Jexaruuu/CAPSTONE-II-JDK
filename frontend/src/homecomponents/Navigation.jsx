@@ -164,7 +164,7 @@ const Navigation = () => {
           </div>
 
          <a
-  href="/"
+  href="/login"
   className="text-black font-medium cursor-pointer hover:text-[#008cfc] transition-all duration-300 ease-in-out"
 >
   Log in
