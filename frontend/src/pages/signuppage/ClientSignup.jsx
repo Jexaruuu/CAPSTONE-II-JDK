@@ -25,7 +25,7 @@ const ClientSignUpPage = () => {
           {/* Add "Looking for work? Apply as Worker" in the navigation bar */}
           <div className="flex items-center space-x-6">
             <span className="text-md">Looking for work? </span>
-            <Link to="/worker-signup" className="text-[#008cfc]">
+            <Link to="/workersignup" className="text-[#008cfc]">
               Apply as Worker
             </Link>
           </div>
