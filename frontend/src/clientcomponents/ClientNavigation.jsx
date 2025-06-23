@@ -313,14 +313,6 @@ const ClientNavigation = () => {
                 <div className="py-3 px-4 border-b text-sm font-semibold">
                   Notifications
                 </div>
-                <ul className="py-2 text-sm">
-                  <li className="px-4 py-2 hover:bg-gray-200">
-                    A recent sign-in to your account (38ffa294) from an unknown device or browser.
-                  </li>
-                  <li className="px-4 py-2 hover:bg-gray-200">
-                    A recent sign-in to your account (38ffa294) from an unknown device or browser.
-                  </li>
-                </ul>
                 <div className="px-4 py-2 text-blue-500 cursor-pointer hover:bg-gray-100">
                   See all notifications
                 </div>
