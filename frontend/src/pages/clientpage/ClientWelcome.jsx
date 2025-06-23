@@ -31,7 +31,7 @@ const ClientWelcomePage = () => {
           {/* Buttons */}
           <div className="flex justify-start gap-6">
             <Link
-              to="/post-job"
+              to="/clientpostrequest"
               className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition"
             >
               Request a Service Now

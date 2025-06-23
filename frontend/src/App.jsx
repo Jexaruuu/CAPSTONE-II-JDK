@@ -7,6 +7,7 @@ import ClientSignUpPage from './pages/signuppage/Clientsignup';
 import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import ClientSuccessPage from "./pages/successpage/ClientSuccess";
 import ClientWelcomePage from './pages/clientpage/ClientWelcome'; // Client welcome page
+import ClientPostRequest from './pages/clientpage/ClientPostRequest';
 
 const App = () => {
   return (
@@ -20,6 +21,7 @@ const App = () => {
           <Route path="/workersignup" element={<WorkerSignUpPage />} /> 
           <Route path="/clientsuccess" element={<ClientSuccessPage />} />
           <Route path="/clientwelcome" element={<ClientWelcomePage />} />
+          <Route path="/clientpostrequest" element={<ClientPostRequest />} />
         </Routes>
       </div>
     </Router>
