@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const ClientSignUpPage = () => {
   const [firstName, setFirstName] = useState('');
@@ -8,6 +8,15 @@ const ClientSignUpPage = () => {
   const [password, setPassword] = useState('');
   const [isEmailOptIn, setIsEmailOptIn] = useState(false);
   const [isAgreedToTerms, setIsAgreedToTerms] = useState(false);
+  const navigate = useNavigate();  // Hook for navigation
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    // Here you would put your account creation logic (API request, etc.)
+    // On successful account creation, navigate to the success page
+    navigate('/clientsuccess');
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-white overflow-hidden">
@@ -22,7 +31,6 @@ const ClientSignUpPage = () => {
               />
             </Link>
           </div>
-          {/* Add "Looking for work? Apply as Worker" in the navigation bar */}
           <div className="flex items-center space-x-6">
             <span className="text-md">Looking for work? </span>
             <Link to="/workersignup" className="text-[#008cfc]">
@@ -82,13 +90,13 @@ const ClientSignUpPage = () => {
             
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold mb-2">Work Email Address</label>
+              <label htmlFor="email" className="block text-sm font-semibold mb-2">Email Address</label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Work email address"
+                placeholder="Email address"
                 className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
               />
             </div>
@@ -108,7 +116,6 @@ const ClientSignUpPage = () => {
           </div>
 
           {/* Opt-In Email Checkbox */}
-
           {/* Terms & Conditions Checkbox */}
           <div className="flex items-center mb-6">
             <input
@@ -138,7 +145,8 @@ const ClientSignUpPage = () => {
           <div className="text-center mt-6">
             <button
               disabled={!firstName || !lastName || !email || !password || !isAgreedToTerms}
-              className={`py-2 px-6 rounded-md w-full ${!firstName || !lastName || !email || !password || !isAgreedToTerms ? 'bg-gray-300 text-gray-500' : 'bg-White border-2 transition border-[#008cfc] hover:bg-[#008cfc]' } text-[#008cfc] hover:text-white ${!firstName || !lastName || !email || !password || !isAgreedToTerms ? 'cursor-not-allowed ' : ''} transition duration-300`}
+              className={`py-2 px-6 rounded-md w-full ${!firstName || !lastName || !email || !password || !isAgreedToTerms ? 'bg-gray-300 text-gray-500' : 'bg-White border-2 transition border-[#008cfc] hover:bg-[#008cfc]' } text-[#008cfc] hover:text-white`}
+              onClick={handleSubmit}
             >
               Create my account
             </button>

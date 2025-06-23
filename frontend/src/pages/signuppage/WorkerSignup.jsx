@@ -81,13 +81,13 @@ const WorkerSignUpPage = () => {
             
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold mb-2">Work Email Address</label>
+              <label htmlFor="email" className="block text-sm font-semibold mb-2">Email Address</label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Work email address"
+                placeholder="Email address"
                 className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
               />
             </div>

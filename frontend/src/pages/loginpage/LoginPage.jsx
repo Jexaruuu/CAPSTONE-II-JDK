@@ -23,7 +23,7 @@ const LoginPage = () => {
 
       <div className="flex justify-center items-center flex-grow px-4 py-6 -mt-20">
         <div className=" p-8 rounded-md max-w-lg w-full">
-          <h2 className="text-3xl font-semibold text-center mb-6">Log in <span className="text-[#008cfc]">JDK HOMECARE</span></h2>
+          <h2 className="text-3xl font-semibold text-center mb-6">Log in to <span className="text-[#008cfc]">JDK HOMECARE</span></h2>
           <div className="space-y-4 mb-6">
             <input 
               type="email" 
