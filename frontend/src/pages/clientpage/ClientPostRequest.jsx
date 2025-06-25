@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ClientNavigation from '../../clientcomponents/ClientNavigation';
 import ClientInformation from '../../clientcomponents/requestcomponents/ClientInformation';
 import ClientServiceRequestDetails from '../../clientcomponents/requestcomponents/ClientServiceRequestDetails';
+import ClientServiceRate from '../../clientcomponents/requestcomponents/ClientServiceRate';
 
 const ClientPostRequest = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -26,9 +27,7 @@ const ClientPostRequest = () => {
   const stepTitles = {
     1: "Step 1: Provide Basic Information",
     2: "Step 2: Describe Your Request",
-    3: "Step 3: Set Your Preferences",
-    4: "Step 4: Review and Confirm",
-    5: "Step 5: Finalize and Submit",
+    3: "Step 3: Set Your Price Rate",
   };
 
   return (
@@ -41,7 +40,7 @@ const ClientPostRequest = () => {
             {/* Step Indicator above the Content */}
             <div className="flex justify-start mb-6 ml-3">
               <div className="text-lg font-extralight">
-                {currentStep} of 5 | Post a Service Request
+                {currentStep} of 3 | Post a Service Request
               </div>
             </div>
 
@@ -66,8 +65,14 @@ const ClientPostRequest = () => {
               />
             )}
 
-            {/* Step 3, 4, 5 would follow the same pattern for the rest of the form */}
-            {/* Add your steps for 3, 4, and 5 here */}
+            {currentStep === 3 && (
+              <ClientServiceRate
+                title={title}
+                setTitle={setTitle}
+                handleNext={handleNext}
+                handleBack={handleBack}
+              />
+            )}
           </div>
         </div>
       </div>

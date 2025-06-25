@@ -219,7 +219,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         <button
           type="button"
           onClick={handleBack}
-          className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 mt-3.5"
+          className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 mt-2.5"
         >
           Back
         </button>
@@ -227,9 +227,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         <button
           type="button"
           onClick={handleNext}
-          className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-3.5"
+          className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-2.5"
         >
-          Next : Confirm Details
+          Next : Service Rate
         </button>
       </div>
     </form>
