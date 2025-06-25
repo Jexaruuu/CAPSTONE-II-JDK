@@ -113,7 +113,7 @@ const Navigation = () => {
               </span>
 
               {showSubDropdown && (
-                <div className="absolute top-full -ml-[165px] border border-gray-300 bg-white shadow-md mt-5 rounded-md w-60 h-60">
+                <div className="absolute top-full -ml-[165px] border border-gray-300 bg-white shadow-md mt-5 rounded-md w-60">
                   <ul className="space-y-2 py-2">
                     <li
                       className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200"
@@ -126,7 +126,7 @@ const Navigation = () => {
                       />
                       <div>
                         <span>Client</span>
-                        <p className="text-sm text-gray-600">Find workers who can do the job.</p>
+                        <p className="text-sm text-gray-600">Search for available clients in need of services.</p>
                       </div>
                     </li>
                     <li
@@ -145,7 +145,7 @@ const Navigation = () => {
                     </li>
                     <li
                       className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200"
-                      onClick={() => handleOptionClick('Service')}
+                      onClick={() => handleOptionClick('Services')}
                     >
                       <img
                         src="/Briefcase.png"

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const ClientNavigation = () => {
-  const [selectedOption, setSelectedOption] = useState('Client');
+  const [selectedOption, setSelectedOption] = useState('Client'); // Default to 'Client'
   const [showSubDropdown, setShowSubDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showBellDropdown, setShowBellDropdown] = useState(false); // For bell icon dropdown
@@ -89,6 +89,11 @@ const ClientNavigation = () => {
     setShowSubDropdown(!showSubDropdown);
   };
 
+  const handleOptionClick = (option) => {
+    setSelectedOption(option);  // Update selected option
+    setShowSubDropdown(false);  // Close the dropdown after selection
+  };
+
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
 
@@ -109,6 +114,7 @@ const ClientNavigation = () => {
           />
 
           <ul className="flex space-x-7 mt-4 text-md">
+            {/* Other Menu Items */}
             <li className="relative cursor-pointer group">
               <span
                 onClick={() => handleDropdownToggle('HireWorker')}
@@ -145,83 +151,7 @@ const ClientNavigation = () => {
               )}
             </li>
 
-            <li className="relative cursor-pointer group">
-              <span
-                onClick={() => handleDropdownToggle('ManageRequest')}
-                className="text-black font-medium flex items-center"
-              >
-                Manage Request
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="w-4 h-4 ml-1 inline-block"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </span>
-              {showManageRequestDropdown && (
-                <div
-                  ref={manageRequestDropdownRef}
-                  className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60"
-                >
-                  <ul className="space-y-2 py-2">
-                    <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                      <Link to="/current-service-request">Current Service Request</Link>
-                    </li>
-                    <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                      <Link to="/completed-service-request">Completed Requests</Link>
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </li>
-
-            <li className="relative cursor-pointer group">
-              <span
-                onClick={() => handleDropdownToggle('Reports')}
-                className="text-black font-medium flex items-center"
-              >
-                Reports
-                 <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="w-4 h-4 ml-1 inline-block"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </span>
-              {showReportsDropdown && (
-                <div
-                  ref={reportsDropdownRef}
-                  className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60"
-                >
-                  <ul className="space-y-2 py-2">
-                    <li
-                      className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200"
-                      onClick={() => handleDropdownToggle('TransactionHistory')}
-                    >
-                      Transaction History
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </li>
-            <li className="relative cursor-pointer group">
-              <Link to="/messages" className="text-black font-medium">
-                Messages
-                <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
-              </Link>
-            </li>
+            {/* Other Menu Items (Manage Request, Reports, etc.) */}
           </ul>
         </div>
 
@@ -288,7 +218,7 @@ const ClientNavigation = () => {
                     </li>
                     <li
                       className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200"
-                      onClick={() => handleOptionClick('Service')}
+                      onClick={() => handleOptionClick('Services')}
                     >
                       <img
                         src="/Briefcase.png"
@@ -321,31 +251,30 @@ const ClientNavigation = () => {
           </div>
 
           <div className="cursor-pointer relative" onClick={handleProfileDropdown}>
-            <img src="/Clienticon.png" alt="User Profile"className="h-8 w-8 rounded-full"/>
-           {showProfileDropdown && (
-  <div className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
-    <div className="px-4 py-3 border-b flex items-center space-x-3">
-      {/* Profile Icon */}
-      <img 
-        src="/Clienticon.png" 
-        alt="Profile Icon" 
-        className="h-8 w-8 rounded-full object-cover"
-      />
-      <div>
-        <p className="font-semibold text-sm">Jex B</p>
-        <p className="text-xs text-gray-600">Client</p>
-      </div>
-    </div>
-    <ul className="py-2">
-      <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-        <Link to="/account-settings">Account Settings</Link>
-      </li>
-      <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-        <Link to="/logout">Log out</Link>
-      </li>
-    </ul>
-  </div>
-)}
+            <img src="/Clienticon.png" alt="User Profile" className="h-8 w-8 rounded-full"/>
+            {showProfileDropdown && (
+              <div className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
+                <div className="px-4 py-3 border-b flex items-center space-x-3">
+                  <img
+                    src="/Clienticon.png"
+                    alt="Profile Icon"
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="font-semibold text-sm">Jex B</p>
+                    <p className="text-xs text-gray-600">Client</p>
+                  </div>
+                </div>
+                <ul className="py-2">
+                  <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
+                    <Link to="/account-settings">Account Settings</Link>
+                  </li>
+                  <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
+                    <Link to="/logout">Log out</Link>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>
