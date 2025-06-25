@@ -7,8 +7,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const [serviceTask, setServiceTask] = useState(''); // New state for Service Task
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
-  const [isUrgent, setIsUrgent] = useState(false); // New state for Urgent
+  const [isUrgent, setIsUrgent] = useState(''); // New state for Urgent (Yes/No)
   const [toolsProvided, setToolsProvided] = useState(''); // New state for Tools Provided
+  const [image, setImage] = useState(null); // New state for the uploaded image
   const [showDropdown, setShowDropdown] = useState(false); // State for toggling the dropdown visibility
 
   const dropdownRef = useRef(null); // Reference for the dropdown container
@@ -51,9 +52,21 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     setServiceTask(''); // Reset service task when the service type is changed
   };
 
+  const handleUrgentChange = (value) => {
+    setIsUrgent(value); // Update Urgent value
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImage(URL.createObjectURL(file)); // Create a preview of the image
+    }
+  };
+
   return (
     <form className="space-y-8">
       <div className="flex flex-wrap gap-8">
+        {/* Service Request Details Section (Left side) */}
         <div className="w-full md:w-2/4 bg-white p-6 -ml-3">
           <h3 className="text-2xl font-semibold mb-6">Service Request Details</h3>
           <p className="text-sm text-gray-600 mb-6">Please fill in the service request details to proceed.</p>
@@ -132,7 +145,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
               <select
                 value={toolsProvided}
                 onChange={(e) => setToolsProvided(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none" // Removed default arrow
                 required
               >
                 <option value="">Select Yes or No</option>
@@ -141,18 +154,19 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
               </select>
             </div>
 
-            {/* Urgent Field */}
+            {/* Urgent Dropdown */}
             <div className="w-1/2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Urgent?</label>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={isUrgent}
-                  onChange={() => setIsUrgent(!isUrgent)}
-                  className="h-4 w-4 text-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-600">Yes, it's urgent</span>
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Is The Request Urgent?</label>
+              <select
+                value={isUrgent}
+                onChange={(e) => handleUrgentChange(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none" // Removed default arrow
+                required
+              >
+                <option value="">Select Yes or No</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
             </div>
           </div>
 
@@ -168,6 +182,36 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
             />
           </div>
         </div>
+
+        {/* Image Upload Section on the Right */}
+        <div className="w-full md:w-[700px] bg-white p-6">
+          <h3 className="text-2xl font-semibold mb-6">Upload Image</h3>
+          <p className="text-sm text-gray-600 mb-6">Upload an image to help describe the service request or what you need done.</p>
+
+          {/* Image Upload Input */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Upload Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+         {/* Image Preview - Full Size */}
+<div className="mb-6">
+  {image ? (
+    <div className="w-full h-[280px] bg-gray-200 rounded-md overflow-hidden">
+      <img src={image} alt="Uploaded Preview" className="w-full h-full object-cover" />
+    </div>
+  ) : (
+    <div className="w-full h-[280px] bg-gray-200 rounded-md flex items-center justify-center text-gray-400">
+      <span>No Image Selected</span>
+    </div>
+  )}
+</div>
+        </div>
       </div>
 
       {/* Navigation Buttons */}
@@ -175,7 +219,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         <button
           type="button"
           onClick={handleBack}
-          className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 mt-16"
+          className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 mt-3.5"
         >
           Back
         </button>
@@ -183,7 +227,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         <button
           type="button"
           onClick={handleNext}
-          className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-16"
+          className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-3.5"
         >
           Next : Confirm Details
         </button>
