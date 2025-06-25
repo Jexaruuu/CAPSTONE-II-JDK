@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ClientNavigation from '../../clientcomponents/ClientNavigation';
 import ClientInformation from '../../clientcomponents/requestcomponents/ClientInformation';
-import StepDescription from '../../clientcomponents/requestcomponents/StepDescription';
+import ClientServiceRequestDetails from '../../clientcomponents/requestcomponents/ClientServiceRequestDetails';
 
 const ClientPostRequest = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -58,7 +58,7 @@ const ClientPostRequest = () => {
 
             {/* Step 2: Description */}
             {currentStep === 2 && (
-              <StepDescription
+              <ClientServiceRequestDetails
                 description={description}
                 setDescription={setDescription}
                 handleNext={handleNext}
