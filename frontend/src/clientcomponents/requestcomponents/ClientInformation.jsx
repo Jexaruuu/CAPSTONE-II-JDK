@@ -13,11 +13,20 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   const [facebook, setFacebook] = useState('');
   const [instagram, setInstagram] = useState('');
   const [linkedin, setLinkedin] = useState('');
+  const [profilePicture, setProfilePicture] = useState(null); // State for profile picture
 
   // Barangay options (this can be updated dynamically if you have a list)
   const barangays = [
     'Barangay 1', 'Barangay 2', 'Barangay 3', 'Barangay 4', 'Barangay 5'
   ];
+
+  // Handle profile picture upload
+  const handleProfilePictureChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfilePicture(URL.createObjectURL(file)); // Create a preview URL for the uploaded image
+    }
+  };
 
   return (
     <form className="space-y-8">
@@ -122,15 +131,46 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           </div>
         </div>
 
-        {/* Right side - Social Media Section */}
+        {/* Right side - Profile Picture and Social Media Section */}
         <div className="w-full md:w-1/3 bg-white p-6">
-          <h3 className="text-2xl font-semibold mb-5">Social Media</h3>
-          <p className="text-sm text-gray-600 mb-7">Please provide your social media links (optional).</p>
+          <h3 className="text-2xl font-semibold mb-5">Profile Picture</h3>
+          <p className="text-sm text-gray-600 mb-5">Upload your profile picture (optional).</p>
+
+          {/* Profile Picture Upload */}
+          <div className="flex items-center mb-6">
+            <div className="w-1/3">
+              {/* Placeholder image */}
+              {!profilePicture && (
+                <div className="w-32 h-32 rounded-full bg-gray-300 flex items-center justify-center">
+                  <span className="text-white text-xl">+</span>
+                </div>
+              )}
+              {/* Displayv the uploaded image */}
+              {profilePicture && (
+                <img
+                  src={profilePicture}
+                  alt="Profile Preview"
+                  className="w-32 h-32 rounded-full object-cover"
+                />
+              )}
+            </div>
+
+            <div className="-ml-5 w-2/3">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleProfilePictureChange}
+                className="mb-4 w-full px-4 py-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <h3 className="text-2xl font-semibold mb-5 mt-6">Social Media</h3>
+          <p className="text-sm text-gray-600 mb-3">Please provide your social media links (optional).</p>
 
           {/* Facebook */}
-          <div className="flex space-x-6 mb-4 ">
+          <div className="flex space-x-6 mb-4">
             <div className="w-full">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Facebook</label>
               <div className="flex items-center">
                 <FaFacebookF className="mr-2 text-blue-600" />
                 <input
@@ -138,7 +178,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                   value={facebook}
                   onChange={(e) => setFacebook(e.target.value)}
                   placeholder="Facebook Link"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -147,7 +187,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           {/* Instagram */}
           <div className="flex space-x-6 mb-4">
             <div className="w-full">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Instagram</label>
               <div className="flex items-center">
                 <FaInstagram className="mr-2 text-pink-500" />
                 <input
@@ -155,7 +194,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                   value={instagram}
                   onChange={(e) => setInstagram(e.target.value)}
                   placeholder="Instagram Link"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -164,7 +203,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           {/* LinkedIn */}
           <div className="flex space-x-6 mb-4">
             <div className="w-full">
-              <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn</label>
               <div className="flex items-center">
                 <FaLinkedinIn className="mr-2 text-blue-600" />
                 <input
@@ -172,7 +210,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                   value={linkedin}
                   onChange={(e) => setLinkedin(e.target.value)}
                   placeholder="LinkedIn Link"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -193,7 +231,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
         <button
           type="button"
           onClick={handleNext}
-          className="px-8 py-3 bg-blue-500 text-white rounded-md shadow-md hover:bg-blue-600 transition duration-300"
+          className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300"
         >
           Next : Service Request Details
         </button>
