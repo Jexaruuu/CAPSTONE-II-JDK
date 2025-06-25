@@ -6,7 +6,7 @@ import LoginPage from './pages/loginpage/LoginPage';
 import ClientSignUpPage from './pages/signuppage/Clientsignup';
 import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import ClientSuccessPage from "./pages/successpage/ClientSuccess";
-import ClientWelcomePage from './pages/clientpage/ClientWelcome'; // Client welcome page
+import ClientWelcomePage from './pages/clientpage/ClientWelcome'; 
 import ClientPostRequest from './pages/clientpage/ClientPostRequest';
 
 const App = () => {

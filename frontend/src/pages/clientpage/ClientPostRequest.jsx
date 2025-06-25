@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ClientNavigation from '../../clientcomponents/ClientNavigation';
-import StepTitle from '../../clientcomponents/requestcomponents/StepTitle';
+import ClientInformation from '../../clientcomponents/requestcomponents/ClientInformation';
 import StepDescription from '../../clientcomponents/requestcomponents/StepDescription';
 
 const ClientPostRequest = () => {
@@ -29,18 +29,18 @@ const ClientPostRequest = () => {
         {/* Step-by-Step Service Request Form */}
         <div className="flex flex-col min-h-[calc(100vh-200px)]">
           <div className="max-w-[1550px] mx-auto w-full">
-            {/* Dynamic Step Indicator */}
-            <div className="flex justify-center mb-6">
-              <div className="text-lg font-bold">
-                Step {currentStep} of 5
+            {/* Step Indicator above the Content */}
+            <div className="flex justify-start mb-6 ml-3">
+              <div className="text-lg font-extralight">
+                Step {currentStep} of 5 | Post Service Request
               </div>
             </div>
 
-            <h2 className="text-3xl font-bold mb-6">Post a Service Request</h2>
+            <h2 className="text-3xl font-bold mb-6 ml-3">Post a Service Request</h2>
 
             {/* Step 1: Title */}
             {currentStep === 1 && (
-              <StepTitle
+              <ClientInformation
                 title={title}
                 setTitle={setTitle}
                 handleNext={handleNext}

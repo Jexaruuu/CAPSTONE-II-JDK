@@ -99,7 +99,7 @@ const ClientNavigation = () => {
 
   return (
     <div className="bg-white sticky top-0 z-50">
-      <div className="max-w-[1550px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
+      <div className="max-w-[1560px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
         <div className="flex items-center space-x-6">
           <img
             src="/jdklogo.png"
@@ -269,7 +269,7 @@ const ClientNavigation = () => {
                       />
                       <div>
                         <span>Client</span>
-                        <p className="text-sm text-gray-600">Hire professionals and agencies</p>
+                        <p className="text-sm text-gray-600">Search for available clients in need of services.</p>
                       </div>
                     </li>
                     <li
@@ -283,7 +283,7 @@ const ClientNavigation = () => {
                       />
                       <div>
                         <span>Worker</span>
-                        <p className="text-sm text-gray-600">Find work opportunities</p>
+                        <p className="text-sm text-gray-600">Find workers who can do the job.</p>
                       </div>
                     </li>
                     <li
@@ -296,8 +296,8 @@ const ClientNavigation = () => {
                         className="w-8 h-8"
                       />
                       <div>
-                        <span>Service</span>
-                        <p className="text-sm text-gray-600">View our services</p>
+                        <span>Services</span>
+                        <p className="text-sm text-gray-600">Search for service requests posted by clients.</p>
                       </div>
                     </li>
                   </ul>
