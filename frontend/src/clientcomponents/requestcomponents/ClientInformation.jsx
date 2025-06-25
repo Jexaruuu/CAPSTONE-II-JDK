@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom'; // Add this import to use Link for navigation
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa'; // Import social media icons
 
 const ClientInformation = ({ title, setTitle, handleNext }) => {
@@ -220,13 +221,14 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
 
       {/* Button Section with Back and Next Buttons */}
       <div className="flex justify-between mt-8 ml-3">
-        <button
-          type="button"
-          onClick={() => console.log('Back Button Clicked')}  
-          className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300"
-        >
-          Back
-        </button>
+        <Link to="/clientwelcome">
+          <button
+            type="button"
+            className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300"
+          >
+            Back
+          </button>
+        </Link>
 
         <button
           type="button"
