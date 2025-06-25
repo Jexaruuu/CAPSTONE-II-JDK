@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom'; // Add this import to use Link for navigation
+import React, { useState, useEffect, useRef } from 'react';
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa'; // Import social media icons
+import { Link } from 'react-router-dom';
 
 const ClientInformation = ({ title, setTitle, handleNext }) => {
-  // State for personal information fields
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
@@ -14,30 +13,53 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   const [facebook, setFacebook] = useState('');
   const [instagram, setInstagram] = useState('');
   const [linkedin, setLinkedin] = useState('');
-  const [profilePicture, setProfilePicture] = useState(null); // State for profile picture
+  const [profilePicture, setProfilePicture] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false); // State for toggling the dropdown visibility
 
-  // Barangay options (this can be updated dynamically if you have a list)
+  const dropdownRef = useRef(null); // Reference for the dropdown container
+
+  // Barangay options, manually added or imported
   const barangays = [
-    'Barangay 1', 'Barangay 2', 'Barangay 3', 'Barangay 4', 'Barangay 5'
+    'Alangilan', 'Alijis', 'Banago', 'Bata', 'Cabug', 'Estefania', 'Felisa',
+    'Granada', 'Handumanan', 'Lopez Jaena', 'Mandalagan', 'Mansilingan', 
+    'Montevista', 'Pahanocoy', 'Punta Taytay', 'Singcang-Airport', 'Sum-ag', 
+    'Taculing', 'Tangub', 'Villa Esperanza'
   ];
 
-  // Handle profile picture upload
+  // Sort the barangay list alphabetically
+  const sortedBarangays = barangays.sort();
+
   const handleProfilePictureChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setProfilePicture(URL.createObjectURL(file)); // Create a preview URL for the uploaded image
+      setProfilePicture(URL.createObjectURL(file));
     }
   };
+
+  const toggleDropdown = () => setShowDropdown(!showDropdown);
+
+  // Close the dropdown when clicking outside of it
+  const handleClickOutside = (event) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      setShowDropdown(false);
+    }
+  };
+
+  // Set up event listener to handle clicks outside
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside); // Listen for click outside
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside); // Cleanup event listener on unmount
+    };
+  }, []);
 
   return (
     <form className="space-y-8">
       <div className="flex flex-wrap gap-8">
-        {/* Left side - Personal Information Section */}
         <div className="w-full md:w-2/4 bg-white p-6 -ml-3">
           <h3 className="text-2xl font-semibold mb-6">Personal Information</h3>
           <p className="text-sm text-gray-600 mb-6">Please fill in your personal details to proceed.</p>
 
-          {/* First Name and Last Name (Left and Right) */}
           <div className="flex space-x-6 mb-4">
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
@@ -63,19 +85,32 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
             </div>
           </div>
 
-          {/* Contact Number and Email Address (Left and Right) */}
+          {/* Contact Number with Flag and +63 */}
           <div className="flex space-x-6 mb-4">
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number</label>
-              <input
-                type="text"
-                value={contactNumber}
-                onChange={(e) => setContactNumber(e.target.value)}
-                placeholder="Contact Number"
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+              <div className="flex items-center border border-gray-300 rounded-md">
+                {/* Philippine Flag */}
+                <div className="w-8 h-5 mr-2 rounded-md">
+                  <img 
+                    src="philippines.png" 
+                    alt="Philippine Flag" 
+                    className="w-full h-full object-contain rounded-md ml-1" 
+                  />
+                </div>
+                {/* Country Code +63 */}
+                <span className="text-gray-700 text-sm mr-2">+63</span>
+                <input
+                  type="text"
+                  value={contactNumber}
+                  onChange={(e) => setContactNumber(e.target.value)}
+                  placeholder="Mobile Number"
+                  className="w-full px-4 py-3 border-l border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-r-md"
+                  required
+                />
+              </div>
             </div>
+
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
               <input
@@ -89,40 +124,72 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
             </div>
           </div>
 
-          {/* Street and Barangay Dropdown (Left and Right) */}
-          <div className="flex space-x-6 mb-4">
-            <div className="w-1/2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Street</label>
-              <input
-                type="text"
-                value={street}
-                onChange={(e) => setStreet(e.target.value)}
-                placeholder="Street"
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-            <div className="w-1/2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
-              <select
-                value={barangay}
-                onChange={(e) => setBarangay(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
+         <div className="flex space-x-6 mb-4">
+  {/* Barangay Field on the Left */}
+  <div className="w-1/2">
+    <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
+    <div ref={dropdownRef} className="relative">
+      <button
+        type="button"
+        onClick={toggleDropdown}
+        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-left"
+      >
+        {barangay || 'Select Barangay'}
+             <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="w-4 h-4 ml-36 inline-block"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+      </button>
+      {showDropdown && (
+        <div
+          className="absolute bg-white border border-gray-300 rounded-md max-h-48 overflow-y-auto mt-2"
+          style={{
+            top: '100%',
+            left: '0',
+            zIndex: 10,
+            width: 'calc(100% + 250px)', // Add a little extra width to the dropdown
+          }}
+        >
+          <div className="grid grid-cols-3 gap-2">
+            {sortedBarangays.map((barangayName, index) => (
+              <div
+                key={index}
+                onClick={() => setBarangay(barangayName)}
+                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
               >
-                <option value="">Select Barangay</option>
-                {barangays.map((barangayName, index) => (
-                  <option key={index} value={barangayName}>
-                    {barangayName}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {barangayName}
+              </div>
+            ))}
           </div>
+        </div>
+      )}
+    </div>
+  </div>
 
-          {/* Additional Address */}
+  {/* Street Field on the Right */}
+  <div className="w-1/2">
+    <label className="block text-sm font-medium text-gray-700 mb-2">Street</label>
+    <input
+      type="text"
+      value={street}
+      onChange={(e) => setStreet(e.target.value)}
+      placeholder="House No. and Street"
+      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      required
+    />
+  </div>
+</div>
+
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Additional Address (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Additional Address (Landmark etc.)</label>
             <textarea
               value={additionalAddress}
               onChange={(e) => setAdditionalAddress(e.target.value)}
@@ -132,21 +199,18 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           </div>
         </div>
 
-        {/* Right side - Profile Picture and Social Media Section */}
         <div className="w-full md:w-1/3 bg-white p-6">
           <h3 className="text-2xl font-semibold mb-5">Profile Picture</h3>
           <p className="text-sm text-gray-600 mb-5">Upload your profile picture (optional).</p>
 
-          {/* Profile Picture Upload */}
           <div className="flex items-center mb-6">
             <div className="w-1/3">
-              {/* Placeholder image */}
               {!profilePicture && (
                 <div className="w-32 h-32 rounded-full bg-gray-300 flex items-center justify-center">
                   <span className="text-white text-xl">+</span>
                 </div>
               )}
-              {/* Displayv the uploaded image */}
+
               {profilePicture && (
                 <img
                   src={profilePicture}
@@ -169,7 +233,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           <h3 className="text-2xl font-semibold mb-5 mt-6">Social Media</h3>
           <p className="text-sm text-gray-600 mb-3">Please provide your social media links (optional).</p>
 
-          {/* Facebook */}
           <div className="flex space-x-6 mb-4">
             <div className="w-full">
               <div className="flex items-center">
@@ -185,7 +248,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
             </div>
           </div>
 
-          {/* Instagram */}
           <div className="flex space-x-6 mb-4">
             <div className="w-full">
               <div className="flex items-center">
@@ -201,7 +263,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
             </div>
           </div>
 
-          {/* LinkedIn */}
           <div className="flex space-x-6 mb-4">
             <div className="w-full">
               <div className="flex items-center">
@@ -219,7 +280,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
         </div>
       </div>
 
-      {/* Button Section with Back and Next Buttons */}
       <div className="flex justify-between mt-8 ml-3">
         <Link to="/clientwelcome">
           <button
