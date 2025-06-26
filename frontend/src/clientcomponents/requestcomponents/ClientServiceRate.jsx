@@ -46,23 +46,15 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
               }`}
               onClick={() => handleRateTypeChange({ target: { value: 'Hourly Rate' } })}
             >
-              <div className="flex justify-center mb-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={`w-6 h-6 ${rateType === 'Hourly Rate' ? 'text-green-500' : 'text-gray-400'}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 8v4l3 3M12 8H8m4-4v4a4 4 0 014 4v5a4 4 0 01-4 4H8a4 4 0 01-4-4V12a4 4 0 014-4V4h4z"
-                  />
-                </svg>
-              </div>
-              <p className="text-sm font-semibold">Hourly Rate</p>
+        <div className="flex justify-center mb-2">
+  <img
+    src={rateType === 'Hourly Rate' ? '/Clock.png' : '/Clock.png'}
+    alt="Rate Icon"
+    className="w-6 h-6"
+  />
+</div>
+
+              <p className="text-sm font-semibold">By the hour</p>
             </div>
 
             {/* By the Job Rate Card */}
@@ -73,22 +65,13 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
               onClick={() => handleRateTypeChange({ target: { value: 'By the Job Rate' } })}
             >
               <div className="flex justify-center mb-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={`w-6 h-6 ${rateType === 'By the Job Rate' ? 'text-green-500' : 'text-gray-400'}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M19 11l-7 7-7-7M12 4v12"
-                  />
-                </svg>
-              </div>
-              <p className="text-sm font-semibold">By the Job</p>
+  <img
+    src={rateType === 'By the Job Rate' ? '/Contract.png' : '/Contract.png'}
+    alt="Rate Icon"
+    className={`w-6 h-6 ${rateType === 'By the Job Rate' ? 'text-green-500' : 'text-gray-400'}`}
+  />
+</div>
+              <p className="text-sm font-semibold">By the job</p>
             </div>
           </div>
 
@@ -126,7 +109,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
               <p className="text-sm text-gray-600 mt-1">
                 This is the average rate for similar home services.
               </p>
-              <p className="text-sm text-gray-600 mt-5">
+              <p className="text-md text-gray-600 mt-5">
                 Workers typically charge between <strong>₱150 - ₱350</strong> per hour for home services such as plumbing, carpentry, and electrical work. Prices may vary depending on the job's complexity and the experience of the professional. We aim to keep our rates affordable, so feel free to discuss the price with your service provider to find the best deal for you.
               </p>
             </div>
@@ -160,16 +143,16 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         <button
           type="button"
           onClick={handleBack}
-          className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300"
+          className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 -mt-4"
         >
           Back
         </button>
 
         <button
           type="button"
-          className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300"
+          className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 -mt-4"
         >
-                    Next : Review Service Request
+                    Review Service Request
         </button>
       </div>
     </form>

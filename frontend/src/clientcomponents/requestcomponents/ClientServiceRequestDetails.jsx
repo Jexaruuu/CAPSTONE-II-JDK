@@ -19,8 +19,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
   // Service Task options for each service type
   const serviceTasks = {
-    Carpentry: ['Furniture Repair', 'Wooden Flooring', 'Cabinet Making'],
-    'Electrical Works': ['Wiring Installation', 'Electrician for Appliances', 'Lighting Setup'],
+    Carpentry: ['General Carpentry', 'Furniture Repair', 'Wood Polishing', 'Door & Window Fitting', 'Custom Furniture Design', 'Modular Kitchen Installation', 'Flooring & Decking', 'Cabinet & Wardrobe Fixing', 'Wall Paneling & False Ceiling', 'Wood Restoration & Refinishing'],
+    'Electrical Works': ['Wiring Repair', 'Appliance Installation', 'Lighting Fixtures', 'Circuit Breaker & Fuse Repair', 'CCTV & Security System Setup', 'Fan & Exhaust Installation', 'Inverter & Battery Setup', 'Switchboard & Socket Repair', 'Electrical Safety Inspection', 'Smart Home Automation'],
     Plumbing: ['Pipe Repair', 'Leak Fixing', 'Bathroom Installation'],
     'Car Washing': ['Exterior Wash', 'Interior Clean', 'Full Wash'],
     Laundry: ['Dry Cleaning', 'Ironing', 'Laundry Pickup']
