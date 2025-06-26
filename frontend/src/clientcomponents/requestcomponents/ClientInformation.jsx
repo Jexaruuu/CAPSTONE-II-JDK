@@ -56,7 +56,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   return (
     <form className="space-y-8">
       <div className="flex flex-wrap gap-8">
-        <div className="w-full md:w-2/4 bg-white p-6 -ml-3">
+        <div className="w-full md:w-2/4 bg-white p-6 -ml-3 mt-0.5">
           <h3 className="text-2xl font-semibold mb-6">Personal Information</h3>
           <p className="text-sm text-gray-600 mb-6">Please fill in your personal details to proceed.</p>
 

@@ -1,22 +1,46 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';  // Add 'useLocation' here
+import axios from 'axios';
 
 const ClientSignUpPage = () => {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+  const location = useLocation(); // Use useLocation to get the role passed from RolePage
+  const { role } = location.state || { role: 'client' }; // Default to 'client' if no role is passed
+
+  const [first_name, setFirstName] = useState('');
+  const [last_name, setLastName] = useState('');
+  const [email_address, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isEmailOptIn, setIsEmailOptIn] = useState(false);
-  const [isAgreedToTerms, setIsAgreedToTerms] = useState(false);
-  const navigate = useNavigate();  // Hook for navigation
+  const [is_email_opt_in, setIsEmailOptIn] = useState(false);
+  const [is_agreed_to_terms, setIsAgreedToTerms] = useState(false);
+  const [error_message, setErrorMessage] = useState('');
+  const navigate = useNavigate(); // Hook for navigation
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  setErrorMessage(''); // Reset error message before submitting
 
-    // Here you would put your account creation logic (API request, etc.)
-    // On successful account creation, navigate to the success page
-    navigate('/clientsuccess');
-  };
+  console.log({ first_name, last_name, email_address, password });
+
+  try {
+    const response = await axios.post('http://localhost:5000/api/clients/register', {
+      first_name,
+      last_name,
+      email_address,
+      password,
+    });
+
+    if (response.status === 201) {
+      navigate('/clientsuccess');
+    }
+  } catch (error) {
+    console.error('Error registering client:', error);
+    if (error.response && error.response.data) {
+      setErrorMessage(error.response.data.message || 'There was an error registering the client');
+    } else {
+      setErrorMessage('There was an error registering the client');
+    }
+  }
+};
 
   return (
     <div className="min-h-screen flex flex-col bg-white overflow-hidden">
@@ -45,7 +69,7 @@ const ClientSignUpPage = () => {
         <div className="bg-white p-8 max-w-lg w-full">
           <h2 className="text-3xl font-semibold text-center mb-6">Sign up to be a <span className="text-[#008cfc]">Client</span></h2>
 
-          {/* Social Signup Buttons */}
+          {/* Google Sign Up Button */}
           <div className="flex space-x-4 mt-4">
             <button className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 transition hover:bg-[#008cfc] border-[#008cfc] text-[#008cfc] hover:text-white">
               <img src="/Google.png" alt="Google Logo" className="h-5 w-5 mr-2" />
@@ -60,48 +84,45 @@ const ClientSignUpPage = () => {
             <hr className="flex-grow border-gray-300" />
           </div>
 
-          {/* Signup Form */}
+          {/* Form Fields */}
           <div className="space-y-6 mb-6">
-            {/* First Name and Last Name Fields */}
             <div className="flex space-x-4">
               <div className="w-full">
-                <label htmlFor="firstName" className="block text-sm font-semibold mb-2">First Name</label>
+                <label htmlFor="first_name" className="block text-sm font-semibold mb-2">First Name</label>
                 <input
-                  id="firstName"
+                  id="first_name"
                   type="text"
-                  value={firstName}
+                  value={first_name}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="First name"
                   className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
                 />
               </div>
               <div className="w-full">
-                <label htmlFor="lastName" className="block text-sm font-semibold mb-2">Last Name</label>
+                <label htmlFor="last_name" className="block text-sm font-semibold mb-2">Last Name</label>
                 <input
-                  id="lastName"
+                  id="last_name"
                   type="text"
-                  value={lastName}
+                  value={last_name}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Last name"
                   className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
                 />
               </div>
             </div>
-            
-            {/* Email Field */}
+
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold mb-2">Email Address</label>
+              <label htmlFor="email_address" className="block text-sm font-semibold mb-2">Email Address</label>
               <input
-                id="email"
+                id="email_address"
                 type="email"
-                value={email}
+                value={email_address}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email address"
                 className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
               />
             </div>
-            
-            {/* Password Field */}
+
             <div>
               <label htmlFor="password" className="block text-sm font-semibold mb-2">Password (8 or more characters)</label>
               <input
@@ -115,13 +136,12 @@ const ClientSignUpPage = () => {
             </div>
           </div>
 
-          {/* Opt-In Email Checkbox */}
           {/* Terms & Conditions Checkbox */}
           <div className="flex items-center mb-6">
             <input
               type="checkbox"
-              checked={isAgreedToTerms}
-              onChange={() => setIsAgreedToTerms(!isAgreedToTerms)}
+              checked={is_agreed_to_terms}
+              onChange={() => setIsAgreedToTerms(!is_agreed_to_terms)}
               className="form-checkbox text-[#008cfc] -mt-12"
             />
             <span className="ml-2">
@@ -132,25 +152,30 @@ const ClientSignUpPage = () => {
               , including the{' '}
               <Link to="#" className="text-[#008cfc] underline">
                 User Agreement
-              </Link>{' '}
-              and{' '}
+              </Link> and{' '}
               <Link to="#" className="text-[#008cfc] underline">
                 Privacy Policy
-              </Link>
-              .
+              </Link>.
             </span>
           </div>
 
           {/* Submit Button */}
           <div className="text-center mt-6">
             <button
-              disabled={!firstName || !lastName || !email || !password || !isAgreedToTerms}
-              className={`py-2 px-6 rounded-md w-full ${!firstName || !lastName || !email || !password || !isAgreedToTerms ? 'bg-gray-300 text-gray-500' : 'bg-White border-2 transition border-[#008cfc] hover:bg-[#008cfc]' } text-[#008cfc] hover:text-white`}
+              disabled={!first_name || !last_name || !email_address || !password || !is_agreed_to_terms}
+              className={`py-2 px-6 rounded-md w-full ${!first_name || !last_name || !email_address || !password || !is_agreed_to_terms ? 'bg-gray-300 text-gray-500' : 'bg-White border-2 transition border-[#008cfc] hover:bg-[#008cfc]' } text-[#008cfc] hover:text-white`}
               onClick={handleSubmit}
             >
               Create my account
             </button>
           </div>
+
+          {/* Error Message */}
+          {error_message && (
+            <div className="text-red-500 text-center mt-4">
+              {error_message}
+            </div>
+          )}
 
           {/* Already have an account link */}
           <div className="text-center mt-4">

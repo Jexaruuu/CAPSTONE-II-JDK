@@ -29,7 +29,7 @@ const LoginPage = () => {
               type="email" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Username or Email"
+              placeholder="Email Address"
               className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
             />
             

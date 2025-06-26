@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const [rateType, setRateType] = useState(''); // State for the rate type (Hourly Rate or By the Job Rate)
   const [rateFrom, setRateFrom] = useState(''); // State for the 'From' hourly rate
   const [rateTo, setRateTo] = useState(''); // State for the 'To' hourly rate
   const [rateValue, setRateValue] = useState(''); // State for the rate value (to be filled by the user)
+  
+  const navigate = useNavigate(); // Initialize navigate function
 
   // Handling rate type change (Hourly or By the job)
   const handleRateTypeChange = (e) => {
@@ -29,6 +31,20 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
     setRateTo(e.target.value);
   };
 
+  // Handle clicking "Review Service Request"
+  const handleReviewClick = () => {
+    navigate('/clientreviewservicerequest', {
+      state: {
+        title,
+        rateType,
+        rateFrom,
+        rateTo,
+        rateValue,
+        // You can add more fields here if needed for review
+      },
+    });
+  };
+
   return (
     <form className="space-y-8 pb-20">
       <div className="flex flex-wrap gap-8">
@@ -46,14 +62,13 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
               }`}
               onClick={() => handleRateTypeChange({ target: { value: 'Hourly Rate' } })}
             >
-        <div className="flex justify-center mb-2">
-  <img
-    src={rateType === 'Hourly Rate' ? '/Clock.png' : '/Clock.png'}
-    alt="Rate Icon"
-    className="w-6 h-6"
-  />
-</div>
-
+              <div className="flex justify-center mb-2">
+                <img
+                  src={rateType === 'Hourly Rate' ? '/Clock.png' : '/Clock.png'}
+                  alt="Rate Icon"
+                  className="w-6 h-6"
+                />
+              </div>
               <p className="text-sm font-semibold">By the hour</p>
             </div>
 
@@ -65,12 +80,12 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
               onClick={() => handleRateTypeChange({ target: { value: 'By the Job Rate' } })}
             >
               <div className="flex justify-center mb-2">
-  <img
-    src={rateType === 'By the Job Rate' ? '/Contract.png' : '/Contract.png'}
-    alt="Rate Icon"
-    className={`w-6 h-6 ${rateType === 'By the Job Rate' ? 'text-green-500' : 'text-gray-400'}`}
-  />
-</div>
+                <img
+                  src={rateType === 'By the Job Rate' ? '/Contract.png' : '/Contract.png'}
+                  alt="Rate Icon"
+                  className={`w-6 h-6 ${rateType === 'By the Job Rate' ? 'text-green-500' : 'text-gray-400'}`}
+                />
+              </div>
               <p className="text-sm font-semibold">By the job</p>
             </div>
           </div>
@@ -131,7 +146,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                 Set a fixed price for the service request.
               </p>
               <p className="text-sm text-gray-600 mt-4">
-                 The fixed price is an amount that you and the service provider can discuss and agree on together. Feel free to negotiate the price based on the scope of the work. 
+                The fixed price is an amount that you and the service provider can discuss and agree on together. Feel free to negotiate the price based on the scope of the work. 
               </p>
             </div>
           )}
@@ -150,9 +165,10 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
 
         <button
           type="button"
+          onClick={handleReviewClick} // Navigate to the review page
           className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 -mt-4"
         >
-                    Review Service Request
+          Review Service Request
         </button>
       </div>
     </form>

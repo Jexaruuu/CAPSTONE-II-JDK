@@ -106,12 +106,14 @@ const ClientNavigation = () => {
     <div className="bg-white sticky top-0 z-50">
       <div className="max-w-[1560px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
         <div className="flex items-center space-x-6">
-          <img
-            src="/jdklogo.png"
-            alt="Logo"
-            className="h-48 w-48 object-contain"
-            style={{ margin: '0 10px' }}
-          />
+          <Link to = "/clientwelcome">
+            <img
+              src="/jdklogo.png"
+              alt="Logo"
+              className="h-48 w-48 object-contain"
+              style={{ margin: '0 10px' }}
+            />
+          </Link>
 
           <ul className="flex space-x-7 mt-4 text-md">
             <li className="relative cursor-pointer group">
@@ -346,7 +348,7 @@ const ClientNavigation = () => {
         <Link to="/account-settings">Account Settings</Link>
       </li>
       <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-        <Link to="/logout">Log out</Link>
+        <Link to="/">Log out</Link>
       </li>
     </ul>
   </div>

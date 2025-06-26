@@ -11,11 +11,11 @@ const ClientWelcomePage = () => {
         <div className="flex flex-col justify-start items-start">
           {/* Logo above the welcome text */}
           <div className="mb-6">
-            <img
-              src="/Bluelogo.png" // Make sure to update this with the correct path to your logo
-              alt="JDK HOMECARE Logo"
-              className="h-36 w-36 object-contain -ml-5"
-            />
+              <img
+                src="/Bluelogo.png" // Make sure to update this with the correct path to your logo
+                alt="JDK HOMECARE Logo"
+                className="h-36 w-36 object-contain -ml-5"
+              />
           </div>
 
           <h1 className="text-5xl font-bold text-left mb-6">
