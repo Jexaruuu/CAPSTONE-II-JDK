@@ -6,8 +6,24 @@ const WorkerSignUpPage = () => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState(''); // New state for confirm password
   const [isEmailOptIn, setIsEmailOptIn] = useState(false);
   const [isAgreedToTerms, setIsAgreedToTerms] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(''); // State to hold error message
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setErrorMessage(''); // Reset any previous error messages
+
+    // Check if password and confirm password match
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match');
+      return;
+    }
+
+    // Continue with form submission (e.g., send data to API)
+    console.log('Form submitted:', { firstName, lastName, email, password });
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-white overflow-hidden">
@@ -32,7 +48,7 @@ const WorkerSignUpPage = () => {
       </div>
 
       {/* Main Form Section */}
-      <div className="flex justify-center items-center flex-grow px-4 py-12 -mt-[30px]">
+      <div className="flex justify-center items-center flex-grow px-4 py-12 -mt-[80px]">
         <div className="bg-white p-8 max-w-lg w-full">
           <h2 className="text-3xl font-semibold text-center mb-6">Sign up to be a <span className="text-[#008cfc]">Worker</span></h2>
 
@@ -104,6 +120,19 @@ const WorkerSignUpPage = () => {
                 className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
               />
             </div>
+
+            {/* Confirm Password Field */}
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-semibold mb-2">Confirm Password</label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+              />
+            </div>
           </div>
 
           {/* Opt-In Email Checkbox */}
@@ -136,12 +165,20 @@ const WorkerSignUpPage = () => {
           {/* Submit Button */}
           <div className="text-center mt-6">
             <button
-              disabled={!firstName || !lastName || !email || !password || !isAgreedToTerms}
-              className={`py-2 px-6 rounded-md w-full ${!firstName || !lastName || !email || !password || !isAgreedToTerms ? 'bg-gray-300 text-gray-500' : 'bg-White border-2 transition border-[#008cfc] hover:bg-[#008cfc]' } text-[#008cfc] hover:text-white ${!firstName || !lastName || !email || !password || !isAgreedToTerms ? 'cursor-not-allowed ' : ''} transition duration-300`}
+              disabled={!firstName || !lastName || !email || !password || !confirmPassword || password !== confirmPassword || !isAgreedToTerms}
+              className={`py-2 px-6 rounded-md w-full ${!firstName || !lastName || !email || !password || !confirmPassword || password !== confirmPassword || !isAgreedToTerms ? 'bg-gray-300 text-gray-500' : 'bg-White border-2 transition border-[#008cfc] hover:bg-[#008cfc]' } text-[#008cfc] hover:text-white ${!firstName || !lastName || !email || !password || !confirmPassword || password !== confirmPassword || !isAgreedToTerms ? 'cursor-not-allowed ' : ''} transition duration-300`}
+              onClick={handleSubmit}
             >
               Create my account
             </button>
           </div>
+
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="text-red-500 text-center mt-4">
+              {errorMessage}
+            </div>
+          )}
 
           {/* Already have an account link */}
           <div className="text-center mt-4">

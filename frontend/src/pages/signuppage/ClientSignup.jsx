@@ -10,39 +10,46 @@ const ClientSignUpPage = () => {
   const [last_name, setLastName] = useState('');
   const [email_address, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm_password, setConfirmPassword] = useState(''); // New state for confirm password
   const [is_email_opt_in, setIsEmailOptIn] = useState(false);
   const [is_agreed_to_terms, setIsAgreedToTerms] = useState(false);
   const [error_message, setErrorMessage] = useState('');
   const navigate = useNavigate(); // Hook for navigation
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setErrorMessage(''); // Reset error message before submitting
+    e.preventDefault();
+    setErrorMessage(''); // Reset error message before submitting
 
-  try {
-    const response = await axios.post('http://localhost:5000/api/clients/register', {
-      first_name,
-      last_name,
-      email_address,
-      password,
-    });
+    // Check if password and confirm password match
+    if (password !== confirm_password) {
+      setErrorMessage('Passwords do not match');
+      return;
+    }
 
-    if (response.status === 201) {
-      // Store the first and last name in localStorage after successful signup
-      localStorage.setItem('first_name', first_name);
-      localStorage.setItem('last_name', last_name);
-      
-      navigate('/clientsuccess');
+    try {
+      const response = await axios.post('http://localhost:5000/api/clients/register', {
+        first_name,
+        last_name,
+        email_address,
+        password,
+      });
+
+      if (response.status === 201) {
+        // Store the first and last name in localStorage after successful signup
+        localStorage.setItem('first_name', first_name);
+        localStorage.setItem('last_name', last_name);
+        
+        navigate('/clientsuccess');
+      }
+    } catch (error) {
+      console.error('Error registering client:', error);
+      if (error.response && error.response.data) {
+        setErrorMessage(error.response.data.message || 'There was an error registering the client');
+      } else {
+        setErrorMessage('There was an error registering the client');
+      }
     }
-  } catch (error) {
-    console.error('Error registering client:', error);
-    if (error.response && error.response.data) {
-      setErrorMessage(error.response.data.message || 'There was an error registering the client');
-    } else {
-      setErrorMessage('There was an error registering the client');
-    }
-  }
-};
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-white overflow-hidden">
@@ -67,7 +74,7 @@ const ClientSignUpPage = () => {
       </div>
 
       {/* Main Form Section */}
-      <div className="flex justify-center items-center flex-grow px-4 py-12 -mt-[30px]">
+      <div className="flex justify-center items-center flex-grow px-4 py-12 -mt-[80px]">
         <div className="bg-white p-8 max-w-lg w-full">
           <h2 className="text-3xl font-semibold text-center mb-6">Sign up to be a <span className="text-[#008cfc]">Client</span></h2>
 
@@ -136,6 +143,19 @@ const ClientSignUpPage = () => {
                 className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
               />
             </div>
+
+            {/* Confirm Password Field */}
+            <div>
+              <label htmlFor="confirm_password" className="block text-sm font-semibold mb-2">Confirm Password</label>
+              <input
+                id="confirm_password"
+                type="password"
+                value={confirm_password}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+              />
+            </div>
           </div>
 
           {/* Terms & Conditions Checkbox */}
@@ -164,8 +184,8 @@ const ClientSignUpPage = () => {
           {/* Submit Button */}
           <div className="text-center mt-6">
             <button
-              disabled={!first_name || !last_name || !email_address || !password || !is_agreed_to_terms}
-              className={`py-2 px-6 rounded-md w-full ${!first_name || !last_name || !email_address || !password || !is_agreed_to_terms ? 'bg-gray-300 text-gray-500' : 'bg-White border-2 transition border-[#008cfc] hover:bg-[#008cfc]' } text-[#008cfc] hover:text-white`}
+              disabled={!first_name || !last_name || !email_address || !password || !confirm_password || password !== confirm_password || !is_agreed_to_terms}
+              className={`py-2 px-6 rounded-md w-full ${!first_name || !last_name || !email_address || !password || !confirm_password || password !== confirm_password || !is_agreed_to_terms ? 'bg-gray-300 text-gray-500' : 'bg-White border-2 transition border-[#008cfc] hover:bg-[#008cfc]' } text-[#008cfc] hover:text-white`}
               onClick={handleSubmit}
             >
               Create my account
