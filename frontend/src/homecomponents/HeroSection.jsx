@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const HeroSection = () => {
   return (
@@ -15,11 +16,12 @@ const HeroSection = () => {
           <p className="text-gray-600 text-lg">
             Connects clients with skilled workers to get their home services done. Whether you’re looking for a plumber, electrician, cleaner, or handyman, our platform makes it easy to find trusted workers. For workers, it’s a great opportunity to offer your skills and connect with clients in need of your expertise. Everyone’s home deserves the best care, and we’re here to make it happen.
           </p>
-
-          <button className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition">
+          
+          <Link to ="/login">
+          <button className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition mt-5">
             Book a Service Now <span>↗</span>
           </button>
-          
+          </Link>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 pt-6">
             <div>
