@@ -12,8 +12,11 @@ const registerClient = async (req, res) => {
     }
 
     // Register the new client
-    await clientModel.createClient(first_name, last_name, email_address, password);
-    return res.status(201).json({ message: 'Client registered successfully' });
+    const result = await clientModel.createClient(first_name, last_name, email_address, password);
+    return res.status(201).json({
+      message: 'Client registered successfully',
+      data: { first_name, last_name },  // Send first and last name back in response
+    });
   } catch (error) {
     console.error('Error during client registration:', error);
     return res.status(500).json({ message: 'Internal server error' });

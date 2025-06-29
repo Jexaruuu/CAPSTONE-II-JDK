@@ -19,8 +19,6 @@ const ClientSignUpPage = () => {
   e.preventDefault();
   setErrorMessage(''); // Reset error message before submitting
 
-  console.log({ first_name, last_name, email_address, password });
-
   try {
     const response = await axios.post('http://localhost:5000/api/clients/register', {
       first_name,
@@ -30,6 +28,10 @@ const ClientSignUpPage = () => {
     });
 
     if (response.status === 201) {
+      // Store the first and last name in localStorage after successful signup
+      localStorage.setItem('first_name', first_name);
+      localStorage.setItem('last_name', last_name);
+      
       navigate('/clientsuccess');
     }
   } catch (error) {
