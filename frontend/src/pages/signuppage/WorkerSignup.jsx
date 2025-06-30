@@ -6,22 +6,20 @@ const WorkerSignUpPage = () => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState(''); // New state for confirm password
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isEmailOptIn, setIsEmailOptIn] = useState(false);
   const [isAgreedToTerms, setIsAgreedToTerms] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(''); // State to hold error message
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setErrorMessage(''); // Reset any previous error messages
+    setErrorMessage('');
 
-    // Check if password and confirm password match
     if (password !== confirmPassword) {
       setErrorMessage('Passwords do not match');
       return;
     }
 
-    // Continue with form submission (e.g., send data to API)
     console.log('Form submitted:', { firstName, lastName, email, password });
   };
 
@@ -47,12 +45,10 @@ const WorkerSignUpPage = () => {
         </div>
       </div>
 
-      {/* Main Form Section */}
-      <div className="flex justify-center items-center flex-grow px-4 py-12 -mt-[80px]">
+      <div className="flex justify-center items-center flex-grow px-4 py-12 -mt-[84px]">
         <div className="bg-white p-8 max-w-lg w-full">
           <h2 className="text-3xl font-semibold text-center mb-6">Sign up to be a <span className="text-[#008cfc]">Worker</span></h2>
 
-          {/* Social Signup Buttons */}
           <div className="flex space-x-4 mt-4">
             <button className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 transition hover:bg-[#008cfc] border-[#008cfc] text-[#008cfc] hover:text-white">
               <img src="/Google.png" alt="Google Logo" className="h-5 w-5 mr-2" />
@@ -60,16 +56,13 @@ const WorkerSignUpPage = () => {
             </button>
           </div>
 
-          {/* "or" with borders on the left and right */}
           <div className="flex items-center my-4">
             <hr className="flex-grow border-gray-300" />
             <span className="mx-4 text-gray-500">or</span>
             <hr className="flex-grow border-gray-300" />
           </div>
 
-          {/* Signup Form */}
           <div className="space-y-6 mb-6">
-            {/* First Name and Last Name Fields */}
             <div className="flex space-x-4">
               <div className="w-full">
                 <label htmlFor="firstName" className="block text-sm font-semibold mb-2">First Name</label>
@@ -79,7 +72,7 @@ const WorkerSignUpPage = () => {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="First name"
-                  className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                  className="w-full p-3 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
                 />
               </div>
               <div className="w-full">
@@ -90,12 +83,11 @@ const WorkerSignUpPage = () => {
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Last name"
-                  className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                  className="w-full p-3 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
                 />
               </div>
             </div>
-            
-            {/* Email Field */}
+
             <div>
               <label htmlFor="email" className="block text-sm font-semibold mb-2">Email Address</label>
               <input
@@ -104,11 +96,10 @@ const WorkerSignUpPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email address"
-                className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                className="w-full p-3 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
               />
             </div>
-            
-            {/* Password Field */}
+
             <div>
               <label htmlFor="password" className="block text-sm font-semibold mb-2">Password (8 or more characters)</label>
               <input
@@ -117,11 +108,10 @@ const WorkerSignUpPage = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                className="w-full p-3 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
               />
             </div>
 
-            {/* Confirm Password Field */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-semibold mb-2">Confirm Password</label>
               <input
@@ -130,14 +120,11 @@ const WorkerSignUpPage = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm password"
-                className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                className="w-full p-3 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
               />
             </div>
           </div>
 
-          {/* Opt-In Email Checkbox */}
-
-          {/* Terms & Conditions Checkbox */}
           <div className="flex items-center mb-6">
             <input
               type="checkbox"
@@ -162,7 +149,6 @@ const WorkerSignUpPage = () => {
             </span>
           </div>
 
-          {/* Submit Button */}
           <div className="text-center mt-6">
             <button
               disabled={!firstName || !lastName || !email || !password || !confirmPassword || password !== confirmPassword || !isAgreedToTerms}
@@ -173,14 +159,12 @@ const WorkerSignUpPage = () => {
             </button>
           </div>
 
-          {/* Error Message */}
           {errorMessage && (
             <div className="text-red-500 text-center mt-4">
               {errorMessage}
             </div>
           )}
 
-          {/* Already have an account link */}
           <div className="text-center mt-4">
             <span>Already have an account? </span>
             <Link to="/login" className="text-[#008cfc] underline">

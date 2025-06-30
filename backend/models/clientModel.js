@@ -3,7 +3,7 @@ const db = require('../db');  // Correct path to db.js
 // Function to create a new client in the database
 const createClient = async (firstName, lastName, email, password) => {
   try {
-    const query = 'INSERT INTO clients (first_name, last_name, email, password) VALUES (?, ?, ?, ?)';
+    const query = 'INSERT INTO user_client (first_name, last_name, email_address, password) VALUES (?, ?, ?, ?)';
     const [results] = await db.query(query, [firstName, lastName, email, password]);  // Use await here
     return results;
   } catch (err) {
@@ -15,7 +15,7 @@ const createClient = async (firstName, lastName, email, password) => {
 // Function to check if the email already exists in the database
 const checkEmailExistence = async (email) => {
   try {
-    const query = 'SELECT * FROM clients WHERE email = ?';
+    const query = 'SELECT * FROM user_client WHERE email_address = ?';
     const [results] = await db.query(query, [email]);  // Use await here
     return results;
   } catch (err) {

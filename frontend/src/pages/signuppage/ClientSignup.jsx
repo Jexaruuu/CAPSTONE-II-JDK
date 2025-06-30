@@ -1,26 +1,34 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';  // Add 'useLocation' here
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 const ClientSignUpPage = () => {
-  const location = useLocation(); // Use useLocation to get the role passed from RolePage
-  const { role } = location.state || { role: 'client' }; // Default to 'client' if no role is passed
+  const location = useLocation(); // kept in case you use it elsewhere later
 
   const [first_name, setFirstName] = useState('');
   const [last_name, setLastName] = useState('');
   const [email_address, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirm_password, setConfirmPassword] = useState(''); // New state for confirm password
+  const [confirm_password, setConfirmPassword] = useState('');
   const [is_email_opt_in, setIsEmailOptIn] = useState(false);
   const [is_agreed_to_terms, setIsAgreedToTerms] = useState(false);
   const [error_message, setErrorMessage] = useState('');
-  const navigate = useNavigate(); // Hook for navigation
+  const navigate = useNavigate();
+
+  const isFormValid = (
+    first_name.trim() !== '' &&
+    last_name.trim() !== '' &&
+    email_address.trim() !== '' &&
+    password.trim() !== '' &&
+    confirm_password.trim() !== '' &&
+    password === confirm_password &&
+    is_agreed_to_terms
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage(''); // Reset error message before submitting
+    setErrorMessage('');
 
-    // Check if password and confirm password match
     if (password !== confirm_password) {
       setErrorMessage('Passwords do not match');
       return;
@@ -35,10 +43,8 @@ const ClientSignUpPage = () => {
       });
 
       if (response.status === 201) {
-        // Store the first and last name in localStorage after successful signup
         localStorage.setItem('first_name', first_name);
         localStorage.setItem('last_name', last_name);
-        
         navigate('/clientsuccess');
       }
     } catch (error) {
@@ -73,12 +79,12 @@ const ClientSignUpPage = () => {
         </div>
       </div>
 
-      {/* Main Form Section */}
-      <div className="flex justify-center items-center flex-grow px-4 py-12 -mt-[80px]">
+      <div className="flex justify-center items-center flex-grow px-4 py-12 -mt-[84px]">
         <div className="bg-white p-8 max-w-lg w-full">
-          <h2 className="text-3xl font-semibold text-center mb-6">Sign up to be a <span className="text-[#008cfc]">Client</span></h2>
+          <h2 className="text-3xl font-semibold text-center mb-6">
+            Sign up to be a <span className="text-[#008cfc]">Client</span>
+          </h2>
 
-          {/* Google Sign Up Button */}
           <div className="flex space-x-4 mt-4">
             <button className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 transition hover:bg-[#008cfc] border-[#008cfc] text-[#008cfc] hover:text-white">
               <img src="/Google.png" alt="Google Logo" className="h-5 w-5 mr-2" />
@@ -86,14 +92,12 @@ const ClientSignUpPage = () => {
             </button>
           </div>
 
-          {/* "or" with borders on the left and right */}
           <div className="flex items-center my-4">
             <hr className="flex-grow border-gray-300" />
             <span className="mx-4 text-gray-500">or</span>
             <hr className="flex-grow border-gray-300" />
           </div>
 
-          {/* Form Fields */}
           <div className="space-y-6 mb-6">
             <div className="flex space-x-4">
               <div className="w-full">
@@ -104,7 +108,7 @@ const ClientSignUpPage = () => {
                   value={first_name}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="First name"
-                  className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                  className="w-full p-3 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
                 />
               </div>
               <div className="w-full">
@@ -115,7 +119,7 @@ const ClientSignUpPage = () => {
                   value={last_name}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Last name"
-                  className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                  className="w-full p-3 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
                 />
               </div>
             </div>
@@ -128,7 +132,7 @@ const ClientSignUpPage = () => {
                 value={email_address}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email address"
-                className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                className="w-full p-3 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
               />
             </div>
 
@@ -140,11 +144,10 @@ const ClientSignUpPage = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                className="w-full p-3 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
               />
             </div>
 
-            {/* Confirm Password Field */}
             <div>
               <label htmlFor="confirm_password" className="block text-sm font-semibold mb-2">Confirm Password</label>
               <input
@@ -153,12 +156,11 @@ const ClientSignUpPage = () => {
                 value={confirm_password}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm password"
-                className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                className="w-full p-3 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
               />
             </div>
           </div>
 
-          {/* Terms & Conditions Checkbox */}
           <div className="flex items-center mb-6">
             <input
               type="checkbox"
@@ -181,25 +183,26 @@ const ClientSignUpPage = () => {
             </span>
           </div>
 
-          {/* Submit Button */}
           <div className="text-center mt-6">
             <button
-              disabled={!first_name || !last_name || !email_address || !password || !confirm_password || password !== confirm_password || !is_agreed_to_terms}
-              className={`py-2 px-6 rounded-md w-full ${!first_name || !last_name || !email_address || !password || !confirm_password || password !== confirm_password || !is_agreed_to_terms ? 'bg-gray-300 text-gray-500' : 'bg-White border-2 transition border-[#008cfc] hover:bg-[#008cfc]' } text-[#008cfc] hover:text-white`}
+              disabled={!isFormValid}
+              className={`py-2 px-6 rounded-md w-full ${
+                !isFormValid
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-white border-2 transition border-[#008cfc] hover:bg-[#008cfc] text-[#008cfc] hover:text-white'
+              }`}
               onClick={handleSubmit}
             >
               Create my account
             </button>
           </div>
 
-          {/* Error Message */}
           {error_message && (
             <div className="text-red-500 text-center mt-4">
               {error_message}
             </div>
           )}
 
-          {/* Already have an account link */}
           <div className="text-center mt-4">
             <span>Already have an account? </span>
             <Link to="/login" className="text-[#008cfc] underline">
