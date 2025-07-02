@@ -102,6 +102,21 @@ const ClientNavigation = () => {
     };
   }, []);
 
+  const [fullName, setFullName] = useState('');
+const [prefix, setPrefix] = useState('');
+
+useEffect(() => {
+  const fName = localStorage.getItem('first_name') || '';
+  const lName = localStorage.getItem('last_name') || '';
+  const sex = localStorage.getItem('sex') || '';
+  
+  if (sex === 'Male') setPrefix('Mr.');
+  else if (sex === 'Female') setPrefix('Ms.');
+  else setPrefix(''); // fallback
+
+  setFullName(`${fName} ${lName}`);
+}, []);
+
   return (
     <div className="bg-white sticky top-0 z-50">
       <div className="max-w-[1560px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
@@ -224,12 +239,18 @@ const ClientNavigation = () => {
               )}
             </li>
             <li className="relative cursor-pointer group">
-              <Link to="/messages" className="text-black font-medium">
-                Messages
-                <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
-              </Link>
-            </li>
-          </ul>
+  <Link to="/dashboard" className="text-black font-medium">
+    Dashboard
+    <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
+  </Link>
+</li>
+<li className="relative cursor-pointer group">
+  <Link to="/messages" className="text-black font-medium">
+    Messages
+    <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
+  </Link>
+</li>
+          </ul>        
         </div>
 
         <div className="flex items-center space-x-4 mt-4 text-md">
@@ -339,8 +360,8 @@ const ClientNavigation = () => {
         className="h-8 w-8 rounded-full object-cover"
       />
       <div>
-        <p className="font-semibold text-sm">Jex B</p>
-        <p className="text-xs text-gray-600">Client</p>
+        <p className="font-semibold text-sm">{prefix} {fullName}</p>
+<p className="text-xs text-gray-600">Client</p>
       </div>
     </div>
     <ul className="py-2">

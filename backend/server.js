@@ -3,6 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const db = require("./db");
 const clientRoutes = require('./routes/clientRoutes'); // Import client routes
+const workerRoutes = require('./routes/workerRoutes'); // ✅ NEW
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.get("/api/test-db", async (req, res) => {
 
 // Use client routes for handling client registration
 app.use('/api/clients', clientRoutes);
+app.use('/api/workers', workerRoutes); 
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

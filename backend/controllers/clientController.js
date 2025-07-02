@@ -2,7 +2,7 @@ const clientModel = require('../models/clientModel'); // Adjust the path if nece
 
 // Controller to register a new client
 const registerClient = async (req, res) => {
-  const { first_name, last_name, email_address, password } = req.body;
+  const { first_name, last_name, sex, email_address, password } = req.body; // ✅ Include `sex`
 
   try {
     // Check if the email already exists
@@ -11,11 +11,12 @@ const registerClient = async (req, res) => {
       return res.status(400).json({ message: 'Email already in use' });
     }
 
-    // Register the new client
-    const result = await clientModel.createClient(first_name, last_name, email_address, password);
+    // Register the new client with sex
+    const result = await clientModel.createClient(first_name, last_name, sex, email_address, password); // ✅ Pass `sex`
+
     return res.status(201).json({
       message: 'Client registered successfully',
-      data: { first_name, last_name },  // Send first and last name back in response
+      data: { first_name, last_name, sex }, // ✅ Optionally return `sex` in the response
     });
   } catch (error) {
     console.error('Error during client registration:', error);

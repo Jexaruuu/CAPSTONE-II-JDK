@@ -189,7 +189,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
 
         <div className="w-full md:w-1/3 bg-white p-6">
           <h3 className="text-2xl font-semibold mb-5">Profile Picture</h3>
-          <p className="text-sm text-gray-600 mb-5">Upload your profile picture (optional).</p>
+          <p className="text-sm text-gray-600 mb-5">Upload your profile picture.</p>
 
           <div className="flex items-center mb-6">
             <div className="w-1/3">
@@ -219,7 +219,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           </div>
 
           <h3 className="text-2xl font-semibold mb-5 mt-6">Social Media</h3>
-          <p className="text-sm text-gray-600 mb-3">Please provide your social media links (optional).</p>
+          <p className="text-sm text-gray-600 mb-3">Please provide your social media links (For reference only).</p>
 
           <div className="flex space-x-6 mb-4">
             <div className="w-full">

@@ -24,7 +24,7 @@ const ContactUsSection = () => {
   };
 
   return (
-    <section className="py-16 -mt-10">
+    <section id="contact" className="py-16 -mt-10">
       <div className="max-w-[1555px] mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Left Section - Contact Us Card */}

@@ -47,7 +47,7 @@ const Navigation = () => {
             className="h-48 w-48 object-contain"
             style={{ margin: '0 10px' }}
           />
-
+       
           <ul className="flex space-x-7 mt-4 text-md">
             <li className="relative cursor-pointer group">
               <a href="/" className="text-black font-medium">
@@ -56,25 +56,23 @@ const Navigation = () => {
               <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
             </li>
             <li className="relative cursor-pointer group">
-              <a href="/" className="text-black font-medium">
-                Why JDK
-              </a>
+            <a href="#why-jdk" className="text-black font-medium">Why JDK</a>
               <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
             </li>
             <li className="relative cursor-pointer group">
-              <a href="/" className="text-black font-medium">
+              <a href="#services" className="text-black font-medium">
                 Services
               </a>
               <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
             </li>
             <li className="relative cursor-pointer group">
-              <a href="/" className="text-black font-medium">
+              <a href="#faq" className="text-black font-medium">
                 FAQ
               </a>
               <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
             </li>
             <li className="relative cursor-pointer group">
-              <a href="/" className="text-black font-medium">
+              <a href="#contact" className="text-black font-medium">
                 Contact Us
               </a>
               <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>

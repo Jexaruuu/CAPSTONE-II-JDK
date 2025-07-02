@@ -22,7 +22,7 @@ const features = [
 ];
 
 const WhyChooseUsSection = () => (
-  <section className="relative bg-white py-0 -mt-5">
+  <section id="why-jdk" className="relative bg-white py-0 -mt-5">
     <div className="absolute inset-x-0 -top-10 pointer-events-none select-none">
       <div className="mx-auto h-40 w-11/12 rounded-full bg-blue-100 opacity-20 blur-3xl" />
     </div>

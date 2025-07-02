@@ -25,7 +25,7 @@ const steps = [
 
 const WorkingProcessSection = () => {
   return (
-    <section className="bg-[white] mb-12">
+    <section id="process" className="bg-[white] mb-12">
       <div className="max-w-[1525px] mx-auto px-6">
         <div className="flex items-start">
           <div className="flex-1 text-left">

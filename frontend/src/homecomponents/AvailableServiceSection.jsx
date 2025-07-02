@@ -30,7 +30,7 @@ const services = [
 
 const AvailableServiceSection = () => {
   return (
-    <section className="bg-[#f9fafa] py-20">
+    <section id="services" className="bg-[#f9fafa] py-20">
       <div className="max-w-[1525px] mx-auto px-6">
         <h2 className="text-4xl font-bold text-gray-900 mb-4">
           Browse by Category
