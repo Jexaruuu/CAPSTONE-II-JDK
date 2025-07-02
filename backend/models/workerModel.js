@@ -24,7 +24,24 @@ const checkEmailExistence = async (email) => {
   }
 };
 
+// Add this function
+const checkEmailExistenceAcrossAllUsers = async (email) => {
+  try {
+    const clientQuery = 'SELECT * FROM user_client WHERE email_address = ?';
+    const workerQuery = 'SELECT * FROM user_worker WHERE email_address = ?';
+
+    const [clientResults] = await db.query(clientQuery, [email]);
+    const [workerResults] = await db.query(workerQuery, [email]);
+
+    return [...clientResults, ...workerResults]; // return combined
+  } catch (err) {
+    console.error('Error checking cross-user email existence:', err);
+    throw err;
+  }
+};
+
 module.exports = {
   createWorker,
   checkEmailExistence,
+  checkEmailExistenceAcrossAllUsers,
 };

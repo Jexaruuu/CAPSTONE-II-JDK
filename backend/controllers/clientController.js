@@ -5,11 +5,11 @@ const registerClient = async (req, res) => {
   const { first_name, last_name, sex, email_address, password } = req.body; // ✅ Include `sex`
 
   try {
-    // Check if the email already exists
-    const emailExists = await clientModel.checkEmailExistence(email_address);
-    if (emailExists.length > 0) {
-      return res.status(400).json({ message: 'Email already in use' });
-    }
+ // Replace email check line with the new function
+const emailExists = await clientModel.checkEmailExistenceAcrossAllUsers(email_address);
+if (emailExists.length > 0) {
+  return res.status(400).json({ message: 'Email already in use' });
+}
 
     // Register the new client with sex
     const result = await clientModel.createClient(first_name, last_name, sex, email_address, password); // ✅ Pass `sex`

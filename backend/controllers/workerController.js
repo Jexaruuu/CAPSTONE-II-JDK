@@ -7,12 +7,11 @@ const registerWorker = async (req, res) => {
   console.log('📩 Incoming Data:', req.body); // <-- Add this
 
   try {
-    const emailExists = await workerModel.checkEmailExistence(email_address);
-    console.log('📌 Email Exists:', emailExists);
-
-    if (emailExists.length > 0) {
-      return res.status(400).json({ message: 'Email already in use' });
-    }
+   // Replace email check
+const emailExists = await workerModel.checkEmailExistenceAcrossAllUsers(email_address);
+if (emailExists.length > 0) {
+  return res.status(400).json({ message: 'Email already in use' });
+}
 
     const result = await workerModel.createWorker(first_name, last_name, sex, email_address, password);
 
