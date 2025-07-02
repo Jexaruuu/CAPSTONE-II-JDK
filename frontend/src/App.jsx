@@ -8,10 +8,12 @@ import ClientSuccessPage from "./pages/successpage/ClientSuccess";
 import ClientWelcomePage from './pages/clientpage/ClientWelcome';
 import ClientPostRequest from './pages/clientpage/ClientPostRequest';
 import ClientReviewServiceRequest from './clientcomponents/requestcomponents/ClientReviewServiceRequest';
+import ClientDashboardPage from './pages/dashboardpage/ClientDashboard';
 
 import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from "./pages/successpage/WorkerSuccess";
 import WorkerWelcomePage from './pages/workerpage/WorkerWelcome';
+import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 
 const App = () => {
   return (
@@ -26,10 +28,14 @@ const App = () => {
           <Route path="/clientwelcome" element={<ClientWelcomePage />} />
           <Route path="/clientpostrequest" element={<ClientPostRequest />} />
           <Route path="/clientreviewservicerequest" element={<ClientReviewServiceRequest />} /> 
+          <Route path="/clientdashboard" element={<ClientDashboardPage />} />
+          
+        
 
           <Route path="/workersignup" element={<WorkerSignUpPage />} />
           <Route path="/workersuccess" element={<WorkerSuccessPage />} />
           <Route path="/workerwelcome" element={<WorkerWelcomePage />} />
+          <Route path="/workerdashboard" element={<WorkerDashboardPage />} />
         </Routes>
       </div>
     </Router>
