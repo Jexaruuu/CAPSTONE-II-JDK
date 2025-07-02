@@ -1,40 +1,70 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const response = await axios.post('http://localhost:5000/api/login', {
+        email_address: email,
+        password,
+      });
+
+      console.log('✅ Login Success:', response.data);
+      const { user, role } = response.data;
+
+      // Optional: Store user data or redirect
+      // Example: localStorage.setItem('user', JSON.stringify(user));
+
+    } catch (err) {
+      console.error('❌ Login Failed:', err.response?.data || err.message);
+      setError(err.response?.data?.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-   <div className="min-h-screen flex flex-col bg-white overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-white overflow-hidden">
       <div className="bg-white z-50">
         <div className="max-w-[1540px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
           <div className="flex items-center space-x-6">
-         <Link to="/">
-  <img
-    src="/jdklogo.png"
-    alt="Logo"
-    className="h-48 w-48 object-contain"
-  />
-</Link>
+            <Link to="/">
+              <img
+                src="/jdklogo.png"
+                alt="Logo"
+                className="h-48 w-48 object-contain"
+              />
+            </Link>
           </div>
         </div>
       </div>
 
       <div className="flex justify-center items-center flex-grow px-4 py-6 -mt-20">
-        <div className=" p-8 rounded-md max-w-lg w-full">
-          <h2 className="text-3xl font-semibold text-center mb-6">Log in to <span className="text-[#008cfc]">JDK HOMECARE</span></h2>
+        <div className="p-8 rounded-md max-w-lg w-full">
+          <h2 className="text-3xl font-semibold text-center mb-6">
+            Log in to <span className="text-[#008cfc]">JDK HOMECARE</span>
+          </h2>
+
           <div className="space-y-4 mb-6">
-            <input 
-              type="email" 
+            <input
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email Address"
               className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
             />
-            
-            <input 
-              type="password" 
+
+            <input
+              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
@@ -42,12 +72,22 @@ const LoginPage = () => {
             />
           </div>
 
+          {/* Error message */}
+          {error && (
+            <div className="text-red-600 text-sm text-center mb-2">{error}</div>
+          )}
+
           <div className="text-center mt-4">
             <button
-              disabled={!email || !password}
-              className={`py-2 px-6 rounded-md w-full ${!email || !password ? 'bg-gray-300 text-gray-500' : 'bg-[#008cfc]'} text-white ${!email || !password ? 'cursor-not-allowed' : ''} transition duration-300`}
+              onClick={handleLogin}
+              disabled={!email || !password || loading}
+              className={`py-2 px-6 rounded-md w-full ${
+                !email || !password || loading
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-[#008cfc] text-white'
+              } transition duration-300`}
             >
-              Log In
+              {loading ? 'Logging in...' : 'Log In'}
             </button>
           </div>
 
