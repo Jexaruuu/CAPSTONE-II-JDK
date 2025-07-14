@@ -14,7 +14,7 @@ const ClientWelcomePage = () => {
   return (
     <div className="min-h-screen bg-white overflow-hidden">
       <ClientNavigation />
-      <div className="max-w-[1525px] mx-auto px-6 py-12">
+      <div className="max-w-[1525px] mx-auto px-6 py-[66.5px]">
         <div className="flex flex-col justify-start items-start">
           {/* Logo above the welcome text */}
           <div className="mb-6">

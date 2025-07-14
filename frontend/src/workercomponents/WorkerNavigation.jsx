@@ -111,7 +111,7 @@ const WorkerNavigation = () => {
 
   return (
     <div className="bg-white sticky top-0 z-50">
-      <div className="max-w-[1540px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
+      <div className="max-w-[1545px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
         <div className="flex items-center space-x-6">
           <Link to="/workerwelcome">
             <img src="/jdklogo.png" alt="Logo" className="h-48 w-48 object-contain" />

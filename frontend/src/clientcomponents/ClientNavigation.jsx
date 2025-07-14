@@ -119,7 +119,7 @@ useEffect(() => {
 
   return (
     <div className="bg-white sticky top-0 z-50">
-      <div className="max-w-[1560px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
+      <div className="max-w-[1545px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
         <div className="flex items-center space-x-6">
           <Link to = "/clientwelcome">
             <img
@@ -239,7 +239,7 @@ useEffect(() => {
               )}
             </li>
             <li className="relative cursor-pointer group">
-  <Link to="/dashboard" className="text-black font-medium">
+  <Link to="/clientdashboard" className="text-black font-medium">
     Dashboard
     <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
   </Link>
