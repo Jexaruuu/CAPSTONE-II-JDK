@@ -28,18 +28,15 @@ const services = [
   },
 ];
 
-const AvailableServiceSection = () => {
+const ClientAvailableServiceSection = () => {
   return (
     <section id="services" className="bg-white py-20">
       <div className="max-w-[1525px] mx-auto px-6">
         <h2 className="text-4xl font-bold text-gray-900 mb-4">
-          Browse by Category
+          At JDK HOMECARE,
         </h2>
         <p className="text-lg text-gray-700 mb-6">
-          Looking for service?{' '}
-          <a href="/" className="text-[#008cfc] hover:underline">
-            Browse services
-          </a>
+          We provide trusted workers for all your home service and maintenance needs. From regular checkups to urgent repairs, our team is here to help keep your home safe, clean, and running smoothly.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
           {services.map((service, idx) => (
@@ -62,4 +59,4 @@ const AvailableServiceSection = () => {
   );
 };
 
-export default AvailableServiceSection;
+export default ClientAvailableServiceSection;

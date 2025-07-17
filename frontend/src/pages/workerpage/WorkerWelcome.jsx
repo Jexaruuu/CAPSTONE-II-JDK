@@ -14,7 +14,7 @@ const WorkerWelcomePage = () => {
   return (
     <div className="min-h-screen bg-white overflow-hidden">
       <WorkerNavigation /> {/* Replace with WorkerNavigation if you have one */}
-      <div className="max-w-[1525px] mx-auto px-6 py-12">
+        <div className="max-w-[1525px] mx-auto px-6 py-[66.5px]">
         <div className="flex flex-col justify-start items-start">
           {/* Logo above the welcome text */}
           <div className="mb-6">
@@ -35,7 +35,6 @@ const WorkerWelcomePage = () => {
             <span className='text-[#008cfc]'>JDK HOMECARE</span> connects skilled workers like you with clients needing home maintenance. Let’s deliver great service together!
           </p>
 
-          {/* Buttons */}
           <div className="flex justify-start gap-6">
             <Link
               to="/workerjoblist"

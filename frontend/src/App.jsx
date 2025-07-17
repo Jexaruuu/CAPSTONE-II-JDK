@@ -14,6 +14,7 @@ import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from "./pages/successpage/WorkerSuccess";
 import WorkerWelcomePage from './pages/workerpage/WorkerWelcome';
 import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
+import WorkerPost from './pages/workerpage/WorkerPost';
 
 const App = () => {
   return (
@@ -36,6 +37,7 @@ const App = () => {
           <Route path="/workersuccess" element={<WorkerSuccessPage />} />
           <Route path="/workerwelcome" element={<WorkerWelcomePage />} />
           <Route path="/workerdashboard" element={<WorkerDashboardPage />} />
+          <Route path="/workerpost" element={<WorkerPost />} />
         </Routes>
       </div>
     </Router>

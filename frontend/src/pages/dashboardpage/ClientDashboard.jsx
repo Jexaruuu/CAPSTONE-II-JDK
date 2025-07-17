@@ -3,6 +3,7 @@ import ClientNavigation from '../../clientcomponents/ClientNavigation';
 import ClientFooter from '../../clientcomponents/ClientFooter';
 import ClientPost from '../../clientcomponents/clientdashboardcomponents/ClientPost';
 import ClientAvailableWorkers from '../../clientcomponents/clientdashboardcomponents/ClientAvailableWorkers';
+import ClientAvailableServiceSection from '../../clientcomponents/clientdashboardcomponents/ClientAvailableServiceSection';
 
 const ClientDashboardPage = () => {
   return (
@@ -10,6 +11,7 @@ const ClientDashboardPage = () => {
       <ClientNavigation />
       <ClientPost />
       <ClientAvailableWorkers />
+      <ClientAvailableServiceSection />
       <ClientFooter />
     </div>
   );
