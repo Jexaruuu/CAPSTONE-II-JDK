@@ -245,7 +245,7 @@ useEffect(() => {
   </Link>
 </li>
 <li className="relative cursor-pointer group">
-  <Link to="/messages" className="text-black font-medium">
+  <Link to="/" className="text-black font-medium">
     Messages
     <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
   </Link>

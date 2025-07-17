@@ -1,10 +1,16 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom'; // Import useLocation
+import { useLocation, useNavigate } from 'react-router-dom'; // Added useNavigate
 import ClientNavigation from '../../clientcomponents/ClientNavigation';
 
-const ClientReviewServiceRequest = () => {
+const ClientReviewServiceRequest = ({ title, setTitle, handleNext }) => {
   const location = useLocation(); // Get location state
-  const { 
+  const navigate = useNavigate(); // Initialize navigate
+
+  const handleBack = () => {
+    navigate(-1); // Go back to the previous page
+  };
+
+  const {
     first_name,
     last_name,
     contact_number,
@@ -33,10 +39,9 @@ const ClientReviewServiceRequest = () => {
     <div className="space-y-8 pb-20">
       <ClientNavigation />
       <div className="max-w-[1535px] mx-auto flex flex-col md:flex-row gap-8">
-        {/* Left Section: Personal Information and Service Request Details */}
+        {/* Left Section */}
         <div className="w-full md:w-2/3 bg-white p-6">
           <div className="mb-8">
-            {/* Personal Information */}
             <h3 className="text-3xl font-semibold mb-6">Service Request Review</h3>
             <p className="text-lg text-gray-600 mb-6">Please review your service request details below before submitting.</p>
             <div className="mb-6">
@@ -55,7 +60,6 @@ const ClientReviewServiceRequest = () => {
               </div>
             </div>
 
-            {/* Service Request Details */}
             <div className="mb-6">
               <h4 className="text-2xl font-medium text-gray-700 mb-4">Service Request Details</h4>
               <div className="text-lg text-gray-600">
@@ -71,7 +75,7 @@ const ClientReviewServiceRequest = () => {
           </div>
         </div>
 
-        {/* Right Section: Service Rate */}
+        {/* Right Section */}
         <div className="w-full md:w-1/3 bg-white p-6 mt-28">
           <h4 className="text-2xl font-medium text-gray-700 mb-6">Service Rate</h4>
           <div className="text-lg text-gray-600">
@@ -90,6 +94,7 @@ const ClientReviewServiceRequest = () => {
       <div className="max-w-[1500px] mx-auto flex justify-between mt-8">
         <button
           type="button"
+          onClick={handleBack}
           className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 -mt-4"
         >
           Back

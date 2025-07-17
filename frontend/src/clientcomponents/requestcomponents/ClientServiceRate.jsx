@@ -97,58 +97,70 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
               <div className="flex space-x-6">
                 {/* From Rate */}
                 <div className="w-1/2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
-                  <input
-                    type="number"
-                    value={rateFrom}
-                    onChange={handleRateFromChange}
-                    placeholder="₱150"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
+  <div className="relative">
+    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₱</span>
+    <input
+      type="number"
+      inputMode="numeric"
+      pattern="\d*"
+      value={rateFrom}
+      onChange={handleRateFromChange}
+      className="w-full pl-8 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      required
+    />
+  </div>
+</div>
 
-                {/* To Rate */}
-                <div className="w-1/2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
-                  <input
-                    type="number"
-                    value={rateTo}
-                    onChange={handleRateToChange}
-                    placeholder="₱350"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
+{/* To Rate */}
+<div className="w-1/2">
+  <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
+  <div className="relative">
+    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₱</span>
+    <input
+      type="number"
+      inputMode="numeric"
+      pattern="\d*"
+      value={rateTo}
+      onChange={handleRateToChange}
+      className="w-full pl-8 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      required
+    />
+  </div>
+</div>
               </div>
               <p className="text-sm text-gray-600 mt-1">
                 This is the average rate for similar home services.
               </p>
               <p className="text-md text-gray-600 mt-5">
-                Workers typically charge between <strong>₱150 - ₱350</strong> per hour for home services such as plumbing, carpentry, and electrical work. Prices may vary depending on the job's complexity and the experience of the professional. We aim to keep our rates affordable, so feel free to discuss the price with your service provider to find the best deal for you.
+                Our workers offer affordable rates for services like plumbing, carpentry, electrical work, car washing, and laundry. Prices may vary depending on the job, so feel free to talk with your service provider to agree on what works best.
               </p>
             </div>
           )}
 
           {/* For Fixed Price */}
           {rateType && rateType === 'By the Job Rate' && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Enter the Rate</label>
-              <input
-                type="number"
-                value={rateValue}
-                onChange={handleRateValueChange}
-                placeholder="₱500"
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-              <p className="text-sm text-gray-600 mt-2">
-                Set a fixed price for the service request.
-              </p>
-              <p className="text-sm text-gray-600 mt-4">
-                The fixed price is an amount that you and the service provider can discuss and agree on together. Feel free to negotiate the price based on the scope of the work. 
-              </p>
-            </div>
+           <div className="mb-4">
+  <label className="block text-sm font-medium text-gray-700 mb-2">Enter the Rate</label>
+  <div className="relative">
+    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₱</span>
+    <input
+      type="number"
+      inputMode="numeric"
+      pattern="\d*"
+      value={rateValue}
+      onChange={handleRateValueChange}
+      className="w-full pl-8 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      required
+    />
+  </div>
+  <p className="text-sm text-gray-600 mt-2">
+    Set a fixed price for the service request.
+  </p>
+  <p className="text-sm text-gray-600 mt-4">
+    The fixed price is an amount that you and the service provider can discuss and agree on together. Feel free to negotiate the price based on the scope of the work.
+  </p>
+</div>
           )}
         </div>
       </div>
