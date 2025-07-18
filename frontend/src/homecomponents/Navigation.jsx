@@ -39,7 +39,7 @@ const Navigation = () => {
 
   return (
     <div className="bg-white sticky top-0 z-50">
-      <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
+      <div className="max-w-[1550px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
         <div className="flex items-center space-x-6">
           <img
             src="/jdklogo.png"

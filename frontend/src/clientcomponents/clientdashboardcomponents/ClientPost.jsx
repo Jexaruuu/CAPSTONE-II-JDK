@@ -12,8 +12,8 @@ const ClientPost = () => {
         <div className="bg-white border border-gray-200 rounded-lg p-6 text-center shadow-sm">
           <div className="flex justify-center mb-4">
             <img
-              src="/jobpost.png" 
-              alt="Job Post"
+              src="/Request.png" 
+              alt="Request"
               className="w-20 h-20 object-contain"
             />
           </div>
