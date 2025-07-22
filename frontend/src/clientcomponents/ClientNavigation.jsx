@@ -119,16 +119,16 @@ useEffect(() => {
 
   return (
     <div className="bg-white sticky top-0 z-50">
-      <div className="max-w-[1550px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
-        <div className="flex items-center space-x-6">
-          <Link to = "/clientdashboard">
-            <img
-              src="/jdklogo.png"
-              alt="Logo"
-              className="h-48 w-48 object-contain"
-              style={{ margin: '0 10px' }}
-            />
-          </Link>
+  <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
+    <div className="flex items-center space-x-6 -ml-2.5">
+      <Link to="/clientwelcome">
+        <img
+          src="/jdklogo.png"
+          alt="Logo"
+          className="h-48 w-48 object-contain"
+          style={{ margin: '0 10px' }}
+        />
+      </Link>
 
           <ul className="flex space-x-7 mt-4 text-md">
             <li className="relative cursor-pointer group">

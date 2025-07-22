@@ -36,7 +36,7 @@ const WorkerAvailableServiceSection = () => {
           At JDK HOMECARE,
         </h2>
         <p className="text-lg text-gray-700 mb-6">
-          Clients post different kinds of home service jobs like cleaning, fixing things, or general maintenance. You can find and apply to the ones that match your skills.
+          Need help at home? Just post a service request and we’ll connect you with trusted workers. From quick fixes to regular upkeep, we’re here to make your home safer, cleaner, and worry-free.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
           {services.map((service, idx) => (

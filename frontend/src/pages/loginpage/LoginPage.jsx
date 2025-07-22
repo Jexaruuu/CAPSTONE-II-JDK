@@ -22,6 +22,11 @@ const LoginPage = () => {
       console.log('✅ Login Success:', response.data);
       const { user, role } = response.data;
 
+      // ✅ Store user data in localStorage for navigation use
+      localStorage.setItem('first_name', user.first_name || '');
+      localStorage.setItem('last_name', user.last_name || '');
+      localStorage.setItem('sex', user.sex || '');
+
       // ✅ Redirect based on role
       if (role === 'client') {
         navigate('/clientdashboard');
