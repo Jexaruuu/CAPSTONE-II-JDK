@@ -121,7 +121,7 @@ useEffect(() => {
     <div className="bg-white sticky top-0 z-50">
       <div className="max-w-[1550px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
         <div className="flex items-center space-x-6">
-          <Link to = "/clientwelcome">
+          <Link to = "/clientdashboard">
             <img
               src="/jdklogo.png"
               alt="Logo"

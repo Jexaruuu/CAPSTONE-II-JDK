@@ -119,7 +119,7 @@ const WorkerAvailableServiceRequest = () => {
       </div>
 
       {/* Hide native scrollbar styles */}
-      <style jsx>{`
+      <style>{`
         .no-scrollbar {
           scrollbar-width: none; /* Firefox */
         }

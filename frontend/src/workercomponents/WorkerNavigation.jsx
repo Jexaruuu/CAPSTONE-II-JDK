@@ -113,7 +113,7 @@ const WorkerNavigation = () => {
     <div className="bg-white sticky top-0 z-50">
       <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
         <div className="flex items-center space-x-6">
-          <Link to="/workerwelcome">
+          <Link to="/workerdashboard">
             <img src="/jdklogo.png" alt="Logo" className="h-48 w-48 object-contain" />
           </Link>
           <ul className="flex space-x-7 mt-4 text-md">

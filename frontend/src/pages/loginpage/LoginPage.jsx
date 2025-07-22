@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // ✅ Added useNavigate
 import axios from 'axios';
 
 const LoginPage = () => {
+  const navigate = useNavigate(); // ✅ React Router hook
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,8 +22,12 @@ const LoginPage = () => {
       console.log('✅ Login Success:', response.data);
       const { user, role } = response.data;
 
-      // Optional: Store user data or redirect
-      // Example: localStorage.setItem('user', JSON.stringify(user));
+      // ✅ Redirect based on role
+      if (role === 'client') {
+        navigate('/clientdashboard');
+      } else if (role === 'worker') {
+        navigate('/workerdashboard');
+      }
 
     } catch (err) {
       console.error('❌ Login Failed:', err.response?.data || err.message);
@@ -72,7 +77,6 @@ const LoginPage = () => {
             />
           </div>
 
-          {/* Error message */}
           {error && (
             <div className="text-red-600 text-sm text-center mb-2">{error}</div>
           )}
