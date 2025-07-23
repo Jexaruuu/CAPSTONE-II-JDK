@@ -4,23 +4,25 @@ const loginUser = async (req, res) => {
   const { email_address, password } = req.body;
 
   try {
-    // First, try to find user in client table
     let user = await loginModel.getClientByEmail(email_address);
     let role = 'client';
 
-    // If not found in client table, try worker table
     if (!user) {
       user = await loginModel.getWorkerByEmail(email_address);
       role = 'worker';
     }
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    if (user.password !== password) {
-      return res.status(401).json({ message: 'Incorrect password' });
-    }
+    if (user.password !== password) return res.status(401).json({ message: 'Incorrect password' });
+
+    req.session.user = {
+      id: user.id,
+      role,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      sex: user.sex,
+    };
 
     res.status(200).json({
       message: 'Login successful',
@@ -33,6 +35,17 @@ const loginUser = async (req, res) => {
   }
 };
 
+const logoutUser = (req, res) => {
+  req.session.destroy(err => {
+    if (err) {
+      return res.status(500).json({ message: 'Logout failed' });
+    }
+    res.clearCookie('connect.sid');
+    res.status(200).json({ message: 'Logout successful' });
+  });
+};
+
 module.exports = {
   loginUser,
+  logoutUser,
 };

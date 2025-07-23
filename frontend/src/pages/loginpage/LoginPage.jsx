@@ -1,13 +1,23 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // ✅ Added useNavigate
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const LoginPage = () => {
-  const navigate = useNavigate(); // ✅ React Router hook
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // ✅ Redirect to dashboard if already logged in
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem('first_name') && localStorage.getItem('last_name');
+    if (isLoggedIn) {
+      const role = localStorage.getItem('role');
+      if (role === 'client') navigate('/clientdashboard');
+      else if (role === 'worker') navigate('/workerdashboard');
+    }
+  }, []);
 
   const handleLogin = async () => {
     try {
@@ -22,10 +32,11 @@ const LoginPage = () => {
       console.log('✅ Login Success:', response.data);
       const { user, role } = response.data;
 
-      // ✅ Store user data in localStorage for navigation use
+      // ✅ Store user info in localStorage
       localStorage.setItem('first_name', user.first_name || '');
       localStorage.setItem('last_name', user.last_name || '');
       localStorage.setItem('sex', user.sex || '');
+      localStorage.setItem('role', role); // ✅ also store role
 
       // ✅ Redirect based on role
       if (role === 'client') {

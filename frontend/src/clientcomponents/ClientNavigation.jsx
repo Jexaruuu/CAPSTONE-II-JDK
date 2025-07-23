@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const ClientNavigation = () => {
   const [selectedOption, setSelectedOption] = useState('Client');
@@ -116,6 +117,18 @@ useEffect(() => {
 
   setFullName(`${fName} ${lName}`);
 }, []);
+
+const navigate = useNavigate();
+
+const handleLogout = async () => {
+  try {
+    await axios.post('http://localhost:5000/api/login/logout', {}, { withCredentials: true });
+    localStorage.clear(); // Clear all user info
+    navigate('/');
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+};
 
   return (
     <div className="bg-white sticky top-0 z-50">
@@ -369,7 +382,7 @@ useEffect(() => {
         <Link to="/account-settings">Account Settings</Link>
       </li>
       <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-        <Link to="/">Log out</Link>
+        <span onClick={handleLogout}>Log out</span>
       </li>
     </ul>
   </div>
