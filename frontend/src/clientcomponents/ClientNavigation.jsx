@@ -123,8 +123,11 @@ const navigate = useNavigate();
 const handleLogout = async () => {
   try {
     await axios.post('http://localhost:5000/api/login/logout', {}, { withCredentials: true });
-    localStorage.clear(); // Clear all user info
-    navigate('/');
+  
+    localStorage.clear();
+    navigate('/', { replace: true });
+    window.location.reload();
+
   } catch (error) {
     console.error('Logout error:', error);
   }

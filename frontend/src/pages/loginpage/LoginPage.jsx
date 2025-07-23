@@ -10,14 +10,14 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
 
   // ✅ Redirect to dashboard if already logged in
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem('first_name') && localStorage.getItem('last_name');
-    if (isLoggedIn) {
-      const role = localStorage.getItem('role');
-      if (role === 'client') navigate('/clientdashboard');
-      else if (role === 'worker') navigate('/workerdashboard');
-    }
-  }, []);
+useEffect(() => {
+  const isLoggedIn = localStorage.getItem('first_name') && localStorage.getItem('last_name');
+  if (isLoggedIn) {
+    const role = localStorage.getItem('role');
+    if (role === 'client') navigate('/clientdashboard', { replace: true });
+    else if (role === 'worker') navigate('/workerdashboard', { replace: true });
+  }
+}, []);
 
   const handleLogin = async () => {
     try {
@@ -56,7 +56,7 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white overflow-hidden">
       <div className="bg-white z-50">
-        <div className="max-w-[1540px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
+        <div className="max-w-[1545px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
           <div className="flex items-center space-x-6">
             <Link to="/">
               <img
