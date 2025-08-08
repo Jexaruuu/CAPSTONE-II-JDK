@@ -1,39 +1,58 @@
-const db = require('../db');  // Correct path to db.js
+const supabase = require('../supabaseClient');
 
-// Function to create a new client in the database
+// Function to create a new client in Supabase
 const createClient = async (firstName, lastName, sex, email, password) => {
   try {
-    const query = 'INSERT INTO user_client (first_name, last_name, sex, email_address, password) VALUES (?, ?, ?, ?, ?)';
-    const [results] = await db.query(query, [firstName, lastName, sex, email, password]); // Note: added `sex`
-    return results;
+    const { data, error } = await supabase
+      .from('user_client')
+      .insert([
+        {
+          first_name: firstName,
+          last_name: lastName,
+          sex,
+          email_address: email,
+          password
+        }
+      ]);
+    if (error) throw error;
+    return data;
   } catch (err) {
     console.error('Error inserting client:', err);
     throw err;
   }
 };
 
-// Function to check if the email already exists in the database
 const checkEmailExistence = async (email) => {
   try {
-    const query = 'SELECT * FROM user_client WHERE email_address = ?';
-    const [results] = await db.query(query, [email]);
-    return results;
+    const { data, error } = await supabase
+      .from('user_client')
+      .select('*')
+      .eq('email_address', email);
+    if (error) throw error;
+    return data;
   } catch (err) {
     console.error('Error checking email existence:', err);
     throw err;
   }
 };
 
-// Add this function
 const checkEmailExistenceAcrossAllUsers = async (email) => {
   try {
-    const clientQuery = 'SELECT * FROM user_client WHERE email_address = ?';
-    const workerQuery = 'SELECT * FROM user_worker WHERE email_address = ?';
+    // Check in user_client
+    const { data: clientData, error: clientError } = await supabase
+      .from('user_client')
+      .select('*')
+      .eq('email_address', email);
+    if (clientError) throw clientError;
 
-    const [clientResults] = await db.query(clientQuery, [email]);
-    const [workerResults] = await db.query(workerQuery, [email]);
+    // Check in user_worker
+    const { data: workerData, error: workerError } = await supabase
+      .from('user_worker')
+      .select('*')
+      .eq('email_address', email);
+    if (workerError) throw workerError;
 
-    return [...clientResults, ...workerResults]; // return combined result
+    return [...clientData, ...workerData];
   } catch (err) {
     console.error('Error checking cross-user email existence:', err);
     throw err;
@@ -43,5 +62,5 @@ const checkEmailExistenceAcrossAllUsers = async (email) => {
 module.exports = {
   createClient,
   checkEmailExistence,
-  checkEmailExistenceAcrossAllUsers, // export new method
+  checkEmailExistenceAcrossAllUsers,
 };

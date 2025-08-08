@@ -1,17 +1,31 @@
-const db = require('../db');
+const supabase = require('../supabaseClient');
 
-// Check if a client with the given email exists
+// Check user_client
 const getClientByEmail = async (email) => {
-  const query = 'SELECT * FROM user_client WHERE email_address = ?';
-  const [results] = await db.query(query, [email]);
-  return results[0];
+  const { data, error } = await supabase
+    .from('user_client')
+    .select('*')
+    .eq('email_address', email)
+    .limit(1)
+    .single();
+  if (error && error.code !== 'PGRST116') {
+    throw error;
+  }
+  return data || null;
 };
 
-// Check if a worker with the given email exists
+// Check user_worker
 const getWorkerByEmail = async (email) => {
-  const query = 'SELECT * FROM user_worker WHERE email_address = ?';
-  const [results] = await db.query(query, [email]);
-  return results[0];
+  const { data, error } = await supabase
+    .from('user_worker')
+    .select('*')
+    .eq('email_address', email)
+    .limit(1)
+    .single();
+  if (error && error.code !== 'PGRST116') {
+    throw error;
+  }
+  return data || null;
 };
 
 module.exports = {

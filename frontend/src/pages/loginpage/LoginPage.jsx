@@ -9,44 +9,33 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ✅ Redirect to dashboard if already logged in
-useEffect(() => {
-  const isLoggedIn = localStorage.getItem('first_name') && localStorage.getItem('last_name');
-  if (isLoggedIn) {
-    const role = localStorage.getItem('role');
-    if (role === 'client') navigate('/clientdashboard', { replace: true });
-    else if (role === 'worker') navigate('/workerdashboard', { replace: true });
-  }
-}, []);
+  // Redirect if already logged in
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem('first_name') && localStorage.getItem('last_name');
+    if (isLoggedIn) {
+      const role = localStorage.getItem('role');
+      if (role === 'client') navigate('/clientdashboard', { replace: true });
+      else if (role === 'worker') navigate('/workerdashboard', { replace: true });
+    }
+  }, [navigate]);
 
+  // This is the correct login for table-only users (calls your backend API)
   const handleLogin = async () => {
     try {
       setLoading(true);
       setError('');
-
       const response = await axios.post('http://localhost:5000/api/login', {
         email_address: email,
         password,
       });
-
-      console.log('✅ Login Success:', response.data);
       const { user, role } = response.data;
-
-      // ✅ Store user info in localStorage
       localStorage.setItem('first_name', user.first_name || '');
       localStorage.setItem('last_name', user.last_name || '');
       localStorage.setItem('sex', user.sex || '');
-      localStorage.setItem('role', role); // ✅ also store role
-
-      // ✅ Redirect based on role
-      if (role === 'client') {
-        navigate('/clientdashboard');
-      } else if (role === 'worker') {
-        navigate('/workerdashboard');
-      }
-
+      localStorage.setItem('role', role);
+      if (role === 'client') navigate('/clientdashboard');
+      else if (role === 'worker') navigate('/workerdashboard');
     } catch (err) {
-      console.error('❌ Login Failed:', err.response?.data || err.message);
       setError(err.response?.data?.message || 'Login failed');
     } finally {
       setLoading(false);
@@ -83,7 +72,6 @@ useEffect(() => {
               placeholder="Email Address"
               className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
             />
-
             <input
               type="password"
               value={password}
