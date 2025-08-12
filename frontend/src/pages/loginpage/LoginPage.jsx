@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { createClient } from '@supabase/supabase-js';
+
+// ✅ Your direct Supabase credentials
+const supabaseUrl = 'https://uoyzcboehvwxcadrqqfq.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVveXpjYm9laHZ3eGNhZHJxcWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyODE4MzcsImV4cCI6MjA2ODg1NzgzN30.09tdQtyneRfAbQJRoVy5J9YpsuLTwn-EDF0tt2hUosg';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -19,24 +25,47 @@ const LoginPage = () => {
     }
   }, [navigate]);
 
-  // This is the correct login for table-only users (calls your backend API)
+  // Login Handler (Backend first, then Supabase fallback)
   const handleLogin = async () => {
     try {
       setLoading(true);
       setError('');
-      const response = await axios.post('http://localhost:5000/api/login', {
-        email_address: email,
-        password,
-      });
+
+      // Try backend login first
+      const response = await axios.post(
+        'http://localhost:5000/api/login',
+        { email_address: email, password },
+        { withCredentials: true }
+      );
+
       const { user, role } = response.data;
       localStorage.setItem('first_name', user.first_name || '');
       localStorage.setItem('last_name', user.last_name || '');
       localStorage.setItem('sex', user.sex || '');
       localStorage.setItem('role', role);
+
       if (role === 'client') navigate('/clientdashboard');
       else if (role === 'worker') navigate('/workerdashboard');
+
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      console.warn('Backend login failed, trying Supabase...', err.message);
+
+      // Fallback: Supabase Auth login
+      const { data, error: supabaseError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (supabaseError) {
+        setError(supabaseError.message || 'Login failed');
+      } else {
+        // Optional: Fetch extra profile info from Supabase table
+        localStorage.setItem('first_name', data.user?.user_metadata?.first_name || '');
+        localStorage.setItem('last_name', data.user?.user_metadata?.last_name || '');
+        localStorage.setItem('role', data.user?.user_metadata?.role || 'client');
+
+        navigate('/clientdashboard'); // Default redirect after Supabase login
+      }
     } finally {
       setLoading(false);
     }
