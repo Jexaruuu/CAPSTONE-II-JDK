@@ -5,7 +5,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // ✅ Your direct Supabase credentials
 const supabaseUrl = 'https://uoyzcboehvwxcadrqqfq.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVveXpjYm9laHZ3eGNhZHJxcWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyODE4MzcsImV4cCI6MjA2ODg1NzgzN30.09tdQtyneRfAbQJRoVy5J9YpsuLTwn-EDF0tt2hUosg';
+const supabaseKey =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVveXpjYm9laHZ3eGNhZHJxcWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyODE4MzcsImV4cCI6MjA2ODg1NzgzN30.09tdQtyneRfAbQJRoVy5J9YpsuLTwn-EDF0tt2hUosg';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const LoginPage = () => {
@@ -17,7 +18,9 @@ const LoginPage = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('first_name') && localStorage.getItem('last_name');
+    const isLoggedIn =
+      localStorage.getItem('first_name') &&
+      localStorage.getItem('last_name');
     if (isLoggedIn) {
       const role = localStorage.getItem('role');
       if (role === 'client') navigate('/clientdashboard', { replace: true });
@@ -59,12 +62,17 @@ const LoginPage = () => {
       if (supabaseError) {
         setError(supabaseError.message || 'Login failed');
       } else {
-        // Optional: Fetch extra profile info from Supabase table
+        // Get role from Supabase metadata
+        const role = data.user?.user_metadata?.role || 'client';
+
         localStorage.setItem('first_name', data.user?.user_metadata?.first_name || '');
         localStorage.setItem('last_name', data.user?.user_metadata?.last_name || '');
-        localStorage.setItem('role', data.user?.user_metadata?.role || 'client');
+        localStorage.setItem('role', role);
 
-        navigate('/clientdashboard'); // Default redirect after Supabase login
+        // ✅ Redirect based on role
+        if (role === 'client') navigate('/clientdashboard');
+        else if (role === 'worker') navigate('/workerdashboard');
+        else navigate('/clientdashboard'); // default
       }
     } finally {
       setLoading(false);

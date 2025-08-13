@@ -16,12 +16,13 @@ const ClientSignUpPage = () => {
   const [error_message, setErrorMessage] = useState('');
   const navigate = useNavigate();
 
+  // ✅ Require at least 12 characters for Supabase Auth
   const isFormValid = (
     first_name.trim() !== '' &&
     last_name.trim() !== '' &&
     sex.trim() !== '' &&
     email_address.trim() !== '' &&
-    password.trim() !== '' &&
+    password.trim().length >= 12 &&
     confirm_password.trim() !== '' &&
     password === confirm_password &&
     is_agreed_to_terms
@@ -36,6 +37,11 @@ const ClientSignUpPage = () => {
       return;
     }
 
+    if (password.trim().length < 12) {
+      setErrorMessage('Password must be at least 12 characters long');
+      return;
+    }
+
     try {
       const response = await axios.post('http://localhost:5000/api/clients/register', {
         first_name,
@@ -45,12 +51,17 @@ const ClientSignUpPage = () => {
         password,
       });
 
-    if (response.status === 201) {
-  localStorage.setItem('first_name', first_name);
-  localStorage.setItem('last_name', last_name);
-  localStorage.setItem('sex', sex); 
-  navigate('/clientsuccess');
-}
+      if (response.status === 201) {
+        // Store user info + auth_uid from backend
+        localStorage.setItem('first_name', first_name);
+        localStorage.setItem('last_name', last_name);
+        localStorage.setItem('sex', sex);
+        if (response.data?.auth_uid) {
+          localStorage.setItem('auth_uid', response.data.auth_uid);
+        }
+
+        navigate('/clientsuccess');
+      }
     } catch (error) {
       console.error('Error registering client:', error);
       if (error.response && error.response.data) {
@@ -131,16 +142,16 @@ const ClientSignUpPage = () => {
             <div>
               <label htmlFor="sex" className="block text-sm font-semibold mb-1">Sex</label>
               <select
-  id="sex"
-  value={sex}
-  onChange={(e) => setSex(e.target.value)}
-  className="w-full p-2.5 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc] appearance-none bg-no-repeat"
-  style={{ backgroundImage: 'none' }}
->
-  <option value="">Select sex</option>
-  <option value="Male">Male</option>
-  <option value="Female">Female</option>
-</select>
+                id="sex"
+                value={sex}
+                onChange={(e) => setSex(e.target.value)}
+                className="w-full p-2.5 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc] appearance-none bg-no-repeat"
+                style={{ backgroundImage: 'none' }}
+              >
+                <option value="">Select sex</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
             </div>
 
             <div>
@@ -156,7 +167,9 @@ const ClientSignUpPage = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold mb-1">Password (8 or more characters)</label>
+              <label htmlFor="password" className="block text-sm font-semibold mb-1">
+                Password (12 or more characters) {/* ✅ Updated label */}
+              </label>
               <input
                 id="password"
                 type="password"

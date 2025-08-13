@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom'; // ✅ Added useLocation like Client page
 import axios from 'axios';
 
 const WorkerSignUpPage = () => {
+  const location = useLocation(); // ✅ Same as Client page
   const navigate = useNavigate();
 
   const [first_name, setFirstName] = useState('');
@@ -15,12 +16,13 @@ const WorkerSignUpPage = () => {
   const [is_agreed_to_terms, setIsAgreedToTerms] = useState(false);
   const [error_message, setErrorMessage] = useState('');
 
+  // ✅ Same password validation as Client page
   const isFormValid = (
     first_name.trim() !== '' &&
     last_name.trim() !== '' &&
     sex.trim() !== '' &&
     email_address.trim() !== '' &&
-    password.trim() !== '' &&
+    password.trim().length >= 12 && // ✅ Require at least 12 characters
     confirm_password.trim() !== '' &&
     password === confirm_password &&
     is_agreed_to_terms
@@ -35,6 +37,11 @@ const WorkerSignUpPage = () => {
       return;
     }
 
+    if (password.trim().length < 12) {
+      setErrorMessage('Password must be at least 12 characters long');
+      return;
+    }
+
     try {
       const response = await axios.post('http://localhost:5000/api/workers/register', {
         first_name,
@@ -45,9 +52,13 @@ const WorkerSignUpPage = () => {
       });
 
       if (response.status === 201) {
+        const { auth_uid } = response.data.data || {};
         localStorage.setItem('first_name', first_name);
         localStorage.setItem('last_name', last_name);
         localStorage.setItem('sex', sex);
+        if (auth_uid) {
+          localStorage.setItem('auth_uid', auth_uid); // ✅ store Supabase UID
+        }
         navigate('/workersuccess');
       }
     } catch (error) {
@@ -151,7 +162,9 @@ const WorkerSignUpPage = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold mb-1">Password (8 or more characters)</label>
+              <label htmlFor="password" className="block text-sm font-semibold mb-1">
+                Password (12 or more characters) {/* ✅ Updated label */}
+              </label>
               <input
                 id="password"
                 type="password"
