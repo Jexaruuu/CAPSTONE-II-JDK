@@ -16,7 +16,7 @@ import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from "./pages/successpage/WorkerSuccess";
 import WorkerWelcomePage from './pages/workerpage/WorkerWelcome';
 import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
-import WorkerPost from './pages/workerpage/WorkerPost';
+import WorkerPostApplication from './pages/workerpage/WorkerPostApplication';
 
 // ✅ Protected route for logged-in users
 const ProtectedRoute = ({ children }) => {
@@ -74,7 +74,7 @@ const App = () => {
           </ProtectedRoute>
         } />
         <Route path="/workerwelcome" element={<WorkerWelcomePage />} />
-        <Route path="/workerpost" element={<WorkerPost />} />
+        <Route path="/workerpostapplication" element={<WorkerPostApplication />} />
         <Route path="/workersignup" element={<WorkerSignUpPage />} />
         <Route path="/workersuccess" element={<WorkerSuccessPage />} />
       </Routes>

@@ -22,7 +22,7 @@ const WorkerPost = () => {
             No applications found. You can post your application now to start finding jobs and get hired for home service work.
           </p>
           <Link
-            to="/workerpost"
+            to="/workerpostapplication"
             className="inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition"
           >
             + Become a worker
