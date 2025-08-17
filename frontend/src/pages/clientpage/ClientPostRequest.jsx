@@ -25,7 +25,7 @@ const ClientPostRequest = () => {
 
   // Define the titles for each step
   const stepTitles = {
-    1: "Step 1: Provide Basic Information",
+    1: "Step 1: Client Provide Information",
     2: "Step 2: Describe Your Request",
     3: "Step 3: Set Your Price Rate",
   };

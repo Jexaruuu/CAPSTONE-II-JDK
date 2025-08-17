@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import WorkerNavigation from '../../workercomponents/WorkerNavigation';
 import WorkerInformation from '../../workercomponents/workerpostcomponents/WorkerInformation';
 import WorkerWorkInformation from '../../workercomponents/workerpostcomponents/WorkerWorkInformation';
+import WorkerRequiredDocuments from '../../workercomponents/workerpostcomponents/WorkerRequiredDocuments';
+import WorkerRate from '../../workercomponents/workerpostcomponents/WorkerRate';
+import WorkerTermsAndAgreements from '../../workercomponents/workerpostcomponents/WorkerTermsAndAgreements';
 
 const WorkerPost = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -24,9 +27,11 @@ const WorkerPost = () => {
 
   // Define the titles for each step
   const stepTitles = {
-    1: "Step 1: Personal Basic Information",
+    1: "Step 1: Worker Information",
     2: "Step 2: Work Information",
-    3: "Step 3: Set Your Price Rate",
+    3: "Step 3: Required Documents",
+    4: "Step 5: Set Your Price Rate",
+    5: "Step 4: Terms & Agreements",
   };
 
   return (
@@ -39,7 +44,7 @@ const WorkerPost = () => {
             {/* Step Indicator above the Content */}
             <div className="flex justify-start mb-6 ml-3">
               <div className="text-lg font-extralight">
-                {currentStep} of 3 | Post a Worker Application
+                {currentStep} of 5 | Post a Worker Application
               </div>
             </div>
 
@@ -57,6 +62,36 @@ const WorkerPost = () => {
             {/* Step 2: Description */}
             {currentStep === 2 && (
               <WorkerWorkInformation
+                description={description}
+                setDescription={setDescription}
+                handleNext={handleNext}
+                handleBack={handleBack}
+              />
+            )}
+
+            {/* Step 3: Required Documents */}
+            {currentStep === 3 && (
+              <WorkerRequiredDocuments
+                description={description}
+                setDescription={setDescription}
+                handleNext={handleNext}
+                handleBack={handleBack}
+              />
+            )}
+
+              {/* Step 4: Set Your Price Rate */}
+            {currentStep === 4 && (
+              <WorkerRate
+                description={description}
+                setDescription={setDescription}
+                handleNext={handleNext}
+                handleBack={handleBack}
+              />
+            )}
+
+            {/* Step 5: Terms & Agreements */}
+            {currentStep === 5 && (
+              <WorkerTermsAndAgreements
                 description={description}
                 setDescription={setDescription}
                 handleNext={handleNext}

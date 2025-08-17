@@ -283,7 +283,7 @@ const WorkerInformation = ({ title, setTitle, handleNext }) => {
           onClick={handleNext}
           className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300"
         >
-          Next : Service Request Details
+          Next : Work Information
         </button>
       </div>
     </form>
