@@ -5,10 +5,10 @@ const WorkerSuccessPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Redirect after 5 seconds
-    setTimeout(() => {
-      navigate('/workerwelcome');  // Replace with your client welcome page route
+    const t = setTimeout(() => {
+      navigate('/workerwelcome', { replace: true });
     }, 5000);
+    return () => clearTimeout(t);
   }, [navigate]);
 
   return (

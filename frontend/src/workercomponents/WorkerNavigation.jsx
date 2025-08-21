@@ -102,34 +102,34 @@ const WorkerNavigation = () => {
     const fName = localStorage.getItem('first_name') || '';
     const lName = localStorage.getItem('last_name') || '';
     const sex = localStorage.getItem('sex') || '';
-
     if (sex === 'Male') setPrefix('Mr.');
     else if (sex === 'Female') setPrefix('Ms.');
     else setPrefix('');
-
     setFullName(`${fName} ${lName}`);
   }, []);
 
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
-const handleLogout = async () => {
-  try {
-    await axios.post('http://localhost:5000/api/login/logout', {}, { withCredentials: true });
-  
-    localStorage.clear();
-    navigate('/', { replace: true });
-    window.location.reload();
+  const handleLogout = async () => {
+    try {
+      await axios.post('http://localhost:5000/api/login/logout', {}, { withCredentials: true });
+      localStorage.clear();
+      navigate('/', { replace: true });
+      window.location.reload();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
-  } catch (error) {
-    console.error('Logout error:', error);
-  }
-};
+  // ✅ role-aware logo target + replace (prevents going back to welcome)
+  const role = localStorage.getItem('role');
+  const logoTo = role === 'worker' ? '/workerdashboard' : '/workerwelcome';
 
   return (
     <div className="bg-white sticky top-0 z-50">
       <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
         <div className="flex items-center space-x-6">
-          <Link to="/workerdashboard">
+          <Link to={logoTo} replace>
             <img src="/jdklogo.png" alt="Logo" className="h-48 w-48 object-contain" />
           </Link>
           <ul className="flex space-x-7 mt-4 text-md">
@@ -177,7 +177,12 @@ const handleLogout = async () => {
               )}
             </li>
 
-            <li><Link to="/dashboard" className="text-black font-medium">Dashboard</Link></li>
+            {/* ✅ Dashboard link with replace */}
+            <li>
+              <Link to="/workerdashboard" className="text-black font-medium" replace>
+                Dashboard
+              </Link>
+            </li>
             <li><Link to="/messages" className="text-black font-medium">Messages</Link></li>
           </ul>
         </div>

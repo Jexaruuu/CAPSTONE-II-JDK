@@ -118,6 +118,9 @@ const ClientSignUpPage = () => {
         localStorage.setItem('first_name', first_name);
         localStorage.setItem('last_name', last_name);
         localStorage.setItem('sex', sex);
+        // ✅ NEW: set role for route guards & nav behavior
+        localStorage.setItem('role', 'client');
+
         const uid = response?.data?.data?.auth_uid || response?.data?.auth_uid;
         if (uid) {
           localStorage.setItem('auth_uid', uid);
@@ -125,7 +128,8 @@ const ClientSignUpPage = () => {
 
         // Let the user know success
         setInfoMessage('Account created. You’re all set!');
-        navigate('/clientsuccess');
+        // ✅ Use replace so Success → Welcome doesn’t create a back step to Success
+        navigate('/clientsuccess', { replace: true });
       }
     } catch (error) {
       console.error('Error registering client:', error);
@@ -148,8 +152,7 @@ const ClientSignUpPage = () => {
     }
   };
 
-  /* ✅ NEW: pre-check if email exists; return true if available
-     (Prevents opening the OTP modal when email is already taken) */
+  /* ✅ NEW: pre-check if email exists; return true if available */
   const checkEmailAvailable = async () => {
     try {
       const resp = await axios.post(
@@ -161,7 +164,7 @@ const ClientSignUpPage = () => {
     } catch (e) {
       const msg = e?.response?.data?.message || 'Failed to check email.';
       setErrorMessage(msg);
-      return false; // be conservative: treat as not available on error
+      return false; // be conservative
     }
   };
 

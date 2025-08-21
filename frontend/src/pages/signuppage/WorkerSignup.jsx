@@ -43,14 +43,13 @@ const WorkerSignUpPage = () => {
     last_name.trim() !== '' &&
     sex.trim() !== '' &&
     email_address.trim() !== '' &&
-    password.trim().length >= 12 && // ✅ Require at least 12 characters
+    password.trim().length >= 12 &&
     confirm_password.trim() !== '' &&
     password === confirm_password &&
     is_agreed_to_terms
   );
 
-  /* ✅ NEW: pre-check if email exists; return true if available
-     (Prevents opening the OTP modal when email is already taken) */
+  /* ✅ NEW: pre-check email */
   const checkEmailAvailable = async () => {
     try {
       const resp = await axios.post(
@@ -58,16 +57,15 @@ const WorkerSignUpPage = () => {
         { email: email_address },
         { withCredentials: true }
       );
-      // API returns { exists: true/false }
       return resp?.data?.exists === true ? false : true;
     } catch (e) {
       const msg = e?.response?.data?.message || 'Failed to check email.';
       setErrorMessage(msg);
-      return false; // be conservative if server check fails
+      return false;
     }
   };
 
-  // ✅ NEW: request OTP (uses session via withCredentials)
+  // ✅ NEW: request OTP
   const requestOtp = async () => {
     try {
       setOtpError('');
@@ -79,7 +77,7 @@ const WorkerSignUpPage = () => {
         { withCredentials: true }
       );
       setOtpInfo('We sent a 6-digit code to your email. Enter it below.');
-      setCanResendAt(now() + 60000); // 60s cooldown
+      setCanResendAt(now() + 60000);
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to send OTP.';
       setOtpError(msg);
@@ -89,7 +87,7 @@ const WorkerSignUpPage = () => {
     }
   };
 
-  // ✅ NEW: verify OTP then proceed to registration
+  // ✅ NEW: verify OTP then register
   const verifyOtp = async () => {
     try {
       setOtpError('');
@@ -102,7 +100,7 @@ const WorkerSignUpPage = () => {
       );
       setOtpInfo('Verified! Creating your account…');
       setOtpOpen(false);
-      await completeRegistration(); // ← original registration logic moved here
+      await completeRegistration();
     } catch (err) {
       const msg = err?.response?.data?.message || 'Invalid code.';
       setOtpError(msg);
@@ -112,11 +110,10 @@ const WorkerSignUpPage = () => {
     }
   };
 
-  // ✅ NEW: actual registration AFTER OTP verification (wraps your original axios.post)
+  // ✅ NEW: registration after OTP
   const completeRegistration = async () => {
     try {
       setLoading(true);
-
       const response = await axios.post(
         'http://localhost:5000/api/workers/register',
         {
@@ -125,7 +122,6 @@ const WorkerSignUpPage = () => {
           sex,
           email_address,
           password,
-          // ✅ send agreement flag like client side
           is_agreed_to_terms,
         },
         { withCredentials: true }
@@ -137,11 +133,14 @@ const WorkerSignUpPage = () => {
         localStorage.setItem('last_name', last_name);
         localStorage.setItem('sex', sex);
         if (auth_uid) {
-          localStorage.setItem('auth_uid', auth_uid); // ✅ store Supabase UID
+          localStorage.setItem('auth_uid', auth_uid);
         }
+        // ✅ NEW: set role for guards
+        localStorage.setItem('role', 'worker');
 
         setInfoMessage('Account created. You’re all set!');
-        navigate('/workersuccess');
+        // ✅ replace to avoid back to success
+        navigate('/workersuccess', { replace: true });
       }
     } catch (error) {
       console.error('❌ Registration error:', error);
@@ -155,7 +154,7 @@ const WorkerSignUpPage = () => {
         setErrorMessage('This email already started signup. You can resend the verification email.');
         setCanResend(true);
       } else if (status === 502) {
-        setErrorMessage('Email delivery failed. Check SMTP settings in Supabase (host/port/username/app password).');
+        setErrorMessage('Email delivery failed. Check SMTP settings in Supabase.');
         setCanResend(true);
       } else if (msg) {
         setErrorMessage(msg);
@@ -177,20 +176,17 @@ const WorkerSignUpPage = () => {
       setErrorMessage('Passwords do not match');
       return;
     }
-
     if (password.trim().length < 12) {
       setErrorMessage('Password must be at least 12 characters long');
       return;
     }
 
-    // ✅ NEW: email pre-check (don’t open OTP if taken)
     const available = await checkEmailAvailable();
     if (!available) {
       setErrorMessage('Email already in use');
       return;
     }
 
-    // ✅ NEW: open OTP modal (replaces immediate registration)
     setOtpOpen(true);
     setOtpCode('');
     setOtpInfo('');
@@ -198,7 +194,6 @@ const WorkerSignUpPage = () => {
     await requestOtp();
   };
 
-  // ✅ NEW: Resend flow (same endpoint used by client)
   const handleResend = async () => {
     try {
       setErrorMessage('');
@@ -305,10 +300,10 @@ const WorkerSignUpPage = () => {
               />
             </div>
 
-            {/* ✅ Password with conditional Show/Hide */}
+            {/* Password with conditional Show/Hide */}
             <div>
               <label htmlFor="password" className="block text-sm font-semibold mb-1">
-                Password (12 or more characters) {/* ✅ Updated label */}
+                Password (12 or more characters)
               </label>
               <div className="relative">
                 <input
@@ -333,9 +328,9 @@ const WorkerSignUpPage = () => {
               </div>
             </div>
 
-            {/* ✅ Confirm Password with conditional Show/Hide */}
+            {/* Confirm Password with conditional Show/Hide */}
             <div>
-               <label htmlFor="confirm_password" className="block text-sm font-semibold mb-1">Confirm Password</label>
+              <label htmlFor="confirm_password" className="block text-sm font-semibold mb-1">Confirm Password</label>
               <div className="relative">
                 <input
                   id="confirm_password"
@@ -401,7 +396,7 @@ const WorkerSignUpPage = () => {
             </div>
           )}
 
-          {/* ✅ NEW: Resend UI */}
+          {/* Resend UI */}
           {canResend && (
             <div className="text-center mt-2">
               <button
@@ -421,7 +416,7 @@ const WorkerSignUpPage = () => {
         </div>
       </div>
 
-      {/* ✅ NEW: OTP Modal */}
+      {/* OTP Modal */}
       {otpOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white w-full max-w-sm rounded-lg p-6 shadow-lg">

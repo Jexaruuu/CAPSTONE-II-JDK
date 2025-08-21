@@ -29,23 +29,21 @@ const ClientNavigation = () => {
     ) {
       setShowHireWorkerDropdown(false);
       setShowManageRequestDropdown(false);
-      setShowProfileDropdown(false);  // Close profile dropdown
+      setShowProfileDropdown(false);
       setShowReportsDropdown(false);
-      setShowBellDropdown(false); // Close bell dropdown
-      setShowSubDropdown(false);  // Close search bar dropdown
+      setShowBellDropdown(false);
+      setShowSubDropdown(false);
     }
   };
 
   const handleDropdownToggle = (dropdownName) => {
-    // Close all dropdowns first
     setShowHireWorkerDropdown(false);
     setShowManageRequestDropdown(false);
     setShowProfileDropdown(false);
     setShowReportsDropdown(false);
-    setShowBellDropdown(false); // Close bell dropdown
-    setShowSubDropdown(false);  // Close search bar dropdown when toggling other dropdowns
+    setShowBellDropdown(false);
+    setShowSubDropdown(false);
 
-    // Toggle the selected dropdown
     switch (dropdownName) {
       case 'HireWorker':
         setShowHireWorkerDropdown(!showHireWorkerDropdown);
@@ -60,7 +58,7 @@ const ClientNavigation = () => {
         setShowReportsDropdown(!showReportsDropdown);
         break;
       case 'Bell':
-        setShowBellDropdown(!showBellDropdown); // Toggle bell dropdown
+        setShowBellDropdown(!showBellDropdown);
         break;
       default:
         break;
@@ -68,25 +66,20 @@ const ClientNavigation = () => {
   };
 
   const handleProfileDropdown = () => {
-    // Toggle Profile dropdown
     setShowProfileDropdown(!showProfileDropdown);
-    // Close other dropdowns
     setShowHireWorkerDropdown(false);
     setShowManageRequestDropdown(false);
     setShowReportsDropdown(false);
-    setShowBellDropdown(false); // Close bell dropdown
-    setShowSubDropdown(false);  // Close search bar dropdown if it's open
+    setShowBellDropdown(false);
+    setShowSubDropdown(false);
   };
 
   const handleSearchBarDropdown = () => {
-    // Close other dropdowns when clicking on the search bar dropdown
     setShowHireWorkerDropdown(false);
     setShowManageRequestDropdown(false);
     setShowReportsDropdown(false);
     setShowProfileDropdown(false);
-    setShowBellDropdown(false); // Close bell dropdown
-
-    
+    setShowBellDropdown(false);
     setShowSubDropdown(!showSubDropdown);
   };
 
@@ -97,54 +90,53 @@ const ClientNavigation = () => {
 
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => { document.removeEventListener('mousedown', handleClickOutside); };
   }, []);
 
   const [fullName, setFullName] = useState('');
-const [prefix, setPrefix] = useState('');
+  const [prefix, setPrefix] = useState('');
 
-useEffect(() => {
-  const fName = localStorage.getItem('first_name') || '';
-  const lName = localStorage.getItem('last_name') || '';
-  const sex = localStorage.getItem('sex') || '';
-  
-  if (sex === 'Male') setPrefix('Mr.');
-  else if (sex === 'Female') setPrefix('Ms.');
-  else setPrefix(''); 
+  useEffect(() => {
+    const fName = localStorage.getItem('first_name') || '';
+    const lName = localStorage.getItem('last_name') || '';
+    const sex = localStorage.getItem('sex') || '';
+    if (sex === 'Male') setPrefix('Mr.');
+    else if (sex === 'Female') setPrefix('Ms.');
+    else setPrefix('');
+    setFullName(`${fName} ${lName}`);
+  }, []);
 
-  setFullName(`${fName} ${lName}`);
-}, []);
+  const navigate = useNavigate();
 
-const navigate = useNavigate();
+  const handleLogout = async () => {
+    try {
+      await axios.post('http://localhost:5000/api/login/logout', {}, { withCredentials: true });
+      localStorage.clear();
+      navigate('/', { replace: true });
+      window.location.reload();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
-const handleLogout = async () => {
-  try {
-    await axios.post('http://localhost:5000/api/login/logout', {}, { withCredentials: true });
-  
-    localStorage.clear();
-    navigate('/', { replace: true });
-    window.location.reload();
-
-  } catch (error) {
-    console.error('Logout error:', error);
-  }
-};
+  // ✅ NEW: decide where the logo should navigate
+  const role = localStorage.getItem('role');
+  const logoTo = role === 'client' ? '/clientdashboard' : '/clientwelcome';
+  // We’ll use Link with replace to avoid leaving welcome in history.
 
   return (
     <div className="bg-white sticky top-0 z-50">
-  <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
-    <div className="flex items-center space-x-6 -ml-2.5">
-      <Link to="/clientwelcome">
-        <img
-          src="/jdklogo.png"
-          alt="Logo"
-          className="h-48 w-48 object-contain"
-          style={{ margin: '0 10px' }}
-        />
-      </Link>
+      <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
+        <div className="flex items-center space-x-6 -ml-2.5">
+          {/* ✅ updated to use replace and role-aware target */}
+          <Link to={logoTo} replace>
+            <img
+              src="/jdklogo.png"
+              alt="Logo"
+              className="h-48 w-48 object-contain"
+              style={{ margin: '0 10px' }}
+            />
+          </Link>
 
           <ul className="flex space-x-7 mt-4 text-md">
             <li className="relative cursor-pointer group">
@@ -153,24 +145,12 @@ const handleLogout = async () => {
                 className="text-black font-medium flex items-center"
               >
                 Hire a Worker
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="w-4 h-4 ml-1 inline-block"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1 inline-block">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
               </span>
               {showHireWorkerDropdown && (
-                <div
-                  ref={hireWorkerDropdownRef}
-                  className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60"
-                >
+                <div ref={hireWorkerDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                   <ul className="space-y-2 py-2">
                     <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
                       <Link to="/job-posts">Post a service request</Link>
@@ -189,24 +169,12 @@ const handleLogout = async () => {
                 className="text-black font-medium flex items-center"
               >
                 Manage Request
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="w-4 h-4 ml-1 inline-block"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1 inline-block">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
               </span>
               {showManageRequestDropdown && (
-                <div
-                  ref={manageRequestDropdownRef}
-                  className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60"
-                >
+                <div ref={manageRequestDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                   <ul className="space-y-2 py-2">
                     <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
                       <Link to="/current-service-request">Current Service Request</Link>
@@ -225,24 +193,12 @@ const handleLogout = async () => {
                 className="text-black font-medium flex items-center"
               >
                 Reports
-                 <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="w-4 h-4 ml-1 inline-block"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
+                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1 inline-block">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
               </span>
               {showReportsDropdown && (
-                <div
-                  ref={reportsDropdownRef}
-                  className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60"
-                >
+                <div ref={reportsDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                   <ul className="space-y-2 py-2">
                     <li
                       className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200"
@@ -254,18 +210,20 @@ const handleLogout = async () => {
                 </div>
               )}
             </li>
+
             <li className="relative cursor-pointer group">
-  <Link to="/clientdashboard" className="text-black font-medium">
-    Dashboard
-    <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
-  </Link>
-</li>
-<li className="relative cursor-pointer group">
-  <Link to="/" className="text-black font-medium">
-    Messages
-    <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
-  </Link>
-</li>
+              <Link to="/clientdashboard" className="text-black font-medium" replace>
+                Dashboard
+                <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
+              </Link>
+            </li>
+
+            <li className="relative cursor-pointer group">
+              <Link to="/" className="text-black font-medium">
+                Messages
+                <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
+              </Link>
+            </li>
           </ul>        
         </div>
 
@@ -278,67 +236,34 @@ const handleLogout = async () => {
               placeholder="Search"
             />
             <div className="ml-2 cursor-pointer text-black relative">
-              <span
-                className="text-blue-500"
-                onClick={handleSearchBarDropdown}
-              >
+              <span className="text-blue-500" onClick={handleSearchBarDropdown}>
                 {selectedOption}
               </span>
               <span className="text-gray-500 text-xs">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="w-3 h-3 inline-block"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 inline-block">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
               </span>
 
               {showSubDropdown && (
                 <div className="absolute top-full -ml-[165px] border border-gray-300 bg-white shadow-md mt-5 rounded-md w-60">
                   <ul className="space-y-2 py-2">
-                    <li
-                      className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200"
-                      onClick={() => handleOptionClick('Client')}
-                    >
-                      <img
-                        src="/Client.png"
-                        alt="Client Icon"
-                        className="w-9 h-9"
-                      />
+                    <li className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200" onClick={() => handleOptionClick('Client')}>
+                      <img src="/Client.png" alt="Client Icon" className="w-9 h-9" />
                       <div>
                         <span>Client</span>
                         <p className="text-sm text-gray-600">Search for available clients in need of services.</p>
                       </div>
                     </li>
-                    <li
-                      className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200"
-                      onClick={() => handleOptionClick('Worker')}
-                    >
-                      <img
-                        src="/Worker.png"
-                        alt="Worker Icon"
-                        className="w-8 h-8"
-                      />
+                    <li className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200" onClick={() => handleOptionClick('Worker')}>
+                      <img src="/Worker.png" alt="Worker Icon" className="w-8 h-8" />
                       <div>
                         <span>Worker</span>
                         <p className="text-sm text-gray-600">Find workers who can do the job.</p>
                       </div>
                     </li>
-                    <li
-                      className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200"
-                      onClick={() => handleOptionClick('Service')}
-                    >
-                      <img
-                        src="/Briefcase.png"
-                        alt="Service Icon"
-                        className="w-8 h-8"
-                      />
+                    <li className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200" onClick={() => handleOptionClick('Service')}>
+                      <img src="/Briefcase.png" alt="Service Icon" className="w-8 h-8" />
                       <div>
                         <span>Services</span>
                         <p className="text-sm text-gray-600">Search for service requests posted by clients.</p>
@@ -366,30 +291,25 @@ const handleLogout = async () => {
 
           <div className="cursor-pointer relative" onClick={handleProfileDropdown}>
             <img src="/Clienticon.png" alt="User Profile"className="h-8 w-8 rounded-full"/>
-           {showProfileDropdown && (
-  <div className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
-    <div className="px-4 py-3 border-b flex items-center space-x-3">
-      {/* Profile Icon */}
-      <img 
-        src="/Clienticon.png" 
-        alt="Profile Icon" 
-        className="h-8 w-8 rounded-full object-cover"
-      />
-      <div>
-        <p className="font-semibold text-sm">{prefix} {fullName}</p>
-<p className="text-xs text-gray-600">Client</p>
-      </div>
-    </div>
-    <ul className="py-2">
-      <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-        <Link to="/account-settings">Account Settings</Link>
-      </li>
-      <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-        <span onClick={handleLogout}>Log out</span>
-      </li>
-    </ul>
-  </div>
-)}
+            {showProfileDropdown && (
+              <div className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
+                <div className="px-4 py-3 border-b flex items-center space-x-3">
+                  <img src="/Clienticon.png" alt="Profile Icon" className="h-8 w-8 rounded-full object-cover" />
+                  <div>
+                    <p className="font-semibold text-sm">{prefix} {fullName}</p>
+                    <p className="text-xs text-gray-600">Client</p>
+                  </div>
+                </div>
+                <ul className="py-2">
+                  <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
+                    <Link to="/account-settings">Account Settings</Link>
+                  </li>
+                  <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
+                    <span onClick={handleLogout}>Log out</span>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>

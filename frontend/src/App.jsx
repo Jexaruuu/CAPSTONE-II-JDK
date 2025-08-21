@@ -19,64 +19,118 @@ import WorkerPostApplication from './pages/workerpage/WorkerPostApplication';
 
 import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 
-// ✅ Protected route for logged-in users
 const ProtectedRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
   const lastName = localStorage.getItem('last_name');
   const role = localStorage.getItem('role');
-
   return firstName && lastName && role ? children : <Navigate to="/login" />;
 };
 
-// ✅ Guest-only route (for login page)
 const GuestRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
   const lastName = localStorage.getItem('last_name');
   const role = localStorage.getItem('role');
-
   return firstName && lastName && role
     ? <Navigate to={role === 'client' ? '/clientdashboard' : '/workerdashboard'} />
     : children;
+};
+
+/** ✅ NEW: role-specific guards */
+const ClientOnlyRoute = ({ children }) => {
+  const role = localStorage.getItem('role');
+  return role === 'client'
+    ? children
+    : role
+      ? <Navigate to="/workerdashboard" replace />
+      : <Navigate to="/login" replace />;
+};
+
+const WorkerOnlyRoute = ({ children }) => {
+  const role = localStorage.getItem('role');
+  return role === 'worker'
+    ? children
+    : role
+      ? <Navigate to="/clientdashboard" replace />
+      : <Navigate to="/login" replace />;
 };
 
 const App = () => {
   return (
     <Router>
       <Routes>
-  <Route path="/" element={
-    <GuestRoute>
-      <HomePage />
-    </GuestRoute>
-  } />
-  <Route path="/role" element={<RolePage />} />
+        <Route
+          path="/"
+          element={
+            <GuestRoute>
+              <HomePage />
+            </GuestRoute>
+          }
+        />
 
-  <Route path="/login" element={
-    <GuestRoute>
-      <LoginPage />
-    </GuestRoute>
-  } />
+        {/* guest-only to block back navigation when logged in */}
+        <Route
+          path="/role"
+          element={
+            <GuestRoute>
+              <RolePage />
+            </GuestRoute>
+          }
+        />
 
-        {/* ✅ Protected Client Routes */}
-        <Route path="/clientdashboard" element={
-          <ProtectedRoute>
-            <ClientDashboardPage />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/login"
+          element={
+            <GuestRoute>
+              <LoginPage />
+            </GuestRoute>
+          }
+        />
+
+        {/* CLIENT ROUTES */}
+        <Route
+          path="/clientdashboard"
+          element={
+            <ProtectedRoute>
+              <ClientOnlyRoute>
+                <ClientDashboardPage />
+              </ClientOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
         <Route path="/clientwelcome" element={<ClientWelcomePage />} />
         <Route path="/clientpostrequest" element={<ClientPostRequest />} />
         <Route path="/clientreviewservicerequest" element={<ClientReviewServiceRequest />} />
-        <Route path="/clientsignup" element={<ClientSignUpPage />} />
+        <Route
+          path="/clientsignup"
+          element={
+            <GuestRoute>
+              <ClientSignUpPage />
+            </GuestRoute>
+          }
+        />
         <Route path="/clientsuccess" element={<ClientSuccessPage />} />
 
-        {/* ✅ Protected Worker Routes */}
-        <Route path="/workerdashboard" element={
-          <ProtectedRoute>
-            <WorkerDashboardPage />
-          </ProtectedRoute>
-        } />
+        {/* WORKER ROUTES */}
+        <Route
+          path="/workerdashboard"
+          element={
+            <ProtectedRoute>
+              <WorkerOnlyRoute>
+                <WorkerDashboardPage />
+              </WorkerOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
         <Route path="/workerwelcome" element={<WorkerWelcomePage />} />
         <Route path="/workerpostapplication" element={<WorkerPostApplication />} />
-        <Route path="/workersignup" element={<WorkerSignUpPage />} />
+        <Route
+          path="/workersignup"
+          element={
+            <GuestRoute>
+              <WorkerSignUpPage />
+            </GuestRoute>
+          }
+        />
         <Route path="/workersuccess" element={<WorkerSuccessPage />} />
       </Routes>
     </Router>
