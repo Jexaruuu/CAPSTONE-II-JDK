@@ -28,7 +28,7 @@ const WorkerPost = () => {
   // Define the titles for each step
   const stepTitles = {
     1: "Step 1: Worker Information",
-    2: "Step 2: Work Information",
+    2: "Step 2: Describe Your Work",
     3: "Step 3: Required Documents",
     4: "Step 5: Set Your Price Rate",
     5: "Step 4: Terms & Agreements",
