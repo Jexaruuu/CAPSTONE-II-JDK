@@ -19,6 +19,11 @@ const ClientSignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // ✅ NEW
+  const [loading, setLoading] = useState(false);
+  const [info_message, setInfoMessage] = useState('');
+  const [canResend, setCanResend] = useState(false);
+
   const navigate = useNavigate();
 
   const isFormValid = (
@@ -35,6 +40,8 @@ const ClientSignUpPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
+    setInfoMessage('');
+    setCanResend(false);
 
     if (password !== confirm_password) {
       setErrorMessage('Passwords do not match');
@@ -47,6 +54,8 @@ const ClientSignUpPage = () => {
     }
 
     try {
+      setLoading(true);
+
       const response = await axios.post('http://localhost:5000/api/clients/register', {
         first_name,
         last_name,
@@ -66,15 +75,41 @@ const ClientSignUpPage = () => {
           localStorage.setItem('auth_uid', response.data.auth_uid);
         }
 
+        // Let the user know an email was sent
+        setInfoMessage('Signup started. Please check your inbox for the verification link.');
         navigate('/clientsuccess');
       }
     } catch (error) {
       console.error('Error registering client:', error);
-      if (error.response && error.response.data) {
-        setErrorMessage(error.response.data.message || 'There was an error registering the client');
+      const status = error?.response?.status;
+      const msg = error?.response?.data?.message;
+
+      if (status === 429) {
+        setErrorMessage('Too many verification emails were sent. Please wait a minute and try again.');
+        setCanResend(true);
+      } else if (status === 409) {
+        setErrorMessage('This email already started signup. You can resend the verification email.');
+        setCanResend(true);
+      } else if (msg) {
+        setErrorMessage(msg);
       } else {
         setErrorMessage('There was an error registering the client');
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ NEW: Resend flow
+  const handleResend = async () => {
+    try {
+      setErrorMessage('');
+      setInfoMessage('Resending verification email…');
+      await axios.post('http://localhost:5000/api/auth/resend', { email: email_address });
+      setInfoMessage('Verification email resent. Please check your inbox.');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to resend verification.';
+      setErrorMessage(msg);
     }
   };
 
@@ -107,7 +142,7 @@ const ClientSignUpPage = () => {
           </h2>
 
           <div className="flex space-x-4 mt-4">
-            <button className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 transition hover:bg-[#008cfc] border-[#008cfc] text-[#008cfc] hover:text-white">
+            <button className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 transition hover:bg-[#008cfc] border-[#008cfc] text-[#008cfc] hover:text-white" disabled>
               <img src="/Google.png" alt="Google Logo" className="h-5 w-5 mr-2" />
               Continue with Google
             </button>
@@ -247,21 +282,40 @@ const ClientSignUpPage = () => {
 
           <div className="text-center mt-4">
             <button
-              disabled={!isFormValid}
+              disabled={!isFormValid || loading}
               className={`py-2 px-6 rounded-md w-full ${
-                !isFormValid
+                (!isFormValid || loading)
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-white border-2 transition border-[#008cfc] hover:bg-[#008cfc] text-[#008cfc] hover:text-white'
               }`}
               onClick={handleSubmit}
             >
-              Create my account
+              {loading ? 'Submitting…' : 'Create my account'}
             </button>
           </div>
+
+          {info_message && (
+            <div className="text-green-600 text-center mt-4">
+              {info_message}
+            </div>
+          )}
 
           {error_message && (
             <div className="text-red-500 text-center mt-4">
               {error_message}
+            </div>
+          )}
+
+          {/* ✅ NEW: Resend UI */}
+          {canResend && (
+            <div className="text-center mt-2">
+              <button
+                type="button"
+                onClick={handleResend}
+                className="text-[#008cfc] underline"
+              >
+                Resend verification email
+              </button>
             </div>
           )}
 

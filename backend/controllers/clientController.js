@@ -20,7 +20,31 @@ const registerClient = async (req, res) => {
       password,
       { first_name, last_name, sex, role: 'client', is_agreed_to_terms: !!is_agreed_to_terms, agreed_at }
     );
-    if (authError) throw authError;
+
+    // ✅ Map known Supabase errors to proper HTTP codes
+    if (authError) {
+      if (authError.isRateLimit) {
+        return res.status(429).json({
+          message: 'Too many verification emails sent. Please wait a minute and try again.'
+        });
+      }
+      if (authError.isAlreadyRegistered) {
+        return res.status(409).json({
+          message: 'This email already started signup. Please resend the verification email.'
+        });
+      }
+      // ✅ NEW: surface SMTP/confirmation send failure clearly
+      if (authError.isEmailSendFailure) {
+        return res.status(502).json({
+          message: 'Email delivery failed. Check SMTP settings in Supabase (host/port/username/app password).'
+        });
+      }
+      // Unknown error from Supabase
+      return res.status(authError.status || 400).json({
+        message: authError.message || 'Signup failed',
+        code: authError.code || undefined
+      });
+    }
 
     // Create in user_client table (persist agreement fields)
     await clientModel.createClient(
@@ -40,7 +64,8 @@ const registerClient = async (req, res) => {
     });
   } catch (error) {
     console.error('Error during client registration:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    // Safer default than 500
+    return res.status(400).json({ message: error?.message || 'Internal server error' });
   }
 };
 

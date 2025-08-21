@@ -20,6 +20,11 @@ const WorkerSignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // ✅ NEW: same UX as client
+  const [loading, setLoading] = useState(false);
+  const [info_message, setInfoMessage] = useState('');
+  const [canResend, setCanResend] = useState(false);
+
   // ✅ Same password validation as Client page
   const isFormValid = (
     first_name.trim() !== '' &&
@@ -35,6 +40,8 @@ const WorkerSignUpPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
+    setInfoMessage('');
+    setCanResend(false);
 
     if (password !== confirm_password) {
       setErrorMessage('Passwords do not match');
@@ -47,6 +54,8 @@ const WorkerSignUpPage = () => {
     }
 
     try {
+      setLoading(true);
+
       const response = await axios.post('http://localhost:5000/api/workers/register', {
         first_name,
         last_name,
@@ -65,11 +74,45 @@ const WorkerSignUpPage = () => {
         if (auth_uid) {
           localStorage.setItem('auth_uid', auth_uid); // ✅ store Supabase UID
         }
+
+        setInfoMessage('Signup started. Please check your inbox for the verification link.');
         navigate('/workersuccess');
       }
     } catch (error) {
       console.error('❌ Registration error:', error);
-      setErrorMessage(error.response?.data?.message || 'Registration failed.');
+      const status = error?.response?.status;
+      const msg = error?.response?.data?.message;
+
+      if (status === 429) {
+        setErrorMessage('Too many verification emails were sent. Please wait a minute and try again.');
+        setCanResend(true);
+      } else if (status === 409) {
+        setErrorMessage('This email already started signup. You can resend the verification email.');
+        setCanResend(true);
+      } else if (status === 502) {
+        setErrorMessage('Email delivery failed. Check SMTP settings in Supabase (host/port/username/app password).');
+        // Resend may not help if SMTP is broken, but we leave the button available
+        setCanResend(true);
+      } else if (msg) {
+        setErrorMessage(msg);
+      } else {
+        setErrorMessage('Registration failed.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ NEW: Resend flow (same endpoint used by client)
+  const handleResend = async () => {
+    try {
+      setErrorMessage('');
+      setInfoMessage('Resending verification email…');
+      await axios.post('http://localhost:5000/api/auth/resend', { email: email_address });
+      setInfoMessage('Verification email resent. Please check your inbox.');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to resend verification.';
+      setErrorMessage(msg);
     }
   };
 
@@ -102,7 +145,7 @@ const WorkerSignUpPage = () => {
           </h2>
 
           <div className="flex space-x-4 mt-4">
-            <button className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 transition hover:bg-[#008cfc] border-[#008cfc] text-[#008cfc] hover:text-white">
+            <button className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 transition hover:bg-[#008cfc] border-[#008cfc] text-[#008cfc] hover:text-white" disabled>
               <img src="/Google.png" alt="Google Logo" className="h-5 w-5 mr-2" />
               Continue with Google
             </button>
@@ -239,21 +282,40 @@ const WorkerSignUpPage = () => {
 
           <div className="text-center mt-4">
             <button
-              disabled={!isFormValid}
+              disabled={!isFormValid || loading}
               className={`py-2 px-6 rounded-md w-full ${
-                !isFormValid
+                (!isFormValid || loading)
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-white border-2 transition border-[#008cfc] hover:bg-[#008cfc] text-[#008cfc] hover:text-white'
               }`}
               onClick={handleSubmit}
             >
-              Create my account
+              {loading ? 'Submitting…' : 'Create my account'}
             </button>
           </div>
+
+          {info_message && (
+            <div className="text-green-600 text-center mt-4">
+              {info_message}
+            </div>
+          )}
 
           {error_message && (
             <div className="text-red-500 text-center mt-4">
               {error_message}
+            </div>
+          )}
+
+          {/* ✅ NEW: Resend UI */}
+          {canResend && (
+            <div className="text-center mt-2">
+              <button
+                type="button"
+                onClick={handleResend}
+                className="text-[#008cfc] underline"
+              >
+                Resend verification email
+              </button>
             </div>
           )}
 

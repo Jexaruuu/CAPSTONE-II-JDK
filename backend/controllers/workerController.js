@@ -35,10 +35,32 @@ const registerWorker = async (req, res) => {
       password,
       { first_name, last_name, sex, role: 'worker', is_agreed_to_terms: true, agreed_at }
     );
+
+    // ✅ Map known Supabase errors like client side
     if (authError) {
       console.error('Auth create error:', authError);
-      return res.status(400).json({ message: authError.message || 'Failed to create auth user' });
+
+      if (authError.isRateLimit) {
+        return res.status(429).json({
+          message: 'Too many verification emails sent. Please wait a minute and try again.'
+        });
+      }
+      if (authError.isAlreadyRegistered) {
+        return res.status(409).json({
+          message: 'This email already started signup. Please resend the verification email.'
+        });
+      }
+      if (authError.isEmailSendFailure) {
+        return res.status(502).json({
+          message: 'Email delivery failed. Check SMTP settings in Supabase (host/port/username/app password).'
+        });
+      }
+      return res.status(authError.status || 400).json({
+        message: authError.message || 'Failed to create auth user',
+        code: authError.code || undefined
+      });
     }
+
     if (!authUser?.id) {
       console.error('Auth user creation returned no id:', authUser);
       return res.status(500).json({ message: 'Auth user not created' });
@@ -77,7 +99,8 @@ const registerWorker = async (req, res) => {
     });
   } catch (error) {
     console.error('Error during worker registration:', error);
-    return res.status(500).json({ message: error.message || 'Internal server error' });
+    // match the safer default used on client side flow
+    return res.status(400).json({ message: error.message || 'Internal server error' });
   }
 };
 
