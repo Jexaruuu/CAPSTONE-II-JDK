@@ -16,6 +16,10 @@ const WorkerSignUpPage = () => {
   const [is_agreed_to_terms, setIsAgreedToTerms] = useState(false);
   const [error_message, setErrorMessage] = useState('');
 
+  // ✅ Added: show/hide states
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   // ✅ Same password validation as Client page
   const isFormValid = (
     first_name.trim() !== '' &&
@@ -49,6 +53,8 @@ const WorkerSignUpPage = () => {
         sex,
         email_address,
         password,
+        // ✅ send agreement flag like client side
+        is_agreed_to_terms,
       });
 
       if (response.status === 201) {
@@ -161,30 +167,58 @@ const WorkerSignUpPage = () => {
               />
             </div>
 
+            {/* ✅ Password with conditional Show/Hide */}
             <div>
               <label htmlFor="password" className="block text-sm font-semibold mb-1">
                 Password (12 or more characters) {/* ✅ Updated label */}
               </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                className="w-full p-2.5 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className={`w-full p-2.5 ${password ? 'pr-20' : ''} border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]`}
+                  autoComplete="new-password"
+                />
+                {password.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute inset-y-0 right-2 my-auto text-sm font-medium text-[#008cfc] hover:underline px-2"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                )}
+              </div>
             </div>
 
+            {/* ✅ Confirm Password with conditional Show/Hide */}
             <div>
               <label htmlFor="confirm_password" className="block text-sm font-semibold mb-1">Confirm Password</label>
-              <input
-                id="confirm_password"
-                type="password"
-                value={confirm_password}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
-                className="w-full p-2.5 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
-              />
+              <div className="relative">
+                <input
+                  id="confirm_password"
+                  type={showConfirm ? 'text' : 'password'}
+                  value={confirm_password}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm password"
+                  className={`w-full p-2.5 ${confirm_password ? 'pr-20' : ''} border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]`}
+                  autoComplete="new-password"
+                />
+                {confirm_password.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((s) => !s)}
+                    className="absolute inset-y-0 right-2 my-auto text-sm font-medium text-[#008cfc] hover:underline px-2"
+                    aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
+                  >
+                    {showConfirm ? 'Hide' : 'Show'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

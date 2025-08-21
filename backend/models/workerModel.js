@@ -1,7 +1,16 @@
 const { supabaseAdmin } = require('../supabaseClient'); // ✅ Same import style as clientModel.js
 
 // Function to create a new worker in Supabase DB table
-const createWorker = async (auth_uid, firstName, lastName, sex, email, password) => {
+const createWorker = async (
+  auth_uid,
+  firstName,
+  lastName,
+  sex,
+  email,
+  password,
+  isAgreedToTerms,
+  agreedAt
+) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('user_worker')
@@ -12,7 +21,9 @@ const createWorker = async (auth_uid, firstName, lastName, sex, email, password)
           last_name: lastName,
           sex,
           email_address: email,
-          password
+          password,                 // ⚠️ kept to not remove existing code
+          is_agreed_to_terms: isAgreedToTerms, // ✅ new column
+          agreed_at: agreedAt                  // ✅ new column
         }
       ]);
     if (error) throw error;

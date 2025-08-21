@@ -30,7 +30,6 @@ app.use(session({
   }
 }));
 
-// Health check/test endpoint
 app.get('/test', (req, res) => {
   res.json({ message: "Server is up and running" });
 });

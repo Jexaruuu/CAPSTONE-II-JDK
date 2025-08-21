@@ -109,24 +109,29 @@ const LoginPage = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email Address"
               className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+              autoComplete="email"
             />
 
-            {/* Password input with Show/Hide toggle */}
+            {/* Password input with conditional Show/Hide */}
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc] pr-16"
+                className={`w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc] ${password ? 'pr-16' : ''}`}
+                autoComplete="current-password"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-3 flex items-center text-sm font-medium text-[#008cfc] hover:underline focus:outline-none"
-              >
-                {showPassword ? 'Hide' : 'Show'}
-              </button>
+              {password.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-3 flex items-center text-sm font-medium text-[#008cfc] hover:underline focus:outline-none"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              )}
             </div>
           </div>
 
