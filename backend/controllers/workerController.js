@@ -1,5 +1,5 @@
 const workerModel = require('../models/workerModel');
-const { createSupabaseAuthUser } = require('../supabaseClient');
+const { createSupabaseAuthUser, createConfirmedUser } = require('../supabaseClient');
 
 const registerWorker = async (req, res) => {
   const {
@@ -14,6 +14,12 @@ const registerWorker = async (req, res) => {
   console.log('📩 Incoming Worker Data:', req.body);
 
   try {
+    // ✅ Require OTP verification in session
+    const verified = req.session?.verifiedEmails?.[email_address] === true;
+    if (!verified) {
+      return res.status(400).json({ message: 'Please verify your email with the 6-digit code before creating an account.' });
+    }
+
     // Validate required fields (surface 400 instead of 500)
     if (!first_name || !last_name || !sex || !email_address || !password) {
       return res.status(400).json({ message: 'Missing required fields' });
@@ -28,33 +34,17 @@ const registerWorker = async (req, res) => {
       return res.status(400).json({ message: 'Email already in use' });
     }
 
-    // Create in Supabase Auth (include agreement metadata)
+    // Create in Supabase Auth as email-confirmed
     const agreed_at = new Date().toISOString();
-    const { user: authUser, error: authError } = await createSupabaseAuthUser(
+    const { user: authUser, error: authError } = await createConfirmedUser(
       email_address,
       password,
       { first_name, last_name, sex, role: 'worker', is_agreed_to_terms: true, agreed_at }
     );
 
-    // ✅ Map known Supabase errors like client side
+    // ✅ Map like client side
     if (authError) {
       console.error('Auth create error:', authError);
-
-      if (authError.isRateLimit) {
-        return res.status(429).json({
-          message: 'Too many verification emails sent. Please wait a minute and try again.'
-        });
-      }
-      if (authError.isAlreadyRegistered) {
-        return res.status(409).json({
-          message: 'This email already started signup. Please resend the verification email.'
-        });
-      }
-      if (authError.isEmailSendFailure) {
-        return res.status(502).json({
-          message: 'Email delivery failed. Check SMTP settings in Supabase (host/port/username/app password).'
-        });
-      }
       return res.status(authError.status || 400).json({
         message: authError.message || 'Failed to create auth user',
         code: authError.code || undefined
@@ -87,6 +77,9 @@ const registerWorker = async (req, res) => {
       }
       return res.status(500).json({ message: dbErr.message || 'Database insert failed' });
     }
+
+    // ✅ cleanup the session flag
+    if (req.session?.verifiedEmails) delete req.session.verifiedEmails[email_address];
 
     return res.status(201).json({
       message: 'Worker registered successfully',

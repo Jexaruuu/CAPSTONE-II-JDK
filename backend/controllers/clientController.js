@@ -1,10 +1,16 @@
 const clientModel = require('../models/clientModel');
-const { createSupabaseAuthUser } = require('../supabaseClient');
+const { createSupabaseAuthUser, createConfirmedUser } = require('../supabaseClient');
 
 const registerClient = async (req, res) => {
   const { first_name, last_name, sex, email_address, password, is_agreed_to_terms } = req.body;
 
   try {
+    // ✅ Block unless email verified via OTP in this session
+    const verified = req.session?.verifiedEmails?.[email_address] === true;
+    if (!verified) {
+      return res.status(400).json({ message: 'Please verify your email with the 6-digit code before creating an account.' });
+    }
+
     // Check if email exists in either table
     const emailExists = await clientModel.checkEmailExistenceAcrossAllUsers(email_address);
     if (emailExists.length > 0) {
@@ -14,32 +20,15 @@ const registerClient = async (req, res) => {
     // derive agreed_at on server for consistency/audit
     const agreed_at = is_agreed_to_terms ? new Date().toISOString() : null;
 
-    // Create in Supabase Auth (add agreement metadata)
-    const { user: authUser, error: authError } = await createSupabaseAuthUser(
+    // ✅ After OTP, create the user already-confirmed (no further email link)
+    const { user: authUser, error: authError } = await createConfirmedUser(
       email_address,
       password,
       { first_name, last_name, sex, role: 'client', is_agreed_to_terms: !!is_agreed_to_terms, agreed_at }
     );
 
-    // ✅ Map known Supabase errors to proper HTTP codes
+    // Keep your existing error mapping shape for consistency
     if (authError) {
-      if (authError.isRateLimit) {
-        return res.status(429).json({
-          message: 'Too many verification emails sent. Please wait a minute and try again.'
-        });
-      }
-      if (authError.isAlreadyRegistered) {
-        return res.status(409).json({
-          message: 'This email already started signup. Please resend the verification email.'
-        });
-      }
-      // ✅ NEW: surface SMTP/confirmation send failure clearly
-      if (authError.isEmailSendFailure) {
-        return res.status(502).json({
-          message: 'Email delivery failed. Check SMTP settings in Supabase (host/port/username/app password).'
-        });
-      }
-      // Unknown error from Supabase
       return res.status(authError.status || 400).json({
         message: authError.message || 'Signup failed',
         code: authError.code || undefined
@@ -58,9 +47,12 @@ const registerClient = async (req, res) => {
       agreed_at
     );
 
+    // ✅ cleanup the session flag for this email
+    if (req.session?.verifiedEmails) delete req.session.verifiedEmails[email_address];
+
     return res.status(201).json({
       message: 'Client registered successfully',
-      data: { first_name, last_name, sex, is_agreed_to_terms: !!is_agreed_to_terms, agreed_at }
+      data: { first_name, last_name, sex, is_agreed_to_terms: !!is_agreed_to_terms, agreed_at, auth_uid: authUser.id }
     });
   } catch (error) {
     console.error('Error during client registration:', error);

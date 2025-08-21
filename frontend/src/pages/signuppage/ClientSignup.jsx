@@ -24,6 +24,18 @@ const ClientSignUpPage = () => {
   const [info_message, setInfoMessage] = useState('');
   const [canResend, setCanResend] = useState(false);
 
+  // ✅ NEW: OTP modal & flow
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpInfo, setOtpInfo] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [canResendAt, setCanResendAt] = useState(0);
+
+  const now = () => Date.now();
+  const canResendOtp = now() >= canResendAt;
+
   const navigate = useNavigate();
 
   const isFormValid = (
@@ -37,46 +49,82 @@ const ClientSignUpPage = () => {
     is_agreed_to_terms
   );
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrorMessage('');
-    setInfoMessage('');
-    setCanResend(false);
-
-    if (password !== confirm_password) {
-      setErrorMessage('Passwords do not match');
-      return;
+  // ✅ NEW: request OTP (uses session via withCredentials)
+  const requestOtp = async () => {
+    try {
+      setOtpError('');
+      setOtpInfo('Sending code…');
+      setOtpSending(true);
+      await axios.post(
+        'http://localhost:5000/api/auth/request-otp',
+        { email: email_address },
+        { withCredentials: true }
+      );
+      setOtpInfo('We sent a 6-digit code to your email. Enter it below.');
+      setCanResendAt(now() + 60000); // 60s cooldown
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to send OTP.';
+      setOtpError(msg);
+      setOtpInfo('');
+    } finally {
+      setOtpSending(false);
     }
+  };
 
-    if (password.trim().length < 12) {
-      setErrorMessage('Password must be at least 12 characters long');
-      return;
+  // ✅ NEW: verify OTP then proceed to registration
+  const verifyOtp = async () => {
+    try {
+      setOtpError('');
+      setOtpInfo('Verifying…');
+      setOtpVerifying(true);
+      await axios.post(
+        'http://localhost:5000/api/auth/verify-otp',
+        { email: email_address, code: otpCode },
+        { withCredentials: true }
+      );
+      setOtpInfo('Verified! Creating your account…');
+      setOtpOpen(false);
+      await completeRegistration();
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Invalid code.';
+      setOtpError(msg);
+      setOtpInfo('');
+    } finally {
+      setOtpVerifying(false);
     }
+  };
 
+  // ✅ NEW: actual registration AFTER OTP verification
+  const completeRegistration = async () => {
     try {
       setLoading(true);
 
-      const response = await axios.post('http://localhost:5000/api/clients/register', {
-        first_name,
-        last_name,
-        sex,
-        email_address,
-        password,
-        // ✅ send the agreement flag to backend
-        is_agreed_to_terms,
-      });
+      const response = await axios.post(
+        'http://localhost:5000/api/clients/register',
+        {
+          first_name,
+          last_name,
+          sex,
+          email_address,
+          password,
+          // ✅ send the agreement flag to backend
+          is_agreed_to_terms,
+        },
+        { withCredentials: true }
+      );
 
       if (response.status === 201) {
         // Store user info + auth_uid from backend
         localStorage.setItem('first_name', first_name);
         localStorage.setItem('last_name', last_name);
         localStorage.setItem('sex', sex);
-        if (response.data?.auth_uid) {
-          localStorage.setItem('auth_uid', response.data.auth_uid);
+        const uid = response?.data?.data?.auth_uid || response?.data?.auth_uid;
+        if (uid) {
+          localStorage.setItem('auth_uid', uid);
         }
 
-        // Let the user know an email was sent
-        setInfoMessage('Signup started. Please check your inbox for the verification link.');
+        // Let the user know success
+        setInfoMessage('Account created. You’re all set!');
         navigate('/clientsuccess');
       }
     } catch (error) {
@@ -100,7 +148,55 @@ const ClientSignUpPage = () => {
     }
   };
 
-  // ✅ NEW: Resend flow
+  /* ✅ NEW: pre-check if email exists; return true if available
+     (Prevents opening the OTP modal when email is already taken) */
+  const checkEmailAvailable = async () => {
+    try {
+      const resp = await axios.post(
+        'http://localhost:5000/api/auth/check-email',
+        { email: email_address },
+        { withCredentials: true }
+      );
+      return resp?.data?.exists === true ? false : true;
+    } catch (e) {
+      const msg = e?.response?.data?.message || 'Failed to check email.';
+      setErrorMessage(msg);
+      return false; // be conservative: treat as not available on error
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setInfoMessage('');
+    setCanResend(false);
+
+    if (password !== confirm_password) {
+      setErrorMessage('Passwords do not match');
+      return;
+    }
+
+    if (password.trim().length < 12) {
+      setErrorMessage('Password must be at least 12 characters long');
+      return;
+    }
+
+    // ✅ NEW: email pre-check (don’t open OTP if taken)
+    const available = await checkEmailAvailable();
+    if (!available) {
+      setErrorMessage('Email already in use');
+      return;
+    }
+
+    // ✅ NEW: open OTP modal instead of immediate registration
+    setOtpOpen(true);
+    setOtpCode('');
+    setOtpInfo('');
+    setOtpError('');
+    await requestOtp();
+  };
+
+  // ✅ NEW: existing resend email kept (no removal)
   const handleResend = async () => {
     try {
       setErrorMessage('');
@@ -295,7 +391,7 @@ const ClientSignUpPage = () => {
           </div>
 
           {info_message && (
-            <div className="text-green-600 text-center mt-4">
+            <div className="text-[#008cfc] text-center mt-4">
               {info_message}
             </div>
           )}
@@ -306,7 +402,7 @@ const ClientSignUpPage = () => {
             </div>
           )}
 
-          {/* ✅ NEW: Resend UI */}
+          {/* ✅ NEW: Resend UI (kept) */}
           {canResend && (
             <div className="text-center mt-2">
               <button
@@ -325,6 +421,52 @@ const ClientSignUpPage = () => {
           </div>
         </div>
       </div>
+
+      {/* ✅ NEW: OTP Modal */}
+      {otpOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-sm rounded-lg p-6 shadow-lg">
+            <h3 className="text-xl font-semibold mb-2 text-center">Verify your email</h3>
+            <p className="text-sm text-gray-600 mb-4 text-center">
+              Enter the 6-digit code we sent to <b>{email_address || 'your email'}</b>.
+            </p>
+            <input
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0,6))}
+              placeholder="123456"
+              className="w-full p-3 border-2 rounded-md border-gray-300 text-center tracking-widest text-lg"
+            />
+            {otpInfo && <div className="text-[#008cfc] text-center mt-3">{otpInfo}</div>}
+            {otpError && <div className="text-red-600 text-center mt-3">{otpError}</div>}
+
+            <div className="flex items-center justify-between mt-4">
+              <button
+                onClick={() => setOtpOpen(false)}
+                className="px-4 py-2 rounded-md border border-gray-300"
+                disabled={otpVerifying}
+              >
+                Cancel
+              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={requestOtp}
+                  disabled={!canResendOtp || otpSending}
+                  className={`px-4 py-2 rounded-md border ${!canResendOtp || otpSending ? 'opacity-50 cursor-not-allowed' : 'border-[#008cfc] text-[#008cfc]'}`}
+                >
+                  {otpSending ? 'Sending…' : (canResendOtp ? 'Resend code' : 'Wait…')}
+                </button>
+                <button
+                  onClick={verifyOtp}
+                  disabled={otpCode.length !== 6 || otpVerifying}
+                  className="px-4 py-2 rounded-md bg-[#008cfc] text-white"
+                >
+                  {otpVerifying ? 'Verifying…' : 'Verify'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

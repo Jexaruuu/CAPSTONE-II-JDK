@@ -15,8 +15,9 @@ import ClientDashboardPage from './pages/dashboardpage/ClientDashboard';
 import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from "./pages/successpage/WorkerSuccess";
 import WorkerWelcomePage from './pages/workerpage/WorkerWelcome';
-import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 import WorkerPostApplication from './pages/workerpage/WorkerPostApplication';
+
+import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 
 // ✅ Protected route for logged-in users
 const ProtectedRoute = ({ children }) => {

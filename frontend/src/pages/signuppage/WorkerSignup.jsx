@@ -25,6 +25,18 @@ const WorkerSignUpPage = () => {
   const [info_message, setInfoMessage] = useState('');
   const [canResend, setCanResend] = useState(false);
 
+  // ✅ NEW: OTP modal & flow (added)
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpInfo, setOtpInfo] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [canResendAt, setCanResendAt] = useState(0);
+
+  const now = () => Date.now();
+  const canResendOtp = now() >= canResendAt;
+
   // ✅ Same password validation as Client page
   const isFormValid = (
     first_name.trim() !== '' &&
@@ -36,6 +48,124 @@ const WorkerSignUpPage = () => {
     password === confirm_password &&
     is_agreed_to_terms
   );
+
+  /* ✅ NEW: pre-check if email exists; return true if available
+     (Prevents opening the OTP modal when email is already taken) */
+  const checkEmailAvailable = async () => {
+    try {
+      const resp = await axios.post(
+        'http://localhost:5000/api/auth/check-email',
+        { email: email_address },
+        { withCredentials: true }
+      );
+      // API returns { exists: true/false }
+      return resp?.data?.exists === true ? false : true;
+    } catch (e) {
+      const msg = e?.response?.data?.message || 'Failed to check email.';
+      setErrorMessage(msg);
+      return false; // be conservative if server check fails
+    }
+  };
+
+  // ✅ NEW: request OTP (uses session via withCredentials)
+  const requestOtp = async () => {
+    try {
+      setOtpError('');
+      setOtpInfo('Sending code…');
+      setOtpSending(true);
+      await axios.post(
+        'http://localhost:5000/api/auth/request-otp',
+        { email: email_address },
+        { withCredentials: true }
+      );
+      setOtpInfo('We sent a 6-digit code to your email. Enter it below.');
+      setCanResendAt(now() + 60000); // 60s cooldown
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to send OTP.';
+      setOtpError(msg);
+      setOtpInfo('');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  // ✅ NEW: verify OTP then proceed to registration
+  const verifyOtp = async () => {
+    try {
+      setOtpError('');
+      setOtpInfo('Verifying…');
+      setOtpVerifying(true);
+      await axios.post(
+        'http://localhost:5000/api/auth/verify-otp',
+        { email: email_address, code: otpCode },
+        { withCredentials: true }
+      );
+      setOtpInfo('Verified! Creating your account…');
+      setOtpOpen(false);
+      await completeRegistration(); // ← original registration logic moved here
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Invalid code.';
+      setOtpError(msg);
+      setOtpInfo('');
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
+  // ✅ NEW: actual registration AFTER OTP verification (wraps your original axios.post)
+  const completeRegistration = async () => {
+    try {
+      setLoading(true);
+
+      const response = await axios.post(
+        'http://localhost:5000/api/workers/register',
+        {
+          first_name,
+          last_name,
+          sex,
+          email_address,
+          password,
+          // ✅ send agreement flag like client side
+          is_agreed_to_terms,
+        },
+        { withCredentials: true }
+      );
+
+      if (response.status === 201) {
+        const { auth_uid } = response.data.data || {};
+        localStorage.setItem('first_name', first_name);
+        localStorage.setItem('last_name', last_name);
+        localStorage.setItem('sex', sex);
+        if (auth_uid) {
+          localStorage.setItem('auth_uid', auth_uid); // ✅ store Supabase UID
+        }
+
+        setInfoMessage('Account created. You’re all set!');
+        navigate('/workersuccess');
+      }
+    } catch (error) {
+      console.error('❌ Registration error:', error);
+      const status = error?.response?.status;
+      const msg = error?.response?.data?.message;
+
+      if (status === 429) {
+        setErrorMessage('Too many verification emails were sent. Please wait a minute and try again.');
+        setCanResend(true);
+      } else if (status === 409) {
+        setErrorMessage('This email already started signup. You can resend the verification email.');
+        setCanResend(true);
+      } else if (status === 502) {
+        setErrorMessage('Email delivery failed. Check SMTP settings in Supabase (host/port/username/app password).');
+        setCanResend(true);
+      } else if (msg) {
+        setErrorMessage(msg);
+      } else {
+        setErrorMessage('Registration failed.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -53,54 +183,19 @@ const WorkerSignUpPage = () => {
       return;
     }
 
-    try {
-      setLoading(true);
-
-      const response = await axios.post('http://localhost:5000/api/workers/register', {
-        first_name,
-        last_name,
-        sex,
-        email_address,
-        password,
-        // ✅ send agreement flag like client side
-        is_agreed_to_terms,
-      });
-
-      if (response.status === 201) {
-        const { auth_uid } = response.data.data || {};
-        localStorage.setItem('first_name', first_name);
-        localStorage.setItem('last_name', last_name);
-        localStorage.setItem('sex', sex);
-        if (auth_uid) {
-          localStorage.setItem('auth_uid', auth_uid); // ✅ store Supabase UID
-        }
-
-        setInfoMessage('Signup started. Please check your inbox for the verification link.');
-        navigate('/workersuccess');
-      }
-    } catch (error) {
-      console.error('❌ Registration error:', error);
-      const status = error?.response?.status;
-      const msg = error?.response?.data?.message;
-
-      if (status === 429) {
-        setErrorMessage('Too many verification emails were sent. Please wait a minute and try again.');
-        setCanResend(true);
-      } else if (status === 409) {
-        setErrorMessage('This email already started signup. You can resend the verification email.');
-        setCanResend(true);
-      } else if (status === 502) {
-        setErrorMessage('Email delivery failed. Check SMTP settings in Supabase (host/port/username/app password).');
-        // Resend may not help if SMTP is broken, but we leave the button available
-        setCanResend(true);
-      } else if (msg) {
-        setErrorMessage(msg);
-      } else {
-        setErrorMessage('Registration failed.');
-      }
-    } finally {
-      setLoading(false);
+    // ✅ NEW: email pre-check (don’t open OTP if taken)
+    const available = await checkEmailAvailable();
+    if (!available) {
+      setErrorMessage('Email already in use');
+      return;
     }
+
+    // ✅ NEW: open OTP modal (replaces immediate registration)
+    setOtpOpen(true);
+    setOtpCode('');
+    setOtpInfo('');
+    setOtpError('');
+    await requestOtp();
   };
 
   // ✅ NEW: Resend flow (same endpoint used by client)
@@ -240,7 +335,7 @@ const WorkerSignUpPage = () => {
 
             {/* ✅ Confirm Password with conditional Show/Hide */}
             <div>
-              <label htmlFor="confirm_password" className="block text-sm font-semibold mb-1">Confirm Password</label>
+               <label htmlFor="confirm_password" className="block text-sm font-semibold mb-1">Confirm Password</label>
               <div className="relative">
                 <input
                   id="confirm_password"
@@ -295,7 +390,7 @@ const WorkerSignUpPage = () => {
           </div>
 
           {info_message && (
-            <div className="text-green-600 text-center mt-4">
+            <div className="text-[#008cfc] text-center mt-4">
               {info_message}
             </div>
           )}
@@ -325,6 +420,52 @@ const WorkerSignUpPage = () => {
           </div>
         </div>
       </div>
+
+      {/* ✅ NEW: OTP Modal */}
+      {otpOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-sm rounded-lg p-6 shadow-lg">
+            <h3 className="text-xl font-semibold mb-2 text-center">Verify your email</h3>
+            <p className="text-sm text-gray-600 mb-4 text-center">
+              Enter the 6-digit code we sent to <b>{email_address || 'your email'}</b>.
+            </p>
+            <input
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0,6))}
+              placeholder="123456"
+              className="w-full p-3 border-2 rounded-md border-gray-300 text-center tracking-widest text-lg"
+            />
+            {otpInfo && <div className="text-[#008cfc] text-center mt-3">{otpInfo}</div>}
+            {otpError && <div className="text-red-600 text-center mt-3">{otpError}</div>}
+
+            <div className="flex items-center justify-between mt-4">
+              <button
+                onClick={() => setOtpOpen(false)}
+                className="px-4 py-2 rounded-md border border-gray-300"
+                disabled={otpVerifying}
+              >
+                Cancel
+              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={requestOtp}
+                  disabled={!canResendOtp || otpSending}
+                  className={`px-4 py-2 rounded-md border ${!canResendOtp || otpSending ? 'opacity-50 cursor-not-allowed' : 'border-[#008cfc] text-[#008cfc]'}`}
+                >
+                  {otpSending ? 'Sending…' : (canResendOtp ? 'Resend code' : 'Wait…')}
+                </button>
+                <button
+                  onClick={verifyOtp}
+                  disabled={otpCode.length !== 6 || otpVerifying}
+                  className="px-4 py-2 rounded-md bg-[#008cfc] text-white"
+                >
+                  {otpVerifying ? 'Verifying…' : 'Verify'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

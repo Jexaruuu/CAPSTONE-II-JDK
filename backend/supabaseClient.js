@@ -28,9 +28,6 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 /**
  * Create a new user in Supabase Auth (Admin)
  * Works for both Client and Worker registrations
- * @param {string} email
- * @param {string} password
- * @param {object} metadata
  */
 async function createSupabaseAuthUser(email, password, metadata = {}) {
   try {
@@ -52,28 +49,25 @@ async function createSupabaseAuthUser(email, password, metadata = {}) {
       password,
       options: {
         data: metadata,
-        emailRedirectTo: EMAIL_REDIRECT_URL,               // ✅ redirect after email confirm
+        emailRedirectTo: EMAIL_REDIRECT_URL,
       }
     });
 
     if (error) throw error;
     return { user: data?.user, error: null };
   } catch (err) {
-    // ✅ Tag known cases so controllers can return proper HTTP codes
     if (err?.status === 429 || err?.code === 'over_email_send_rate_limit') {
       err.isRateLimit = true;
     }
     if (err?.status === 400 && /already registered|user already registered/i.test(err?.message || '')) {
       err.isAlreadyRegistered = true;
     }
-    // ✅ Tag SMTP/confirmation-email failures (your current error)
     if (err?.status === 500 || err?.code === 'unexpected_failure' || /confirmation email|smtp|mail/i.test(err?.message || '')) {
       err.isEmailSendFailure = true;
     }
 
     console.error('❌ Error creating Supabase Auth user:', err);
 
-    // ✅ Optional DEV fallback: if email send fails, auto-confirm to keep testing
     if (err.isEmailSendFailure && FALLBACK_AUTOCONFIRM) {
       try {
         const { data, error: err2 } = await supabaseAdmin.auth.admin.createUser({
@@ -94,6 +88,23 @@ async function createSupabaseAuthUser(email, password, metadata = {}) {
   }
 }
 
+// ✅ NEW: create already-confirmed user (used after OTP verification)
+async function createConfirmedUser(email, password, metadata = {}) {
+  try {
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: metadata
+    });
+    if (error) throw error;
+    return { user: data.user, error: null };
+  } catch (err) {
+    console.error('❌ Error creating confirmed user:', err);
+    return { user: null, error: err };
+  }
+}
+
 // ✅ resend signup verification email
 async function resendSignupEmail(email) {
   const { data, error } = await supabaseAdmin.auth.resend({
@@ -105,8 +116,9 @@ async function resendSignupEmail(email) {
 }
 
 module.exports = {
-  supabase,       // Public client
-  supabaseAdmin,  // Admin client for DB inserts
+  supabase,
+  supabaseAdmin,
   createSupabaseAuthUser,
-  resendSignupEmail, // export new helper
+  resendSignupEmail,
+  createConfirmedUser, // ✅ export new helper
 };
