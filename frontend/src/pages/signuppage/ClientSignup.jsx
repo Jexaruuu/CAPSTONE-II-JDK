@@ -16,7 +16,6 @@ const ClientSignUpPage = () => {
   const [error_message, setErrorMessage] = useState('');
   const navigate = useNavigate();
 
-  // ✅ Require at least 12 characters for Supabase Auth
   const isFormValid = (
     first_name.trim() !== '' &&
     last_name.trim() !== '' &&

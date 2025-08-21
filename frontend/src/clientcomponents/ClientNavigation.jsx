@@ -6,7 +6,7 @@ const ClientNavigation = () => {
   const [selectedOption, setSelectedOption] = useState('Client');
   const [showSubDropdown, setShowSubDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showBellDropdown, setShowBellDropdown] = useState(false); // For bell icon dropdown
+  const [showBellDropdown, setShowBellDropdown] = useState(false); 
   const [showHireWorkerDropdown, setShowHireWorkerDropdown] = useState(false);
   const [showManageRequestDropdown, setShowManageRequestDropdown] = useState(false);
   const [showReportsDropdown, setShowReportsDropdown] = useState(false);
@@ -16,7 +16,7 @@ const ClientNavigation = () => {
   const manageRequestDropdownRef = useRef(null);
   const profileDropdownRef = useRef(null);
   const reportsDropdownRef = useRef(null);
-  const bellDropdownRef = useRef(null); // Reference for bell dropdown
+  const bellDropdownRef = useRef(null); 
 
   const handleClickOutside = (event) => {
     if (
