@@ -267,7 +267,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
       </div>
 
       <div className="flex justify-between mt-8 ml-3">
-        <Link to="/clientwelcome">
+        <Link to="/clientdashboard">
           <button
             type="button"
             className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300"

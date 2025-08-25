@@ -19,6 +19,9 @@ import WorkerPostApplication from './pages/workerpage/WorkerPostApplication';
 
 import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 
+/* ✅ NEW: Admin login page only */
+import AdminLoginPage from './pages/loginpage/AdminLoginPage';
+
 const ProtectedRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
   const lastName = localStorage.getItem('last_name');
@@ -30,12 +33,18 @@ const GuestRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
   const lastName = localStorage.getItem('last_name');
   const role = localStorage.getItem('role');
-  return firstName && lastName && role
-    ? <Navigate to={role === 'client' ? '/clientdashboard' : '/workerdashboard'} />
-    : children;
+
+  // ✅ Tiny tweak: avoid redirecting admins to worker dashboard while no admin dashboard exists
+  if (firstName && lastName && role) {
+    if (role === 'client') return <Navigate to="/clientdashboard" />;
+    if (role === 'worker') return <Navigate to="/workerdashboard" />;
+    // role === 'admin' => allow guest pages for now (no admin dashboard yet)
+    return children;
+  }
+  return children;
 };
 
-/** ✅ NEW: role-specific guards */
+/** ✅ NEW: role-specific guards (unchanged below) */
 const ClientOnlyRoute = ({ children }) => {
   const role = localStorage.getItem('role');
   return role === 'client'
@@ -84,6 +93,12 @@ const App = () => {
               <LoginPage />
             </GuestRoute>
           }
+        />
+
+        {/* ✅ NEW: ADMIN LOGIN ONLY (no dashboard yet) */}
+        <Route
+          path="/adminlogin"
+          element={<AdminLoginPage />}
         />
 
         {/* CLIENT ROUTES */}
