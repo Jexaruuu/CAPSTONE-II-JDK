@@ -7,6 +7,9 @@ const clientRoutes = require('./routes/clientRoutes');
 const workerRoutes = require('./routes/workerRoutes');
 const loginRoutes = require('./routes/loginRoutes');
 
+// ✅ NEW: Admin routes
+const adminRoutes = require('./routes/adminRoutes');
+
 const { resendSignupEmail } = require('./supabaseClient');
 
 // ✅ NEW: mail + otp utils
@@ -16,6 +19,8 @@ const crypto = require('crypto');
 // ✅ NEW: bring in models to check email existence
 const clientModel = require('./models/clientModel');
 const workerModel = require('./models/workerModel');
+// ✅ NEW: admin model for email checks
+const adminModel = require('./models/adminModel');
 
 dotenv.config();
 
@@ -58,20 +63,28 @@ app.post('/api/auth/resend', async (req, res) => {
 });
 
 /* ======================
-   ✅ NEW: EMAIL EXISTENCE CHECK
+   ✅ EMAIL EXISTENCE CHECK
    ====================== */
 app.post('/api/auth/check-email', async (req, res) => {
   try {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ message: 'Email is required' });
 
-    // Check both user tables (safe even if your model already checks across all)
-    const [clientFound, workerFound] = await Promise.all([
+    const [clientFound, workerFound, adminFound] = await Promise.all([
       clientModel.checkEmailExistenceAcrossAllUsers(email),
-      workerModel.checkEmailExistenceAcrossAllUsers(email)
+      workerModel.checkEmailExistenceAcrossAllUsers(email),
+      adminModel.checkEmailExistenceAcrossAllUsers
+        ? adminModel.checkEmailExistenceAcrossAllUsers(email)
+        : false
     ]);
 
-    const exists = (clientFound?.length || 0) > 0 || (workerFound?.length || 0) > 0;
+    // Normalize to boolean
+    const flatten = (v) =>
+      v === true ||
+      (Array.isArray(v) && v.length > 0) ||
+      (!!v && typeof v === 'object' && Array.isArray(v.data) && v.data.length > 0);
+
+    const exists = flatten(clientFound) || flatten(workerFound) || flatten(adminFound);
     return res.status(200).json({ exists });
   } catch (e) {
     console.error('check-email error:', e);
@@ -202,6 +215,10 @@ app.post('/api/auth/verify-otp', async (req, res) => {
 app.use('/api/clients', clientRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/login', loginRoutes);
+
+// ✅ NEW: admin routes (both plural & singular for compatibility)
+app.use('/api/admins', adminRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

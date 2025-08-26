@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { createClient } from '@supabase/supabase-js';
 
-// ✅ Your direct Supabase credentials
-const supabaseUrl = 'https://uoyzcboehvwxcadrqqfq.supabase.co';
-const supabaseKey =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVveXpjYm9laHZ3eGNhZHJxcWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyODE4MzcsImV4cCI6MjA2ODg1NzgzN30.09tdQtyneRfAbQJRoVy5J9YpsuLTwn-EDF0tt2hUosg';
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { sbAdmin as supabase } from '../../supabaseBrowser'; // <-- adjust path if needed
 
 const ADMIN_ROLE = 'admin';
 
@@ -356,22 +351,6 @@ const AdminLoginPage = () => {
             </button>
           </div>
 
-          <div className="text-center mt-4">
-            <span>or</span>
-          </div>
-
-          <div className="flex space-x-4 mt-4">
-            <button
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 transition hover:bg-[#008cfc] border-[#008cfc] text-[#008cfc] hover:text-white disabled:opacity-60"
-            >
-              <img src="/Google.png" alt="Google Logo" className="h-5 w-5 mr-2" />
-              Continue with Google
-            </button>
-          </div>
-
-          {/* 🔹 Separate role links (HIDDEN per your request but kept in code) */}
           {false && (
             <div className="text-center mt-6 space-y-2">
               <span>Not an admin?</span>
@@ -386,7 +365,6 @@ const AdminLoginPage = () => {
             </div>
           )}
 
-          {/* ✅ Login-page style footer — go to separate page */}
           <div className="text-center mt-6">
             <span>Not an admin? </span>
             <Link to="/adminsignup" className="text-blue-500 underline">
@@ -394,7 +372,6 @@ const AdminLoginPage = () => {
             </Link>
           </div>
 
-          {/* ======= Inline Create Admin Account (kept but hidden) ======= */}
           {false && (
             <div className="mt-8 border-t pt-6">
               <div className="flex items-center justify-between">
@@ -427,7 +404,6 @@ const AdminLoginPage = () => {
                     />
                   </div>
 
-                  {/* Optional field */}
                   <input
                     type="text"
                     value={sex}
@@ -436,7 +412,6 @@ const AdminLoginPage = () => {
                     className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
                   />
 
-                  {/* Reuse email from login (kept) */}
                   <input
                     type="email"
                     value={email}

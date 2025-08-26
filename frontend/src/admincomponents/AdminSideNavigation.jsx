@@ -10,10 +10,10 @@ import {
 
 const navItems = [
   { label: 'Dashboard',           to: '/admindashboard',           icon: LayoutDashboard },
-  { label: 'Manage Users',        to: '/admin/manage-users',       icon: Users },
-  { label: 'Worker Applications', to: '/admin/worker-applications',icon: ClipboardList },
-  { label: 'Service Request',     to: '/admin/service-requests',   icon: FileText },
-  { label: 'Settings',            to: '/admin/settings',           icon: SettingsIcon },
+  { label: 'Manage Users',        to: '/adminmanageusers',       icon: Users },
+  { label: 'Worker Applications', to: '/adminworkerapplications',icon: ClipboardList },
+  { label: 'Service Request',     to: '/adminservicerequests',   icon: FileText },
+  { label: 'Settings',            to: '/adminsettings',           icon: SettingsIcon },
 ];
 
 const AdminSideNavigation = () => {
@@ -40,8 +40,8 @@ const AdminSideNavigation = () => {
                
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] md:text-base font-medium transition-colors',
                   isActive
-                    ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                    ? 'bg-gray-100 text-[#008cfc]'
+                    : 'text-black hover:bg-gray-50 hover:text-[#008cfc]',
                 ].join(' ')
               }
             >

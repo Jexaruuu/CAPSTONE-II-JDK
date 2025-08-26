@@ -3,9 +3,9 @@ import { Search, Bell } from 'lucide-react';
 
 const getGreeting = (d = new Date()) => {
   const h = d.getHours();
-  if (h >= 5 && h < 12) return 'Good morning';
-  if (h >= 12 && h < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (h >= 5 && h < 12) return 'Good morning Admin!';
+  if (h >= 12 && h < 18) return 'Good afternoon Admin!';
+  return 'Good evening Admin!';
 };
 
 const formatTime = (d = new Date()) =>

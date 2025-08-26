@@ -39,6 +39,9 @@ const AdminSignup = () => {
 
   const navigate = useNavigate();
 
+  // ✅ helper: normalize email before sending to backend
+  const normEmail = (s) => String(s || '').trim().toLowerCase();
+
   const isFormValid = (
     first_name.trim() !== '' &&
     last_name.trim() !== '' &&
@@ -58,7 +61,7 @@ const AdminSignup = () => {
       setOtpSending(true);
       await axios.post(
         'http://localhost:5000/api/auth/request-otp',
-        { email: email_address },
+        { email: normEmail(email_address) }, // normalize
         { withCredentials: true }
       );
       setOtpInfo('We sent a 6-digit code to your email. Enter it below.');
@@ -80,7 +83,7 @@ const AdminSignup = () => {
       setOtpVerifying(true);
       await axios.post(
         'http://localhost:5000/api/auth/verify-otp',
-        { email: email_address, code: otpCode },
+        { email: normEmail(email_address), code: otpCode },
         { withCredentials: true }
       );
       setOtpInfo('Verified! Creating your account…');
@@ -107,7 +110,7 @@ const AdminSignup = () => {
           last_name,
           admin_no,             // ✅ NEW: send Admin No. to backend
           sex,
-          email_address,
+          email_address: normEmail(email_address), // normalize
           password,
           // ✅ still sending as literal true for backend compatibility
           is_agreed_to_terms: true,
@@ -158,7 +161,7 @@ const AdminSignup = () => {
     try {
       const resp = await axios.post(
         'http://localhost:5000/api/auth/check-email',
-        { email: email_address },
+        { email: normEmail(email_address) }, // normalize
         { withCredentials: true }
       );
       return resp?.data?.exists === true ? false : true;
@@ -211,7 +214,7 @@ const AdminSignup = () => {
     try {
       setErrorMessage('');
       setInfoMessage('Resending verification email…');
-      await axios.post('http://localhost:5000/api/auth/resend', { email: email_address });
+      await axios.post('http://localhost:5000/api/auth/resend', { email: normEmail(email_address) });
       setInfoMessage('Verification email resent. Please check your inbox.');
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to resend verification.';
@@ -232,27 +235,14 @@ const AdminSignup = () => {
               />
             </Link>
           </div>
-
-          {/* Top-right: Admin-focused (removed worker/client CTA) */}
-          <div className="flex items-center space-x-6">
-            <span className="text-md">Already an admin?</span>
-            <Link to="/adminlogin" className="text-[#008cfc]">
-              Log In
-            </Link>
-          </div>
         </div>
       </div>
 
       <div className="flex justify-center items-center flex-grow px-4 py-12 -mt-[84px]">
         <div className="bg-white p-8 max-w-lg w-full">
-          <h2 className="text-3xl font-semibold text-center mb-4">
+          <h2 className="text-3xl font-semibold text-center mb-10">
             Sign up to be an <span className="text-[#008cfc]">Admin</span>
           </h2>
-
-          <div className="flex items-center my-4">
-            <hr className="flex-grow border-gray-300" />
-            <hr className="flex-grow border-gray-300" />
-          </div>
 
           <div className="space-y-4">
             <div className="flex space-x-4">
