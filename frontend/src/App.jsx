@@ -19,8 +19,20 @@ import WorkerPostApplication from './pages/workerpage/WorkerPostApplication';
 
 import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 
-/* ✅ NEW: Admin login page only */
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
+import AdminSignup from './pages/signuppage/AdminSignup';
+import AdminDashboardPage from './pages/dashboardpage/AdminDashboard';
+
+/* ✅ OPTIONAL: Minimal inline success page so /adminsuccess works
+   (replace with your own AdminSuccess component later if you have one) */
+const AdminSuccessInline = () => (
+  <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
+    <div style={{ textAlign: 'center' }}>
+      <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8 }}>Admin account created!</h1>
+      <p>You can now log in on the <a href="/adminlogin" style={{ color: '#008cfc', textDecoration: 'underline' }}>Admin Login</a> page.</p>
+    </div>
+  </div>
+);
 
 const ProtectedRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
@@ -76,7 +88,6 @@ const App = () => {
           }
         />
 
-        {/* guest-only to block back navigation when logged in */}
         <Route
           path="/role"
           element={
@@ -95,11 +106,23 @@ const App = () => {
           }
         />
 
-        {/* ✅ NEW: ADMIN LOGIN ONLY (no dashboard yet) */}
         <Route
           path="/adminlogin"
           element={<AdminLoginPage />}
         />
+
+        <Route
+          path="/adminsignup"
+          element={
+            <GuestRoute>
+              <AdminSignup />
+            </GuestRoute>
+          }
+        />
+
+        <Route path="/admindashboard" element={<AdminDashboardPage />} />
+
+        <Route path="/adminsuccess" element={<AdminSuccessInline />} />
 
         {/* CLIENT ROUTES */}
         <Route

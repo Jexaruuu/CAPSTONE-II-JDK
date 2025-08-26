@@ -14,7 +14,8 @@ const ADMIN_ROLE = 'admin';
 const AdminLoginPage = () => {
   const navigate = useNavigate();
   // Login states
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(''); // 🔸 kept for backward-compat / Google / hidden signup
+  const [adminNo, setAdminNo] = useState(''); // ✅ NEW: Admin No login identifier
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,7 +49,7 @@ const AdminLoginPage = () => {
     // If the user is logged in as client/worker, stay on this page (no redirect)
   }, [navigate]);
 
-  // Google OAuth with admin gate
+  // Google OAuth with admin gate (unchanged; still uses email identity through provider)
   const handleGoogleLogin = async () => {
     try {
       setError('');
@@ -85,17 +86,17 @@ const AdminLoginPage = () => {
     }
   };
 
-  // Login Handler (Admin endpoint first, then generic backend, then Supabase)
+  // Login Handler (Admin No. first)
   const handleLogin = async () => {
     try {
       setLoading(true);
       setError('');
 
-      // 0) Dedicated ADMIN endpoint (safe if not present)
+      // 0) Dedicated ADMIN endpoint with Admin No.
       try {
         const adminResp = await axios.post(
           'http://localhost:5000/api/admin/login',
-          { email_address: email, password },
+          { admin_no: adminNo, password }, // ✅ switched to admin_no
           { withCredentials: true }
         );
 
@@ -113,51 +114,62 @@ const AdminLoginPage = () => {
         // continue to generic backend flow
       }
 
-      // 1) Your existing backend login
-      const response = await axios.post(
-        'http://localhost:5000/api/login',
-        { email_address: email, password },
-        { withCredentials: true }
-      );
+      // 1) Generic backend login (try admin_no)
+      try {
+        const response = await axios.post(
+          'http://localhost:5000/api/login',
+          { admin_no: adminNo, password }, // ✅ try admin_no on generic endpoint
+          { withCredentials: true }
+        );
 
-      const { user, role } = response.data;
+        const { user, role } = response.data;
 
-      // Gate strictly to admin for THIS page
-      ensureAdminOrThrow(role);
+        ensureAdminOrThrow(role);
 
-      localStorage.setItem('first_name', user.first_name || '');
-      localStorage.setItem('last_name', user.last_name || '');
-      localStorage.setItem('sex', user.sex || '');
-      localStorage.setItem('role', role || ADMIN_ROLE);
-
-      navigate('/admindashboard');
-    } catch (err) {
-      // 2) Supabase fallback (still admin-gated)
-      const { data, error: supabaseError } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (supabaseError) {
-        setError(supabaseError.message || 'Login failed');
-      } else {
-        const role = data.user?.user_metadata?.role || 'client';
-        try {
-          ensureAdminOrThrow(role);
-        } catch (e) {
-          setError(e.message);
-          await supabase.auth.signOut(); // clear non-admin session
-          setLoading(false);
-          return;
-        }
-
-        localStorage.setItem('first_name', data.user?.user_metadata?.first_name || '');
-        localStorage.setItem('last_name', data.user?.user_metadata?.last_name || '');
-        localStorage.setItem('sex', data.user?.user_metadata?.sex || '');
-        localStorage.setItem('role', role);
+        localStorage.setItem('first_name', user.first_name || '');
+        localStorage.setItem('last_name', user.last_name || '');
+        localStorage.setItem('sex', user.sex || '');
+        localStorage.setItem('role', role || ADMIN_ROLE);
 
         navigate('/admindashboard');
+        return;
+      } catch (_) {
+        // fall through to Supabase legacy fallback
       }
+
+      // 2) Supabase fallback (only if an email is intentionally provided)
+      if (email) {
+        const { data, error: supabaseError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (supabaseError) {
+          setError(supabaseError.message || 'Login failed');
+        } else {
+          const role = data.user?.user_metadata?.role || 'client';
+          try {
+            ensureAdminOrThrow(role);
+          } catch (e) {
+            setError(e.message);
+            await supabase.auth.signOut(); // clear non-admin session
+            setLoading(false);
+            return;
+          }
+
+          localStorage.setItem('first_name', data.user?.user_metadata?.first_name || '');
+          localStorage.setItem('last_name', data.user?.user_metadata?.last_name || '');
+          localStorage.setItem('sex', data.user?.user_metadata?.sex || '');
+          localStorage.setItem('role', role);
+
+          navigate('/admindashboard');
+        }
+      } else {
+        // If no email and both backend paths failed:
+        setError('Login failed. Please check your Admin No. and password.');
+      }
+    } catch (err) {
+      setError('Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -291,13 +303,16 @@ const AdminLoginPage = () => {
 
           {/* ======= Login Card ======= */}
           <div className="space-y-4 mb-6">
+            {/* ✅ Admin No. instead of Email */}
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email Address"
+              type="text"
+              value={adminNo}
+              onChange={(e) => setAdminNo(e.target.value.replace(/\D/g, ''))} // ✅ NEW: numeric-only
+              placeholder="Admin No."
               className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
-              autoComplete="email"
+              autoComplete="username"
+              inputMode="numeric"
+              pattern="[0-9]*"
             />
 
             {/* Password input with conditional Show/Hide */}
@@ -330,9 +345,9 @@ const AdminLoginPage = () => {
           <div className="text-center mt-4">
             <button
               onClick={handleLogin}
-              disabled={!email || !password || loading}
+              disabled={!adminNo || !password || loading} // ✅ uses Admin No.
               className={`py-2 px-6 rounded-md w-full ${
-                !email || !password || loading
+                !adminNo || !password || loading
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-[#008cfc] text-white'
               } transition duration-300`}
@@ -374,7 +389,7 @@ const AdminLoginPage = () => {
           {/* ✅ Login-page style footer — go to separate page */}
           <div className="text-center mt-6">
             <span>Not an admin? </span>
-            <Link to="/admincreateaccount" className="text-blue-500 underline">
+            <Link to="/adminsignup" className="text-blue-500 underline">
               Create Account
             </Link>
           </div>
@@ -421,7 +436,7 @@ const AdminLoginPage = () => {
                     className="w-full p-4 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
                   />
 
-                  {/* Reuse email from login */}
+                  {/* Reuse email from login (kept) */}
                   <input
                     type="email"
                     value={email}
