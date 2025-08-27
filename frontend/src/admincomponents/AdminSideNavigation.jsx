@@ -19,7 +19,6 @@ const navItems = [
   { label: 'Settings',            to: '/admindashboard/settings',            icon: SettingsIcon },
 ];
 
-
 const AdminSideNavigation = () => {
   const navigate = useNavigate();
 

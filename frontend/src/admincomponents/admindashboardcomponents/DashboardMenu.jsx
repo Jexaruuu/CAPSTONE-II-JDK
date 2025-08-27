@@ -93,7 +93,7 @@ const barangayData = [
 
 const formatK = (v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : v);
 
-export default function AdminManageUser() {
+export default function DashboardMenu() {
   return (
     <main className="p-6">
       <div className="mb-4">

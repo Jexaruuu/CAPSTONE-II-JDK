@@ -1,3 +1,4 @@
+// App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 
@@ -17,27 +18,23 @@ import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from "./pages/successpage/WorkerSuccess";
 import WorkerWelcomePage from './pages/workerpage/WorkerWelcome';
 import WorkerPostApplication from './pages/workerpage/WorkerPostApplication';
+
 import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
 import AdminSignup from './pages/signuppage/AdminSignup';
-
-const AdminSuccessInline = () => (
-  <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
-    <div style={{ textAlign: 'center' }}>
-      <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8 }}>Admin account created!</h1>
-      <p>You can now log in on the <a href="/adminlogin" style={{ color: '#008cfc', textDecoration: 'underline' }}>Admin Login</a> page.</p>
-    </div>
-  </div>
-);
-
 import AdminSuccessPage from './pages/successpage/AdminSuccess';
 
-import AdminInDemandStats from './admincomponents/admindashboardcomponents/AdminIndemandStats';
-import AdminManageUser from './admincomponents/admindashboardcomponents/AdminManageUser';
-import AdminServiceRequest from './admincomponents/admindashboardcomponents/AdminServiceRequest';
-import AdminWorkerApplications from './admincomponents/admindashboardcomponents/AdminWorkerApplications';
+// ✅ import your real admin center content
+import DashboardMenu from './admincomponents/admindashboardcomponents/DashboardMenu';
+import ManageUserMenu from './admincomponents/admindashboardcomponents/ManageUserMenu';
+import ServiceRequestMenu from './admincomponents/admindashboardcomponents/ServiceRequestMenu';
+import WorkerApplicationMenu from './admincomponents/admindashboardcomponents/WorkerApplicationMenu';
 
+// (You can replace this with a real page later)
+const AdminSettings = () => <div className="p-6">Settings</div>;
+
+// ---- route guards (unchanged) ----
 const ProtectedRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
   const lastName = localStorage.getItem('last_name');
@@ -49,7 +46,6 @@ const GuestRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
   const lastName = localStorage.getItem('last_name');
   const role = localStorage.getItem('role');
-
   if (firstName && lastName && role) {
     if (role === 'client') return <Navigate to="/clientdashboard" />;
     if (role === 'worker') return <Navigate to="/workerdashboard" />;
@@ -87,19 +83,19 @@ const App = () => {
         <Route path="/adminlogin" element={<AdminLoginPage />} />
         <Route path="/adminsignup" element={<GuestRoute><AdminSignup /></GuestRoute>} />
 
-
+        {/* ✅ LAYOUT route with nested admin content */}
         <Route path="/admindashboard" element={<AdminDashboardPage />}>
-          {/* index -> your original dashboard */}
-          <Route index element={<AdminInDemandStats />} />
-          <Route path="manage-users" element={<AdminManageUser />} />
-          <Route path="service-requests" element={<AdminServiceRequest />} />
-          <Route path="worker-applications" element={<AdminWorkerApplications />} />
-          <Route path="settings" element={<div className="p-6">Settings</div>} />
+          {/* show stats on the plain /admindashboard URL */}
+          <Route index element={<DashboardMenu />} />
+          <Route path="manage-users" element={<ManageUserMenu />} />
+          <Route path="service-requests" element={<ServiceRequestMenu />} />
+          <Route path="worker-applications" element={<WorkerApplicationMenu />} />
+          <Route path="settings" element={<AdminSettings />} />
         </Route>
 
         <Route path="/adminsuccess" element={<AdminSuccessPage />} />
 
-        {/* CLIENT ROUTES */}
+        {/* client */}
         <Route
           path="/clientdashboard"
           element={
@@ -116,7 +112,7 @@ const App = () => {
         <Route path="/clientsignup" element={<GuestRoute><ClientSignUpPage /></GuestRoute>} />
         <Route path="/clientsuccess" element={<ClientSuccessPage />} />
 
-        {/* WORKER ROUTES */}
+        {/* worker */}
         <Route
           path="/workerdashboard"
           element={
