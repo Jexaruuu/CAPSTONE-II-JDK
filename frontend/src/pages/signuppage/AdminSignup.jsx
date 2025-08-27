@@ -307,7 +307,7 @@ const AdminSignup = () => {
                   value={email_address}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email address"
-                  className="w-full p-2.5 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                  className="w-[278px] p-2.5 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
                   autoComplete="email"
                 />
                 <button
