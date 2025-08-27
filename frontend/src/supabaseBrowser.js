@@ -19,7 +19,6 @@ function makeAdminClient() {
   });
 }
 
-// Singleton (survives HMR & React StrictMode double-invoke)
 const g = typeof globalThis !== 'undefined' ? globalThis : window;
 if (!g.__SB_JDK_ADMIN__) {
   g.__SB_JDK_ADMIN__ = makeAdminClient();

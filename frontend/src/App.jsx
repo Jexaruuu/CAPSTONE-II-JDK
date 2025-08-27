@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import HomePage from './pages/homepage/HomePage';
 import RolePage from './pages/rolepage/RolePage';
 import LoginPage from './pages/loginpage/LoginPage';
+import AdminDashboardPage from './pages/dashboardpage/AdminDashboard';
 
 import ClientSignUpPage from './pages/signuppage/ClientSignup';
 import ClientSuccessPage from "./pages/successpage/ClientSuccess";
@@ -21,10 +22,7 @@ import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
 import AdminSignup from './pages/signuppage/AdminSignup';
-import AdminDashboardPage from './pages/dashboardpage/AdminDashboard';
 
-/* ✅ OPTIONAL: Minimal inline success page so /adminsuccess works
-   (replace with your own AdminSuccess component later if you have one) */
 const AdminSuccessInline = () => (
   <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
     <div style={{ textAlign: 'center' }}>
@@ -33,6 +31,8 @@ const AdminSuccessInline = () => (
     </div>
   </div>
 );
+
+import AdminSuccessPage from './pages/successpage/AdminSuccess';
 
 const ProtectedRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
@@ -46,17 +46,14 @@ const GuestRoute = ({ children }) => {
   const lastName = localStorage.getItem('last_name');
   const role = localStorage.getItem('role');
 
-  // ✅ Tiny tweak: avoid redirecting admins to worker dashboard while no admin dashboard exists
   if (firstName && lastName && role) {
     if (role === 'client') return <Navigate to="/clientdashboard" />;
     if (role === 'worker') return <Navigate to="/workerdashboard" />;
-    // role === 'admin' => allow guest pages for now (no admin dashboard yet)
     return children;
   }
   return children;
 };
 
-/** ✅ NEW: role-specific guards (unchanged below) */
 const ClientOnlyRoute = ({ children }) => {
   const role = localStorage.getItem('role');
   return role === 'client'
@@ -79,52 +76,16 @@ const App = () => {
   return (
     <Router>
       <Routes>
-        <Route
-          path="/"
-          element={
-            <GuestRoute>
-              <HomePage />
-            </GuestRoute>
-          }
-        />
+        <Route path="/" element={<GuestRoute><HomePage /></GuestRoute>} />
+        <Route path="/role" element={<GuestRoute><RolePage /></GuestRoute>} />
+        <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
 
-        <Route
-          path="/role"
-          element={
-            <GuestRoute>
-              <RolePage />
-            </GuestRoute>
-          }
-        />
-
-        <Route
-          path="/login"
-          element={
-            <GuestRoute>
-              <LoginPage />
-            </GuestRoute>
-          }
-        />
-
-        <Route
-          path="/adminlogin"
-          element={<AdminLoginPage />}
-        />
-
-        <Route
-          path="/adminsignup"
-          element={
-            <GuestRoute>
-              <AdminSignup />
-            </GuestRoute>
-          }
-        />
-
+        <Route path="/adminlogin" element={<AdminLoginPage />} />
+        <Route path="/adminsignup" element={<GuestRoute><AdminSignup /></GuestRoute>} />
         <Route path="/admindashboard" element={<AdminDashboardPage />} />
 
-        <Route path="/adminsuccess" element={<AdminSuccessInline />} />
+        <Route path="/adminsuccess" element={<AdminSuccessPage />} />
 
-        {/* CLIENT ROUTES */}
         <Route
           path="/clientdashboard"
           element={
@@ -138,17 +99,9 @@ const App = () => {
         <Route path="/clientwelcome" element={<ClientWelcomePage />} />
         <Route path="/clientpostrequest" element={<ClientPostRequest />} />
         <Route path="/clientreviewservicerequest" element={<ClientReviewServiceRequest />} />
-        <Route
-          path="/clientsignup"
-          element={
-            <GuestRoute>
-              <ClientSignUpPage />
-            </GuestRoute>
-          }
-        />
+        <Route path="/clientsignup" element={<GuestRoute><ClientSignUpPage /></GuestRoute>} />
         <Route path="/clientsuccess" element={<ClientSuccessPage />} />
 
-        {/* WORKER ROUTES */}
         <Route
           path="/workerdashboard"
           element={
@@ -161,14 +114,7 @@ const App = () => {
         />
         <Route path="/workerwelcome" element={<WorkerWelcomePage />} />
         <Route path="/workerpostapplication" element={<WorkerPostApplication />} />
-        <Route
-          path="/workersignup"
-          element={
-            <GuestRoute>
-              <WorkerSignUpPage />
-            </GuestRoute>
-          }
-        />
+        <Route path="/workersignup" element={<GuestRoute><WorkerSignUpPage /></GuestRoute>} />
         <Route path="/workersuccess" element={<WorkerSuccessPage />} />
       </Routes>
     </Router>

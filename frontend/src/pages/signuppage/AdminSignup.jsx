@@ -314,9 +314,15 @@ const AdminSignup = () => {
                   type="button"
                   onClick={handleRequestAdminNo}
                   disabled={adminNoRequesting || !email_address.trim()}
-                  className={`px-4 rounded-md border-2 ${adminNoRequesting || !email_address.trim() ? 'border-gray-300 text-gray-400' : 'border-[#008cfc] text-[#008cfc] hover:bg-[#008cfc] hover:text-white'}`}
+                  className={`w-[160px] shrink-0 px-4 rounded-md border-2 ${
+                    adminNoRequesting || !email_address.trim()
+                      ? 'border-gray-300 text-gray-400'
+                      : 'border-[#008cfc] text-[#008cfc] hover:bg-[#008cfc] hover:text-white'
+                  }`}
                 >
-                  {adminNoLocked ? (adminNoRequesting ? 'Sending…' : 'Send Admin No.') : (adminNoRequesting ? 'Sending…' : 'Resend')}
+                  {adminNoLocked
+                    ? (adminNoRequesting ? 'Sending…' : 'Get Admin No.')
+                    : (adminNoRequesting ? 'Sending…' : 'Resend')}
                 </button>
               </div>
             </div>
