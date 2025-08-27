@@ -17,7 +17,6 @@ import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from "./pages/successpage/WorkerSuccess";
 import WorkerWelcomePage from './pages/workerpage/WorkerWelcome';
 import WorkerPostApplication from './pages/workerpage/WorkerPostApplication';
-
 import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
@@ -33,6 +32,11 @@ const AdminSuccessInline = () => (
 );
 
 import AdminSuccessPage from './pages/successpage/AdminSuccess';
+
+import AdminInDemandStats from './admincomponents/admindashboardcomponents/AdminIndemandStats';
+import AdminManageUser from './admincomponents/admindashboardcomponents/AdminManageUser';
+import AdminServiceRequest from './admincomponents/admindashboardcomponents/AdminServiceRequest';
+import AdminWorkerApplications from './admincomponents/admindashboardcomponents/AdminWorkerApplications';
 
 const ProtectedRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
@@ -82,10 +86,20 @@ const App = () => {
 
         <Route path="/adminlogin" element={<AdminLoginPage />} />
         <Route path="/adminsignup" element={<GuestRoute><AdminSignup /></GuestRoute>} />
-        <Route path="/admindashboard" element={<AdminDashboardPage />} />
+
+
+        <Route path="/admindashboard" element={<AdminDashboardPage />}>
+          {/* index -> your original dashboard */}
+          <Route index element={<AdminInDemandStats />} />
+          <Route path="manage-users" element={<AdminManageUser />} />
+          <Route path="service-requests" element={<AdminServiceRequest />} />
+          <Route path="worker-applications" element={<AdminWorkerApplications />} />
+          <Route path="settings" element={<div className="p-6">Settings</div>} />
+        </Route>
 
         <Route path="/adminsuccess" element={<AdminSuccessPage />} />
 
+        {/* CLIENT ROUTES */}
         <Route
           path="/clientdashboard"
           element={
@@ -102,6 +116,7 @@ const App = () => {
         <Route path="/clientsignup" element={<GuestRoute><ClientSignUpPage /></GuestRoute>} />
         <Route path="/clientsuccess" element={<ClientSuccessPage />} />
 
+        {/* WORKER ROUTES */}
         <Route
           path="/workerdashboard"
           element={

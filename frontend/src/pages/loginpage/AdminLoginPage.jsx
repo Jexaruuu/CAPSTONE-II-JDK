@@ -59,6 +59,7 @@ const AdminLoginPage = () => {
         localStorage.setItem('last_name', user.user_metadata?.last_name || '');
         localStorage.setItem('sex', user.user_metadata?.sex || '');
         localStorage.setItem('role', role);
+        localStorage.setItem('admin_no', user.user_metadata?.admin_no || '');
         navigate('/admindashboard');
       }
     } catch (e) {
@@ -84,6 +85,7 @@ const AdminLoginPage = () => {
         localStorage.setItem('last_name', user.last_name || '');
         localStorage.setItem('sex', user.sex || '');
         localStorage.setItem('role', role || ADMIN_ROLE);
+        localStorage.setItem('admin_no', user.admin_no || adminNo || '');
         navigate('/admindashboard');
         return;
       } catch (_) {}
@@ -99,6 +101,7 @@ const AdminLoginPage = () => {
         localStorage.setItem('last_name', user.last_name || '');
         localStorage.setItem('sex', user.sex || '');
         localStorage.setItem('role', role || ADMIN_ROLE);
+        localStorage.setItem('admin_no', user.admin_no || adminNo || '');
         navigate('/admindashboard');
         return;
       } catch (_) {}
@@ -123,6 +126,7 @@ const AdminLoginPage = () => {
           localStorage.setItem('last_name', data.user?.user_metadata?.last_name || '');
           localStorage.setItem('sex', data.user?.user_metadata?.sex || '');
           localStorage.setItem('role', role);
+          localStorage.setItem('admin_no', data.user?.user_metadata?.admin_no || '');
           navigate('/admindashboard');
         }
       } else {
@@ -178,6 +182,7 @@ const AdminLoginPage = () => {
         localStorage.setItem('last_name', user?.last_name || lastName);
         localStorage.setItem('sex', user?.sex || sex || '');
         localStorage.setItem('role', role || ADMIN_ROLE);
+        localStorage.setItem('admin_no', user?.admin_no || '');
         navigate('/admindashboard');
         return;
       } catch (_) {}
@@ -207,6 +212,7 @@ const AdminLoginPage = () => {
       localStorage.setItem('last_name', user?.user_metadata?.last_name || lastName);
       localStorage.setItem('sex', user?.user_metadata?.sex || sex || '');
       localStorage.setItem('role', role);
+      localStorage.setItem('admin_no', user?.user_metadata?.admin_no || '');
       navigate('/admindashboard');
     } catch (e) {
       setSignupError(e.message || 'Failed to create admin account.');

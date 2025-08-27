@@ -211,3 +211,15 @@ exports.sendAdminNoEmail = async (req, res) => {
     return res.status(500).json({ message: 'Unable to send Admin No. email.' });
   }
 };
+
+exports.logoutAdmin = async (req, res) => {
+  try {
+    if (req.session) {
+      await new Promise((resolve) => req.session.destroy(() => resolve()));
+    }
+    res.clearCookie('connect.sid', { path: '/' });
+    return res.status(200).json({ message: 'Logged out' });
+  } catch (err) {
+    return res.status(200).json({ message: 'Logged out' });
+  }
+};

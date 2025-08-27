@@ -8,7 +8,20 @@ const WorkerSuccessPage = () => {
     const t = setTimeout(() => {
       navigate('/workerwelcome', { replace: true });
     }, 5000);
-    return () => clearTimeout(t);
+
+    // Block back navigation while this page is mounted
+    const blockBack = (e) => {
+      e?.preventDefault?.();
+      navigate('/workerwelcome', { replace: true });
+      setTimeout(() => window.history.go(1), 0);
+    };
+    window.history.replaceState(null, '', window.location.href);
+    window.addEventListener('popstate', blockBack);
+
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('popstate', blockBack);
+    };
   }, [navigate]);
 
   return (

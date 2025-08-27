@@ -3,9 +3,9 @@ import { Search, Bell } from 'lucide-react';
 
 const getGreeting = (d = new Date()) => {
   const h = d.getHours();
-  if (h >= 5 && h < 12) return 'Good morning Admin!';
-  if (h >= 12 && h < 18) return 'Good afternoon Admin!';
-  return 'Good evening Admin!';
+  if (h >= 5 && h < 12) return 'Good morning!';
+  if (h >= 12 && h < 18) return 'Good afternoon!';
+  return 'Good evening!';
 };
 
 const formatTime = (d = new Date()) =>
@@ -18,6 +18,8 @@ const AdminTopNavigation = () => {
   const [now, setNow] = useState(new Date());
   const firstName =
     (typeof window !== 'undefined' && localStorage.getItem('first_name')) || '';
+  const adminNo =
+    (typeof window !== 'undefined' && localStorage.getItem('admin_no')) || '';
   const greeting = useMemo(() => getGreeting(now), [now]);
   const timeText = useMemo(() => formatTime(now), [now]);
   const dateText = useMemo(() => formatDate(now), [now]);
@@ -44,18 +46,22 @@ const AdminTopNavigation = () => {
         </div>
 
         <div className="ml-4 flex items-center gap-4">
-        
           <div className="hidden sm:flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 h-10 text-[15px] md:text-base font-medium text-gray-700 shadow-sm">
             <span className="text-gray-900 font-semibold">{dateText}</span>
             <span className="text-gray-300">•</span>
             <span className="text-gray-900 font-semibold">{timeText}</span>
             <span className="text-gray-300">•</span>
+             <span className="text-gray-900 font-semibold">#{adminNo}</span>
+                <span className="text-gray-300">•</span>
             <span>
               {greeting}
               {firstName ? `, ${firstName}` : ''}
             </span>
+            {adminNo ? (
+              <>
+              </>
+            ) : null}
           </div>
-
 
           <button
             type="button"

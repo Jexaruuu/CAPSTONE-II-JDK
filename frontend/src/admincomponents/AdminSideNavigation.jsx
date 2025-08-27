@@ -12,12 +12,13 @@ import axios from 'axios';
 import { sbAdmin as supabase } from '../supabaseBrowser';
 
 const navItems = [
-  { label: 'Dashboard',           to: '/admindashboard',           icon: LayoutDashboard },
-  { label: 'Manage Users',        to: '/adminmanageusers',         icon: Users },
-  { label: 'Worker Applications', to: '/adminworkerapplications',  icon: ClipboardList },
-  { label: 'Service Request',     to: '/adminservicerequests',     icon: FileText },
-  { label: 'Settings',            to: '/adminsettings',            icon: SettingsIcon },
+  { label: 'Dashboard',           to: '/admindashboard',                     icon: LayoutDashboard },
+  { label: 'Manage Users',        to: '/admindashboard/manage-users',        icon: Users },
+  { label: 'Service Request',     to: '/admindashboard/service-requests',    icon: FileText },
+  { label: 'Worker Applications', to: '/admindashboard/worker-applications', icon: ClipboardList },
+  { label: 'Settings',            to: '/admindashboard/settings',            icon: SettingsIcon },
 ];
+
 
 const AdminSideNavigation = () => {
   const navigate = useNavigate();
