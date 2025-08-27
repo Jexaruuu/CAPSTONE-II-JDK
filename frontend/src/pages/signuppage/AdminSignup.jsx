@@ -7,25 +7,21 @@ const AdminSignup = () => {
 
   const [first_name, setFirstName] = useState('');
   const [last_name, setLastName] = useState('');
-  // ✅ NEW: Admin No. state
   const [admin_no, setAdminNo] = useState('');
   const [sex, setSex] = useState('');
   const [email_address, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm_password, setConfirmPassword] = useState('');
-  const [is_email_opt_in, setIsEmailOptIn] = useState(false); // kept (unused)
+  const [is_email_opt_in, setIsEmailOptIn] = useState(false);
   const [error_message, setErrorMessage] = useState('');
 
-  // Show/Hide states (kept)
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // ✅ NEW
   const [loading, setLoading] = useState(false);
   const [info_message, setInfoMessage] = useState('');
   const [canResend, setCanResend] = useState(false);
 
-  // ✅ NEW: OTP modal & flow
   const [otpOpen, setOtpOpen] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpInfo, setOtpInfo] = useState('');
@@ -34,26 +30,27 @@ const AdminSignup = () => {
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [canResendAt, setCanResendAt] = useState(0);
 
+  const [adminNoLocked, setAdminNoLocked] = useState(true);
+  const [adminNoRequesting, setAdminNoRequesting] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+
   const now = () => Date.now();
   const canResendOtp = now() >= canResendAt;
 
   const navigate = useNavigate();
 
-  // ✅ helper: normalize email before sending to backend
   const normEmail = (s) => String(s || '').trim().toLowerCase();
 
-  const isFormValid = (
+  const isFormValid =
     first_name.trim() !== '' &&
     last_name.trim() !== '' &&
-    admin_no.trim() !== '' &&            // ✅ NEW: require Admin No.
+    admin_no.trim() !== '' &&
     sex.trim() !== '' &&
     email_address.trim() !== '' &&
     password.trim().length >= 12 &&
     confirm_password.trim() !== '' &&
-    password === confirm_password
-  );
+    password === confirm_password;
 
-  // ✅ request OTP (uses session via withCredentials)
   const requestOtp = async () => {
     try {
       setOtpError('');
@@ -61,11 +58,11 @@ const AdminSignup = () => {
       setOtpSending(true);
       await axios.post(
         'http://localhost:5000/api/auth/request-otp',
-        { email: normEmail(email_address) }, // normalize
+        { email: normEmail(email_address) },
         { withCredentials: true }
       );
       setOtpInfo('We sent a 6-digit code to your email. Enter it below.');
-      setCanResendAt(now() + 60000); // 60s cooldown
+      setCanResendAt(now() + 60000);
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to send OTP.';
       setOtpError(msg);
@@ -75,7 +72,6 @@ const AdminSignup = () => {
     }
   };
 
-  // ✅ verify OTP then proceed to registration
   const verifyOtp = async () => {
     try {
       setOtpError('');
@@ -98,7 +94,25 @@ const AdminSignup = () => {
     }
   };
 
-  // ✅ actual registration AFTER OTP verification (ADMIN)
+  const sendAdminNoEmail = async () => {
+    try {
+      await axios.post(
+        'http://localhost:5000/api/admins/send-admin-no',
+        {
+          to: normEmail(email_address),
+          first_name,
+          last_name,
+          admin_no,
+        },
+        { withCredentials: true }
+      );
+      setInfoMessage(`We emailed your Admin No. to ${normEmail(email_address)}.`);
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to email your Admin No.';
+      setErrorMessage(msg);
+    }
+  };
+
   const completeRegistration = async () => {
     try {
       setLoading(true);
@@ -108,35 +122,33 @@ const AdminSignup = () => {
         {
           first_name,
           last_name,
-          admin_no,             // ✅ NEW: send Admin No. to backend
+          admin_no,
           sex,
-          email_address: normEmail(email_address), // normalize
+          email_address: normEmail(email_address),
           password,
-          // ✅ still sending as literal true for backend compatibility
           is_agreed_to_terms: true,
         },
         { withCredentials: true }
       );
 
       if (response.status === 201) {
-        // Store user info + auth_uid from backend
         localStorage.setItem('first_name', first_name);
         localStorage.setItem('last_name', last_name);
         localStorage.setItem('sex', sex);
-        localStorage.setItem('role', 'admin'); // ✅ role set to admin for route guards & nav behavior
-        localStorage.setItem('admin_no', admin_no); // ✅ NEW: persist Admin No.
+        localStorage.setItem('role', 'admin');
+        localStorage.setItem('admin_no', admin_no);
 
         const uid = response?.data?.data?.auth_uid || response?.data?.auth_uid;
         if (uid) {
           localStorage.setItem('auth_uid', uid);
         }
 
+        await sendAdminNoEmail();
+
         setInfoMessage('Admin account created. You’re all set!');
-        // ✅ Use replace so Success → next step doesn’t add a back step
         navigate('/adminsuccess', { replace: true });
       }
     } catch (error) {
-      console.error('Error registering admin:', error);
       const status = error?.response?.status;
       const msg = error?.response?.data?.message;
 
@@ -156,19 +168,49 @@ const AdminSignup = () => {
     }
   };
 
-  /* ✅ pre-check if email exists; return true if available */
   const checkEmailAvailable = async () => {
     try {
       const resp = await axios.post(
         'http://localhost:5000/api/auth/check-email',
-        { email: normEmail(email_address) }, // normalize
+        { email: normEmail(email_address) },
         { withCredentials: true }
       );
       return resp?.data?.exists === true ? false : true;
     } catch (e) {
       const msg = e?.response?.data?.message || 'Failed to check email.';
       setErrorMessage(msg);
-      return false; // be conservative
+      return false;
+    }
+  };
+
+  const handleRequestAdminNo = async () => {
+    try {
+      setErrorMessage('');
+      setInfoMessage('');
+      setAdminNoRequesting(true);
+      const email = normEmail(email_address);
+      if (!email || !email.includes('@')) {
+        setErrorMessage('Enter a valid email address.');
+        return;
+      }
+      const available = await checkEmailAvailable();
+      if (!available) {
+        setErrorMessage('Email already in use');
+        return;
+      }
+      await axios.post(
+        'http://localhost:5000/api/admins/request-admin-no',
+        { email },
+        { withCredentials: true }
+      );
+      setInfoMessage(`We sent your 6-digit Admin No. to ${email}. Check your inbox.`);
+      setAdminNoLocked(false);
+      setEmailVerified(true);
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to send Admin No.';
+      setErrorMessage(msg);
+    } finally {
+      setAdminNoRequesting(false);
     }
   };
 
@@ -178,38 +220,26 @@ const AdminSignup = () => {
     setInfoMessage('');
     setCanResend(false);
 
-    // ✅ NEW: simple required check for Admin No.
+    if (!emailVerified) {
+      setErrorMessage('Please tap “Send Admin No.” to your email first.');
+      return;
+    }
     if (!admin_no.trim()) {
       setErrorMessage('Admin No. is required');
       return;
     }
-
     if (password !== confirm_password) {
       setErrorMessage('Passwords do not match');
       return;
     }
-
     if (password.trim().length < 12) {
       setErrorMessage('Password must be at least 12 characters long');
       return;
     }
 
-    // ✅ email pre-check (don’t open OTP if taken)
-    const available = await checkEmailAvailable();
-    if (!available) {
-      setErrorMessage('Email already in use');
-      return;
-    }
-
-    // ✅ open OTP modal instead of immediate registration
-    setOtpOpen(true);
-    setOtpCode('');
-    setOtpInfo('');
-    setOtpError('');
-    await requestOtp();
+    await completeRegistration();
   };
 
-  // ✅ Resend UI
   const handleResend = async () => {
     try {
       setErrorMessage('');
@@ -228,11 +258,7 @@ const AdminSignup = () => {
         <div className="max-w-[1540px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
           <div className="flex items-center space-x-6">
             <Link to="/">
-              <img
-                src="/jdklogo.png"
-                alt="Logo"
-                className="h-48 w-48 object-contain"
-              />
+              <img src="/jdklogo.png" alt="Logo" className="h-48 w-48 object-contain" />
             </Link>
           </div>
         </div>
@@ -272,7 +298,29 @@ const AdminSignup = () => {
               </div>
             </div>
 
-            {/* ✅ NEW: Admin No. field */}
+            <div>
+              <label htmlFor="email_address" className="block text-sm font-semibold mb-1">Email Address</label>
+              <div className="flex gap-2">
+                <input
+                  id="email_address"
+                  type="email"
+                  value={email_address}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email address"
+                  className="w-full p-2.5 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                  autoComplete="email"
+                />
+                <button
+                  type="button"
+                  onClick={handleRequestAdminNo}
+                  disabled={adminNoRequesting || !email_address.trim()}
+                  className={`px-4 rounded-md border-2 ${adminNoRequesting || !email_address.trim() ? 'border-gray-300 text-gray-400' : 'border-[#008cfc] text-[#008cfc] hover:bg-[#008cfc] hover:text-white'}`}
+                >
+                  {adminNoLocked ? (adminNoRequesting ? 'Sending…' : 'Send Admin No.') : (adminNoRequesting ? 'Sending…' : 'Resend')}
+                </button>
+              </div>
+            </div>
+
             <div>
               <label htmlFor="admin_no" className="block text-sm font-semibold mb-1">Admin No.</label>
               <input
@@ -280,12 +328,11 @@ const AdminSignup = () => {
                 type="text"
                 inputMode="numeric"
                 value={admin_no}
-                onChange={(e) =>
-                  setAdminNo(e.target.value.replace(/\D/g, '').slice(0, 20))
-                }
-                placeholder="Enter your admin number"
-                className="w-full p-2.5 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
+                onChange={(e) => setAdminNo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="6-digit Admin No."
+                className={`w-full p-2.5 border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-[#008cfc] ${adminNoLocked ? 'border-gray-200 bg-gray-100 text-gray-500' : 'border-gray-300'}`}
                 autoComplete="off"
+                disabled={adminNoLocked}
               />
             </div>
 
@@ -305,23 +352,7 @@ const AdminSignup = () => {
             </div>
 
             <div>
-              <label htmlFor="email_address" className="block text-sm font-semibold mb-1">Email Address</label>
-              <input
-                id="email_address"
-                type="email"
-                value={email_address}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email address"
-                className="w-full p-2.5 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
-                autoComplete="email"
-              />
-            </div>
-
-            {/* Password field with conditional Show/Hide */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-semibold mb-1">
-                Password (12 or more characters)
-              </label>
+              <label htmlFor="password" className="block text-sm font-semibold mb-1">Password (12 or more characters)</label>
               <div className="relative">
                 <input
                   id="password"
@@ -345,7 +376,6 @@ const AdminSignup = () => {
               </div>
             </div>
 
-            {/* Confirm Password field with conditional Show/Hide */}
             <div>
               <label htmlFor="confirm_password" className="block text-sm font-semibold mb-1">Confirm Password</label>
               <div className="relative">
@@ -386,26 +416,12 @@ const AdminSignup = () => {
             </button>
           </div>
 
-          {info_message && (
-            <div className="text-[#008cfc] text-center mt-4">
-              {info_message}
-            </div>
-          )}
+          {info_message && <div className="text-[#008cfc] text-center mt-4">{info_message}</div>}
+          {error_message && <div className="text-red-500 text-center mt-4">{error_message}</div>}
 
-          {error_message && (
-            <div className="text-red-500 text-center mt-4">
-              {error_message}
-            </div>
-          )}
-
-          {/* ✅ Resend UI */}
           {canResend && (
             <div className="text-center mt-2">
-              <button
-                type="button"
-                onClick={handleResend}
-                className="text-[#008cfc] underline"
-              >
+              <button type="button" onClick={handleResend} className="text-[#008cfc] underline">
                 Resend verification email
               </button>
             </div>
@@ -418,7 +434,6 @@ const AdminSignup = () => {
         </div>
       </div>
 
-      {/* ✅ OTP Modal */}
       {otpOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white w-full max-w-sm rounded-lg p-6 shadow-lg">
