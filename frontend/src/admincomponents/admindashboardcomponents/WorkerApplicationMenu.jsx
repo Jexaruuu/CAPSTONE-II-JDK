@@ -97,7 +97,7 @@ export default function AdminWorkerApplications() {
   return (
     <main className="p-6">
       <div className="mb-4">
-        <h1 className="text-xl font-semibold text-gray-900">Admin Dashboard</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Worker Applications</h1>
         <p className="text-gray-600 mt-2">Check here what's in-demand works and workers here.</p>
       </div>
 
