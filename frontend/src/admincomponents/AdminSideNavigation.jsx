@@ -16,7 +16,6 @@ const navItems = [
   { label: 'Manage Users',        to: '/admindashboard/manage-users',        icon: Users },
   { label: 'Service Request',     to: '/admindashboard/service-requests',    icon: FileText },
   { label: 'Worker Applications', to: '/admindashboard/worker-applications', icon: ClipboardList },
-  { label: 'Settings',            to: '/admindashboard/settings',            icon: SettingsIcon },
 ];
 
 const AdminSideNavigation = () => {
