@@ -11,10 +11,10 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
   const [showPassword, setShowPassword] = useState(false); // 👁️ toggle state
 
   // Redirect if already logged in
@@ -42,17 +42,25 @@ const LoginPage = () => {
         { withCredentials: true }
       );
 
-      const { user, role } = response.data;
+      const { user, role, email_address: serverEmail } = response.data;
+
+      // ✅ keep your existing saves
       localStorage.setItem('first_name', user.first_name || '');
-      localStorage.setItem('last_name', user.last_name || '');
-      localStorage.setItem('sex', user.sex || '');
-      localStorage.setItem('role', role);
+      localStorage.setItem('last_name',  user.last_name  || '');
+      localStorage.setItem('sex',        user.sex        || '');
+      localStorage.setItem('role',       role);
+
+      // ✅ NEW: persist email for auto-fill/lock
+      localStorage.setItem('email_address', serverEmail || user?.email_address || email);
+
+      // ✅ OPTIONAL (non-breaking): persist the user blob too (helps your JSON email scan)
+      try { localStorage.setItem('user', JSON.stringify(user)); } catch {}
 
       if (role === 'client') navigate('/clientdashboard');
       else if (role === 'worker') navigate('/workerdashboard');
 
     } catch (err) {
-      console.warn('Backend login failed, trying Supabase...', err.message);
+      console.warn('Backend login failed, trying Supabase...', err?.message || err);
 
       // Fallback: Supabase Auth login
       const { data, error: supabaseError } = await supabase.auth.signInWithPassword({
@@ -66,9 +74,16 @@ const LoginPage = () => {
         // Get role from Supabase metadata
         const role = data.user?.user_metadata?.role || 'client';
 
+        // ✅ keep your existing saves for fallback path
         localStorage.setItem('first_name', data.user?.user_metadata?.first_name || '');
-        localStorage.setItem('last_name', data.user?.user_metadata?.last_name || '');
+        localStorage.setItem('last_name',  data.user?.user_metadata?.last_name  || '');
         localStorage.setItem('role', role);
+
+        // ✅ NEW: persist email for auto-fill/lock
+        localStorage.setItem('email_address', data.user?.email || email);
+
+        // ✅ OPTIONAL: also persist the supabase user blob (helps JSON email scan)
+        try { localStorage.setItem('user', JSON.stringify(data.user)); } catch {}
 
         // ✅ Redirect based on role
         if (role === 'client') navigate('/clientdashboard');

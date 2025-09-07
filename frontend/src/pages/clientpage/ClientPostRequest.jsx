@@ -3,11 +3,12 @@ import ClientNavigation from '../../clientcomponents/ClientNavigation';
 import ClientInformation from '../../clientcomponents/requestcomponents/ClientInformation';
 import ClientServiceRequestDetails from '../../clientcomponents/requestcomponents/ClientServiceRequestDetails';
 import ClientServiceRate from '../../clientcomponents/requestcomponents/ClientServiceRate';
+import ClientReviewServiceRequest from '../../clientcomponents/requestcomponents/ClientReviewServiceRequest';
+
+const TOTAL_STEPS = 4;
 
 const ClientPostRequest = () => {
   const [currentStep, setCurrentStep] = useState(1);
-
-  // State variables for the form fields
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
@@ -16,46 +17,34 @@ const ClientPostRequest = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Here you can send the form data to the backend
-    console.log('Service request submitted:', {
-      title,
-      description,
-    });
+    console.log('Service request submitted:', { title, description });
   };
 
-  // Define the titles for each step
   const stepTitles = {
-    1: "Step 1: Client Information",
-    2: "Step 2: Describe Your Request",
-    3: "Step 3: Set Your Price Rate",
+    1: 'Step 1: Client Information',
+    2: 'Step 2: Describe Your Request',
+    3: 'Step 3: Set Your Price Rate',
+    4: 'Step 4: Review and Submit',
   };
 
   return (
     <div className="min-h-screen bg-white overflow-hidden">
       <ClientNavigation />
       <div className="max-w-[1550px] mx-auto px-6 py-12">
-        {/* Step-by-Step Service Request Form */}
         <div className="flex flex-col min-h-[calc(100vh-200px)]">
           <div className="max-w-[1550px] mx-auto w-full">
-            {/* Step Indicator above the Content */}
             <div className="flex justify-start mb-6 ml-3">
               <div className="text-lg font-extralight">
-                {currentStep} of 3 | Post a Service Request
+                {currentStep} of {TOTAL_STEPS} | Post a Service Request
               </div>
             </div>
 
             <h2 className="text-3xl font-bold mb-6 ml-3">{stepTitles[currentStep]}</h2>
 
-            {/* Step 1: Title */}
             {currentStep === 1 && (
-              <ClientInformation
-                title={title}
-                setTitle={setTitle}
-                handleNext={handleNext}
-              />
+              <ClientInformation title={title} setTitle={setTitle} handleNext={handleNext} />
             )}
 
-            {/* Step 2: Description */}
             {currentStep === 2 && (
               <ClientServiceRequestDetails
                 description={description}
@@ -71,6 +60,15 @@ const ClientPostRequest = () => {
                 setTitle={setTitle}
                 handleNext={handleNext}
                 handleBack={handleBack}
+              />
+            )}
+
+            {currentStep === 4 && (
+              <ClientReviewServiceRequest
+                title={title}
+                setTitle={setTitle}
+                handleNext={handleNext}
+                handleBack={() => setCurrentStep(3)}
               />
             )}
           </div>

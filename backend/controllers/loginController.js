@@ -32,14 +32,18 @@ const loginUser = async (req, res) => {
       role,
       first_name: user.first_name,
       last_name: user.last_name,
-      sex: user.sex
+      sex: user.sex,
+      // ✅ also keep email in session (harmless & sometimes handy on the client)
+      email_address: user.email_address
     };
 
+    // ✅ Include email_address at the top level of the response
     res.status(200).json({
       message: 'Login successful',
       user,
       role,
-      token: data.session.access_token
+      token: data.session.access_token,
+      email_address: user.email_address        // <-- added
     });
   } catch (err) {
     console.error('Login Error:', err);

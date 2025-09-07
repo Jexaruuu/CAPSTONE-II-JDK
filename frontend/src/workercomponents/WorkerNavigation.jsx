@@ -249,7 +249,7 @@ const WorkerNavigation = () => {
                 </div>
                 <ul className="py-2">
                   <li className="px-4 py-2 hover:bg-gray-300 transition cursor-pointer">
-                    <Link to="/account-settings">Account Settings</Link>
+                    <Link to="/account-settings">Your Account</Link>
                   </li>
                   <li className="px-4 py-2 hover:bg-gray-300 transition cursor-pointer">
                     <span onClick={handleLogout}>Log out</span>

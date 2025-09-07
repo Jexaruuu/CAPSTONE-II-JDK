@@ -119,6 +119,17 @@ const ClientNavigation = () => {
     }
   };
 
+  // ✅ Clear only draft form data when going to dashboard (keep account info)
+  const clearPostDrafts = () => {
+    try {
+      localStorage.removeItem('clientInformationForm');
+      localStorage.removeItem('clientServiceRequestDetails');
+      localStorage.removeItem('clientServiceRate');
+    } catch (e) {
+      console.warn('Failed clearing drafts', e);
+    }
+  };
+
   // ✅ NEW: decide where the logo should navigate
   const role = localStorage.getItem('role');
   const logoTo = role === 'client' ? '/clientdashboard' : '/clientwelcome';
@@ -128,8 +139,8 @@ const ClientNavigation = () => {
     <div className="bg-white sticky top-0 z-50">
       <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
         <div className="flex items-center space-x-6 -ml-2.5">
-          {/* ✅ updated to use replace and role-aware target */}
-          <Link to={logoTo} replace>
+          {/* ✅ updated to use replace and role-aware target + clear drafts */}
+          <Link to={logoTo} replace onClick={clearPostDrafts}>
             <img
               src="/jdklogo.png"
               alt="Logo"
@@ -212,7 +223,8 @@ const ClientNavigation = () => {
             </li>
 
             <li className="relative cursor-pointer group">
-              <Link to="/clientdashboard" className="text-black font-medium" replace>
+              {/* ✅ Clear drafts when going to Dashboard */}
+              <Link to="/clientdashboard" className="text-black font-medium" replace onClick={clearPostDrafts}>
                 Dashboard
                 <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
               </Link>
@@ -302,7 +314,7 @@ const ClientNavigation = () => {
                 </div>
                 <ul className="py-2">
                   <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                    <Link to="/account-settings">Account Settings</Link>
+                    <Link to="/account-settings">Your Profile</Link>
                   </li>
                   <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
                     <span onClick={handleLogout}>Log out</span>
