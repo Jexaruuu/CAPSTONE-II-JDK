@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa'; 
 import { Link } from 'react-router-dom';
+import { compressImageFileToDataURL } from '../../utils/imageCompression'; // <-- 🆕 adjust path if needed
 
 const STORAGE_KEY = 'clientInformationForm';
 
@@ -48,10 +49,15 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
     additionalAddress.trim() &&
     !!profilePicture;
 
-  const handleProfilePictureChange = (e) => {
+  // 🆕 compress + fallback to your original FileReader path (no removals)
+  const handleProfilePictureChange = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setProfilePictureName(file.name);
+    if (!file) return;
+    setProfilePictureName(file.name);
+    try {
+      const compressed = await compressImageFileToDataURL(file, 1600, 1600, 0.85, 2 * 1024 * 1024);
+      setProfilePicture(compressed);
+    } catch {
       const reader = new FileReader();
       reader.onload = () => { setProfilePicture(reader.result); };
       reader.readAsDataURL(file);

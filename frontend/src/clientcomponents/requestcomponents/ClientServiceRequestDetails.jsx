@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { compressImageFileToDataURL } from '../../utils/imageCompression'; // <-- 🆕 adjust path if needed
 
 const STORAGE_KEY = 'clientServiceRequestDetails';
 
@@ -52,6 +53,27 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     };
   }, []);
 
+  /* ✅ NEW: get today's local date in YYYY-MM-DD (avoids UTC shifting) */
+  const getTodayLocalDateString = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  /* ✅ NEW: hold today's string for min= */
+  const [todayStr, setTodayStr] = useState(getTodayLocalDateString());
+
+  /* ✅ NEW: update today if user keeps page open across midnight */
+  useEffect(() => {
+    const id = setInterval(() => {
+      const t = getTodayLocalDateString();
+      setTodayStr((prev) => (prev !== t ? t : prev));
+    }, 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -59,7 +81,10 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         const data = JSON.parse(saved);
         setServiceType(data.serviceType || '');
         setServiceTask(data.serviceTask || '');
-        setPreferredDate(data.preferredDate || '');
+        // ✅ clamp saved past date up to today
+        const hydratedDate = data.preferredDate || '';
+        const today = getTodayLocalDateString();
+        setPreferredDate(hydratedDate && hydratedDate < today ? today : hydratedDate);
         setPreferredTime(data.preferredTime || '');
         setIsUrgent(data.isUrgent || '');
         setToolsProvided(data.toolsProvided || '');
@@ -108,25 +133,44 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     setIsUrgent(value);
   };
 
-  const handleImageChange = (e) => {
+  // 🆕 compress + fallback to your original FileReader path (no removals)
+  const handleImageChange = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     setImageName(file.name); // ✅ keep name
-    const reader = new FileReader();
-    reader.onload = () => setImage(reader.result);
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFileToDataURL(file, 1600, 1600, 0.85, 2 * 1024 * 1024);
+      setImage(compressed);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => setImage(reader.result);
+      reader.readAsDataURL(file);
+    }
   };
 
-  // ✅ Require image
+  /* ✅ NEW: date change that clamps past values to today */
+  const handlePreferredDateChange = (e) => {
+    const value = e.target.value;
+    if (!value) {
+      setPreferredDate('');
+      return;
+    }
+    setPreferredDate(value < todayStr ? todayStr : value);
+  };
+
+  // ✅ Require image + date must be today or future
+  const isPreferredDateValid = preferredDate && preferredDate >= todayStr;
   const isFormValid =
     serviceType &&
     serviceTask &&
-    preferredDate &&
+    isPreferredDateValid &&
     preferredTime &&
     isUrgent &&
     toolsProvided &&
     serviceDescription.trim() &&
     !!image;
+
+  const isPastDate = preferredDate && preferredDate < todayStr;
 
   useEffect(() => {
     if (!isLoadingNext) return;
@@ -218,12 +262,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
               <input
                 type="date"
                 value={preferredDate}
-                onChange={(e) => setPreferredDate(e.target.value)}
-                className={`w-full px-4 py-3 border ${attempted && !preferredDate ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                onChange={handlePreferredDateChange} /* ✅ clamp past */
+                min={todayStr} /* ✅ block past dates in UI */
+                className={`w-full px-4 py-3 border ${attempted && (!preferredDate || isPastDate) ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 required
-                aria-invalid={attempted && !preferredDate}
+                aria-invalid={attempted && (!preferredDate || isPastDate)}
               />
               {attempted && !preferredDate && <p className="text-xs text-red-600 mt-1">Please choose a date.</p>}
+              {attempted && isPastDate && <p className="text-xs text-red-600 mt-1">Date cannot be in the past.</p>}
             </div>
 
             <div className="w-1/2">

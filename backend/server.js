@@ -16,6 +16,8 @@ const clientModel = require("./models/clientModel");
 const workerModel = require("./models/workerModel");
 const adminModel = require("./models/adminModel");
 
+const clientServiceRequestRoutes = require("./routes/clientservicerequestRoutes");
+
 dotenv.config();
 
 const app = express();
@@ -54,7 +56,10 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+// AFTER – allow larger JSON + form bodies
+const BODY_LIMIT = process.env.MAX_BODY_SIZE || '25mb';
+app.use(express.json({ limit: BODY_LIMIT }));
+app.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
 
 if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
 
@@ -202,6 +207,7 @@ app.use("/api/workers", workerRoutes);
 app.use("/api/login", loginRoutes);
 app.use("/api/admins", adminRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/clientservicerequest", clientServiceRequestRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

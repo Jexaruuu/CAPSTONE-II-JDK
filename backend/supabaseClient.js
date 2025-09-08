@@ -92,11 +92,32 @@ async function resendSignupEmail(email) {
   return data;
 }
 
+/* --------------------  ADD: ensureStorageBucket helper  -------------------- */
+async function ensureStorageBucket(name, isPublic = true) {
+  try {
+    // Check if bucket exists
+    const { data: exists, error: getErr } = await supabaseAdmin.storage.getBucket(name);
+    if (exists && !getErr) return exists;
+  } catch (_) {
+    // ignore and try to create below
+  }
+
+  // Create if missing
+  const { data: created, error: createErr } = await supabaseAdmin.storage.createBucket(name, {
+    public: isPublic,
+    fileSizeLimit: 10 * 1024 * 1024 // 10MB cap per file; tweak if you like
+  });
+  if (createErr) throw createErr;
+  return created;
+}
+/* ------------------------------------------------------------------------- */
+
 module.exports = {
   supabase,
   supabaseAdmin,
   createSupabaseAuthUser,
   resendSignupEmail,
   createConfirmedUser,
-  setDefaultRedirectBase
+  setDefaultRedirectBase,
+  ensureStorageBucket
 };

@@ -1,9 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack }) => {
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleBackClick = () => {
     if (typeof handleBack === 'function') {
@@ -44,7 +51,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     rate_value = savedRate.rateValue
   } = s;
 
-  // ✅ Helper: format "HH:MM" (24h) -> "h:MM AM/PM"
+  // Helper: "HH:MM" -> "h:MM AM/PM"
   const formatTime12h = (t) => {
     if (!t || typeof t !== 'string' || !t.includes(':')) return t || '-';
     const [hh, mm] = t.split(':');
@@ -58,8 +65,6 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
 
   const preferred_time_display = formatTime12h(preferred_time);
 
-  // Labels bold; answers in #008cfc.
-  // NEW: emptyAs lets you customize what to show when value is empty (default '-').
   const LabelValue = ({ label, value, emptyAs = '-' }) => {
     const isEmpty =
       value === null ||
@@ -75,6 +80,73 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   };
 
   const isEmbeddedInStepper = location.pathname.includes('/clientpostrequest');
+
+  const handleConfirm = async () => {
+    try {
+      setSubmitError('');
+      setIsSubmitting(true);
+
+      // Pull latest drafts
+      const infoDraft = (() => { try { return JSON.parse(localStorage.getItem('clientInformationForm') || '{}'); } catch { return {}; }})();
+      const detailsDraft = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRequestDetails') || '{}'); } catch { return {}; }})();
+      const rateDraft = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRate') || '{}'); } catch { return {}; }})();
+
+      const payload = {
+        info: {
+          firstName: infoDraft.firstName,
+          lastName: infoDraft.lastName,
+          contactNumber: infoDraft.contactNumber,
+          email: infoDraft.email,
+          street: infoDraft.street,
+          barangay: infoDraft.barangay,
+          additionalAddress: infoDraft.additionalAddress,
+          facebook: infoDraft.facebook,
+          instagram: infoDraft.instagram,
+          linkedin: infoDraft.linkedin,
+          profilePicture: infoDraft.profilePicture,        // data URL
+          profilePictureName: infoDraft.profilePictureName // filename (optional)
+        },
+        details: {
+          serviceType: detailsDraft.serviceType,
+          serviceTask: detailsDraft.serviceTask,
+          preferredDate: detailsDraft.preferredDate,
+          preferredTime: detailsDraft.preferredTime,
+          isUrgent: detailsDraft.isUrgent,
+          toolsProvided: detailsDraft.toolsProvided,
+          serviceDescription: detailsDraft.serviceDescription,
+          image: detailsDraft.image,       // data URL
+          imageName: detailsDraft.imageName
+        },
+        rate: {
+          rateType: rateDraft.rateType,
+          rateFrom: rateDraft.rateFrom,
+          rateTo: rateDraft.rateTo,
+          rateValue: rateDraft.rateValue
+        }
+      };
+
+      const res = await axios.post(`${API_BASE}/api/clientservicerequest/submit`, payload, {
+        withCredentials: true
+      });
+
+      // Clear drafts on success
+      try {
+        localStorage.removeItem('clientInformationForm');
+        localStorage.removeItem('clientServiceRequestDetails');
+        localStorage.removeItem('clientServiceRate');
+      } catch {}
+
+      // Redirect to dashboard (or success page)
+      navigate('/clientdashboard', {
+        state: { submitted: true, request_group_id: res?.data?.request_group_id }
+      });
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Submission failed';
+      setSubmitError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-8 pb-20">
@@ -93,9 +165,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h3 className="text-2xl font-semibold mb-4">Personal Information</h3>
 
-            {/* 3-column grid: first two columns = details, third column = profile picture */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
-              {/* Details (2 columns) */}
               <div className="text-lg md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
                 <LabelValue label="First Name" value={first_name} />
                 <LabelValue label="Last Name" value={last_name} />
@@ -111,17 +181,16 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                   <div className="hidden md:block mt-14" />
                 )}
 
-                {/* Social Media section */}
+                {/* Social Media */}
                 <div className="md:col-span-2 pt-2 mt-7">
                   <h4 className="text-2xl font-semibold">Social Media</h4>
                 </div>
-                {/* Use emptyAs="None" so empty socials show "None" */}
                 <LabelValue label="Facebook" value={facebook} emptyAs="None" />
                 <LabelValue label="Instagram" value={instagram} emptyAs="None" />
                 <LabelValue label="LinkedIn" value={linkedin} emptyAs="None" />
               </div>
 
-              {/* Profile picture (right column) */}
+              {/* Profile picture */}
               <div className="md:col-span-1">
                 <h4 className="text-xl font-semibold mb-2">Profile Picture</h4>
                 {profile_picture ? (
@@ -144,7 +213,6 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
               <LabelValue label="Service Type" value={service_type} />
               <LabelValue label="Service Task" value={service_task} />
               <LabelValue label="Preferred Date" value={preferred_date} />
-              {/* ✅ Show AM/PM for time */}
               <LabelValue label="Preferred Time" value={preferred_time_display} />
               <LabelValue label="Urgent" value={is_urgent} />
               <LabelValue label="Tools Provided" value={tools_provided} />
@@ -174,6 +242,11 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           </div>
         </div>
 
+        {/* Errors */}
+        {submitError ? (
+          <div className="mt-4 text-red-600 text-sm">{submitError}</div>
+        ) : null}
+
         {/* Actions */}
         <div className="flex justify-between mt-28">
           <button
@@ -184,14 +257,63 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
             Back : Step 3
           </button>
 
-        <button
+          <button
             type="button"
+            onClick={handleConfirm}
             className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 -mt-4"
           >
             Confirm Service Request
           </button>
         </div>
       </div>
+
+      {/* Submission overlay */}
+      {isSubmitting && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Submitting service request"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900">Submitting Request</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
