@@ -16,19 +16,15 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   const [instagram, setInstagram]   = useState('');
   const [linkedin, setLinkedin]     = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
-
-  // ✅ NEW: keep the selected filename
   const [profilePictureName, setProfilePictureName] = useState('');
-
   const [showDropdown, setShowDropdown] = useState(false);
   const [attempted, setAttempted]   = useState(false);
   const [hydrated, setHydrated]     = useState(false);
-
   const dropdownRef = useRef(null);
-
-  // NEW: lock flags for account-provided fields
   const [nameLocked, setNameLocked]   = useState(false);
   const [emailLocked, setEmailLocked] = useState(false);
+  const [isLoadingNext, setIsLoadingNext] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
 
   const barangays = [
     'Alangilan', 'Alijis', 'Banago', 'Bata', 'Cabug', 'Estefania', 'Felisa',
@@ -42,7 +38,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   const validateEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
   const isContactValid = contactNumber.replace(/\D/g, '').length === 10;
 
-  // ✅ Additional Address & Profile Picture now required
   const isFormValid =
     firstName.trim() &&
     lastName.trim() &&
@@ -56,7 +51,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   const handleProfilePictureChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      setProfilePictureName(file.name); // ✅ keep name
+      setProfilePictureName(file.name);
       const reader = new FileReader();
       reader.onload = () => { setProfilePicture(reader.result); };
       reader.readAsDataURL(file);
@@ -71,7 +66,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
     }
   };
 
-  // Load saved state when component mounts
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -88,13 +82,12 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
         setInstagram(data.instagram || '');
         setLinkedin(data.linkedin || '');
         setProfilePicture(data.profilePicture || null);
-        setProfilePictureName(data.profilePictureName || ''); // ✅ hydrate name
+        setProfilePictureName(data.profilePictureName || '');
       } catch {}
     }
     setHydrated(true);
   }, []);
 
-  // 🔎 Helper: recursively search for an email-like string in any JSON object
   const scanForEmailInObject = (obj, depth = 0) => {
     if (!obj || typeof obj !== 'object' || depth > 3) return '';
     for (const key of Object.keys(obj)) {
@@ -108,7 +101,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
     return '';
   };
 
-  // NEW: helper – robustly find the logged-in email in localStorage
   const findAuthEmail = () => {
     const candidateKeys = [
       'email_address', 'email', 'user_email', 'client_email', 'account_email'
@@ -117,7 +109,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
       const v = localStorage.getItem(k);
       if (v && validateEmail(v)) return v;
     }
-    // If any JSON blob (like "user") is stored, scan it for an email field
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       try {
@@ -133,17 +124,14 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
     return '';
   };
 
-  // Hydrate name from account and lock
   useEffect(() => {
     const authFirst = localStorage.getItem('first_name') || '';
     const authLast  = localStorage.getItem('last_name') || '';
-
     if (authFirst) setFirstName(authFirst);
     if (authLast)  setLastName(authLast);
     if (authFirst && authLast) setNameLocked(true);
   }, []);
 
-  // AFTER saved form is loaded, force-set account email and lock
   useEffect(() => {
     if (!hydrated) return;
     const authEmail = findAuthEmail();
@@ -151,9 +139,8 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
       setEmail(authEmail);
       setEmailLocked(true);
     }
-  }, [hydrated]); // ensures this runs after saved form hydration
+  }, [hydrated]);
 
-  // Save state on every change (after hydration)
   useEffect(() => {
     if (!hydrated) return;
     const payload = {
@@ -168,7 +155,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
       instagram,
       linkedin,
       profilePicture,
-      profilePictureName, // ✅ persist name
+      profilePictureName,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, [
@@ -184,7 +171,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
     instagram,
     linkedin,
     profilePicture,
-    profilePictureName, // ✅
+    profilePictureName,
   ]);
 
   useEffect(() => {
@@ -192,14 +179,41 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
     return () => { document.removeEventListener('mousedown', handleClickOutside); };
   }, []);
 
+  useEffect(() => {
+    if (!isLoadingNext) return;
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+    };
+  }, [isLoadingNext]);
+
+  useEffect(() => {
+    if (!isLoadingNext) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [isLoadingNext]);
+
   const onNextClick = () => {
     setAttempted(true);
     if (isFormValid) {
-      handleNext();
+      setIsLoadingNext(true);
+      setTimeout(() => {
+        handleNext();
+      }, 2000);
     }
   };
 
-  // ✅ Clear drafts when going back to dashboard from Step 1
   const clearDraftsAndGoDashboard = () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -351,7 +365,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
             </div>
           </div>
 
-          {/* ✅ Additional Address now required */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Additional Address (Landmark etc.)</label>
             <textarea
@@ -368,7 +381,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           </div>
         </div>
 
-        {/* Right column */}
         <div className="w-full md:w-1/3 bg-white p-6">
           <h3 className="text-2xl font-semibold mb-5">Profile Picture</h3>
           <p className="text-sm text-gray-600 mb-5">Upload your profile picture.</p>
@@ -396,11 +408,9 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                 onChange={handleProfilePictureChange}
                 className={`mb-1 w-full px-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${attempted && !profilePicture ? 'border-red-500' : 'border-gray-300'}`}
               />
-              {/* ✅ Show selected filename */}
               {profilePictureName && (
                 <p className="text-xs text-gray-600 truncate">Selected: {profilePictureName}</p>
               )}
-              {/* ✅ Error hint when missing */}
               {attempted && !profilePicture && (
                 <p className="text-xs text-red-600">Please upload a profile picture.</p>
               )}
@@ -410,7 +420,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           <h3 className="text-2xl font-semibold mb-5 mt-6">Social Media</h3>
           <p className="text-sm text-gray-600 mb-3">Please provide your social media links (For reference).</p>
 
-          {/* Social media are OPTIONAL (no required/validation) */}
           <div className="flex space-x-6 mb-4">
             <div className="w-full">
               <div className="flex items-center">
@@ -458,9 +467,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex justify-between mt-8 ml-3">
-        {/* ✅ Clear drafts when navigating back to dashboard */}
         <Link to="/clientdashboard" onClick={clearDraftsAndGoDashboard}>
           <button
             type="button"
@@ -480,6 +487,53 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           Next : Service Request Details
         </button>
       </div>
+
+      {isLoadingNext && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Loading next step"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900">Preparing Step 2</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 };
