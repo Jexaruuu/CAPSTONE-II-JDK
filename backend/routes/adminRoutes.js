@@ -8,4 +8,7 @@ router.post('/send-admin-no', controller.sendAdminNoEmail);
 router.post('/request-admin-no', controller.requestAdminNo);
 router.post('/logout', controller.logoutAdmin);
 
+/* -------- NEW: list all users (clients + workers) ---------- */
+router.get('/users', controller.listAllUsers);
+
 module.exports = router;

@@ -223,3 +223,50 @@ exports.logoutAdmin = async (req, res) => {
     return res.status(200).json({ message: 'Logged out' });
   }
 };
+
+/* ---------------- List Clients + Workers for Manage Users (safe date handling) --------------- */
+exports.listAllUsers = async (_req, res) => {
+  try {
+    const [clients, workers] = await Promise.all([
+      adminModel.listClients(),
+      adminModel.listWorkers(),
+    ]);
+
+    const getDate = (row) =>
+      row?.created_at || row?.createdAt || null; // don't assume inserted_at exists
+
+    const mapClient = (c) => ({
+      id: c.auth_uid || c.id || c.email_address,
+      role: 'client',
+      first_name: c.first_name || '',
+      last_name: c.last_name || '',
+      sex: c.sex || '',
+      email: c.email_address,
+      date: getDate(c),
+    });
+
+    const mapWorker = (w) => ({
+      id: w.auth_uid || w.id || w.email_address,
+      role: 'worker',
+      first_name: w.first_name || '',
+      last_name: w.last_name || '',
+      sex: w.sex || '',
+      email: w.email_address,
+      date: getDate(w),
+    });
+
+    // merge + sort by date desc if present; stable if not
+    const users = [
+      ...(Array.isArray(clients) ? clients.map(mapClient) : []),
+      ...(Array.isArray(workers) ? workers.map(mapWorker) : []),
+    ].sort((a, b) => {
+      const ad = a.date ? new Date(a.date).getTime() : 0;
+      const bd = b.date ? new Date(b.date).getTime() : 0;
+      return bd - ad;
+    });
+
+    return res.status(200).json({ users });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to fetch users.' });
+  }
+};

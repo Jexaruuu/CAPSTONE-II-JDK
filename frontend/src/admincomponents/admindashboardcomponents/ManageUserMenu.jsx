@@ -1,38 +1,87 @@
 // AdminManageUser.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import axios from "axios";
 import { MoreHorizontal, ChevronsUpDown, Check } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 /* ---------------- Helpers ---------------- */
 const formatPrettyDate = (iso) => {
+  if (!iso) return "-";
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return "-";
   const day = d.getDate();
   const month = d.toLocaleString("en-US", { month: "short" });
   const year = d.getFullYear();
   return `${day} ${month}, ${year}`;
 };
 const avatarFromName = (name) =>
-  `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name)}`;
-
-/* ------------- Demo data (swap with API/Supabase) ------------- */
-const INITIAL_USERS = [
-  { id: "u1", name: "Jamie Croquetas", email: "jamie@example.com", date: "2024-02-01", jobTitle: "Chief Editor", employmentType: "Employment" },
-  { id: "u2", name: "Encarna Homie", email: "encarna@example.com", date: "2024-02-01", jobTitle: "Account Manager", employmentType: "Employment" },
-  { id: "u3", name: "Cibeles Veterinario", email: "cibeles@example.com", date: "2024-09-08", jobTitle: "Brand Designer", employmentType: "Contractor" },
-  { id: "u4", name: "Esteban BBVA", email: "esteban.rivera@example.com", date: "2024-10-22", jobTitle: "Client Support Manager", employmentType: "Employment" },
-  { id: "u5", name: "Iver Make Up", email: "iver204@example.com", date: "2024-10-17", jobTitle: "Account Director", employmentType: "Contractor" },
-  { id: "u6", name: "Agustín Trabajo", email: "trabajo.mitc@example.com", date: "2024-09-08", jobTitle: "Motion Graphics Designer", employmentType: "Employment" },
-  { id: "u7", name: "Iyamirís Cel Santander", email: "iyamiris.young@example.com", date: "2024-09-21", jobTitle: "Marketing Director", employmentType: "Employment" },
-  { id: "u8", name: "Robert Fox", email: "robert@example.com", date: "2024-09-08", jobTitle: "Client Support Manager", employmentType: "Contractor" },
-  { id: "u9", name: "Uziel Renta", email: "renta.reid@example.com", date: "2024-05-16", jobTitle: "UI&UX Designer", employmentType: "Employment" },
-  { id: "u10", name: "Valerie Ahorro", email: "ahorro@example.com", date: "2024-05-24", jobTitle: "Backend Developer", employmentType: "Employment" },
-];
+  `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
 /* ---------------- Page ---------------- */
 export default function AdminManageUser() {
-  const [rows, setRows] = useState(INITIAL_USERS);
-  const [sort, setSort] = useState({ key: null, dir: "asc" }); // 'date'|'jobTitle'|'employmentType'
+  // Start empty so placeholders are not shown
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  // Sort keys now reflect new columns: 'first_name' | 'last_name' | 'sex' | 'email' | 'role'
+  const [sort, setSort] = useState({ key: null, dir: "asc" });
   const [selected, setSelected] = useState(() => new Set());
   const headerCheckboxRef = useRef(null);
+
+  // Normalize API payload into our new columns
+  const normalizeUsers = (list) => {
+    return (list || []).map((u) => {
+      const first_name =
+        u.first_name ||
+        (u.name ? String(u.name).trim().split(" ")[0] : "") ||
+        "";
+      const last_name =
+        u.last_name ||
+        (u.name ? String(u.name).trim().split(" ").slice(1).join(" ") : "") ||
+        "";
+      const email = u.email || u.email_address || "";
+      const role =
+        (u.role && String(u.role).toLowerCase()) ||
+        (u.jobTitle === "Worker" ? "worker" : "client");
+      const sex = u.sex || "-";
+
+      return {
+        id: u.id || u.auth_uid || email,
+        first_name,
+        last_name,
+        sex,
+        email,
+        role, // "client" | "worker" (lowercase)
+      };
+    });
+  };
+
+  // Fetch Clients + Workers from API
+  const fetchUsers = async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const res = await axios.get(`${API_BASE}/api/admin/users`, { withCredentials: true });
+      const list = Array.isArray(res?.data?.users) ? res.data.users : [];
+      const mapped = normalizeUsers(list);
+      setRows(mapped);
+    } catch (err) {
+      setLoadError(err?.response?.data?.message || err?.message || "Failed to load users");
+      setRows([]); // ensure no placeholders
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await fetchUsers();
+      if (cancelled) return;
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Header checkbox indeterminate logic
   useEffect(() => {
@@ -53,9 +102,6 @@ export default function AdminManageUser() {
     if (!sort.key) return rows;
     const dir = sort.dir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
-      if (sort.key === "date") {
-        return (new Date(a.date) - new Date(b.date)) * dir;
-      }
       const av = String(a[sort.key] ?? "").toLowerCase();
       const bv = String(b[sort.key] ?? "").toLowerCase();
       return av < bv ? -1 * dir : av > bv ? 1 * dir : 0;
@@ -93,19 +139,35 @@ export default function AdminManageUser() {
         <div className="-mx-6">
           <div className="px-6 flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-gray-900">Users</h2>
+
+            {/* Right-side small actions (optional) */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchUsers}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
 
           <div className="px-6">
             <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-              {/* Horizontal + vertical scroll only INSIDE the table area.
-                  Height is capped so the page doesn't grow */}
+              {/* Loading / error banners */}
+              {loading && (
+                <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">
+                  Loading users…
+                </div>
+              )}
+              {loadError && !loading && (
+                <div className="px-4 py-3 text-sm text-red-700 bg-red-50 border-b border-red-100">
+                  {loadError}
+                </div>
+              )}
+
+              {/* Horizontal + vertical scroll only INSIDE the table area. */}
               <div className="overflow-x-auto">
-                <div
-                  className="
-                    max-h-[520px] md:max-h-[63vh]
-                    overflow-y-auto
-                  "
-                >
+                <div className="max-h-[520px] md:max-h-[63vh] overflow-y-auto">
                   <table className="min-w-full border-separate border-spacing-0">
                     <thead>
                       <tr className="text-left text-sm text-gray-600">
@@ -119,37 +181,58 @@ export default function AdminManageUser() {
                             aria-label="Select all users"
                           />
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]">
-                          Name
-                        </th>
+
+                        {/* New columns */}
                         <th
                           className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
-                          onClick={() => toggleSort("date")}
+                          onClick={() => toggleSort("first_name")}
                         >
                           <span className="inline-flex items-center gap-1">
-                            Date
+                            First Name
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
                         <th
                           className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
-                          onClick={() => toggleSort("jobTitle")}
+                          onClick={() => toggleSort("last_name")}
                         >
                           <span className="inline-flex items-center gap-1">
-                            Job title
+                            Last Name
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
                         <th
                           className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
-                          onClick={() => toggleSort("employmentType")}
+                          onClick={() => toggleSort("sex")}
                         >
                           <span className="inline-flex items-center gap-1">
-                            Employment Type
+                            Sex
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-10 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]" />
+                        <th
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          onClick={() => toggleSort("email")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Email
+                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                          </span>
+                        </th>
+                        <th
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          onClick={() => toggleSort("role")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Role
+                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                          </span>
+                        </th>
+
+                        {/* Action Header (was empty; now labeled) */}
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-24 font-medium text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]">
+                          Action
+                        </th>
                       </tr>
                     </thead>
 
@@ -157,9 +240,7 @@ export default function AdminManageUser() {
                       {sortedRows.map((u, idx) => (
                         <tr
                           key={u.id}
-                          className={`border-t border-gray-100 ${
-                            idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"
-                          }`}
+                          className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
                         >
                           <td className="px-4 py-4">
                             <input
@@ -167,24 +248,23 @@ export default function AdminManageUser() {
                               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                               checked={selected.has(u.id)}
                               onChange={() => toggleSelectRow(u.id)}
-                              aria-label={`Select ${u.name}`}
+                              aria-label={`Select ${u.first_name} ${u.last_name}`}
                             />
                           </td>
 
-                          {/* Name + email + avatar */}
+                          {/* First Name */}
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-3">
                               <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 ring-1 ring-gray-300">
-                                {/* eslint-disable-next-line jsx-a11y/alt-text */}
                                 <img
-                                  src={avatarFromName(u.name)}
-                                  alt={u.name}
+                                  src={avatarFromName(`${u.first_name} ${u.last_name}`.trim())}
+                                  alt={`${u.first_name} ${u.last_name}`}
                                   className="h-full w-full object-cover"
                                   onError={({ currentTarget }) => {
                                     currentTarget.style.display = "none";
                                     const parent = currentTarget.parentElement;
                                     if (parent) {
-                                      parent.innerHTML = `<div class="h-9 w-9 grid place-items-center bg-blue-100 text-blue-700 text-xs font-semibold">${(u.name || "?")
+                                      parent.innerHTML = `<div class="h-9 w-9 grid place-items-center bg-blue-100 text-blue-700 text-xs font-semibold">${(u.first_name || "?")
                                         .trim()
                                         .charAt(0)
                                         .toUpperCase()}</div>`;
@@ -194,54 +274,49 @@ export default function AdminManageUser() {
                               </div>
                               <div className="min-w-0">
                                 <div className="font-medium text-gray-900 truncate">
-                                  {u.name}
-                                </div>
-                                <div className="text-gray-500 truncate">
-                                  {u.email}
+                                  {u.first_name || "-"}
                                 </div>
                               </div>
                             </div>
                           </td>
 
-                          <td className="px-4 py-4 text-gray-700">
-                            {formatPrettyDate(u.date)}
+                          {/* Last Name */}
+                          <td className="px-4 py-4">{u.last_name || "-"}</td>
+
+                          {/* Sex */}
+                          <td className="px-4 py-4">{u.sex || "-"}</td>
+
+                          {/* Email */}
+                          <td className="px-4 py-4">
+                            <div className="text-gray-700 truncate">{u.email}</div>
                           </td>
 
-                          <td className="px-4 py-4">{u.jobTitle}</td>
-
+                          {/* Role */}
                           <td className="px-4 py-4">
                             <span
                               className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
-                                u.employmentType === "Employment"
-                                  ? "border-emerald-200 text-emerald-700 bg-emerald-50"
-                                  : "border-amber-200 text-amber-700 bg-amber-50"
+                                (u.role || "").toLowerCase() === "worker"
+                                  ? "border-indigo-200 text-indigo-700 bg-indigo-50"
+                                  : "border-emerald-200 text-emerald-700 bg-emerald-50"
                               }`}
                             >
                               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                              {u.employmentType}
+                              {u.role?.charAt(0).toUpperCase() + u.role?.slice(1)}
                             </span>
                           </td>
 
-                          <td className="px-2 py-4 text-right">
+                          {/* Actions: render plain text link under Action column */}
+                          <td className="px-4 py-4 text-right">
                             <RowMenu
-                              onView={() => alert(`View ${u.name}`)}
-                              onEdit={() => alert(`Edit ${u.name}`)}
-                              onRemove={() => {
-                                setRows((prev) => prev.filter((r) => r.id !== u.id));
-                                setSelected((prev) => {
-                                  const n = new Set(prev);
-                                  n.delete(u.id);
-                                  return n;
-                                });
-                              }}
+                              onView={() => alert(`View ${u.first_name} ${u.last_name}`)}
                             />
                           </td>
                         </tr>
                       ))}
 
-                      {sortedRows.length === 0 && (
+                      {!loading && !loadError && sortedRows.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="px-4 py-16 text-center text-gray-500">
+                          <td colSpan={7} className="px-4 py-16 text-center text-gray-500">
                             No users found.
                           </td>
                         </tr>
@@ -284,7 +359,7 @@ export default function AdminManageUser() {
   );
 }
 
-/* ------------- Row menu (headless popover) ------------- */
+/* ------------- Row menu (plain text "View" under Action column; component kept) ------------- */
 function RowMenu({ onView, onEdit, onRemove }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -297,47 +372,29 @@ function RowMenu({ onView, onEdit, onRemove }) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
+  // Render a non-button link-style control
   return (
     <div className="relative inline-block text-left" ref={ref}>
-      <button
-        onClick={() => setOpen((s) => !s)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-gray-100"
-        aria-label="Open row menu"
+      <span
+        role="link"
+        tabIndex={0}
+        onClick={() => {
+          setOpen(false);
+          onView?.();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onView?.();
+          }
+        }}
+        className="cursor-pointer text-blue-600 hover:underline font-medium inline-flex items-center gap-1"
+        aria-label="View user"
       >
-        <MoreHorizontal className="h-5 w-5 text-gray-500" />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 z-10 mt-2 w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
-          <button
-            className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
-            onClick={() => {
-              setOpen(false);
-              onView?.();
-            }}
-          >
-            View
-          </button>
-          <button
-            className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
-            onClick={() => {
-              setOpen(false);
-              onEdit?.();
-            }}
-          >
-            Edit
-          </button>
-          <button
-            className="block w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-            onClick={() => {
-              setOpen(false);
-              onRemove?.();
-            }}
-          >
-            Remove
-          </button>
-        </div>
-      )}
+        {/* Keep the icon import (not a button) */}
+        <MoreHorizontal className="h-4 w-4 opacity-70" />
+        View
+      </span>
     </div>
   );
 }

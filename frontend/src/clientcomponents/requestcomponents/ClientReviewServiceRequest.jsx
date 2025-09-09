@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -11,6 +11,32 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  // Success overlay & ID (approval notice)
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [requestGroupId, setRequestGroupId] = useState(null);
+
+  // 🔒 Lock page scroll when loading or success overlay is visible
+  useEffect(() => {
+    const lock = isSubmitting || showSuccess;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+
+    if (lock) {
+      html.style.overflow = 'hidden';
+      body.style.overflow = 'hidden';
+    } else {
+      html.style.overflow = prevHtmlOverflow || '';
+      body.style.overflow = prevBodyOverflow || '';
+    }
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow || '';
+      body.style.overflow = prevBodyOverflow || '';
+    };
+  }, [isSubmitting, showSuccess]);
 
   const handleBackClick = () => {
     if (typeof handleBack === 'function') {
@@ -103,8 +129,8 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           facebook: infoDraft.facebook,
           instagram: infoDraft.instagram,
           linkedin: infoDraft.linkedin,
-          profilePicture: infoDraft.profilePicture,        // data URL
-          profilePictureName: infoDraft.profilePictureName // filename (optional)
+          profilePicture: infoDraft.profilePicture,
+          profilePictureName: infoDraft.profilePictureName
         },
         details: {
           serviceType: detailsDraft.serviceType,
@@ -114,7 +140,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           isUrgent: detailsDraft.isUrgent,
           toolsProvided: detailsDraft.toolsProvided,
           serviceDescription: detailsDraft.serviceDescription,
-          image: detailsDraft.image,       // data URL
+          image: detailsDraft.image,
           imageName: detailsDraft.imageName
         },
         rate: {
@@ -129,23 +155,29 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         withCredentials: true
       });
 
-      // Clear drafts on success
-      try {
-        localStorage.removeItem('clientInformationForm');
-        localStorage.removeItem('clientServiceRequestDetails');
-        localStorage.removeItem('clientServiceRate');
-      } catch {}
+      // ⛔ Do NOT clear localStorage here.
+      // Keep details visible under the approval notification.
 
-      // Redirect to dashboard (or success page)
-      navigate('/clientdashboard', {
-        state: { submitted: true, request_group_id: res?.data?.request_group_id }
-      });
+      setRequestGroupId(res?.data?.request_group_id || null);
+      setShowSuccess(true);
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Submission failed';
       setSubmitError(msg);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleGoDashboard = () => {
+    // ✅ Now clear drafts only when leaving the page
+    try {
+      localStorage.removeItem('clientInformationForm');
+      localStorage.removeItem('clientServiceRequestDetails');
+      localStorage.removeItem('clientServiceRate');
+    } catch {}
+    navigate('/clientdashboard', {
+      state: { submitted: true, request_group_id: requestGroupId }
+    });
   };
 
   return (
@@ -163,7 +195,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         <div className="space-y-6">
           {/* Personal Information */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h3 className="text-2xl font-semibold mb-4">Personal Information</h3>
+            <h3 className="text-2xl font-semibold mb-10">Personal Information</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
               <div className="text-lg md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
@@ -208,7 +240,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
 
           {/* Service Request Details */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h3 className="text-2xl font-semibold mb-4">Service Request Details</h3>
+            <h3 className="text-2xl font-semibold mb-10">Service Request Details</h3>
             <div className="text-lg grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
               <LabelValue label="Service Type" value={service_type} />
               <LabelValue label="Service Task" value={service_task} />
@@ -227,7 +259,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
 
           {/* Service Rate */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h3 className="text-2xl font-semibold mb-4">Service Rate</h3>
+            <h3 className="text-2xl font-semibold mb-10">Service Rate</h3>
             <div className="text-lg grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
               <LabelValue label="Rate Type" value={rate_type} />
               {rate_type === 'Hourly Rate' ? (
@@ -310,6 +342,57 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
             <div className="mt-6 text-center">
               <div className="text-base font-semibold text-gray-900">Submitting Request</div>
               <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success / Approval notice overlay */}
+      {showSuccess && !isSubmitting && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Request submitted"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+        >
+          <div className="relative w-[360px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center">
+              {!logoBroken ? (
+                <img
+                  src="/jdklogo.png"
+                  alt="JDK Homecare Logo"
+                  className="w-16 h-16 object-contain"
+                  onError={() => setLogoBroken(true)}
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Request Submitted!</div>
+              <div className="text-sm text-gray-600">
+                Please wait for admin approval within <span className="font-medium">1–2 hours</span>.
+              </div>
+              <div className="text-xs text-gray-500">
+                The details below will remain on this page for your reference.
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={handleGoDashboard}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300"
+              >
+                Go back to Dashboard
+              </button>
             </div>
           </div>
         </div>

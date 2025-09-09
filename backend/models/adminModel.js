@@ -96,3 +96,27 @@ exports.adminNoExists = async (adminNo) => {
   if (error) return false;
   return Array.isArray(data) && data.length > 0;
 };
+
+/* ---------------- FIXED: Lists for Manage Users (no inserted_at, no server-side order) ----------------- */
+exports.listClients = async () => {
+  // Only select columns we know exist in your inserts
+  const { data, error } = await supabaseAdmin
+    .from(CLIENT_TABLE)
+    .select('auth_uid, first_name, last_name, sex, email_address, created_at'); // created_at may exist (DEFAULT now())
+  if (error) {
+    console.error('listClients error:', error);
+    return [];
+  }
+  return data || [];
+};
+
+exports.listWorkers = async () => {
+  const { data, error } = await supabaseAdmin
+    .from(WORKER_TABLE)
+    .select('auth_uid, first_name, last_name, sex, email_address, created_at');
+  if (error) {
+    console.error('listWorkers error:', error);
+    return [];
+  }
+  return data || [];
+};
