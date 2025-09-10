@@ -13,7 +13,12 @@ const AdminDashboardPage = () => {
       <div className="flex-1 flex flex-col">
         <AdminTopNavigation />
         <div className="flex-1">
-          {outlet || <><DashboardMenu /><ManageUserMenu /></>}
+          {outlet || (
+            <>
+              <DashboardMenu />
+              <ManageUserMenu />
+            </>
+          )}
         </div>
       </div>
     </div>

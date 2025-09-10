@@ -8,33 +8,29 @@ import LoginPage from './pages/loginpage/LoginPage';
 import AdminDashboardPage from './pages/dashboardpage/AdminDashboard';
 
 import ClientSignUpPage from './pages/signuppage/ClientSignup';
-import ClientSuccessPage from "./pages/successpage/ClientSuccess";
+import ClientSuccessPage from './pages/successpage/ClientSuccess';
 import ClientWelcomePage from './pages/clientpage/ClientWelcome';
 import ClientPostRequest from './pages/clientpage/ClientPostRequest';
 import ClientReviewServiceRequest from './clientcomponents/requestcomponents/ClientReviewServiceRequest';
 import ClientDashboardPage from './pages/dashboardpage/ClientDashboard';
 
 import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
-import WorkerSuccessPage from "./pages/successpage/WorkerSuccess";
+import WorkerSuccessPage from './pages/successpage/WorkerSuccess';
 import WorkerWelcomePage from './pages/workerpage/WorkerWelcome';
 import WorkerPostApplication from './pages/workerpage/WorkerPostApplication';
-
 import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
 import AdminSignup from './pages/signuppage/AdminSignup';
 import AdminSuccessPage from './pages/successpage/AdminSuccess';
 
-// ✅ import your real admin center content
 import DashboardMenu from './admincomponents/admindashboardcomponents/DashboardMenu';
 import ManageUserMenu from './admincomponents/admindashboardcomponents/ManageUserMenu';
 import ServiceRequestMenu from './admincomponents/admindashboardcomponents/ServiceRequestMenu';
 import WorkerApplicationMenu from './admincomponents/admindashboardcomponents/WorkerApplicationMenu';
 
-// (You can replace this with a real page later)
 const AdminSettings = () => <div className="p-6">Settings</div>;
 
-// ---- route guards (unchanged) ----
 const ProtectedRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
   const lastName = localStorage.getItem('last_name');
@@ -49,7 +45,6 @@ const GuestRoute = ({ children }) => {
   if (firstName && lastName && role) {
     if (role === 'client') return <Navigate to="/clientdashboard" />;
     if (role === 'worker') return <Navigate to="/workerdashboard" />;
-    return children;
   }
   return children;
 };
@@ -83,9 +78,7 @@ const App = () => {
         <Route path="/adminlogin" element={<AdminLoginPage />} />
         <Route path="/adminsignup" element={<GuestRoute><AdminSignup /></GuestRoute>} />
 
-        {/* ✅ LAYOUT route with nested admin content */}
         <Route path="/admindashboard" element={<AdminDashboardPage />}>
-          {/* show stats on the plain /admindashboard URL */}
           <Route index element={<DashboardMenu />} />
           <Route path="manage-users" element={<ManageUserMenu />} />
           <Route path="service-requests" element={<ServiceRequestMenu />} />
@@ -95,7 +88,6 @@ const App = () => {
 
         <Route path="/adminsuccess" element={<AdminSuccessPage />} />
 
-        {/* client */}
         <Route
           path="/clientdashboard"
           element={
@@ -112,7 +104,6 @@ const App = () => {
         <Route path="/clientsignup" element={<GuestRoute><ClientSignUpPage /></GuestRoute>} />
         <Route path="/clientsuccess" element={<ClientSuccessPage />} />
 
-        {/* worker */}
         <Route
           path="/workerdashboard"
           element={
@@ -127,6 +118,8 @@ const App = () => {
         <Route path="/workerpostapplication" element={<WorkerPostApplication />} />
         <Route path="/workersignup" element={<GuestRoute><WorkerSignUpPage /></GuestRoute>} />
         <Route path="/workersuccess" element={<WorkerSuccessPage />} />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

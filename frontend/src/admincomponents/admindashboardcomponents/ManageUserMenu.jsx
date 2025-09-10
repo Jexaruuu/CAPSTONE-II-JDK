@@ -255,7 +255,7 @@ export default function AdminManageUser() {
                           {/* First Name */}
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 ring-1 ring-gray-300">
+                              <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-2 00 ring-1 ring-gray-300">
                                 <img
                                   src={avatarFromName(`${u.first_name} ${u.last_name}`.trim())}
                                   alt={`${u.first_name} ${u.last_name}`}
@@ -388,11 +388,11 @@ function RowMenu({ onView, onEdit, onRemove }) {
             onView?.();
           }
         }}
-        className="cursor-pointer text-blue-600 hover:underline font-medium inline-flex items-center gap-1"
+        className="cursor-pointer text-blue-600 hover:underline font-medium inline-flex items-center"
         aria-label="View user"
       >
-        {/* Keep the icon import (not a button) */}
-        <MoreHorizontal className="h-4 w-4 opacity-70" />
+        {/* Keep icon in codebase but hide it visually so only 'View' appears */}
+        <MoreHorizontal className="hidden" aria-hidden="true" />
         View
       </span>
     </div>

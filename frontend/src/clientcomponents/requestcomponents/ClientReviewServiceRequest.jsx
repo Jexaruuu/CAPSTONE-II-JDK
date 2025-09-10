@@ -117,6 +117,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       const detailsDraft = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRequestDetails') || '{}'); } catch { return {}; }})();
       const rateDraft = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRate') || '{}'); } catch { return {}; }})();
 
+      // Keep your original nested payload (not used by API, but we won't remove it)
       const payload = {
         info: {
           firstName: infoDraft.firstName,
@@ -151,14 +152,72 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         }
       };
 
-      const res = await axios.post(`${API_BASE}/api/clientservicerequest/submit`, payload, {
-        withCredentials: true
-      });
+      // Build the flat payload that your backend expects
+      const clientId =
+        infoDraft.client_id ||
+        infoDraft.clientId ||
+        localStorage.getItem('client_id') ||
+        localStorage.getItem('auth_uid') ||
+        null;
+
+      // NOTE: if clientId is null, backend will resolve using email_address
+
+      const addressCombined = payload.info?.street
+        ? (payload.info.additionalAddress
+            ? `${payload.info.street}, ${payload.info.additionalAddress}`
+            : payload.info.street)
+        : payload.info?.additionalAddress || null;
+
+      const apiPayload = {
+        client_id: clientId,
+
+        // client info
+        first_name: payload.info.firstName,
+        last_name: payload.info.lastName,
+        email_address: payload.info.email,
+        barangay: payload.info.barangay,
+        address: addressCombined,
+
+        // details
+        service_type: payload.details.serviceType,
+        service_task: payload.details.serviceTask,
+        description: payload.details.serviceDescription || 'No description provided',
+        preferred_date: payload.details.preferredDate,
+        preferred_time: payload.details.preferredTime,
+        is_urgent: !!payload.details.isUrgent,
+        tools_provided: !!payload.details.toolsProvided,
+
+        // rate
+        rate_type: payload.rate.rateType,
+        rate_from: payload.rate.rateFrom,
+        rate_to: payload.rate.rateTo,
+        rate_value: payload.rate.rateValue,
+
+        // optional
+        attachments: payload.details.image ? [payload.details.image] : [],
+        metadata: {
+          contact_number: payload.info.contactNumber,
+          facebook: payload.info.facebook,
+          instagram: payload.info.instagram,
+          linkedin: payload.info.linkedin,
+          profile_picture: payload.info.profilePicture,
+          profile_picture_name: payload.info.profilePictureName,
+          image_name: payload.details.imageName,
+        },
+      };
+
+      // ✅ Correct plural path
+      const res = await axios.post(
+        `${API_BASE}/api/clientservicerequests/submit`,
+        apiPayload,
+        { withCredentials: true }
+      );
 
       // ⛔ Do NOT clear localStorage here.
       // Keep details visible under the approval notification.
 
-      setRequestGroupId(res?.data?.request_group_id || null);
+      // ✅ Read nested "request.request_group_id" from server response
+      setRequestGroupId(res?.data?.request?.request_group_id || null);
       setShowSuccess(true);
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Submission failed';

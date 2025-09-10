@@ -16,7 +16,8 @@ const clientModel = require("./models/clientModel");
 const workerModel = require("./models/workerModel");
 const adminModel = require("./models/adminModel");
 
-const clientServiceRequestRoutes = require("./routes/clientservicerequestRoutes");
+const clientservicerequestsRoutes = require("./routes/clientservicerequestsRoutes");
+const adminservicerequestsRoutes  = require("./routes/adminservicerequestsRoutes");
 
 dotenv.config();
 
@@ -56,7 +57,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// AFTER – allow larger JSON + form bodies
 const BODY_LIMIT = process.env.MAX_BODY_SIZE || '25mb';
 app.use(express.json({ limit: BODY_LIMIT }));
 app.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
@@ -207,7 +207,10 @@ app.use("/api/workers", workerRoutes);
 app.use("/api/login", loginRoutes);
 app.use("/api/admins", adminRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/clientservicerequest", clientServiceRequestRoutes);
+
+app.use("/api/clientservicerequests", clientservicerequestsRoutes);
+app.use("/api/admin/servicerequests", adminservicerequestsRoutes);
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

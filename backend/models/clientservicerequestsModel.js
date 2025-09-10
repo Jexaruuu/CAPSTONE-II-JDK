@@ -91,6 +91,16 @@ async function insertServiceRate(row) {
   return data;
 }
 
+async function insertServiceRequestStatus(row) {
+  const { data, error } = await supabaseAdmin
+    .from('client_service_request_status')
+    .insert([row])
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 function newGroupId() {
   return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
 }
@@ -101,5 +111,6 @@ module.exports = {
   insertClientInformation,
   insertServiceRequestDetails,
   insertServiceRate,
+  insertServiceRequestStatus,
   newGroupId
 };
