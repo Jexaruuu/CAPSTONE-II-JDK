@@ -5,23 +5,28 @@ import { ChevronsUpDown } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+/* ---------------- Feature Flags (keep code, toggle visibility/behavior) ---------------- */
+const ENABLE_SELECTION = false; // ⬅️ set true to show tick boxes + footer again
+const BOLD_FIRST_NAME = false; // ⬅️ set true if you want first name bold again
+const ACTION_ALIGN_RIGHT = false; // ⬅️ true keeps right-aligned actions; false aligns left (like Manage Users)
+
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
+/* ⬇️ Match badge UI style used in Manage Users (role chips) */
 function StatusPill({ value }) {
   const v = String(value || "").toLowerCase();
   const cfg =
     v === "approved"
-      ? { bg: "bg-emerald-50", text: "text-emerald-700", br: "border-emerald-200", dot: "bg-emerald-500" }
+      ? { bg: "bg-emerald-50", text: "text-emerald-700", br: "border-emerald-200" }
       : v === "declined"
-      ? { bg: "bg-red-50", text: "text-red-700", br: "border-red-200", dot: "bg-red-500" }
-      : { bg: "bg-amber-50", text: "text-amber-800", br: "border-amber-200", dot: "bg-amber-500" };
-  const label =
-    v === "approved" ? "Approved" : v === "declined" ? "Declined" : "Pending";
+      ? { bg: "bg-red-50", text: "text-red-700", br: "border-red-200" }
+      : { bg: "bg-amber-50", text: "text-amber-700", br: "border-amber-200" };
+  const label = v === "approved" ? "Approved" : v === "declined" ? "Declined" : "Pending";
   return (
     <span
       className={[
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border",
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
         cfg.bg,
         cfg.text,
         cfg.br,
@@ -29,8 +34,9 @@ function StatusPill({ value }) {
       aria-label={`Status: ${label}`}
       title={label}
     >
-      <span className={["h-2 w-2 rounded-full", cfg.dot].join(" ")} />
-      <span className="leading-none">{label}</span>
+      {/* Dot uses current text color just like the role badge */}
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+      {label}
     </span>
   );
 }
@@ -39,16 +45,50 @@ export default function AdminServiceRequests() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
+
   const [sort, setSort] = useState({ key: null, dir: "asc" });
   const [selected, setSelected] = useState(() => new Set());
   const headerCheckboxRef = useRef(null);
   const [viewRow, setViewRow] = useState(null);
 
-  const fetchItems = async () => {
+  // filter + search + counts
+  const [filter, setFilter] = useState("all"); // 'all' | 'pending' | 'approved' | 'declined'
+  const [searchTerm, setSearchTerm] = useState("");
+  const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0, total: 0 });
+
+  // Helpers
+  const isYes = (v) => String(v ?? '').toLowerCase() === 'yes';
+  const rate_toNumber = (x) => (x === null || x === undefined || x === '' ? null : Number(x));
+
+  const fetchCounts = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/admin/servicerequests/count`, { withCredentials: true });
+      const c = res?.data || {};
+      setCounts({
+        pending: c.pending || 0,
+        approved: c.approved || 0,
+        declined: c.declined || 0,
+        total: c.total || 0,
+      });
+    } catch {
+      // silent
+    }
+  };
+
+  const fetchItems = async (statusArg = filter, qArg = searchTerm) => {
     setLoading(true);
     setLoadError("");
     try {
-      const res = await axios.get(`${API_BASE}/api/admin/servicerequests?status=pending`, { withCredentials: true });
+      // ✅ Do NOT send status when "all"
+      const params = {};
+      if (statusArg && statusArg !== "all") params.status = statusArg;
+      if (qArg && qArg.trim()) params.q = qArg.trim();
+
+      const res = await axios.get(`${API_BASE}/api/admin/servicerequests`, {
+        params,
+        withCredentials: true,
+      });
+
       const items = Array.isArray(res?.data?.items) ? res.data.items : [];
       const mapped = items.map((r) => {
         const i = r.info || {};
@@ -66,12 +106,12 @@ export default function AdminServiceRequests() {
           preferred_date: d.preferred_date || "",
           preferred_time: d.preferred_time || "",
           barangay: i.barangay || "",
-          is_urgent: !!d.is_urgent,
-          tools_provided: !!d.tools_provided,
+          is_urgent: isYes(d.is_urgent) || d.is_urgent === true,
+          tools_provided: isYes(d.tools_provided) || d.tools_provided === true,
           rate_type: rate.rate_type || "",
           rate_from: rate.rate_from,
-          rate_to: rate.rate_to,
-          rate_value: rate.rate_value,
+          rate_to: rate_toNumber(rate.rate_to),
+          rate_value: rate_toNumber(rate.rate_value),
           info: i,
           details: d,
           rate,
@@ -86,15 +126,25 @@ export default function AdminServiceRequests() {
     }
   };
 
-  useEffect(() => { fetchItems(); }, []);
+  // Initial load
+  useEffect(() => { fetchCounts(); fetchItems(); }, []); // eslint-disable-line
 
+  // Checkbox indeterminate (no-op when selection disabled)
   useEffect(() => {
+    if (!ENABLE_SELECTION) return;
     const el = headerCheckboxRef.current;
     if (!el) return;
     if (selected.size === 0) { el.indeterminate = false; el.checked = false; }
     else if (selected.size === rows.length) { el.indeterminate = false; el.checked = true; }
     else { el.indeterminate = true; }
   }, [selected, rows.length]);
+
+  // Debounced refetch on filter/search changes
+  useEffect(() => {
+    const t = setTimeout(() => { fetchItems(filter, searchTerm); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [filter, searchTerm]);
 
   const sortedRows = useMemo(() => {
     if (!sort.key) return rows;
@@ -109,40 +159,109 @@ export default function AdminServiceRequests() {
   const toggleSort = (key) =>
     setSort((prev) => (prev.key !== key ? { key, dir: "asc" } : { key, dir: prev.dir === "asc" ? "desc" : "asc" }));
 
-  const allSelected = selected.size === rows.length && rows.length > 0;
-  const toggleSelectAll = () => { setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id))); };
+  const allSelected = ENABLE_SELECTION && selected.size === rows.length && rows.length > 0;
+
+  const toggleSelectAll = () => {
+    if (!ENABLE_SELECTION) return;
+    setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
+  };
   const toggleSelectRow = (id) =>
-    setSelected((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+    setSelected((prev) => {
+      if (!ENABLE_SELECTION) return prev;
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const approve = async (id) => {
     await axios.post(`${API_BASE}/api/admin/servicerequests/${id}/approve`, {}, { withCredentials: true });
     setRows((r) => r.map((x) => (x.id === id ? { ...x, status: "approved" } : x)));
     setSelected((s) => { const n = new Set(s); n.delete(id); return n; });
+    setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
   };
 
   const decline = async (id) => {
     await axios.post(`${API_BASE}/api/admin/servicerequests/${id}/decline`, {}, { withCredentials: true });
     setRows((r) => r.map((x) => (x.id === id ? { ...x, status: "declined" } : x)));
     setSelected((s) => { const n = new Set(s); n.delete(id); return n; });
+    setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
   };
+
+  const tabs = [
+    { key: "all", label: "All", count: counts.total },
+    { key: "pending", label: "Pending", count: counts.pending },
+    { key: "approved", label: "Approved", count: counts.approved },
+    { key: "declined", label: "Declined", count: counts.declined },
+  ];
+
+  // Adjust colSpan depending on whether selection column is visible
+  const COLSPAN = ENABLE_SELECTION ? 7 : 6;
 
   return (
     <main className="p-6">
       <div className="mb-4">
         <h1 className="text-xl font-semibold text-gray-900">Service Requests</h1>
-        <p className="text-gray-600 mt-2">Incoming client service requests pending review.</p>
+        <p className="text-gray-600 mt-2">Browse, search, and manage all incoming and processed client requests.</p>
       </div>
 
-      <section className="mt-8">
+      <section className="mt-6">
         <div className="-mx-6">
-          <div className="px-6 flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">Clients Service Requests</h2>
+          <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            {/* Tabs */}
             <div className="flex items-center gap-2">
-              <button onClick={fetchItems} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">Refresh</button>
+              {tabs.map(t => {
+                const active = filter === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => setFilter(t.key)}
+                    className={[
+                      "rounded-full px-3.5 py-1.5 text-sm border",
+                      active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                    ].join(" ")}
+                  >
+                    <span>{t.label}</span>
+                    <span className={[
+                      "ml-2 inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold",
+                      active ? "bg-white/20" : "bg-gray-100 text-gray-700"
+                    ].join(" ")}>
+                      {typeof t.count === 'number' ? t.count : '—'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right controls */}
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search Requests"
+                  className="w-72 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Search requests"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
+                    aria-label="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => { fetchCounts(); fetchItems(filter, searchTerm); }}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Refresh
+              </button>
             </div>
           </div>
 
-          <div className="px-6">
+          <div className="px-6 mt-3">
             <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
               {loading && <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">Loading…</div>}
               {loadError && !loading && <div className="px-4 py-3 text-sm text-red-700 bg-red-50 border-b border-red-100">{loadError}</div>}
@@ -152,21 +271,29 @@ export default function AdminServiceRequests() {
                   <table className="min-w-full border-separate border-spacing-0">
                     <thead>
                       <tr className="text-left text-sm text-gray-600">
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]">
-                          <input
-                            ref={headerCheckboxRef}
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            onChange={toggleSelectAll}
-                            checked={allSelected}
-                            aria-label="Select all"
-                          />
-                        </th>
+                        {ENABLE_SELECTION && (
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]">
+                            <input
+                              ref={headerCheckboxRef}
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              onChange={toggleSelectAll}
+                              checked={allSelected}
+                              aria-label="Select all"
+                            />
+                          </th>
+                        )}
 
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]" onClick={() => toggleSort("name_first")}>
+                        <th
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          onClick={() => toggleSort("name_first")}
+                        >
                           <span className="inline-flex items-center gap-1">First Name<ChevronsUpDown className="h-4 w-4 text-gray-400" /></span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]" onClick={() => toggleSort("name_last")}>
+                        <th
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          onClick={() => toggleSort("name_last")}
+                        >
                           <span className="inline-flex items-center gap-1">Last Name<ChevronsUpDown className="h-4 w-4 text-gray-400" /></span>
                         </th>
                         <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700">Email</th>
@@ -179,15 +306,17 @@ export default function AdminServiceRequests() {
                     <tbody className="text-sm text-gray-800">
                       {sortedRows.map((u, idx) => (
                         <tr key={u.id} className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}>
-                          <td className="px-4 py-4">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              checked={selected.has(u.id)}
-                              onChange={() => toggleSelectRow(u.id)}
-                              aria-label={`Select ${u.name_first} ${u.name_last}`}
-                            />
-                          </td>
+                          {ENABLE_SELECTION && (
+                            <td className="px-4 py-4">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                checked={selected.has(u.id)}
+                                onChange={() => toggleSelectRow(u.id)}
+                                aria-label={`Select ${u.name_first} ${u.name_last}`}
+                              />
+                            </td>
+                          )}
 
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-3">
@@ -206,7 +335,9 @@ export default function AdminServiceRequests() {
                                 />
                               </div>
                               <div className="min-w-0">
-                                <div className="font-medium text-gray-900 truncate">{u.name_first || "-"}</div>
+                                <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"}`}>
+                                  {u.name_first || "-"}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -218,7 +349,7 @@ export default function AdminServiceRequests() {
                           </td>
                           <td className="px-4 py-4"><StatusPill value={u.status} /></td>
 
-                          <td className="px-4 py-4 text-right">
+                          <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"}`}>
                             <div className="inline-flex gap-3">
                               <button onClick={() => setViewRow(u)} className="text-blue-600 hover:underline font-medium">View</button>
                               <button onClick={() => approve(u.id)} className="text-emerald-600 hover:underline font-medium" disabled={u.status === "approved"}>Approve</button>
@@ -229,14 +360,15 @@ export default function AdminServiceRequests() {
                       ))}
 
                       {!loading && !loadError && sortedRows.length === 0 && (
-                        <tr><td colSpan={7} className="px-4 py-16 text-center text-gray-500">No pending requests.</td></tr>
+                        <tr><td colSpan={COLSPAN} className="px-4 py-16 text-center text-gray-500">No requests found.</td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              {selected.size > 0 && (
+              {/* Footer with Clear selection — hidden when selection disabled */}
+              {ENABLE_SELECTION && selected.size > 0 && (
                 <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 text-sm">
                   <div className="text-gray-700">{selected.size} selected</div>
                   <div className="flex items-center gap-2">
@@ -276,8 +408,11 @@ export default function AdminServiceRequests() {
               <div className="col-span-2">
                 <div className="font-medium">Rate</div>
                 <div>
-                  {viewRow.rate_type === 'Hourly Rate' ? `₱${viewRow.rate_from || 0} - ₱${viewRow.rate_to || 0} / hr` :
-                   viewRow.rate_type === 'By the Job Rate' ? `₱${viewRow.rate_value || 0} per job` : '-'}
+                  {viewRow.rate_type === 'Hourly Rate'
+                    ? `₱${viewRow.rate_from ?? 0} - ₱${viewRow.rate_to ?? 0} / hr`
+                    : viewRow.rate_type === 'By the Job Rate'
+                      ? `₱${viewRow.rate_value ?? 0} per job`
+                      : '-'}
                 </div>
               </div>
             </div>
@@ -287,6 +422,7 @@ export default function AdminServiceRequests() {
                 onClick={async () => {
                   await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/decline`, {}, { withCredentials: true });
                   setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined" } : x)));
+                  setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
                   setViewRow(null);
                 }}
                 className="rounded-lg px-3 py-1.5 bg-red-600 text-white"
@@ -297,6 +433,7 @@ export default function AdminServiceRequests() {
                 onClick={async () => {
                   await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/approve`, {}, { withCredentials: true });
                   setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved" } : x)));
+                  setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
                   setViewRow(null);
                 }}
                 className="rounded-lg px-3 py-1.5 bg-emerald-600 text-white"

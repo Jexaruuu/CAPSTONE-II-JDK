@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Bell } from 'lucide-react';
 
+const SHOW_SEARCH = false; // toggle to true if you want the search bar back
+
 const getGreeting = (d = new Date()) => {
   const h = d.getHours();
   if (h >= 5 && h < 12) return 'Good morning!';
@@ -32,35 +34,39 @@ const AdminTopNavigation = () => {
   return (
     <header className="sticky top-0 z-40 w-full px-4 py-4">
       <div className="mx-auto rounded-2xl bg-white border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between">
-        <div className="flex-1 max-w-xl">
-          <label className="relative block">
-            <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
-            </span>
-            <input
-              type="text"
-              placeholder="Search for..."
-              className="w-full h-11 rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-[15px] md:text-base text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition"
-            />
-          </label>
-        </div>
+        {/* Left: Search (kept in code, hidden by flag) */}
+        {SHOW_SEARCH ? (
+          <div className="flex-1 max-w-xl">
+            <label className="relative block">
+              <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </span>
+              <input
+                type="text"
+                placeholder="Search for..."
+                className="w-full h-11 rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-[15px] md:text-base text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition"
+              />
+            </label>
+          </div>
+        ) : (
+          // Spacer keeps right-side content aligned when search is hidden
+          <div className="flex-1" />
+        )}
 
+        {/* Right content */}
         <div className="ml-4 flex items-center gap-4">
           <div className="hidden sm:flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 h-10 text-[15px] md:text-base font-medium text-gray-700 shadow-sm">
             <span className="text-gray-900 font-semibold">{dateText}</span>
             <span className="text-gray-300">•</span>
             <span className="text-gray-900 font-semibold">{timeText}</span>
             <span className="text-gray-300">•</span>
-             <span className="text-gray-900 font-semibold">#{adminNo}</span>
-                <span className="text-gray-300">•</span>
+            <span className="text-gray-900 font-semibold">#{adminNo}</span>
+            <span className="text-gray-300">•</span>
             <span>
               {greeting}
               {firstName ? `, ${firstName}` : ''}
             </span>
-            {adminNo ? (
-              <>
-              </>
-            ) : null}
+            {adminNo ? <></> : null}
           </div>
 
           <button

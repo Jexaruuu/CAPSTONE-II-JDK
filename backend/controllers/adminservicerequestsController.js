@@ -4,7 +4,7 @@ const {
   listPending,
   markStatus,
   countByStatus,
-} = require('../models/pendingservicerequestsModel');
+} = require('../models/adminservicerequestsModel'); // ⬅️ new model
 
 // Batch-hydrate incoming rows with info/details/rate by request_group_id
 async function hydrate(baseRows) {
@@ -58,9 +58,14 @@ async function hydrate(baseRows) {
 
 exports.list = async (req, res) => {
   try {
-    const status = (req.query.status || '').trim() || null; // pending | approved | declined | all(null)
-    const base = await listPending(status, 500);
+    let status = (req.query.status ?? '').trim().toLowerCase();
+    if (!status || status === 'all') status = null;
+
+    const search = (req.query.q || req.query.search || '').trim() || null;
+
+    const base = await listPending(status, 500, search);
     const items = await hydrate(base);
+
     return res.status(200).json({ items, total: items.length });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to list service requests', error: err?.message });
@@ -74,7 +79,7 @@ exports.count = async (_req, res) => {
       countByStatus('approved'),
       countByStatus('declined'),
     ]);
-    return res.status(200).json({ pending, approved, declined, total: pending + approved + declined });
+    return res.status(200).json({ pending, approved, declined, total: (pending + approved + declined) });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to get counts', error: err?.message });
   }

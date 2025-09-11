@@ -5,6 +5,10 @@ import { MoreHorizontal, ChevronsUpDown, Check } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+/* ---------------- Feature Flags (keep code, toggle visibility/behavior) ---------------- */
+const ENABLE_SELECTION = false; // ⬅️ set true to show tick boxes + footer again
+const BOLD_FIRST_NAME = false; // ⬅️ set true if you want first name bold again
+
 /* ---------------- Helpers ---------------- */
 const formatPrettyDate = (iso) => {
   if (!iso) return "-";
@@ -28,6 +32,18 @@ export default function AdminManageUser() {
   const [sort, setSort] = useState({ key: null, dir: "asc" });
   const [selected, setSelected] = useState(() => new Set());
   const headerCheckboxRef = useRef(null);
+
+  // NEW: role filter (same tab UX as Service Requests)
+  const [roleFilter, setRoleFilter] = useState("all"); // 'all' | 'client' | 'worker'
+
+  // NEW: search bar (same style/behavior as Service Requests)
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 400);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
   // Normalize API payload into our new columns
   const normalizeUsers = (list) => {
@@ -83,8 +99,9 @@ export default function AdminManageUser() {
     return () => { cancelled = true; };
   }, []);
 
-  // Header checkbox indeterminate logic
+  // Header checkbox indeterminate logic (no-op when selection disabled)
   useEffect(() => {
+    if (!ENABLE_SELECTION) return;
     const el = headerCheckboxRef.current;
     if (!el) return;
     if (selected.size === 0) {
@@ -98,31 +115,83 @@ export default function AdminManageUser() {
     }
   }, [selected, rows.length]);
 
+  // NEW: compute role counts (like counts in Service Requests tabs)
+  const roleCounts = useMemo(() => {
+    const acc = { client: 0, worker: 0, total: 0 };
+    for (const u of rows) {
+      const r = String(u.role || "").toLowerCase() === "worker" ? "worker" : "client";
+      acc[r] += 1;
+      acc.total += 1;
+    }
+    return acc;
+  }, [rows]);
+
+  // NEW: filter by role first
+  const filteredByRole = useMemo(() => {
+    if (roleFilter === "all") return rows;
+    return rows.filter((u) => String(u.role || "").toLowerCase() === roleFilter);
+  }, [rows, roleFilter]);
+
+  // NEW: then filter by search (first name, last name, full name, email, sex, role)
+  const baseRows = useMemo(() => {
+    const term = debouncedSearch.toLowerCase();
+    if (!term) return filteredByRole;
+    return filteredByRole.filter((u) => {
+      const fn = String(u.first_name || "").toLowerCase();
+      const ln = String(u.last_name || "").toLowerCase();
+      const full = `${fn} ${ln}`.trim();
+      const email = String(u.email || "").toLowerCase();
+      const sex = String(u.sex || "").toLowerCase();
+      const role = String(u.role || "").toLowerCase();
+      return (
+        fn.includes(term) ||
+        ln.includes(term) ||
+        full.includes(term) ||
+        email.includes(term) ||
+        sex.includes(term) ||
+        role.includes(term)
+      );
+    });
+  }, [filteredByRole, debouncedSearch]);
+
   const sortedRows = useMemo(() => {
-    if (!sort.key) return rows;
+    if (!sort.key) return baseRows;
     const dir = sort.dir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
+    return [...baseRows].sort((a, b) => {
       const av = String(a[sort.key] ?? "").toLowerCase();
       const bv = String(b[sort.key] ?? "").toLowerCase();
       return av < bv ? -1 * dir : av > bv ? 1 * dir : 0;
     });
-  }, [rows, sort]);
+  }, [baseRows, sort]);
 
   const toggleSort = (key) =>
     setSort((prev) =>
       prev.key !== key ? { key, dir: "asc" } : { key, dir: prev.dir === "asc" ? "desc" : "asc" }
     );
 
-  const allSelected = selected.size === rows.length && rows.length > 0;
+  const allSelected = ENABLE_SELECTION && selected.size === baseRows.length && baseRows.length > 0;
+
   const toggleSelectAll = () => {
-    setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
+    if (!ENABLE_SELECTION) return;
+    setSelected(allSelected ? new Set() : new Set(baseRows.map((r) => r.id)));
   };
   const toggleSelectRow = (id) =>
     setSelected((prev) => {
+      if (!ENABLE_SELECTION) return prev;
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+
+  // Adjust colSpan depending on whether selection column is visible
+  const COLSPAN = ENABLE_SELECTION ? 7 : 6;
+
+  // NEW: role tabs like Service Requests
+  const roleTabs = [
+    { key: "all", label: "All", count: roleCounts.total },
+    { key: "client", label: "Client", count: roleCounts.client },
+    { key: "worker", label: "Worker", count: roleCounts.worker },
+  ];
 
   return (
     <main className="p-6">
@@ -135,13 +204,71 @@ export default function AdminManageUser() {
       </div>
 
       {/* Section wrapper preserved (-mx-6 / px-6 like your other pages) */}
-      <section className="mt-8">
+      <section className="mt-6">
         <div className="-mx-6">
-          <div className="px-6 flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">Users</h2>
-
-            {/* Right-side small actions (optional) */}
+          {/* Keep this block but hide it so the 'Users' text is removed visually */}
+          <div className="px-6 mb-3 hidden">
+            <h2 className="text-lg font-semibold text-gray-900 sr-only">Users</h2>
             <div className="flex items-center gap-2">
+              <button
+                onClick={fetchUsers}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {/* Role filter tabs + search + Refresh (exact layout like Service Requests) */}
+          <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-3">
+            <div className="flex items-center gap-2">
+              {roleTabs.map(t => {
+                const active = roleFilter === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => setRoleFilter(t.key)}
+                    className={[
+                      "rounded-full px-3.5 py-1.5 text-sm border",
+                      active
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                    ].join(" ")}
+                  >
+                    <span>{t.label}</span>
+                    <span
+                      className={[
+                        "ml-2 inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold",
+                        active ? "bg-white/20" : "bg-gray-100 text-gray-700"
+                      ].join(" ")}
+                    >
+                      {typeof t.count === "number" ? t.count : "—"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right controls — Search + Refresh (matches Service Requests) */}
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search Users"
+                  className="w-72 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Search users"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
+                    aria-label="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
               <button
                 onClick={fetchUsers}
                 className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
@@ -171,16 +298,18 @@ export default function AdminManageUser() {
                   <table className="min-w-full border-separate border-spacing-0">
                     <thead>
                       <tr className="text-left text-sm text-gray-600">
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]">
-                          <input
-                            ref={headerCheckboxRef}
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            onChange={toggleSelectAll}
-                            checked={allSelected}
-                            aria-label="Select all users"
-                          />
-                        </th>
+                        {ENABLE_SELECTION && (
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]">
+                            <input
+                              ref={headerCheckboxRef}
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              onChange={toggleSelectAll}
+                              checked={allSelected}
+                              aria-label="Select all users"
+                            />
+                          </th>
+                        )}
 
                         {/* New columns */}
                         <th
@@ -229,7 +358,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
 
-                        {/* Action Header (was empty; now labeled) */}
+                        {/* Action Header */}
                         <th className="sticky top-0 z-10 bg-white px-4 py-3 w-24 font-medium text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]">
                           Action
                         </th>
@@ -242,20 +371,22 @@ export default function AdminManageUser() {
                           key={u.id}
                           className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
                         >
-                          <td className="px-4 py-4">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              checked={selected.has(u.id)}
-                              onChange={() => toggleSelectRow(u.id)}
-                              aria-label={`Select ${u.first_name} ${u.last_name}`}
-                            />
-                          </td>
+                          {ENABLE_SELECTION && (
+                            <td className="px-4 py-4">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                checked={selected.has(u.id)}
+                                onChange={() => toggleSelectRow(u.id)}
+                                aria-label={`Select ${u.first_name} ${u.last_name}`}
+                              />
+                            </td>
+                          )}
 
                           {/* First Name */}
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-2 00 ring-1 ring-gray-300">
+                              <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 ring-1 ring-gray-300">
                                 <img
                                   src={avatarFromName(`${u.first_name} ${u.last_name}`.trim())}
                                   alt={`${u.first_name} ${u.last_name}`}
@@ -273,7 +404,7 @@ export default function AdminManageUser() {
                                 />
                               </div>
                               <div className="min-w-0">
-                                <div className="font-medium text-gray-900 truncate">
+                                <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"}`}>
                                   {u.first_name || "-"}
                                 </div>
                               </div>
@@ -291,10 +422,10 @@ export default function AdminManageUser() {
                             <div className="text-gray-700 truncate">{u.email}</div>
                           </td>
 
-                          {/* Role */}
+                          {/* Role — Service Requests-style badge */}
                           <td className="px-4 py-4">
                             <span
-                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
+                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${
                                 (u.role || "").toLowerCase() === "worker"
                                   ? "border-indigo-200 text-indigo-700 bg-indigo-50"
                                   : "border-emerald-200 text-emerald-700 bg-emerald-50"
@@ -305,8 +436,8 @@ export default function AdminManageUser() {
                             </span>
                           </td>
 
-                          {/* Actions: render plain text link under Action column */}
-                          <td className="px-4 py-4 text-right">
+                          {/* Actions: align to Action header (left & fixed width) */}
+                          <td className="px-4 py-4 w-24 text-left">
                             <RowMenu
                               onView={() => alert(`View ${u.first_name} ${u.last_name}`)}
                             />
@@ -316,7 +447,7 @@ export default function AdminManageUser() {
 
                       {!loading && !loadError && sortedRows.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-4 py-16 text-center text-gray-500">
+                          <td colSpan={COLSPAN} className="px-4 py-16 text-center text-gray-500">
                             No users found.
                           </td>
                         </tr>
@@ -326,8 +457,8 @@ export default function AdminManageUser() {
                 </div>
               </div>
 
-              {/* Footer actions (outside scroll so it stays visible) */}
-              {selected.size > 0 && (
+              {/* Footer actions (outside scroll; hidden when selection disabled) */}
+              {ENABLE_SELECTION && selected.size > 0 && (
                 <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 text-sm">
                   <div className="flex items-center gap-2 text-gray-700">
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white">
