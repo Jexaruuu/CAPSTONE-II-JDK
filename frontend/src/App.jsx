@@ -13,12 +13,14 @@ import ClientWelcomePage from './pages/clientpage/ClientWelcome';
 import ClientPostRequest from './pages/clientpage/ClientPostRequest';
 import ClientReviewServiceRequest from './clientcomponents/requestcomponents/ClientReviewServiceRequest';
 import ClientDashboardPage from './pages/dashboardpage/ClientDashboard';
+import ClientMessages from './pages/clientpage/ClientMessages';
 
 import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from './pages/successpage/WorkerSuccess';
 import WorkerWelcomePage from './pages/workerpage/WorkerWelcome';
 import WorkerPostApplication from './pages/workerpage/WorkerPostApplication';
 import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
+import WorkerMessages from './pages/workerpage/WorkerMessages';
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
 import AdminSignup from './pages/signuppage/AdminSignup';
@@ -88,6 +90,18 @@ const App = () => {
 
         <Route path="/adminsuccess" element={<AdminSuccessPage />} />
 
+        {/* PROTECTED: client messages */}
+        <Route
+          path="/clientmessages"
+          element={
+            <ProtectedRoute>
+              <ClientOnlyRoute>
+                <ClientMessages />
+              </ClientOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/clientdashboard"
           element={
@@ -103,6 +117,18 @@ const App = () => {
         <Route path="/clientreviewservicerequest" element={<ClientReviewServiceRequest />} />
         <Route path="/clientsignup" element={<GuestRoute><ClientSignUpPage /></GuestRoute>} />
         <Route path="/clientsuccess" element={<ClientSuccessPage />} />
+
+        {/* PROTECTED: worker messages */}
+        <Route
+          path="/workermessages"
+          element={
+            <ProtectedRoute>
+              <WorkerOnlyRoute>
+                <WorkerMessages />
+              </WorkerOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/workerdashboard"

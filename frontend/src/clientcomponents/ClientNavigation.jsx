@@ -3,10 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const ClientNavigation = () => {
-  const [selectedOption, setSelectedOption] = useState('Client');
+  const [selectedOption, setSelectedOption] = useState('Worker');
   const [showSubDropdown, setShowSubDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showBellDropdown, setShowBellDropdown] = useState(false); 
+  const [showBellDropdown, setShowBellDropdown] = useState(false);
   const [showHireWorkerDropdown, setShowHireWorkerDropdown] = useState(false);
   const [showManageRequestDropdown, setShowManageRequestDropdown] = useState(false);
   const [showReportsDropdown, setShowReportsDropdown] = useState(false);
@@ -16,7 +16,7 @@ const ClientNavigation = () => {
   const manageRequestDropdownRef = useRef(null);
   const profileDropdownRef = useRef(null);
   const reportsDropdownRef = useRef(null);
-  const bellDropdownRef = useRef(null); 
+  const bellDropdownRef = useRef(null);
 
   const handleClickOutside = (event) => {
     if (
@@ -80,12 +80,12 @@ const ClientNavigation = () => {
     setShowReportsDropdown(false);
     setShowProfileDropdown(false);
     setShowBellDropdown(false);
-    setShowSubDropdown(!showSubDropdown);
+    setShowSubDropdown(false);
   };
 
   const handleOptionClick = (option) => {
-    setSelectedOption(option); 
-    setShowSubDropdown(false); 
+    setSelectedOption(option);
+    setShowSubDropdown(false);
   };
 
   useEffect(() => {
@@ -119,7 +119,6 @@ const ClientNavigation = () => {
     }
   };
 
-  // ✅ Clear only draft form data when going to dashboard (keep account info)
   const clearPostDrafts = () => {
     try {
       localStorage.removeItem('clientInformationForm');
@@ -130,16 +129,22 @@ const ClientNavigation = () => {
     }
   };
 
-  // ✅ NEW: decide where the logo should navigate
   const role = localStorage.getItem('role');
   const logoTo = role === 'client' ? '/clientdashboard' : '/clientwelcome';
-  // We’ll use Link with replace to avoid leaving welcome in history.
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const goSearch = () => {
+    const q = searchQuery.trim();
+    navigate(`/pending-offers${q ? `?search=${encodeURIComponent(q)}` : ''}`);
+  };
+  const onSearchKey = (e) => {
+    if (e.key === 'Enter') goSearch();
+  };
 
   return (
     <div className="bg-white sticky top-0 z-50">
       <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
         <div className="flex items-center space-x-6 -ml-2.5">
-          {/* ✅ updated to use replace and role-aware target + clear drafts */}
           <Link to={logoTo} replace onClick={clearPostDrafts}>
             <img
               src="/jdklogo.png"
@@ -223,7 +228,6 @@ const ClientNavigation = () => {
             </li>
 
             <li className="relative cursor-pointer group">
-              {/* ✅ Clear drafts when going to Dashboard */}
               <Link to="/clientdashboard" className="text-black font-medium" replace onClick={clearPostDrafts}>
                 Dashboard
                 <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
@@ -231,61 +235,41 @@ const ClientNavigation = () => {
             </li>
 
             <li className="relative cursor-pointer group">
-              <Link to="/" className="text-black font-medium">
+              <Link to="/clientmessages" className="text-black font-medium">
                 Messages
                 <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
               </Link>
             </li>
-          </ul>        
+          </ul>
         </div>
 
-        <div className="flex items-center space-x-4 mt-4 text-md">
-          <div ref={searchBarRef} className="flex items-center border border-gray-300 rounded-md px-4 py-1">
+        <div className="flex items-center space-x-3 mt-4 text-md">
+          <div
+            ref={searchBarRef}
+            className="flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2"
+          >
             <span className="text-gray-500 text-lg">🔍︎</span>
             <input
               type="text"
-              className="border-none outline-none text-black ml-2"
-              placeholder="Search"
+              className="border-none outline-none text-black w-56 sm:w-64 md:w-72 h-full"
+              placeholder="Search workers"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={onSearchKey}
             />
-            <div className="ml-2 cursor-pointer text-black relative">
-              <span className="text-blue-500" onClick={handleSearchBarDropdown}>
-                {selectedOption}
-              </span>
-              <span className="text-gray-500 text-xs">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 inline-block">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </span>
-
-              {showSubDropdown && (
-                <div className="absolute top-full -ml-[165px] border border-gray-300 bg-white shadow-md mt-5 rounded-md w-60">
-                  <ul className="space-y-2 py-2">
-                    <li className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200" onClick={() => handleOptionClick('Client')}>
-                      <img src="/Client.png" alt="Client Icon" className="w-9 h-9" />
-                      <div>
-                        <span>Client</span>
-                        <p className="text-sm text-gray-600">Search for available clients in need of services.</p>
-                      </div>
-                    </li>
-                    <li className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200" onClick={() => handleOptionClick('Worker')}>
-                      <img src="/Worker.png" alt="Worker Icon" className="w-8 h-8" />
-                      <div>
-                        <span>Worker</span>
-                        <p className="text-sm text-gray-600">Find workers who can do the job.</p>
-                      </div>
-                    </li>
-                    <li className="px-4 py-2 cursor-pointer flex items-center space-x-2 hover:bg-gray-300 transition-colors duration-200" onClick={() => handleOptionClick('Service')}>
-                      <img src="/Briefcase.png" alt="Service Icon" className="w-8 h-8" />
-                      <div>
-                        <span>Services</span>
-                        <p className="text-sm text-gray-600">Search for service requests posted by clients.</p>
-                      </div>
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              handleSearchBarDropdown();
+              const q = searchQuery.trim();
+              navigate(`/pending-offers${q ? `?search=${encodeURIComponent(q)}` : ''}`);
+            }}
+            className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+          >
+            Search
+          </button>
 
           <div className="cursor-pointer relative" onClick={() => handleDropdownToggle('Bell')}>
             <img src="/Bellicon.png" alt="Notification Bell" className="h-8 w-8" />

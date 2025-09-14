@@ -19,6 +19,68 @@ function getClientEmail() {
   );
 }
 
+function getClientProfile() {
+  let firstName = '';
+  let gender = '';
+  try {
+    const auth = JSON.parse(localStorage.getItem('clientAuth') || '{}');
+    if (auth) {
+      firstName = auth.first_name || auth.firstname || auth.firstName || firstName;
+      gender = auth.gender || auth.sex || auth.gender_identity || gender;
+    }
+  } catch {}
+  try {
+    const profileRaw =
+      localStorage.getItem('clientProfile') ||
+      localStorage.getItem('client_profile') ||
+      localStorage.getItem('profile');
+    if (profileRaw) {
+      const profile = JSON.parse(profileRaw);
+      firstName = firstName || profile.first_name || profile.firstname || profile.firstName || '';
+      gender = gender || profile.gender || profile.sex || '';
+    }
+  } catch {}
+  firstName =
+    String(
+      firstName ||
+        localStorage.getItem('first_name') ||
+        localStorage.getItem('firstname') ||
+        localStorage.getItem('firstName') ||
+        ''
+    ).trim();
+
+  gender = String(gender || localStorage.getItem('gender') || localStorage.getItem('sex') || '').trim();
+
+  return { firstName, gender };
+}
+
+function honorificFromGender(g) {
+  const s = String(g || '').trim().toLowerCase();
+  if (s === 'male' || s === 'm' || s === 'man' || s === 'mr') return 'Mr.';
+  if (s === 'female' || s === 'f' || s === 'woman' || s === 'ms' || s === 'mrs' || s === 'email')
+    return 'Ms.';
+  return '';
+}
+
+/* helpers for expiry */
+function dateOnlyFrom(val) {
+  if (!val) return null;
+  const raw = String(val).trim();
+  const token = raw.split('T')[0].split(' ')[0];
+  let m;
+  if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(token))) return new Date(+m[1], +m[2] - 1, +m[3]);
+  if ((m = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(token))) return new Date(+m[3], +m[1] - 1, +m[2]);
+  const d = new Date(raw);
+  return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function isExpired(val) {
+  const d = dateOnlyFrom(val);
+  if (!d) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d < today;
+}
+
 const ClientPost = () => {
   const [loading, setLoading] = useState(true);
   const [approved, setApproved] = useState([]);
@@ -27,12 +89,21 @@ const ClientPost = () => {
   const trackRef = useRef(null);
   const cardRefs = useRef([]);
 
+  const [clientFirstName, setClientFirstName] = useState('');
+  const [clientGender, setClientGender] = useState('');
+
   const PER_PAGE = 3;
 
   const banners = ['/Banner1.png', '/Banner2.png'];
 
-  const [bannerIdx, setBannerIdx] = useState(1);
-  const [bannerAnimate, setBannerAnimate] = useState(true);
+  const [bannerIdx, setBannerIdx] = useState(0);
+  const [dotStep, setDotStep] = useState(0);
+
+  useEffect(() => {
+    const { firstName, gender } = getClientProfile();
+    if (firstName) setClientFirstName(firstName);
+    if (gender) setClientGender(gender);
+  }, []);
 
   useEffect(() => {
     const email = getClientEmail();
@@ -47,24 +118,48 @@ const ClientPost = () => {
       })
       .then((res) => {
         const items = Array.isArray(res?.data?.items) ? res.data.items : [];
-        setApproved(items);
+        const filtered = items.filter((it) => !isExpired(it?.details?.preferred_date));
+        setApproved(filtered);
         setCurrent(0);
+        if (filtered.length) {
+          const first = filtered[0];
+          const fn =
+            first?.info?.first_name ||
+            first?.details?.first_name ||
+            first?.info?.firstname ||
+            first?.details?.firstname ||
+            '';
+          const g =
+            first?.info?.gender ||
+            first?.details?.gender ||
+            first?.info?.sex ||
+            first?.details?.sex ||
+            '';
+          setClientFirstName((prev) => prev || (fn ? String(fn).trim() : ''));
+          setClientGender((prev) => prev || (g ? String(g).trim() : ''));
+        }
       })
       .catch(() => setApproved([]))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    if (banners.length > 1) setBannerIdx(1);
+    if (banners.length < 2) return;
+    setBannerIdx(0);
   }, []);
 
   useEffect(() => {
     if (banners.length < 2) return;
     const t = setInterval(() => {
-      setBannerIdx((i) => i + 1);
+      setBannerIdx((i) => (i + 1) % banners.length);
     }, 10000);
     return () => clearInterval(t);
   }, [banners.length]);
+
+  useEffect(() => {
+    const id = setInterval(() => setDotStep((s) => (s + 1) % 4), 350);
+    return () => clearInterval(id);
+  }, []);
 
   const hasApproved = approved.length > 0;
   const totalSlides = Math.max(1, Math.ceil(approved.length / PER_PAGE));
@@ -108,25 +203,6 @@ const ClientPost = () => {
     if (nearest !== current) setCurrent(nearest);
   };
 
-  /* keep looped slides + transition handler as in your code */
-  const loopSlides =
-    banners.length > 1 ? [banners[banners.length - 1], ...banners, banners[0]] : [...banners];
-
-  const onBannerTransitionEnd = () => {
-    if (banners.length < 2) return;
-    const lastIndex = loopSlides.length - 1;
-    if (bannerIdx === lastIndex) {
-      setBannerAnimate(false);
-      setBannerIdx(1);
-      requestAnimationFrame(() => setBannerAnimate(true));
-    } else if (bannerIdx === 0) {
-      setBannerAnimate(false);
-      setBannerIdx(banners.length);
-      requestAnimationFrame(() => setBannerAnimate(true));
-    }
-  };
-
-  // --- icon mapping ---
   const getServiceIcon = (serviceTypeRaw = '') => {
     const s = String(serviceTypeRaw).toLowerCase();
     if (s.includes('carpent')) return Hammer;
@@ -138,7 +214,6 @@ const ClientPost = () => {
     return Hammer;
   };
 
-  /* Time -> 12h with AM/PM */
   const formatTime12h = (input) => {
     if (!input) return '';
     const s = String(input).trim().replace(/\./g, '');
@@ -162,7 +237,6 @@ const ClientPost = () => {
     }
   };
 
-  /* NEW: Date -> MM/DD/YYYY */
   const formatDateMMDDYYYY = (val) => {
     if (!val) return '';
     const raw = String(val).trim();
@@ -191,30 +265,25 @@ const ClientPost = () => {
     return raw;
   };
 
-  /* UPDATED: Build "Location" string -> ONLY Barangay + Street (no additional address) */
   const buildLocation = (item) => {
     const barangay =
       item?.info?.barangay ?? item?.details?.barangay ?? item?.details?.brgy ?? '';
     const street =
       item?.info?.street ?? item?.details?.street ?? item?.details?.street_name ?? '';
-    // intentionally ignore additional address in card display
     const parts = [];
     if (barangay) parts.push(`Barangay ${barangay}`);
     if (street) parts.push(street);
     return parts.join(', ');
   };
 
-  /* UPDATED: Urgency from backend details.is_urgent ("Yes"/"No"), with fallbacks */
   const getUrgency = (item) => {
-    const rawPrimary = item?.details?.is_urgent; // "Yes" or "No" per backend
+    const rawPrimary = item?.details?.is_urgent;
     if (typeof rawPrimary === 'string') {
       const s = rawPrimary.trim().toLowerCase();
       if (s === 'yes' || s === 'true') return 'Urgent';
       if (s === 'no' || s === 'false') return 'Not urgent';
     }
     if (typeof rawPrimary === 'boolean') return rawPrimary ? 'Urgent' : 'Not urgent';
-
-    // Fallbacks (kept from your earlier robustness)
     const raw =
       item?.details?.urgency ??
       item?.details?.urgency_level ??
@@ -232,10 +301,9 @@ const ClientPost = () => {
       .join(' ');
   };
 
-  /* UPDATED: Service Price Rate prefers backend rate.rate_type */
   const getRateType = (item) => {
     const raw =
-      item?.rate?.rate_type ?? // ← backend preferred
+      item?.rate?.rate_type ??
       item?.details?.rate_type ??
       item?.details?.pricing_type ??
       item?.details?.price_rate ??
@@ -248,11 +316,9 @@ const ClientPost = () => {
     if (s.includes('hour')) return 'By the hour';
     if (s.includes('job') || s.includes('fixed') || s.includes('project') || s.includes('task'))
       return 'By the Job';
-    // fallback: title-case whatever it is
     return s.charAt(0).toUpperCase() + s.slice(1);
   };
 
-  // Drag-to-snap (unchanged)
   const isPointerDownRef = useRef(false);
   const pointerIdRef = useRef(null);
   const startXRef = useRef(0);
@@ -319,9 +385,15 @@ const ClientPost = () => {
     }
   };
 
+  const honorific = honorificFromGender(clientGender);
+  const capFirst =
+    clientFirstName ? clientFirstName.charAt(0).toUpperCase() + clientFirstName.slice(1) : 'Client';
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
-      <h2 className="text-4xl font-semibold mb-10">Welcome back, Jex</h2>
+      <h2 className="text-4xl font-semibold mb-10">
+        Welcome, {honorific ? `${honorific} ` : ''}{capFirst}
+      </h2>
 
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -370,8 +442,7 @@ const ClientPost = () => {
               <div
                 ref={trackRef}
                 onScroll={onTrackScroll}
-                className="flex space-x-6 overflow-x-scroll scroll-smooth no-scrollbar pl-4 pr-4 select-none cursor-grab no-hand"
-                style={{ touchAction: 'pan-x' }}
+                className="flex space-x-6 overflow-x-scroll scroll-smooth pl-4 pr-4 select-none cursor-grab active:cursor-grabbing [touch-action:pan-x] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 onPointerDown={onDragPointerDown}
                 onPointerMove={onDragPointerMove}
                 onPointerUp={onDragPointerUp}
@@ -388,7 +459,7 @@ const ClientPost = () => {
                     <div
                       key={item.id}
                       ref={(el) => (cardRefs.current[i] = el)}
-                      className="overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto min-h-[220px] flex flex-col flex-shrink-0 bg-white border border-gray-300 rounded-xl p-6 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl hover:ring-inset"
+                      className="overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto min-h-[220px] flex flex-col flex-shrink-0 bg-white border border-gray-300 rounded-xl p-6 text-left cursor-default shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl hover:ring-inset"
                     >
                       <div className="flex items-start justify-between">
                         <div className="text-lg font-semibold text-gray-900">
@@ -399,7 +470,6 @@ const ClientPost = () => {
                         </div>
                       </div>
 
-                      {/* Labeled lines */}
                       <div className="mt-3 text-sm text-gray-700 space-y-1">
                         <div className="text-gray-600">
                           <span className="font-medium text-gray-800">Location:</span>{' '}
@@ -430,18 +500,17 @@ const ClientPost = () => {
                       <div className="mt-auto pt-4 flex items-center justify-between">
                         <button
                           type="button"
-                          /* SAME look/hover as "Book a Service Now" */
-                          className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition"
+                          className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition !h-11"
                         >
                           View details
                         </button>
 
-                        <span className="inline-flex items-center h-10 whitespace-nowrap rounded-lg border border-yellow-200 bg-yellow-50 px-2.5 text-xs font-medium text-yellow-700">
+                        <span className="inline-flex items-center !h-11 whitespace-nowrap rounded-lg border border-yellow-200 bg-yellow-50 px-3 text-xs font-medium text-yellow-700">
                           Waiting for a Worker
-                          <span className="ml-1 flex">
-                            <span className="cr-dot cr-d1">.</span>
-                            <span className="cr-dot cr-d2">.</span>
-                            <span className="cr-dot cr-d3">.</span>
+                          <span className="ml-2 inline-flex w-6 justify-between font-mono">
+                            <span className={`transition-opacity duration-200 ${dotStep >= 1 ? 'opacity-100' : 'opacity-0'}`}>.</span>
+                            <span className={`transition-opacity duration-200 ${dotStep >= 2 ? 'opacity-100' : 'opacity-0'}`}>.</span>
+                            <span className={`transition-opacity duration-200 ${dotStep >= 3 ? 'opacity-100' : 'opacity-0'}`}>.</span>
                           </span>
                         </span>
                       </div>
@@ -472,57 +541,18 @@ const ClientPost = () => {
         </div>
       )}
 
-      {/* Banner slider UNDER the service request cards */}
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mt-8">
-        <div
-          className={['flex banner-track', bannerAnimate ? 'transition-transform duration-700 ease-out' : ''].join(' ')}
-          style={{ transform: `translateX(-${bannerIdx * 100}%)` }}
-          onTransitionEnd={onBannerTransitionEnd}
-        >
-          {loopSlides.map((src, i) => (
-            <div
+        <div className="relative h-36 sm:h-44 md:h-52 lg:h-72">
+          {banners.map((src, i) => (
+            <img
               key={i}
-              /* ↓ reduced heights here */
-              className="w-full min-w-full shrink-0 relative banner-slide h-36 sm:h-44 md:h-52 lg:h-72"
-            >
-              {/* Image fills the whole slide with no side gaps */}
-              <img
-                src={src}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-            </div>
+              src={src}
+              alt=""
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${i === bannerIdx ? 'opacity-100' : 'opacity-0'}`}
+            />
           ))}
         </div>
       </div>
-
-      <style>{`
-        .no-scrollbar { scrollbar-width: none; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        @keyframes bannerScroll {
-          from { transform: translateX(0); }
-          to   { transform: translateX(-50%); }
-        }
-        @keyframes crFade {
-          0%, 20% { opacity: 0; }
-          30%, 60% { opacity: 1; }
-          70%, 100% { opacity: 0; }
-        }
-        .cr-dot { 
-          display: inline-block;
-          width: 0.35rem; 
-          line-height: 1;
-          opacity: 0;
-          animation: crFade 1.2s infinite;
-        }
-        .cr-d2 { animation-delay: .2s; }
-        .cr-d3 { animation-delay: .4s; }
-        .drag-active { cursor: default !important; }
-        .no-hand { cursor: default !important; }
-
-        /* Smoother slider rendering */
-        .banner-track { will-change: transform; backface-visibility: hidden; }
-      `}</style>
     </div>
   );
 };

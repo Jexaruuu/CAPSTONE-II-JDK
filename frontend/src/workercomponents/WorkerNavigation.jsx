@@ -121,9 +121,18 @@ const WorkerNavigation = () => {
     }
   };
 
-  // ✅ role-aware logo target + replace (prevents going back to welcome)
   const role = localStorage.getItem('role');
   const logoTo = role === 'worker' ? '/workerdashboard' : '/workerwelcome';
+
+  /* NEW: controlled search for Clients */
+  const [searchQuery, setSearchQuery] = useState('');
+  const goSearch = () => {
+    const q = searchQuery.trim();
+    navigate(`/work-offers${q ? `?search=${encodeURIComponent(q)}` : ''}`);
+  };
+  const onSearchKeyDown = (e) => {
+    if (e.key === 'Enter') goSearch();
+  };
 
   return (
     <div className="bg-white sticky top-0 z-50">
@@ -177,54 +186,39 @@ const WorkerNavigation = () => {
               )}
             </li>
 
-            {/* ✅ Dashboard link with replace */}
             <li>
               <Link to="/workerdashboard" className="text-black font-medium" replace>
                 Dashboard
               </Link>
             </li>
-            <li><Link to="/messages" className="text-black font-medium">Messages</Link></li>
+            <li><Link to="/workermessages" className="text-black font-medium">Messages</Link></li>
           </ul>
         </div>
 
-        <div className="flex items-center space-x-4 mt-4 text-md">
-          <div ref={searchBarRef} className="flex items-center border border-gray-300 rounded-md px-4 py-1">
+        <div className="flex items-center space-x-3 mt-4 text-md">
+          <div
+            ref={searchBarRef}
+            className="flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2"
+          >
             <span className="text-gray-500 text-lg">🔍︎</span>
-            <input type="text" className="border-none outline-none text-black ml-2" placeholder="Search" />
-            <div className="ml-2 cursor-pointer text-black relative">
-              <span className="text-blue-500" onClick={handleSearchBarDropdown}>{selectedOption}</span>
-              <span className="text-gray-500 text-xs">
-                <svg className="w-3 h-3 inline-block" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-              </span>
-              {showSubDropdown && (
-                <div className="absolute top-full -ml-[165px] border border-gray-300 bg-white shadow-md mt-5 rounded-md w-60">
-                  <ul className="space-y-2 py-2">
-                    <li className="px-4 py-2 flex items-center space-x-2 hover:bg-gray-300 cursor-pointer" onClick={() => handleOptionClick('Client')}>
-                      <img src="/Client.png" className="w-9 h-9" alt="Client" />
-                      <div>
-                        <span>Client</span>
-                        <p className="text-sm text-gray-600">Search for available clients in need of services.</p>
-                      </div>
-                    </li>
-                    <li className="px-4 py-2 flex items-center space-x-2 hover:bg-gray-300 cursor-pointer" onClick={() => handleOptionClick('Worker')}>
-                      <img src="/Worker.png" className="w-8 h-8" alt="Worker" />
-                      <div>
-                        <span>Worker</span>
-                        <p className="text-sm text-gray-600">Find workers who can do the job.</p>
-                      </div>
-                    </li>
-                    <li className="px-4 py-2 flex items-center space-x-2 hover:bg-gray-300 cursor-pointer" onClick={() => handleOptionClick('Service')}>
-                      <img src="/Briefcase.png" className="w-8 h-8" alt="Service" />
-                      <div>
-                        <span>Services</span>
-                        <p className="text-sm text-gray-600">Search for service requests posted by clients.</p>
-                      </div>
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </div>
+            <input
+              type="text"
+              className="border-none outline-none text-black w-56 sm:w-64 md:w-72 h-full"
+              placeholder="Search clients"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={onSearchKeyDown}
+              aria-label="Search clients"
+            />
           </div>
+
+          <button
+            type="button"
+            onClick={goSearch}
+            className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+          >
+            Search
+          </button>
 
           <div className="cursor-pointer relative" onClick={() => handleDropdownToggle('Bell')}>
             <img src="/Bellicon.png" alt="Bell" className="h-8 w-8" />

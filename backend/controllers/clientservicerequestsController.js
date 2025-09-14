@@ -17,6 +17,29 @@ function friendlyError(err) {
   return raw;
 }
 
+/* helpers to detect "expired" based on preferred_date (date-only comparison) */
+function dateOnlyFrom(input) {
+  if (!input) return null;
+  const raw = String(input).trim();
+  const token = raw.split('T')[0].split(' ')[0];
+  let m;
+  if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(token))) {
+    return new Date(+m[1], +m[2] - 1, +m[3]);
+  }
+  if ((m = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(token))) {
+    return new Date(+m[3], +m[1] - 1, +m[2]);
+  }
+  const d = new Date(raw);
+  return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function isExpiredPreferredDate(val) {
+  const d = dateOnlyFrom(val);
+  if (!d) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d < today;
+}
+
 exports.submitFullRequest = async (req, res) => {
   try {
     const {
@@ -242,7 +265,10 @@ exports.listApproved = async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw error;
-    return res.status(200).json({ items: Array.isArray(data) ? data : [] });
+
+    const items = Array.isArray(data) ? data : [];
+    const filtered = items.filter((it) => !isExpiredPreferredDate(it?.details?.preferred_date));
+    return res.status(200).json({ items: filtered });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to load approved requests' });
   }
