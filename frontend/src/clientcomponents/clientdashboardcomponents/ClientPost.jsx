@@ -29,7 +29,7 @@ const ClientPost = () => {
 
   const PER_PAGE = 3;
 
-  const banners = ['/Banner1.jpg', '/Banner2.jpg', '/Banner3.jpg'];
+  const banners = ['/Banner1.png', '/Banner2.png'];
 
   const [bannerIdx, setBannerIdx] = useState(1);
   const [bannerAnimate, setBannerAnimate] = useState(true);
@@ -97,9 +97,6 @@ const ClientPost = () => {
     scrollToIndex(next);
   };
 
-  const prev = () => scrollToIndex(Math.max(0, current - 1));
-  const next = () => scrollToIndex(Math.min(totalSlides - 1, current + 1));
-
   const onTrackScroll = () => {
     const wrap = trackRef.current;
     if (!wrap || !positions.length) return;
@@ -111,6 +108,7 @@ const ClientPost = () => {
     if (nearest !== current) setCurrent(nearest);
   };
 
+  /* keep looped slides + transition handler as in your code */
   const loopSlides =
     banners.length > 1 ? [banners[banners.length - 1], ...banners, banners[0]] : [...banners];
 
@@ -128,7 +126,7 @@ const ClientPost = () => {
     }
   };
 
-  // --- icon mapping for service types (same set as admin) ---
+  // --- icon mapping ---
   const getServiceIcon = (serviceTypeRaw = '') => {
     const s = String(serviceTypeRaw).toLowerCase();
     if (s.includes('carpent')) return Hammer;
@@ -140,9 +138,121 @@ const ClientPost = () => {
     return Hammer;
   };
 
-  /* ===========================
-     Drag-to-snap for carousel
-     =========================== */
+  /* Time -> 12h with AM/PM */
+  const formatTime12h = (input) => {
+    if (!input) return '';
+    const s = String(input).trim().replace(/\./g, '');
+    const m = s.match(/^(\d{1,2})(?::(\d{1,2}))?(?::\d{1,2})?\s*(am|pm)?$/i);
+    if (!m) return s;
+
+    let h = parseInt(m[1], 10);
+    let min = m[2] ? parseInt(m[2], 10) : 0;
+    const hasAP = !!m[3];
+
+    if (hasAP) {
+      const mer = m[3].toUpperCase();
+      if (h === 0) h = 12;
+      if (h > 12) h = h % 12;
+      return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')} ${mer}`;
+    } else {
+      const mer = h >= 12 ? 'PM' : 'AM';
+      h = h % 12;
+      if (h === 0) h = 12;
+      return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')} ${mer}`;
+    }
+  };
+
+  /* NEW: Date -> MM/DD/YYYY */
+  const formatDateMMDDYYYY = (val) => {
+    if (!val) return '';
+    const raw = String(val).trim();
+    const token = raw.split('T')[0].split(' ')[0];
+
+    let m;
+    if ((m = token.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) {
+      const y = m[1];
+      const mm = String(parseInt(m[2], 10)).padStart(2, '0');
+      const dd = String(parseInt(m[3], 10)).padStart(2, '0');
+      return `${mm}/${dd}/${y}`;
+    }
+    if ((m = token.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/))) {
+      const mm = String(parseInt(m[1], 10)).padStart(2, '0');
+      const dd = String(parseInt(m[2], 10)).padStart(2, '0');
+      const y = m[3];
+      return `${mm}/${dd}/${y}`;
+    }
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) {
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const y = d.getFullYear();
+      return `${mm}/${dd}/${y}`;
+    }
+    return raw;
+  };
+
+  /* UPDATED: Build "Location" string -> ONLY Barangay + Street (no additional address) */
+  const buildLocation = (item) => {
+    const barangay =
+      item?.info?.barangay ?? item?.details?.barangay ?? item?.details?.brgy ?? '';
+    const street =
+      item?.info?.street ?? item?.details?.street ?? item?.details?.street_name ?? '';
+    // intentionally ignore additional address in card display
+    const parts = [];
+    if (barangay) parts.push(`Barangay ${barangay}`);
+    if (street) parts.push(street);
+    return parts.join(', ');
+  };
+
+  /* UPDATED: Urgency from backend details.is_urgent ("Yes"/"No"), with fallbacks */
+  const getUrgency = (item) => {
+    const rawPrimary = item?.details?.is_urgent; // "Yes" or "No" per backend
+    if (typeof rawPrimary === 'string') {
+      const s = rawPrimary.trim().toLowerCase();
+      if (s === 'yes' || s === 'true') return 'Urgent';
+      if (s === 'no' || s === 'false') return 'Not urgent';
+    }
+    if (typeof rawPrimary === 'boolean') return rawPrimary ? 'Urgent' : 'Not urgent';
+
+    // Fallbacks (kept from your earlier robustness)
+    const raw =
+      item?.details?.urgency ??
+      item?.details?.urgency_level ??
+      item?.details?.priority ??
+      item?.priority ??
+      '';
+    if (!raw) return '';
+    const t = String(raw).trim().toLowerCase();
+    if (t.includes('urgent')) return 'Urgent';
+    if (t === 'high') return 'Urgent';
+    if (t === 'low' || t === 'normal' || t === 'standard') return 'Not urgent';
+    return t
+      .split(/[\s_\-]+/)
+      .map((w) => (w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ''))
+      .join(' ');
+  };
+
+  /* UPDATED: Service Price Rate prefers backend rate.rate_type */
+  const getRateType = (item) => {
+    const raw =
+      item?.rate?.rate_type ?? // ← backend preferred
+      item?.details?.rate_type ??
+      item?.details?.pricing_type ??
+      item?.details?.price_rate ??
+      item?.details?.service_price_rate ??
+      item?.pricing?.rate_type ??
+      item?.payment?.rate_type ??
+      '';
+    if (!raw) return '';
+    const s = String(raw).toLowerCase();
+    if (s.includes('hour')) return 'By the hour';
+    if (s.includes('job') || s.includes('fixed') || s.includes('project') || s.includes('task'))
+      return 'By the Job';
+    // fallback: title-case whatever it is
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+
+  // Drag-to-snap (unchanged)
   const isPointerDownRef = useRef(false);
   const pointerIdRef = useRef(null);
   const startXRef = useRef(0);
@@ -256,7 +366,6 @@ const ClientPost = () => {
               <ArrowLeft size={22} />
             </button>
 
-            {/* Added small vertical padding so outer ring isn't clipped */}
             <div className="w-full max-w-[1425px] overflow-hidden px-12 py-2">
               <div
                 ref={trackRef}
@@ -290,20 +399,39 @@ const ClientPost = () => {
                         </div>
                       </div>
 
+                      {/* Labeled lines */}
                       <div className="mt-3 text-sm text-gray-700 space-y-1">
                         <div className="text-gray-600">
-                          {item?.details?.preferred_date || '-'}
-                          {item?.details?.preferred_time ? ` • ${item.details.preferred_time}` : ''}
+                          <span className="font-medium text-gray-800">Location:</span>{' '}
+                          {buildLocation(item) || '-'}
                         </div>
                         <div className="text-gray-600">
-                          {item?.info?.barangay ? `Barangay ${item.info.barangay}` : item?.info?.street || ''}
+                          <span className="font-medium text-gray-800">Preferred Date:</span>{' '}
+                          {item?.details?.preferred_date
+                            ? formatDateMMDDYYYY(item.details.preferred_date)
+                            : '-'}
+                        </div>
+                        <div className="text-gray-600">
+                          <span className="font-medium text-gray-800">Preferred Time:</span>{' '}
+                          {item?.details?.preferred_time
+                            ? formatTime12h(item.details.preferred_time)
+                            : '-'}
+                        </div>
+                        <div className="text-gray-600">
+                          <span className="font-medium text-gray-800">Urgency:</span>{' '}
+                          {getUrgency(item) || '-'}
+                        </div>
+                        <div className="text-gray-600">
+                          <span className="font-medium text-gray-800">Service Price Rate:</span>{' '}
+                          {getRateType(item) || '-'}
                         </div>
                       </div>
 
                       <div className="mt-auto pt-4 flex items-center justify-between">
                         <button
                           type="button"
-                          className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+                          /* SAME look/hover as "Book a Service Now" */
+                          className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition"
                         >
                           View details
                         </button>
@@ -347,13 +475,22 @@ const ClientPost = () => {
       {/* Banner slider UNDER the service request cards */}
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mt-8">
         <div
-          className={['flex', bannerAnimate ? 'transition-transform duration-700 ease-out' : ''].join(' ')}
+          className={['flex banner-track', bannerAnimate ? 'transition-transform duration-700 ease-out' : ''].join(' ')}
           style={{ transform: `translateX(-${bannerIdx * 100}%)` }}
           onTransitionEnd={onBannerTransitionEnd}
         >
           {loopSlides.map((src, i) => (
-            <div key={i} className="w-full shrink-0">
-              <img src={src} alt="" className="w-full h-48 sm:h-60 md:h-72 lg:h-80 object-cover" />
+            <div
+              key={i}
+              /* ↓ reduced heights here */
+              className="w-full min-w-full shrink-0 relative banner-slide h-36 sm:h-44 md:h-52 lg:h-72"
+            >
+              {/* Image fills the whole slide with no side gaps */}
+              <img
+                src={src}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+              />
             </div>
           ))}
         </div>
@@ -382,6 +519,9 @@ const ClientPost = () => {
         .cr-d3 { animation-delay: .4s; }
         .drag-active { cursor: default !important; }
         .no-hand { cursor: default !important; }
+
+        /* Smoother slider rendering */
+        .banner-track { will-change: transform; backface-visibility: hidden; }
       `}</style>
     </div>
   );

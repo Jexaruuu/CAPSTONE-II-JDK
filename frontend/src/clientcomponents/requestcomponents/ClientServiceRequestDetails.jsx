@@ -360,7 +360,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                 <img src={image} alt="Uploaded Preview" className="w-full h-full object-cover" />
               </div>
             ) : (
-              <div className={`w-full h-[280px] rounded-md flex items-center justify-center ${attempted ? 'bg-red-100 text-red-500' : 'bg-gray-200 text-gray-400'}`}>
+              <div className={`w-full h-[305px] rounded-md flex items-center justify-center ${attempted ? 'bg-red-100 text-red-500' : 'bg-gray-200 text-gray-400'}`}>
                 <span>No Image Selected</span>
               </div>
             )}

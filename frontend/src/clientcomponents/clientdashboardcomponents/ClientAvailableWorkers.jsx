@@ -195,18 +195,31 @@ const ClientAvailableWorkers = () => {
                 key={worker.id}
                 ref={(el) => (cardRefs.current[i] = el)}
                 /* keep class name for compatibility, but effect is now matched to ClientPost */
-                className="relative overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto flex-shrink-0 bg-white border border-gray-300 rounded-xl p-6 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl hover:ring-inset card-border-fix"
+                className="relative overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto flex-shrink-0 bg-white border border-gray-300 rounded-xl p-6 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl hover:ring-inset card-border-fix flex flex-col"
                 style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
               >
-                <div className="text-lg font-semibold text-gray-900">{worker.name}</div>
-                <div className="mt-2 text-sm text-gray-600">{worker.skill}</div>
-                <div className="mt-4 flex items-center gap-3">
+                {/* Top row: avatar left, name + skill right */}
+                <div className="flex items-center gap-3">
                   <img
                     src={worker.image}
                     alt={worker.name}
                     className="w-16 h-16 object-cover rounded-full border-4 border-white shadow-inner ring-2 ring-[#008cfc]"
                   />
-                  <button className="ml-auto px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
+                  <div className="min-w-0">
+                    <div className="text-lg font-semibold text-gray-900 truncate">
+                      {worker.name}
+                    </div>
+                    <div className="text-sm text-gray-600 truncate">
+                      {worker.skill}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom: CTA at lower-left like Service Request cards */}
+                <div className="mt-auto pt-4">
+                  <button
+                    className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition"
+                  >
                     View Profile
                   </button>
                 </div>
