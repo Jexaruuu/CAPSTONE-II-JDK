@@ -164,7 +164,7 @@ const ClientNavigation = () => {
                 <div ref={hireWorkerDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                   <ul className="space-y-2 py-2">
                     <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                      <Link to="/job-posts">Post a service request</Link>
+                      <Link to="/clientpostrequest">Post a service request</Link>
                     </li>
                     <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
                       <Link to="/pending-offers">Find a worker</Link>

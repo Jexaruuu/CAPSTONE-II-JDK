@@ -1,4 +1,3 @@
-// backend/controllers/clientservicerequestsController.js
 const {
   uploadDataUrlToBucket,
   insertClientInformation,
@@ -8,6 +7,7 @@ const {
   findClientByEmail,
 } = require('../models/clientservicerequestsModel');
 const { insertPendingRequest } = require('../models/pendingservicerequestsModel');
+const { supabaseAdmin } = require('../supabaseClient');
 
 function friendlyError(err) {
   const raw = err?.message || String(err);
@@ -56,12 +56,8 @@ exports.submitFullRequest = async (req, res) => {
       } catch {}
     }
 
-    if (!serviceKind || !description) {
-      return res.status(400).json({ message: 'Missing required fields: service_type/category and description.' });
-    }
-    if (!effectiveClientId) {
-      return res.status(400).json({ message: 'Unable to identify client. Provide client_id or a known email_address.' });
-    }
+    if (!serviceKind || !description) return res.status(400).json({ message: 'Missing required fields: service_type/category and description.' });
+    if (!effectiveClientId) return res.status(400).json({ message: 'Unable to identify client. Provide client_id or a known email_address.' });
 
     const request_group_id = newGroupId();
 
@@ -70,13 +66,10 @@ exports.submitFullRequest = async (req, res) => {
       try {
         const max = Math.min(attachments.length, 5);
         const promises = [];
-        for (let i = 0; i < max; i++) {
-          const dataUrl = attachments[i];
-          promises.push(uploadDataUrlToBucket('csr-attachments', dataUrl, `${request_group_id}-${i + 1}`));
-        }
+        for (let i = 0; i < max; i++) promises.push(uploadDataUrlToBucket('csr-attachments', attachments[i], `${request_group_id}-${i + 1}`));
         const results = await Promise.all(promises);
         uploaded = results.filter(x => x?.url).map(x => ({ url: x.url, name: x.name }));
-      } catch (upErr) {
+      } catch {
         uploaded = [];
       }
     }
@@ -120,9 +113,7 @@ exports.submitFullRequest = async (req, res) => {
     if (infoRow.street === '') missingInfo.push('street');
     if (infoRow.barangay === '') missingInfo.push('barangay');
     if (infoRow.additional_address === '') missingInfo.push('additional_address');
-    if (missingInfo.length) {
-      return res.status(400).json({ message: `Missing required client_information fields: ${missingInfo.join(', ')}` });
-    }
+    if (missingInfo.length) return res.status(400).json({ message: `Missing required client_information fields: ${missingInfo.join(', ')}` });
 
     try {
       await insertClientInformation(infoRow);
@@ -150,12 +141,8 @@ exports.submitFullRequest = async (req, res) => {
     };
 
     const missingDetails = [];
-    ['email_address', 'service_type', 'service_task', 'preferred_date', 'preferred_time', 'is_urgent', 'tools_provided', 'service_description'].forEach(k => {
-      if (!detailsRow[k]) missingDetails.push(k);
-    });
-    if (missingDetails.length) {
-      return res.status(400).json({ message: `Missing required client_service_request_details fields: ${missingDetails.join(', ')}` });
-    }
+    ['email_address', 'service_type', 'service_task', 'preferred_date', 'preferred_time', 'is_urgent', 'tools_provided', 'service_description'].forEach(k => { if (!detailsRow[k]) missingDetails.push(k); });
+    if (missingDetails.length) return res.status(400).json({ message: `Missing required client_service_request_details fields: ${missingDetails.join(', ')}` });
 
     try {
       await insertServiceRequestDetails(detailsRow);
@@ -177,9 +164,7 @@ exports.submitFullRequest = async (req, res) => {
     const missingRate = [];
     if (!rateRow.email_address) missingRate.push('email_address');
     if (!rateRow.rate_type) missingRate.push('rate_type');
-    if (missingRate.length) {
-      return res.status(400).json({ message: `Missing required client_service_rate fields: ${missingRate.join(', ')}` });
-    }
+    if (missingRate.length) return res.status(400).json({ message: `Missing required client_service_rate fields: ${missingRate.join(', ')}` });
 
     try {
       await insertServiceRate(rateRow);
@@ -241,5 +226,24 @@ exports.submitFullRequest = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ message: friendlyError(err) });
+  }
+};
+
+exports.listApproved = async (req, res) => {
+  try {
+    const email = String(req.query.email || '').trim();
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
+    const { data, error } = await supabaseAdmin
+      .from('csr_pending')
+      .select('id, request_group_id, status, created_at, email_address, info, details, rate')
+      .eq('status', 'approved')
+      .eq('email_address', email)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return res.status(200).json({ items: Array.isArray(data) ? data : [] });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to load approved requests' });
   }
 };
