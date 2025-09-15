@@ -95,9 +95,6 @@ const ClientAvailableWorkers = () => {
     requestAnimationFrame(recomputePositions);
   }, [workers.length, cardW, endPad]);
 
-  /* ===========
-     Drag-to-snap
-     =========== */
   const isPointerDownRef = useRef(false);
   const pointerIdRef     = useRef(null);
   const startXRef        = useRef(0);
@@ -133,15 +130,16 @@ const ClientAvailableWorkers = () => {
     if (!el) return;
     const dx = e.clientX - startXRef.current;
     if (Math.abs(dx) > 3) movedRef.current = true;
-    el.scrollLeft = startLeftRef.current - dx; // buttery drag
+    el.scrollLeft = startLeftRef.current - dx;
   };
 
-  const endDrag = () => {
+  const endDrag = (e) => {
     if (!isPointerDownRef.current) return;
     isPointerDownRef.current = false;
     const el = scrollRef.current;
-    if (el && pointerIdRef.current != null) {
-      el.releasePointerCapture?.(e.pointerId);
+    if (el) {
+      const pid = e?.pointerId ?? pointerIdRef.current;
+      if (pid != null) el.releasePointerCapture?.(pid);
       el.classList.remove('drag-active');
     }
     pointerIdRef.current = null;
@@ -176,7 +174,6 @@ const ClientAvailableWorkers = () => {
           <ArrowLeft size={22} />
         </button>
 
-        {/* match ClientPost: add small vertical padding so hover ring isn't clipped */}
         <div ref={wrapRef} className="w-full max-w-[1425px] overflow-hidden px-12 py-2">
           <div
             ref={scrollRef}
@@ -194,16 +191,15 @@ const ClientAvailableWorkers = () => {
               <div
                 key={worker.id}
                 ref={(el) => (cardRefs.current[i] = el)}
-                /* keep class name for compatibility, but effect is now matched to ClientPost */
                 className="relative overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto flex-shrink-0 bg-white border border-gray-300 rounded-xl p-6 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl hover:ring-inset card-border-fix flex flex-col"
                 style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
               >
-                {/* Top row: avatar left, name + skill right */}
                 <div className="flex items-center gap-3">
                   <img
                     src={worker.image}
                     alt={worker.name}
                     className="w-16 h-16 object-cover rounded-full border-4 border-white shadow-inner ring-2 ring-[#008cfc]"
+                    onLoad={() => requestAnimationFrame(recomputePositions)}
                   />
                   <div className="min-w-0">
                     <div className="text-lg font-semibold text-gray-900 truncate">
@@ -215,7 +211,6 @@ const ClientAvailableWorkers = () => {
                   </div>
                 </div>
 
-                {/* Bottom: CTA at lower-left like Service Request cards */}
                 <div className="mt-auto pt-4">
                   <button
                     className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition"
@@ -225,8 +220,6 @@ const ClientAvailableWorkers = () => {
                 </div>
               </div>
             ))}
-
-            {/* Spacer to allow the final slide to show only 1 or 2 cards without mixing */}
             <div aria-hidden className="flex-shrink-0" style={{ width: `${endPad}px` }} />
           </div>
         </div>
@@ -253,12 +246,8 @@ const ClientAvailableWorkers = () => {
       <style>{`
         .no-scrollbar { scrollbar-width: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-
-        /* Keep drag smooth but hide grab/grabbing cursor (same as ClientPost) */
         .drag-active { cursor: default !important; }
         .no-hand { cursor: default !important; }
-
-        /* Keep class for compatibility, but disable its extra outline so effect matches ClientPost exactly */
         .card-border-fix::after { content: none; }
       `}</style>
     </div>

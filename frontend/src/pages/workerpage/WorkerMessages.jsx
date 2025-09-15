@@ -3,6 +3,7 @@ import axios from "axios";
 import WorkerConversationList from "../../workercomponents/workermessagescomponents/WorkerConversationList";
 import WorkerChatWindow from "../../workercomponents/workermessagescomponents/WorkerChatWindow";
 import WorkerNavigation from "../../workercomponents/WorkerNavigation";
+import WorkerFooter from "../../workercomponents/WorkerFooter";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -167,6 +168,7 @@ const WorkerMessages = () => {
         />
       </div>
     </div>
+    <WorkerFooter />
     </div>
   );
 };

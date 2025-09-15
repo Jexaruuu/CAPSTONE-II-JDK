@@ -10,9 +10,9 @@ const createClient = async (auth_uid, firstName, lastName, sex, email, password,
         last_name: lastName,
         sex,
         email_address: email,
-        password,                 // ⚠️ Plaintext in DB (kept as per your existing code)
-        is_agreed_to_terms: isAgreedToTerms,   // ✅ new column
-        agreed_at: agreedAt                    // ✅ new column
+        password,                 
+        is_agreed_to_terms: isAgreedToTerms,  
+        agreed_at: agreedAt                    
       }]);
     if (error) throw error;
     return data;

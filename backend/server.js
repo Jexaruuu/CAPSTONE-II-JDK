@@ -18,6 +18,7 @@ const adminModel = require("./models/adminModel");
 
 const clientservicerequestsRoutes = require("./routes/clientservicerequestsRoutes");
 const adminservicerequestsRoutes  = require("./routes/adminservicerequestsRoutes");
+const workerapplicationRoutes = require("./routes/workerapplicationRoutes");
 
 dotenv.config();
 
@@ -210,6 +211,8 @@ app.use("/api/admin", adminRoutes);
 
 app.use("/api/clientservicerequests", clientservicerequestsRoutes);
 app.use("/api/admin/servicerequests", adminservicerequestsRoutes);
+app.use("/api/workerapplication", workerapplicationRoutes);
+
 
 
 app.listen(PORT, () => {

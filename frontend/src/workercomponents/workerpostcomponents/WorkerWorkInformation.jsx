@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
-const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
+const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [serviceTypesSelected, setServiceTypesSelected] = useState([]);
   const [yearsExperience, setYearsExperience] = useState('');
   const [serviceDescription, setServiceDescription] = useState('');
@@ -11,7 +11,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
 
   const serviceTypes = ['Carpenter', 'Electrician', 'Plumber', 'Carwasher', 'Laundry'];
 
-  // Example job-specific tasks
   const jobTasks = {
     Carpenter: [
       'General Carpentry','Furniture Repair','Wood Polishing','Door & Window Fitting',
@@ -40,7 +39,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
     ]
   };
 
-  // 🔹 Each job type will now start with only ONE task field
   const [jobDetails, setJobDetails] = useState({});
 
   const handleServiceTypeToggle = (type) => {
@@ -54,7 +52,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
       updated = [...serviceTypesSelected, type];
       setJobDetails((prev) => ({
         ...prev,
-        [type]: [''] // start with ONE field
+        [type]: ['']
       }));
     }
     setServiceTypesSelected(updated);
@@ -83,14 +81,13 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
       const updatedTasks = prev[jobType].filter((_, i) => i !== index);
       return {
         ...prev,
-        [jobType]: updatedTasks.length > 0 ? updatedTasks : [''] // always keep at least 1 field
+        [jobType]: updatedTasks.length > 0 ? updatedTasks : ['']
       };
     });
   };
 
   const handleClickOutside = (event) => {
     if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-      // kept for compatibility
     }
   };
 
@@ -101,14 +98,27 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
     };
   }, []);
 
+  const proceed = () => {
+    const draft = {
+      service_types: serviceTypesSelected,
+      job_details: jobDetails,
+      service_description: serviceDescription,
+      years_experience: yearsExperience,
+      tools_provided: toolsProvided
+    };
+    try {
+      localStorage.setItem('workerWorkInformation', JSON.stringify(draft));
+    } catch {}
+    onCollect?.(draft);
+    handleNext?.();
+  };
+
   return (
     <form className="space-y-8">
       <div className="flex gap-8">
-        {/* Left Column */}
         <div className="w-1/2 bg-white p-6 -ml-3">
           <h3 className="text-2xl font-semibold mb-6">Type of Service</h3>
 
-          {/* Job Type */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Service Type *</label>
             <div className="grid grid-cols-2 gap-2">
@@ -126,7 +136,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
             </div>
           </div>
 
-          {/* Conditionally show fields for selected job types */}
           {serviceTypesSelected.length > 0 && (
             <div className="mb-4">
               <h4 className="text-md font-semibold mb-2">Service Details</h4>
@@ -135,7 +144,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     {jobType} Services
                   </label>
-                  
+
                   {jobDetails[jobType]?.map((task, index) => (
                     <div key={index} className="flex items-center mb-2">
                       <select
@@ -178,11 +187,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
           )}
         </div>
 
-        {/* Right Column */}
         <div className="w-1/2 bg-white p-6">
           <h3 className="text-2xl font-semibold mb-6">Service Description</h3>
 
-          {/* Service Description */}
           <div className="mb-4">
             <textarea
               value={serviceDescription}
@@ -193,7 +200,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
             />
           </div>
 
-          {/* 🔹 Years of Experience */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Years of Experience *
@@ -210,7 +216,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
             />
           </div>
 
-          {/* Tools Provided */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Do you have your own tools or equipment? *
@@ -229,7 +234,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
         </div>
       </div>
 
-      {/* Navigation Buttons */}
       <div className="flex justify-between mt-8 ml-3">
         <button
           type="button"
@@ -240,7 +244,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack }) => {
         </button>
         <button
           type="button"
-          onClick={handleNext}
+          onClick={proceed}
           className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-2.5"
         >
           Next : Required Documents

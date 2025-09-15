@@ -4,6 +4,7 @@ import ClientInformation from '../../clientcomponents/requestcomponents/ClientIn
 import ClientServiceRequestDetails from '../../clientcomponents/requestcomponents/ClientServiceRequestDetails';
 import ClientServiceRate from '../../clientcomponents/requestcomponents/ClientServiceRate';
 import ClientReviewServiceRequest from '../../clientcomponents/requestcomponents/ClientReviewServiceRequest';
+import ClientFooter from '../../clientcomponents/ClientFooter';
 
 const TOTAL_STEPS = 4;
 
@@ -74,6 +75,7 @@ const ClientPostRequest = () => {
           </div>
         </div>
       </div>
+      <ClientFooter />
     </div>
   );
 };

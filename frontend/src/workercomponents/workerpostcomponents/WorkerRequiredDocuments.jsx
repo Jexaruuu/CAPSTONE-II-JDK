@@ -2,14 +2,13 @@ import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_BYTES = 5 * 1024 * 1024;
 
 const boxBase =
   'flex items-center justify-center w-full h-40 border-2 border-dashed rounded-md bg-gray-50 hover:bg-gray-100 transition';
 const boxInner =
   'text-center text-sm text-gray-600';
 
-/** Reusable dropzone */
 function DocDrop({
   label,
   hint,
@@ -102,8 +101,7 @@ function DocDrop({
   );
 }
 
-const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack }) => {
-  // State for each required document
+const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [primaryFront, setPrimaryFront] = useState(null);
   const [primaryBack, setPrimaryBack] = useState(null);
   const [secondaryId, setSecondaryId] = useState(null);
@@ -112,20 +110,40 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack }) =>
   const [medical, setMedical] = useState(null);
   const [certs, setCerts] = useState(null);
 
-  // Optional: simple required check for Primary ID (Front)
   const canProceed = !!primaryFront;
+
+  const proceed = () => {
+    const draft = {
+      primary_front_name: primaryFront?.name || null,
+      primary_back_name: primaryBack?.name || null,
+      secondary_id_name: secondaryId?.name || null,
+      nbi_name: nbi?.name || null,
+      address_name: address?.name || null,
+      medical_name: medical?.name || null,
+      certs_name: certs?.name || null
+    };
+    try {
+      localStorage.setItem('workerDocuments', JSON.stringify(draft));
+    } catch {}
+    onCollect?.({
+      primary_front: primaryFront,
+      primary_back: primaryBack,
+      secondary_id: secondaryId,
+      nbi,
+      address,
+      medical,
+      certs
+    });
+    handleNext?.();
+  };
 
   return (
     <form className="space-y-8">
-      {/* Main container that aligns with Step 3 */}
       <div className="w-full max-w-[1535px] mx-auto px-6">
-        
-        {/* Header aligned with Step 3 */}
         <div>
           <h3 className="text-2xl font-semibold -ml-3 mt-12">Worker Documents</h3>
         </div>
 
-        {/* Two-column grid, certificates spans both */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
           <DocDrop
             label="Primary ID (Front)"
@@ -164,8 +182,6 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack }) =>
             value={medical}
             onChange={setMedical}
           />
-
-          {/* Certificates full width */}
           <div className="md:col-span-2">
             <DocDrop
               label="Certificates"
@@ -176,24 +192,22 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack }) =>
           </div>
         </div>
 
-        {/* Navigation Buttons */}
-<div className="flex justify-between mt-8 ml-3">
-  <button
-    type="button"
-    onClick={handleBack}
-    className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 mt-2.5"
-  >
-    Back : Work Information
-  </button>
-  <button
-    type="button"
-    onClick={handleNext}
-    className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-2.5"
-  >
-    Next : Set Your Price Rate
-  </button>
-</div>
-
+        <div className="flex justify-between mt-8 ml-3">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 mt-2.5"
+          >
+            Back : Work Information
+          </button>
+          <button
+            type="button"
+            onClick={proceed}
+            className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-2.5"
+          >
+            Next : Set Your Price Rate
+          </button>
+        </div>
       </div>
     </form>
   );

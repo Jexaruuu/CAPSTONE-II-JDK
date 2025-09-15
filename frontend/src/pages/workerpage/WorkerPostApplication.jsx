@@ -5,11 +5,11 @@ import WorkerWorkInformation from '../../workercomponents/workerpostcomponents/W
 import WorkerRequiredDocuments from '../../workercomponents/workerpostcomponents/WorkerRequiredDocuments';
 import WorkerRate from '../../workercomponents/workerpostcomponents/WorkerRate';
 import WorkerTermsAndAgreements from '../../workercomponents/workerpostcomponents/WorkerTermsAndAgreements';
+import WorkerReviewPost from '../../workercomponents/workerpostcomponents/WorkerReviewPost';
+import WorkerFooter from '../../workercomponents/WorkerFooter';
 
 const WorkerPost = () => {
   const [currentStep, setCurrentStep] = useState(1);
-
-  // State variables for the form fields
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
@@ -18,39 +18,35 @@ const WorkerPost = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Here you can send the form data to the backend
     console.log('Service request submitted:', {
       title,
       description,
     });
   };
 
-  // Define the titles for each step
   const stepTitles = {
-    1: "Step 1: Worker Information",
-    2: "Step 2: Describe Your Work",
-    3: "Step 3: Required Documents",
-    4: "Step 5: Set Your Price Rate",
-    5: "Step 4: Terms & Agreements",
+    1: 'Step 1: Worker Information',
+    2: 'Step 2: Describe Your Work',
+    3: 'Step 3: Required Documents',
+    4: 'Step 5: Set Your Price Rate',
+    5: 'Step 4: Terms & Agreements',
+    6: 'Step 6: Review Application',
   };
 
   return (
     <div className="min-h-screen bg-white overflow-hidden">
       <WorkerNavigation />
       <div className="max-w-[1550px] mx-auto px-6 py-12">
-        {/* Step-by-Step Service Request Form */}
         <div className="flex flex-col min-h-[calc(100vh-200px)]">
           <div className="max-w-[1550px] mx-auto w-full">
-            {/* Step Indicator above the Content */}
             <div className="flex justify-start mb-6 ml-3">
               <div className="text-lg font-extralight">
-                {currentStep} of 5 | Post a Worker Application
+                {currentStep} of 6 | Post a Worker Application
               </div>
             </div>
 
             <h2 className="text-3xl font-bold mb-6 ml-3">{stepTitles[currentStep]}</h2>
 
-            {/* Step 1: Title */}
             {currentStep === 1 && (
               <WorkerInformation
                 title={title}
@@ -59,7 +55,6 @@ const WorkerPost = () => {
               />
             )}
 
-            {/* Step 2: Description */}
             {currentStep === 2 && (
               <WorkerWorkInformation
                 description={description}
@@ -69,7 +64,6 @@ const WorkerPost = () => {
               />
             )}
 
-            {/* Step 3: Required Documents */}
             {currentStep === 3 && (
               <WorkerRequiredDocuments
                 description={description}
@@ -79,7 +73,6 @@ const WorkerPost = () => {
               />
             )}
 
-              {/* Step 4: Set Your Price Rate */}
             {currentStep === 4 && (
               <WorkerRate
                 description={description}
@@ -89,7 +82,6 @@ const WorkerPost = () => {
               />
             )}
 
-            {/* Step 5: Terms & Agreements */}
             {currentStep === 5 && (
               <WorkerTermsAndAgreements
                 description={description}
@@ -99,9 +91,15 @@ const WorkerPost = () => {
               />
             )}
 
+            {currentStep === 6 && (
+              <WorkerReviewPost
+                handleBack={handleBack}
+              />
+            )}
           </div>
         </div>
       </div>
+      <WorkerFooter />
     </div>
   );
 };

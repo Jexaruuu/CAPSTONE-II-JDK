@@ -1,58 +1,92 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa'; // Import social media icons
+import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
-const WorkerInformation = ({ title, setTitle, handleNext }) => {
+const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [birthDate, setBirthDate] = useState(''); // Changed from contactNumber
-  const [contactNumber, setContactNumber] = useState(''); // Moved from email
-  const [email, setEmail] = useState(''); // Moved from barangay
-  const [barangay, setBarangay] = useState(''); // Moved from street
-  const [street, setStreet] = useState(''); // Removed as independent field
+  const [birthDate, setBirthDate] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [barangay, setBarangay] = useState('');
+  const [street, setStreet] = useState('');
   const [additionalAddress, setAdditionalAddress] = useState('');
   const [facebook, setFacebook] = useState('');
   const [instagram, setInstagram] = useState('');
   const [linkedin, setLinkedin] = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
-  const [showDropdown, setShowDropdown] = useState(false); // State for toggling the dropdown visibility
+  const [profileFile, setProfileFile] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  const dropdownRef = useRef(null); // Reference for the dropdown container
+  const dropdownRef = useRef(null);
 
-  // Barangay options, manually added or imported
   const barangays = [
     'Alangilan', 'Alijis', 'Banago', 'Bata', 'Cabug', 'Estefania', 'Felisa',
-    'Granada', 'Handumanan', 'Lopez Jaena', 'Mandalagan', 'Mansilingan', 
-    'Montevista', 'Pahanocoy', 'Punta Taytay', 'Singcang-Airport', 'Sum-ag', 
+    'Granada', 'Handumanan', 'Lopez Jaena', 'Mandalagan', 'Mansilingan',
+    'Montevista', 'Pahanocoy', 'Punta Taytay', 'Singcang-Airport', 'Sum-ag',
     'Taculing', 'Tangub', 'Villa Esperanza'
   ];
 
-  // Sort the barangay list alphabetically
   const sortedBarangays = barangays.sort();
 
   const handleProfilePictureChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setProfilePicture(URL.createObjectURL(file));
+      setProfileFile(file);
     }
   };
 
   const toggleDropdown = () => setShowDropdown(!showDropdown);
 
-  // Close the dropdown when clicking outside of it
   const handleClickOutside = (event) => {
     if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
       setShowDropdown(false);
     }
   };
 
-  // Set up event listener to handle clicks outside
   useEffect(() => {
-    document.addEventListener('mousedown', handleClickOutside); 
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside); 
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  const proceed = () => {
+    const draft = {
+      firstName,
+      lastName,
+      birth_date: birthDate,
+      contactNumber,
+      email,
+      barangay,
+      street,
+      additionalAddress,
+      facebook,
+      instagram,
+      linkedin,
+      profilePicture,
+      profilePictureName: profileFile?.name || null
+    };
+    try {
+      localStorage.setItem('workerInformationForm', JSON.stringify(draft));
+    } catch {}
+    onCollect?.({
+      auth_uid: localStorage.getItem('auth_uid') || '',
+      first_name: firstName,
+      last_name: lastName,
+      birth_date: birthDate,
+      contact_number: contactNumber,
+      email_address: email,
+      barangay,
+      additional_address: additionalAddress,
+      facebook,
+      instagram,
+      linkedin,
+      profile_picture: profileFile || null
+    });
+    handleNext?.();
+  };
 
   return (
     <form className="space-y-8">
@@ -86,7 +120,6 @@ const WorkerInformation = ({ title, setTitle, handleNext }) => {
             </div>
           </div>
 
-          {/* Birthdate */}
           <div className="flex space-x-6 mb-4">
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Birthdate</label>
@@ -99,15 +132,14 @@ const WorkerInformation = ({ title, setTitle, handleNext }) => {
               />
             </div>
 
-            {/* Contact Number with Flag and +63 */}
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number</label>
               <div className="flex items-center border border-gray-300 rounded-md">
                 <div className="w-8 h-5 mr-2 rounded-md">
-                  <img 
-                    src="philippines.png" 
-                    alt="Philippine Flag" 
-                    className="w-full h-full object-contain rounded-md ml-1" 
+                  <img
+                    src="philippines.png"
+                    alt="Philippine Flag"
+                    className="w-full h-full object-contain rounded-md ml-1"
                   />
                 </div>
                 <span className="text-gray-700 text-sm mr-2">+63</span>
@@ -123,9 +155,7 @@ const WorkerInformation = ({ title, setTitle, handleNext }) => {
             </div>
           </div>
 
-          {/* Email & Barangay */}
           <div className="flex space-x-6 mb-4">
-            {/* Email Address */}
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
               <input
@@ -138,7 +168,6 @@ const WorkerInformation = ({ title, setTitle, handleNext }) => {
               />
             </div>
 
-            {/* Barangay Dropdown */}
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
               <div ref={dropdownRef} className="relative">
@@ -163,7 +192,10 @@ const WorkerInformation = ({ title, setTitle, handleNext }) => {
                       {sortedBarangays.map((barangayName, index) => (
                         <div
                           key={index}
-                          onClick={() => setBarangay(barangayName)}
+                          onClick={() => {
+                            setBarangay(barangayName);
+                            setShowDropdown(false);
+                          }}
                           className="px-4 py-2 cursor-pointer hover:bg-gray-100"
                         >
                           {barangayName}
@@ -187,7 +219,6 @@ const WorkerInformation = ({ title, setTitle, handleNext }) => {
           </div>
         </div>
 
-        {/* Right Column */}
         <div className="w-full md:w-1/3 bg-white p-6">
           <h3 className="text-2xl font-semibold mb-5">Profile Picture</h3>
           <p className="text-sm text-gray-600 mb-5">Upload your profile picture.</p>
@@ -268,7 +299,6 @@ const WorkerInformation = ({ title, setTitle, handleNext }) => {
         </div>
       </div>
 
-      {/* Navigation */}
       <div className="flex justify-between mt-8 ml-3">
         <Link to="/workerdashboard">
           <button
@@ -280,7 +310,7 @@ const WorkerInformation = ({ title, setTitle, handleNext }) => {
         </Link>
         <button
           type="button"
-          onClick={handleNext}
+          onClick={proceed}
           className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300"
         >
           Next : Work Information

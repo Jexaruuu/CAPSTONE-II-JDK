@@ -3,6 +3,7 @@ import axios from "axios";
 import ClientConversationList from "../../clientcomponents/clientmessagescomponents/ClientConversationList";
 import ClientChatWindow from "../../clientcomponents/clientmessagescomponents/ClientChatWindow";
 import ClientNavigation from '../../clientcomponents/ClientNavigation';
+import ClientFooter from "../../clientcomponents/ClientFooter";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -167,6 +168,7 @@ const ClientMessages = () => {
         />
       </div>
     </div>
+    <ClientFooter />
     </div>
   );
 };
