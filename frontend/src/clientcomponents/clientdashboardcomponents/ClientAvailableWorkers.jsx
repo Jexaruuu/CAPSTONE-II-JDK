@@ -1,5 +1,9 @@
+// ClientAvailableWorkers.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
+
+const avatarFromName = (name) =>
+  `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
 const ClientAvailableWorkers = () => {
   const workers = [
@@ -195,12 +199,25 @@ const ClientAvailableWorkers = () => {
                 style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
               >
                 <div className="flex items-center gap-3">
-                  <img
-                    src={worker.image}
-                    alt={worker.name}
-                    className="w-16 h-16 object-cover rounded-full border-4 border-white shadow-inner ring-2 ring-[#008cfc]"
-                    onLoad={() => requestAnimationFrame(recomputePositions)}
-                  />
+                  <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-200 border-4 border-white shadow-inner ring-2 ring-[#008cfc]">
+                    <img
+                      src={worker.image || avatarFromName(worker.name)}
+                      alt={worker.name}
+                      className="h-full w-full object-cover"
+                      onLoad={() => requestAnimationFrame(recomputePositions)}
+                      onError={({ currentTarget }) => {
+                        currentTarget.style.display = 'none';
+                        const parent = currentTarget.parentElement;
+                        if (parent) {
+                          parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-lg font-semibold">${(worker.name || '?')
+                            .trim()
+                            .charAt(0)
+                            .toUpperCase()}</div>`;
+                        }
+                        requestAnimationFrame(recomputePositions);
+                      }}
+                    />
+                  </div>
                   <div className="min-w-0">
                     <div className="text-lg font-semibold text-gray-900 truncate">
                       {worker.name}

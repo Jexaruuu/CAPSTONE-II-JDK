@@ -28,6 +28,26 @@ const services = [
   },
 ];
 
+// 1) Optional network fallback (like your other screens)
+const dicebearFromName = (name) =>
+  `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || 'Service')}`;
+
+// 2) Final fallback: inline SVG data URL with an initial in a circle (no network needed)
+const initialDataUrl = (name) => {
+  const initial = (name || '?').trim().charAt(0).toUpperCase();
+  const size = 256;
+  const r = size / 2 - 6;
+  const svg = `
+    <svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>
+      <rect width='100%' height='100%' fill='#EFF6FF'/>
+      <circle cx='${size/2}' cy='${size/2}' r='${r}' fill='#FFFFFF' stroke='#3B82F6' stroke-width='8'/>
+      <text x='50%' y='50%' dy='.35em' text-anchor='middle'
+        font-family='Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif'
+        font-size='${size * 0.45}' fill='#1D4ED8'>${initial}</text>
+    </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 const WorkerAvailableServiceSection = () => {
   return (
     <section id="services" className="bg-white py-20">
@@ -44,11 +64,29 @@ const WorkerAvailableServiceSection = () => {
               key={idx}
               className="relative group rounded-md overflow-hidden p-4 bg-white border border-gray-300 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl"
             >
-              <img
-                src={service.image}
-                alt={service.title}
-                className="w-full h-36 object-cover rounded-xl mb-4"
-              />
+              {/* Image area (unchanged layout) */}
+              <div className="w-full h-36 rounded-xl mb-4 overflow-hidden bg-gray-100 relative">
+                <img
+                  // Try your local image first; if empty, try Dicebear; the last fallback is the inline SVG
+                  src={services[idx].image || dicebearFromName(service.title)}
+                  alt={service.title}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    const tried = e.currentTarget.getAttribute('data-dicebear-tried');
+                    if (!tried) {
+                      // Second attempt: Dicebear (keeps parity with your other pages)
+                      e.currentTarget.setAttribute('data-dicebear-tried', '1');
+                      e.currentTarget.src = dicebearFromName(service.title);
+                      return;
+                    }
+                    // Final, guaranteed fallback: inline SVG with initial (prevents alt text from showing)
+                    e.currentTarget.onerror = null; // stop loops
+                    e.currentTarget.src = initialDataUrl(service.title);
+                  }}
+                />
+              </div>
+
               <h3 className="text-lg font-semibold text-gray-900">{service.title}</h3>
               <p className="text-sm text-gray-600 mt-1">{service.description}</p>
             </div>
