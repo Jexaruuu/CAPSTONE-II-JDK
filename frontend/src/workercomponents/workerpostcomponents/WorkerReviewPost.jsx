@@ -72,6 +72,33 @@ const WorkerReviewPost = ({ handleBack }) => {
     navigate('/workerdashboard', { state: { submitted: true }});
   };
 
+  // inside WorkerReviewPost component
+useEffect(() => {
+  const lock = isSubmitting || showSuccess;
+  if (!lock) return;
+
+  const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+  window.history.pushState(null, '', window.location.href);
+  window.addEventListener('popstate', onPopState, true);
+
+  const html = document.documentElement;
+  const body = document.body;
+  const prevHtmlOverflow = html.style.overflow;
+  const prevBodyOverflow = body.style.overflow;
+  html.style.overflow = 'hidden';
+  body.style.overflow = 'hidden';
+
+  const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+  window.addEventListener('keydown', blockKeys, true);
+
+  return () => {
+    window.removeEventListener('popstate', onPopState, true);
+    html.style.overflow = prevHtmlOverflow || '';
+    body.style.overflow = prevBodyOverflow || '';
+    window.removeEventListener('keydown', blockKeys, true);
+  };
+}, [isSubmitting, showSuccess]);
+
   return (
     <div className="space-y-8 pb-20">
       <div className="max-w-[1520px] mx-auto px-6 w-full">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+
+const STORAGE_KEY = 'workerWorkInformation';
 
 const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [serviceTypesSelected, setServiceTypesSelected] = useState([]);
@@ -7,7 +8,14 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   const [serviceDescription, setServiceDescription] = useState('');
   const [toolsProvided, setToolsProvided] = useState('');
 
+  const [jobDetails, setJobDetails] = useState({});
   const dropdownRef = useRef(null);
+
+  // client-like flags
+  const [attempted, setAttempted] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const [isLoadingNext, setIsLoadingNext] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
 
   const serviceTypes = ['Carpenter', 'Electrician', 'Plumber', 'Carwasher', 'Laundry'];
 
@@ -39,8 +47,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     ]
   };
 
-  const [jobDetails, setJobDetails] = useState({});
-
   const handleServiceTypeToggle = (type) => {
     let updated;
     if (serviceTypesSelected.includes(type)) {
@@ -50,10 +56,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       setJobDetails(copy);
     } else {
       updated = [...serviceTypesSelected, type];
-      setJobDetails((prev) => ({
-        ...prev,
-        [type]: ['']
-      }));
+      setJobDetails((prev) => ({ ...prev, [type]: [''] }));
     }
     setServiceTypesSelected(updated);
   };
@@ -62,41 +65,81 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     setJobDetails((prev) => {
       const updatedTasks = [...(prev[jobType] || [])];
       updatedTasks[index] = value;
-      return {
-        ...prev,
-        [jobType]: updatedTasks
-      };
+      return { ...prev, [jobType]: updatedTasks };
     });
   };
 
   const addTaskField = (jobType) => {
-    setJobDetails((prev) => ({
-      ...prev,
-      [jobType]: [...(prev[jobType] || []), '']
-    }));
+    setJobDetails((prev) => ({ ...prev, [jobType]: [...(prev[jobType] || []), ''] }));
   };
 
   const removeTaskField = (jobType, index) => {
     setJobDetails((prev) => {
       const updatedTasks = prev[jobType].filter((_, i) => i !== index);
-      return {
-        ...prev,
-        [jobType]: updatedTasks.length > 0 ? updatedTasks : ['']
-      };
+      return { ...prev, [jobType]: updatedTasks.length > 0 ? updatedTasks : [''] };
     });
   };
 
-  const handleClickOutside = (event) => {
-    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-    }
-  };
-
   useEffect(() => {
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    document.addEventListener('mousedown', () => {});
+    return () => { document.removeEventListener('mousedown', () => {}); };
   }, []);
+
+  // hydrate
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const d = JSON.parse(saved);
+        setServiceTypesSelected(d.service_types || []);
+        setJobDetails(d.job_details || {});
+        setServiceDescription(d.service_description || '');
+        setYearsExperience(d.years_experience || '');
+        setToolsProvided(d.tools_provided || '');
+      } catch {}
+    }
+    setHydrated(true);
+  }, []);
+
+  // autosave
+  useEffect(() => {
+    if (!hydrated) return;
+    const draft = {
+      service_types: serviceTypesSelected,
+      job_details: jobDetails,
+      service_description: serviceDescription,
+      years_experience: yearsExperience,
+      tools_provided: toolsProvided
+    };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
+  }, [hydrated, serviceTypesSelected, jobDetails, serviceDescription, yearsExperience, toolsProvided]);
+
+  // lock back/keys/scroll while loading
+  useEffect(() => {
+    if (!isLoadingNext) return;
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [isLoadingNext]);
+
+  const isYearsValid = yearsExperience !== '' && Number(yearsExperience) >= 0;
+  const isFormValid =
+    serviceTypesSelected.length > 0 &&
+    serviceDescription.trim() &&
+    isYearsValid &&
+    toolsProvided;
 
   const proceed = () => {
     const draft = {
@@ -106,11 +149,16 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       years_experience: yearsExperience,
       tools_provided: toolsProvided
     };
-    try {
-      localStorage.setItem('workerWorkInformation', JSON.stringify(draft));
-    } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
     onCollect?.(draft);
     handleNext?.();
+  };
+
+  const onNextClick = () => {
+    setAttempted(true);
+    if (!isFormValid) return;
+    setIsLoadingNext(true);
+    setTimeout(() => { proceed(); }, 2000);
   };
 
   return (
@@ -134,6 +182,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                 </label>
               ))}
             </div>
+            {attempted && serviceTypesSelected.length === 0 && (
+              <p className="text-xs text-red-600 mt-1">Select at least one service type.</p>
+            )}
           </div>
 
           {serviceTypesSelected.length > 0 && (
@@ -195,9 +246,13 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
               value={serviceDescription}
               onChange={(e) => setServiceDescription(e.target.value)}
               placeholder="Describe the service you offer"
-              className="w-full h-[180px] px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full h-[180px] px-4 py-3 border ${attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
               required
+              aria-invalid={attempted && !serviceDescription.trim()}
             />
+            {attempted && !serviceDescription.trim() && (
+              <p className="text-xs text-red-600 mt-1">Please describe your services.</p>
+            )}
           </div>
 
           <div className="mb-4">
@@ -211,9 +266,13 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
               value={yearsExperience}
               onChange={(e) => setYearsExperience(e.target.value)}
               placeholder="Enter years of experience"
-              className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-4 py-3 border ${attempted && !isYearsValid ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
               required
+              aria-invalid={attempted && !isYearsValid}
             />
+            {attempted && !isYearsValid && (
+              <p className="text-xs text-red-600 mt-1">Enter a valid number (0 or higher).</p>
+            )}
           </div>
 
           <div className="mb-4">
@@ -223,13 +282,17 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             <select
               value={toolsProvided}
               onChange={(e) => setToolsProvided(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+              className={`w-full px-4 py-3 border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none`}
               required
+              aria-invalid={attempted && !toolsProvided}
             >
               <option value="">Select Yes or No</option>
               <option value="Yes">Yes</option>
               <option value="No">No</option>
             </select>
+            {attempted && !toolsProvided && (
+              <p className="text-xs text-red-600 mt-1">Please choose Yes or No.</p>
+            )}
           </div>
         </div>
       </div>
@@ -244,12 +307,50 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
         </button>
         <button
           type="button"
-          onClick={proceed}
-          className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-2.5"
+          onClick={onNextClick}
+          disabled={!isFormValid}
+          aria-disabled={!isFormValid}
+          className={`px-8 py-3 rounded-md shadow-md transition duration-300 mt-2.5 ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
         >
           Next : Required Documents
         </button>
       </div>
+
+      {isLoadingNext && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Loading next step"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900">Preparing Step 3</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 };

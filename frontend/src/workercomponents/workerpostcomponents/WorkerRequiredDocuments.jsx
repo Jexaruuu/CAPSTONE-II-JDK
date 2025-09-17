@@ -1,21 +1,12 @@
-import React, { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useCallback, useEffect } from 'react';
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const MAX_BYTES = 5 * 1024 * 1024;
 
-const boxBase =
-  'flex items-center justify-center w-full h-40 border-2 border-dashed rounded-md bg-gray-50 hover:bg-gray-100 transition';
-const boxInner =
-  'text-center text-sm text-gray-600';
+const boxBase = 'flex items-center justify-center w-full h-40 border-2 border-dashed rounded-md bg-gray-50 hover:bg-gray-100 transition';
+const boxInner = 'text-center text-sm text-gray-600';
 
-function DocDrop({
-  label,
-  hint,
-  required = false,
-  value,
-  onChange,
-}) {
+function DocDrop({ label, hint, required = false, value, onChange }) {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState(undefined);
 
@@ -28,15 +19,11 @@ function DocDrop({
       }
       if (!ALLOWED_TYPES.includes(file.type)) {
         const msg = 'Only PDF, JPG, or PNG files are allowed.';
-        setError(msg);
-        onChange(null, msg);
-        return;
+        setError(msg); onChange(null, msg); return;
       }
       if (file.size > MAX_BYTES) {
         const msg = 'File too large. Max size is 5MB.';
-        setError(msg);
-        onChange(null, msg);
-        return;
+        setError(msg); onChange(null, msg); return;
       }
       setError(undefined);
       onChange(file, undefined);
@@ -50,7 +37,6 @@ function DocDrop({
     const file = e.dataTransfer.files?.[0] || null;
     validateAndSet(file);
   };
-
   const handleChange = (e) => {
     const file = e.target.files?.[0] || null;
     validateAndSet(file);
@@ -66,19 +52,11 @@ function DocDrop({
 
       <label
         className={`${boxBase} ${dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
-        <input
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
-          className="hidden"
-          onChange={handleChange}
-        />
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleChange} />
         <div className={boxInner}>
           {!value ? (
             <>
@@ -101,6 +79,8 @@ function DocDrop({
   );
 }
 
+const STORAGE_KEY = 'workerDocuments';
+
 const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [primaryFront, setPrimaryFront] = useState(null);
   const [primaryBack, setPrimaryBack] = useState(null);
@@ -110,7 +90,14 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
   const [medical, setMedical] = useState(null);
   const [certs, setCerts] = useState(null);
 
-  const canProceed = !!primaryFront;
+  const [attempted, setAttempted] = useState(false);
+  const [isLoadingNext, setIsLoadingNext] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
+
+  // Note: File objects can’t be rehydrated; we only keep names in storage after proceed (same as your code).
+  useEffect(() => {}, []);
+
+  const isFormValid = !!primaryFront;
 
   const proceed = () => {
     const draft = {
@@ -122,20 +109,36 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
       medical_name: medical?.name || null,
       certs_name: certs?.name || null
     };
-    try {
-      localStorage.setItem('workerDocuments', JSON.stringify(draft));
-    } catch {}
-    onCollect?.({
-      primary_front: primaryFront,
-      primary_back: primaryBack,
-      secondary_id: secondaryId,
-      nbi,
-      address,
-      medical,
-      certs
-    });
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
+    onCollect?.({ primary_front: primaryFront, primary_back: primaryBack, secondary_id: secondaryId, nbi, address, medical, certs });
     handleNext?.();
   };
+
+  const onNextClick = () => {
+    setAttempted(true);
+    if (!isFormValid) return;
+    setIsLoadingNext(true);
+    setTimeout(() => { proceed(); }, 2000);
+  };
+
+  useEffect(() => {
+    if (!isLoadingNext) return;
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [isLoadingNext]);
 
   return (
     <form className="space-y-8">
@@ -145,52 +148,20 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
-          <DocDrop
-            label="Primary ID (Front)"
-            required
-            hint="UMID, Passport, Driver’s License, etc."
-            value={primaryFront}
-            onChange={setPrimaryFront}
-          />
-          <DocDrop
-            label="Primary ID (Back)"
-            hint="UMID, Passport, Driver’s License, etc."
-            value={primaryBack}
-            onChange={setPrimaryBack}
-          />
-          <DocDrop
-            label="Secondary ID"
-            hint="UMID, Passport, Driver’s License, etc."
-            value={secondaryId}
-            onChange={setSecondaryId}
-          />
-          <DocDrop
-            label="NBI/Police Clearance"
-            hint="Barangay Certificate also accepted"
-            value={nbi}
-            onChange={setNbi}
-          />
-          <DocDrop
-            label="Proof of Address"
-            hint="Barangay Certificate, Utility Bill"
-            value={address}
-            onChange={setAddress}
-          />
-          <DocDrop
-            label="Medical Certificate"
-            hint="Latest medical/fit-to-work certificate"
-            value={medical}
-            onChange={setMedical}
-          />
+          <DocDrop label="Primary ID (Front)" required hint="UMID, Passport, Driver’s License, etc." value={primaryFront} onChange={setPrimaryFront} />
+          <DocDrop label="Primary ID (Back)" hint="UMID, Passport, Driver’s License, etc." value={primaryBack} onChange={setPrimaryBack} />
+          <DocDrop label="Secondary ID" hint="UMID, Passport, Driver’s License, etc." value={secondaryId} onChange={setSecondaryId} />
+          <DocDrop label="NBI/Police Clearance" hint="Barangay Certificate also accepted" value={nbi} onChange={setNbi} />
+          <DocDrop label="Proof of Address" hint="Barangay Certificate, Utility Bill" value={address} onChange={setAddress} />
+          <DocDrop label="Medical Certificate" hint="Latest medical/fit-to-work certificate" value={medical} onChange={setMedical} />
           <div className="md:col-span-2">
-            <DocDrop
-              label="Certificates"
-              hint="TESDA, Training Certificates, etc."
-              value={certs}
-              onChange={setCerts}
-            />
+            <DocDrop label="Certificates" hint="TESDA, Training Certificates, etc." value={certs} onChange={setCerts} />
           </div>
         </div>
+
+        {attempted && !isFormValid && (
+          <p className="text-xs text-red-600 mt-3 ml-[-0.75rem]">Primary ID (Front) is required.</p>
+        )}
 
         <div className="flex justify-between mt-8 ml-3">
           <button
@@ -202,13 +173,51 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
           </button>
           <button
             type="button"
-            onClick={proceed}
-            className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-2.5"
+            onClick={onNextClick}
+            disabled={!isFormValid}
+            aria-disabled={!isFormValid}
+            className={`px-8 py-3 rounded-md shadow-md transition duration-300 mt-2.5 ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
           >
             Next : Set Your Price Rate
           </button>
         </div>
       </div>
+
+      {isLoadingNext && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Loading next step"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900">Preparing Step 4</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 };

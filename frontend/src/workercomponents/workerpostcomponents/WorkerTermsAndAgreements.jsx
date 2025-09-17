@@ -1,12 +1,67 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+const STORAGE_KEY = 'workerAgreements';
 
 const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [agreeVerify, setAgreeVerify] = useState(false);
   const [agreeTos, setAgreeTos] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
 
+  const [hydrated, setHydrated] = useState(false);
+  const [isLoadingNext, setIsLoadingNext] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
+
   const canProceed = agreeVerify && agreeTos && agreePrivacy;
+
+  // Hydrate from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const d = JSON.parse(saved);
+        setAgreeVerify(!!d.agree_verify);
+        setAgreeTos(!!d.agree_tos);
+        setAgreePrivacy(!!d.agree_privacy);
+      } catch {}
+    }
+    setHydrated(true);
+  }, []);
+
+  // Autosave to localStorage
+  useEffect(() => {
+    if (!hydrated) return;
+    const draft = {
+      agree_verify: agreeVerify,
+      agree_tos: agreeTos,
+      agree_privacy: agreePrivacy
+    };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
+  }, [hydrated, agreeVerify, agreeTos, agreePrivacy]);
+
+  // Lock back button / keys / scroll while loading (same as client)
+  useEffect(() => {
+    if (!isLoadingNext) return;
+
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [isLoadingNext]);
 
   const proceed = () => {
     const draft = {
@@ -14,11 +69,17 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
       agree_tos: agreeTos,
       agree_privacy: agreePrivacy
     };
-    try {
-      localStorage.setItem('workerAgreements', JSON.stringify(draft));
-    } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
     onCollect?.(draft);
     handleNext?.();
+  };
+
+  const onNextClick = () => {
+    if (!canProceed) return;
+    setIsLoadingNext(true);
+    setTimeout(() => {
+      proceed();
+    }, 2000);
   };
 
   return (
@@ -93,13 +154,61 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
 
         <button
           type="button"
-          onClick={proceed}
-          className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 -mt-4"
+          onClick={onNextClick}
+          className={`px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 -mt-4 ${!canProceed ? 'opacity-50 cursor-not-allowed' : ''}`}
           disabled={!canProceed}
+          aria-disabled={!canProceed}
         >
           Next : Review Application
         </button>
       </div>
+
+      {isLoadingNext && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Loading next step"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900">Preparing Step 6</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 };
