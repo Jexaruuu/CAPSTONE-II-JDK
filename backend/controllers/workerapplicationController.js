@@ -8,7 +8,7 @@ const {
   newGroupId,
   findWorkerByEmail
 } = require('../models/workerapplicationModel');
-const { supabaseAdmin } = require('../supabaseClient');
+const { supabaseAdmin, ensureStorageBucket } = require('../supabaseClient');
 
 function dateOnlyFrom(input) {
   if (!input) return null;
@@ -33,9 +33,20 @@ function friendlyError(err) {
   if (/worker_information|worker_work_information|worker_rate|worker_required_documents|wa_pending/i.test(raw)) return `Database error: ${raw}`;
   return raw;
 }
+function ageFromBirthDate(birth_date) {
+  const d = dateOnlyFrom(birth_date);
+  if (!d) return null;
+  const t = new Date();
+  let a = t.getFullYear() - d.getFullYear();
+  const m = t.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
+  return a >= 0 && a <= 120 ? a : null;
+}
 
 exports.submitFullApplication = async (req, res) => {
   try {
+    await ensureStorageBucket('wa-attachments', true);
+
     const {
       worker_id,
       first_name,
@@ -44,9 +55,9 @@ exports.submitFullApplication = async (req, res) => {
       contact_number,
       barangay,
       street,
-      additional_address,
       address,
       birth_date,
+      age,
       facebook,
       instagram,
       linkedin,
@@ -77,17 +88,7 @@ exports.submitFullApplication = async (req, res) => {
     const request_group_id = newGroupId();
 
     let streetVal = street ?? metadata.street ?? null;
-    let addlVal = additional_address ?? metadata.additional_address ?? null;
-    if ((!streetVal || !addlVal) && typeof address === 'string' && address.trim()) {
-      const idx = address.indexOf(',');
-      if (idx !== -1) {
-        streetVal = streetVal ?? address.slice(0, idx).trim();
-        addlVal = addlVal ?? address.slice(idx + 1).trim();
-      } else {
-        streetVal = streetVal ?? address.trim();
-        addlVal = addlVal ?? '';
-      }
-    }
+    if ((!streetVal) && typeof address === 'string' && address.trim()) streetVal = address.trim();
 
     let profileUpload = { url: null, name: null };
     if (profile_picture) {
@@ -96,6 +97,14 @@ exports.submitFullApplication = async (req, res) => {
       } catch {
         profileUpload = { url: null, name: null };
       }
+    }
+
+    let ageVal = null;
+    if (age !== undefined && age !== null && String(age).trim() !== '') {
+      const n = parseInt(age, 10);
+      ageVal = Number.isFinite(n) ? n : null;
+    } else {
+      ageVal = ageFromBirthDate(birth_date || metadata.birth_date || null);
     }
 
     const infoRow = {
@@ -107,8 +116,8 @@ exports.submitFullApplication = async (req, res) => {
       contact_number: (contact_number ?? metadata.contact_number ?? '').toString(),
       street: (streetVal ?? '').toString(),
       barangay: (barangay ?? metadata.barangay ?? '').toString(),
-      additional_address: (addlVal ?? '').toString(),
       birth_date: birth_date || metadata.birth_date || null,
+      age: ageVal,
       facebook: facebook ?? metadata.facebook ?? null,
       instagram: instagram ?? metadata.instagram ?? null,
       linkedin: linkedin ?? metadata.linkedin ?? null,
@@ -133,7 +142,6 @@ exports.submitFullApplication = async (req, res) => {
     const detailsRow = {
       request_group_id,
       worker_id: effectiveWorkerId,
-      email_address: infoRow.email_address,
       service_types: Array.isArray(service_types) ? service_types : [],
       job_details: job_details && typeof job_details === 'object' ? job_details : {},
       years_experience: years_experience ?? null,
@@ -142,7 +150,6 @@ exports.submitFullApplication = async (req, res) => {
     };
 
     const missingWork = [];
-    if (!detailsRow.email_address) missingWork.push('email_address');
     if (!detailsRow.service_types || !detailsRow.service_types.length) missingWork.push('service_types');
     if (!detailsRow.years_experience && detailsRow.years_experience !== 0) missingWork.push('years_experience');
     if (!detailsRow.tools_provided) missingWork.push('tools_provided');
@@ -158,7 +165,6 @@ exports.submitFullApplication = async (req, res) => {
     const rateRow = {
       request_group_id,
       worker_id: effectiveWorkerId,
-      email_address: infoRow.email_address,
       rate_type: rate_type || null,
       rate_from: rate_from || null,
       rate_to: rate_to || null,
@@ -166,7 +172,6 @@ exports.submitFullApplication = async (req, res) => {
     };
 
     const missingRate = [];
-    if (!rateRow.email_address) missingRate.push('email_address');
     if (!rateRow.rate_type) missingRate.push('rate_type');
     if (rateRow.rate_type === 'Hourly Rate' && (!rateRow.rate_from || !rateRow.rate_to)) missingRate.push('rate_from/rate_to');
     if (rateRow.rate_type === 'By the Job Rate' && !rateRow.rate_value) missingRate.push('rate_value');
@@ -200,7 +205,6 @@ exports.submitFullApplication = async (req, res) => {
       await insertWorkerRequiredDocuments({
         request_group_id,
         worker_id: effectiveWorkerId,
-        email_address: infoRow.email_address,
         docs: docsJson
       });
     } catch (e) {
@@ -222,8 +226,8 @@ exports.submitFullApplication = async (req, res) => {
       contact_number: infoRow.contact_number,
       street: infoRow.street,
       barangay: infoRow.barangay,
-      additional_address: infoRow.additional_address,
       birth_date: infoRow.birth_date,
+      age: infoRow.age,
       profile_picture_url: infoRow.profile_picture_url,
       profile_picture_name: infoRow.profile_picture_name
     };

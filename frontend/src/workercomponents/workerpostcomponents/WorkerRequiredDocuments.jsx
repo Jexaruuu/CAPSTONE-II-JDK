@@ -90,16 +90,45 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
   const [medical, setMedical] = useState(null);
   const [certs, setCerts] = useState(null);
 
+  const [primaryFrontB64, setPrimaryFrontB64] = useState(null);
+  const [primaryBackB64, setPrimaryBackB64] = useState(null);
+  const [secondaryIdB64, setSecondaryIdB64] = useState(null);
+  const [nbiB64, setNbiB64] = useState(null);
+  const [addressB64, setAddressB64] = useState(null);
+  const [medicalB64, setMedicalB64] = useState(null);
+  const [certsB64, setCertsB64] = useState(null);
+
   const [attempted, setAttempted] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
 
-  // Note: File objects can’t be rehydrated; we only keep names in storage after proceed (same as your code).
-  useEffect(() => {}, []);
+  const fileToDataURL = (file) =>
+    new Promise((resolve, reject) => {
+      if (!file) return resolve(null);
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+    });
+
+  const wrapSetter = (setFile, setB64) => async (file) => {
+    setFile(file);
+    const b64 = await fileToDataURL(file);
+    setB64(b64);
+  };
 
   const isFormValid = !!primaryFront;
 
-  const proceed = () => {
+  const proceed = async () => {
+    const docs = [];
+    if (primaryFront && primaryFrontB64) docs.push({ kind: 'primary_front', name: primaryFront.name, data_url: primaryFrontB64 });
+    if (primaryBack && primaryBackB64) docs.push({ kind: 'primary_back', name: primaryBack.name, data_url: primaryBackB64 });
+    if (secondaryId && secondaryIdB64) docs.push({ kind: 'secondary_id', name: secondaryId.name, data_url: secondaryIdB64 });
+    if (nbi && nbiB64) docs.push({ kind: 'nbi', name: nbi.name, data_url: nbiB64 });
+    if (address && addressB64) docs.push({ kind: 'address', name: address.name, data_url: addressB64 });
+    if (medical && medicalB64) docs.push({ kind: 'medical', name: medical.name, data_url: medicalB64 });
+    if (certs && certsB64) docs.push({ kind: 'certs', name: certs.name, data_url: certsB64 });
+
     const draft = {
       primary_front_name: primaryFront?.name || null,
       primary_back_name: primaryBack?.name || null,
@@ -109,8 +138,11 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
       medical_name: medical?.name || null,
       certs_name: certs?.name || null
     };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
-    onCollect?.({ primary_front: primaryFront, primary_back: primaryBack, secondary_id: secondaryId, nbi, address, medical, certs });
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+      localStorage.setItem('workerDocumentsData', JSON.stringify(docs));
+    } catch {}
+    onCollect?.({ docs });
     handleNext?.();
   };
 
@@ -121,25 +153,6 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
     setTimeout(() => { proceed(); }, 2000);
   };
 
-  useEffect(() => {
-    if (!isLoadingNext) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', onPopState, true);
-
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
-    window.addEventListener('keydown', blockKeys, true);
-
-    return () => {
-      window.removeEventListener('popstate', onPopState, true);
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener('keydown', blockKeys, true);
-    };
-  }, [isLoadingNext]);
-
   return (
     <form className="space-y-8">
       <div className="w-full max-w-[1535px] mx-auto px-6">
@@ -148,14 +161,14 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
-          <DocDrop label="Primary ID (Front)" required hint="UMID, Passport, Driver’s License, etc." value={primaryFront} onChange={setPrimaryFront} />
-          <DocDrop label="Primary ID (Back)" hint="UMID, Passport, Driver’s License, etc." value={primaryBack} onChange={setPrimaryBack} />
-          <DocDrop label="Secondary ID" hint="UMID, Passport, Driver’s License, etc." value={secondaryId} onChange={setSecondaryId} />
-          <DocDrop label="NBI/Police Clearance" hint="Barangay Certificate also accepted" value={nbi} onChange={setNbi} />
-          <DocDrop label="Proof of Address" hint="Barangay Certificate, Utility Bill" value={address} onChange={setAddress} />
-          <DocDrop label="Medical Certificate" hint="Latest medical/fit-to-work certificate" value={medical} onChange={setMedical} />
+          <DocDrop label="Primary ID (Front)" required hint="UMID, Passport, Driver’s License, etc." value={primaryFront} onChange={wrapSetter(setPrimaryFront, setPrimaryFrontB64)} />
+          <DocDrop label="Primary ID (Back)" hint="UMID, Passport, Driver’s License, etc." value={primaryBack} onChange={wrapSetter(setPrimaryBack, setPrimaryBackB64)} />
+          <DocDrop label="Secondary ID" hint="UMID, Passport, Driver’s License, etc." value={secondaryId} onChange={wrapSetter(setSecondaryId, setSecondaryIdB64)} />
+          <DocDrop label="NBI/Police Clearance" hint="Barangay Certificate also accepted" value={nbi} onChange={wrapSetter(setNbi, setNbiB64)} />
+          <DocDrop label="Proof of Address" hint="Barangay Certificate, Utility Bill" value={address} onChange={wrapSetter(setAddress, setAddressB64)} />
+          <DocDrop label="Medical Certificate" hint="Latest medical/fit-to-work certificate" value={medical} onChange={wrapSetter(setMedical, setMedicalB64)} />
           <div className="md:col-span-2">
-            <DocDrop label="Certificates" hint="TESDA, Training Certificates, etc." value={certs} onChange={setCerts} />
+            <DocDrop label="Certificates" hint="TESDA, Training Certificates, etc." value={certs} onChange={wrapSetter(setCerts, setCertsB64)} />
           </div>
         </div>
 

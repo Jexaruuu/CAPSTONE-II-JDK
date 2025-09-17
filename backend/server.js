@@ -8,7 +8,7 @@ const workerRoutes = require("./routes/workerRoutes");
 const loginRoutes = require("./routes/loginRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 
-const { resendSignupEmail, setDefaultRedirectBase } = require("./supabaseClient");
+const { resendSignupEmail, setDefaultRedirectBase, ensureStorageBucket } = require("./supabaseClient");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 
@@ -19,6 +19,7 @@ const adminModel = require("./models/adminModel");
 const clientservicerequestsRoutes = require("./routes/clientservicerequestsRoutes");
 const adminservicerequestsRoutes  = require("./routes/adminservicerequestsRoutes");
 const workerapplicationRoutes = require("./routes/workerapplicationRoutes");
+const adminworkerapplicationRoutes = require("./routes/adminworkerapplicationRoutes");
 
 dotenv.config();
 
@@ -212,8 +213,9 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/clientservicerequests", clientservicerequestsRoutes);
 app.use("/api/admin/servicerequests", adminservicerequestsRoutes);
 app.use("/api/workerapplication", workerapplicationRoutes);
+app.use("/api/admin/workerapplications", adminworkerapplicationRoutes);
 
-
+ensureStorageBucket('wa-attachments', true).catch(() => {});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

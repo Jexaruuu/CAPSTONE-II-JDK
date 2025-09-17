@@ -5,6 +5,17 @@ import { compressImageFileToDataURL } from '../../utils/imageCompression'; // al
 
 const STORAGE_KEY = 'workerInformationForm';
 
+const clearWorkerApplicationDrafts = () => {
+  try {
+    localStorage.removeItem('workerInformationForm');
+    localStorage.removeItem('workerWorkInformation');
+    localStorage.removeItem('workerDocuments');
+    localStorage.removeItem('workerDocumentsData');
+    localStorage.removeItem('workerRate');
+    localStorage.removeItem('workerAgreements');
+  } catch {}
+};
+
 const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -13,7 +24,6 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const [email, setEmail] = useState('');
   const [barangay, setBarangay] = useState('');
   const [street, setStreet] = useState('');
-  const [additionalAddress, setAdditionalAddress] = useState('');
   const [facebook, setFacebook] = useState('');
   const [instagram, setInstagram] = useState('');
   const [linkedin, setLinkedin] = useState('');
@@ -42,7 +52,20 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const validateEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || '').trim());
   const isContactValid = contactNumber.replace(/\D/g, '').length === 10;
 
-  // Minimal, practical validation (keeps optional "Additional Address" + profile pic optional)
+  // Computed Age (read-only)
+  const computeAge = (iso) => {
+    if (!iso) return '';
+    const b = new Date(iso);
+    if (isNaN(b.getTime())) return '';
+    const today = new Date();
+    let age = today.getFullYear() - b.getFullYear();
+    const m = today.getMonth() - b.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < b.getDate())) age--;
+    return age < 0 || age > 120 ? '' : String(age);
+  };
+  const age = computeAge(birthDate);
+
+  // Minimal, practical validation
   const isFormValid =
     firstName.trim() &&
     lastName.trim() &&
@@ -93,7 +116,6 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
         setEmail(d.email || '');
         setBarangay(d.barangay || '');
         setStreet(d.street || '');
-        setAdditionalAddress(d.additionalAddress || '');
         setFacebook(d.facebook || '');
         setInstagram(d.instagram || '');
         setLinkedin(d.linkedin || '');
@@ -121,7 +143,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
     }
   }, [hydrated]);
 
-  // autosave like client
+  // autosave like client (no additionalAddress anymore)
   useEffect(() => {
     if (!hydrated) return;
     const draft = {
@@ -132,17 +154,17 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
       email,
       barangay,
       street,
-      additionalAddress,
       facebook,
       instagram,
       linkedin,
       profilePicture,       // DataURL
       profilePictureName,   // filename
+      age: age ? Number(age) : null
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
   }, [
     hydrated, firstName, lastName, birthDate, contactNumber, email, barangay,
-    street, additionalAddress, facebook, instagram, linkedin, profilePicture, profilePictureName
+    street, facebook, instagram, linkedin, profilePicture, profilePictureName, age
   ]);
 
   // lock back/keys/scroll while loading
@@ -174,7 +196,6 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
       email,
       barangay,
       street,
-      additionalAddress,
       facebook,
       instagram,
       linkedin,
@@ -191,11 +212,13 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
       contact_number: contactNumber,
       email_address: email,
       barangay,
-      additional_address: additionalAddress,
+      street,
       facebook,
       instagram,
       linkedin,
-      profile_picture: profileFile || null
+      profile_picture: profileFile || null,
+      profile_picture_name: profilePictureName || '',
+      age: age ? Number(age) : null
     });
     handleNext?.();
   };
@@ -214,6 +237,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
           <h3 className="text-2xl font-semibold mb-6">Personal Information</h3>
           <p className="text-sm text-gray-600 mb-6">Please fill in your personal details to proceed.</p>
 
+          {/* First / Last Name */}
           <div className="flex space-x-6 mb-4">
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
@@ -247,6 +271,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
             </div>
           </div>
 
+          {/* Birthdate / Age */}
           <div className="flex space-x-6 mb-4">
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Birthdate</label>
@@ -259,7 +284,22 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                 aria-invalid={attempted && !birthDate}
               />
             </div>
+            <div className="w-1/2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
+              <input
+                type="text"
+                value={age}
+                readOnly
+                aria-readonly
+                placeholder="Auto-calculated"
+                title="Age is calculated from Birthdate"
+                className="w-full px-4 py-3 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed focus:outline-none"
+              />
+            </div>
+          </div>
 
+          {/* Contact / Email */}
+          <div className="flex space-x-6 mb-4">
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number</label>
               <div className={`flex items-center border rounded-md ${attempted && !isContactValid ? 'border-red-500' : 'border-gray-300'}`}>
@@ -288,9 +328,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                 <p className="text-xs text-red-600 mt-1">Enter a 10-digit PH mobile number (e.g., 9XXXXXXXXX).</p>
               )}
             </div>
-          </div>
 
-          <div className="flex space-x-6 mb-4">
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
               <input
@@ -309,7 +347,10 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                 <p className="text-xs text-red-600 mt-1">Enter a valid email address.</p>
               )}
             </div>
+          </div>
 
+          {/* Barangay / Street */}
+          <div className="flex space-x-6 mb-4">
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
               <div ref={dropdownRef} className="relative">
@@ -348,9 +389,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                 <p className="text-xs text-red-600 mt-1">Please select your barangay.</p>
               )}
             </div>
-          </div>
 
-          <div className="flex space-x-6 mb-4">
             <div className="w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Street</label>
               <input
@@ -363,15 +402,6 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                 aria-invalid={attempted && !street.trim()}
               />
             </div>
-            <div className="w-1/2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Additional Address (Landmark etc.)</label>
-              <textarea
-                value={additionalAddress}
-                onChange={(e) => setAdditionalAddress(e.target.value)}
-                placeholder="Additional Address (Optional)"
-                className="w-full px-4 py-3 border border-gray-300 rounded-md mb-1 focus:outline-none focus:ring-2 focus:ring-blue-500 h-16"
-              />
-            </div>
           </div>
         </div>
 
@@ -381,32 +411,40 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
 
           <div className="flex items-center mb-6">
             <div className="w-1/3">
-              {!profilePicture ? (
-                <div className="w-32 h-32 rounded-full bg-gray-300 flex items-center justify-center">
+              {!profilePicture && (
+                <div className={`w-32 h-32 rounded-full flex items-center justify-center ${attempted && !profilePicture ? 'bg-red-200' : 'bg-gray-300'}`}>
                   <span className="text-white text-xl">+</span>
                 </div>
-              ) : (
-                <img src={profilePicture} alt="Profile Preview" className="w-32 h-32 rounded-full object-cover" />
+              )}
+              {profilePicture && (
+                <img
+                  src={profilePicture}
+                  alt="Profile Preview"
+                  className="w-32 h-32 rounded-full object-cover"
+                />
               )}
             </div>
 
-            <div className="-ml-5 w-2/3">
+            <div className="ml-7 w-2/3">
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleProfilePictureChange}
-                className="mb-1 w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`mb-1 w-full px-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${attempted && !profilePicture ? 'border-red-500' : 'border-gray-300'}`}
               />
               {profilePictureName && (
                 <p className="text-xs text-gray-600 truncate">Selected: {profilePictureName}</p>
               )}
+              {attempted && !profilePicture && (
+                <p className="text-xs text-red-600">Please upload a profile picture.</p>
+              )}
             </div>
           </div>
 
-          <h3 className="text-2xl font-semibold mb-5 mt-6">Social Media</h3>
+          <h3 className="text-2xl font-semibold mb-3 mt-4">Social Media</h3>
           <p className="text-sm text-gray-600 mb-3">Please provide your social media links (For reference only).</p>
 
-          <div className="flex space-x-4 mb-3.5">
+          <div className="flex space-x-434 mb-2.5">
             <div className="w-full">
               <div className="flex items-center">
                 <FaFacebookF className="mr-2 text-blue-600" />
@@ -420,7 +458,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
               </div>
             </div>
           </div>
-          <div className="flex space-x-4 mb-3.5">
+          <div className="flex space-x-4 mb-2.5">
             <div className="w-full">
               <div className="flex items-center">
                 <FaInstagram className="mr-2 text-pink-500" />
@@ -434,7 +472,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
               </div>
             </div>
           </div>
-          <div className="flex space-x-4 mb-3.5">
+          <div className="flex space-x-4 mb-2.">
             <div className="w-full">
               <div className="flex items-center">
                 <FaLinkedinIn className="mr-2 text-blue-600" />
@@ -452,7 +490,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
       </div>
 
       <div className="flex justify-between mt-8 ml-3">
-        <Link to="/workerdashboard">
+        <Link to="/workerdashboard" onClick={clearWorkerApplicationDrafts}>
           <button
             type="button"
             className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300"

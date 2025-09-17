@@ -1,43 +1,71 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+function computeAge(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const t = new Date();
+  let a = t.getFullYear() - d.getFullYear();
+  const m = t.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
+  return a >= 0 && a <= 120 ? a : null;
+}
+
+const clearWorkerApplicationDrafts = () => {
+  try {
+    localStorage.removeItem('workerInformationForm');
+    localStorage.removeItem('workerWorkInformation');
+    localStorage.removeItem('workerDocuments');
+    localStorage.removeItem('workerDocumentsData');
+    localStorage.removeItem('workerRate');
+    localStorage.removeItem('workerAgreements');
+  } catch {}
+};
+
 const WorkerReviewPost = ({ handleBack }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [logoBroken, setLogoBroken] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const savedInfo = (() => { try { return JSON.parse(localStorage.getItem('workerInformationForm') || '{}'); } catch { return {}; }})();
   const savedWork = (() => { try { return JSON.parse(localStorage.getItem('workerWorkInformation') || '{}'); } catch { return {}; }})();
-  const savedDocs = (() => { try { return JSON.parse(localStorage.getItem('workerDocuments') || '{}'); } catch { return {}; }})();
+  const savedDocsMeta = (() => { try { return JSON.parse(localStorage.getItem('workerDocuments') || '{}'); } catch { return {}; }})();
+  const savedDocsData = (() => { try { return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]'); } catch { return []; }})();
   const savedRate = (() => { try { return JSON.parse(localStorage.getItem('workerRate') || '{}'); } catch { return {}; }})();
+  const savedAgree = (() => { try { return JSON.parse(localStorage.getItem('workerAgreements') || '{}'); } catch { return {}; }})();
 
   const s = location.state || {};
 
-  const {
-    first_name = savedInfo.firstName,
-    last_name = savedInfo.lastName,
-    birth_date = savedInfo.birthDate,
-    contact_number = savedInfo.contactNumber,
-    email = savedInfo.email,
-    street = savedInfo.street,
-    barangay = savedInfo.barangay,
-    additional_address = savedInfo.additionalAddress,
-    profile_picture = savedInfo.profilePicture,
-    facebook = savedInfo.facebook,
-    instagram = savedInfo.instagram,
-    linkedin = savedInfo.linkedin,
-    service_types = savedWork.serviceTypesSelected,
-    job_details = savedWork.jobDetails,
-    years_experience = savedWork.yearsExperience,
-    tools_provided = savedWork.toolsProvided,
-    service_description = savedWork.serviceDescription,
-    rate_type = savedRate.rateType,
-    rate_from = savedRate.rateFrom,
-    rate_to = savedRate.rateTo,
-    rate_value = savedRate.rateValue
-  } = s;
+  const first_name = s.first_name ?? savedInfo.firstName ?? '';
+  const last_name = s.last_name ?? savedInfo.lastName ?? '';
+  const birth_date = s.birth_date ?? savedInfo.birth_date ?? '';
+  const age = s.age ?? savedInfo.age ?? computeAge(birth_date);
+  const contact_number = s.contact_number ?? savedInfo.contactNumber ?? '';
+  const email = s.email ?? savedInfo.email ?? '';
+  const street = s.street ?? savedInfo.street ?? '';
+  const barangay = s.barangay ?? savedInfo.barangay ?? '';
+  const profile_picture = s.profile_picture ?? savedInfo.profilePicture ?? null;
+  const profile_picture_name = s.profile_picture_name ?? savedInfo.profilePictureName ?? '';
+
+  const service_types = s.service_types ?? savedWork.service_types ?? savedWork.serviceTypesSelected ?? [];
+  const job_details = s.job_details ?? savedWork.job_details ?? savedWork.jobDetails ?? {};
+  const years_experience = s.years_experience ?? savedWork.years_experience ?? savedWork.yearsExperience ?? '';
+  const tools_provided = s.tools_provided ?? savedWork.tools_provided ?? savedWork.toolsProvided ?? '';
+  const service_description = s.service_description ?? savedWork.service_description ?? savedWork.serviceDescription ?? '';
+
+  const rate_type = s.rate_type ?? savedRate.rate_type ?? savedRate.rateType ?? '';
+  const rate_from = s.rate_from ?? savedRate.rate_from ?? savedRate.rateFrom ?? '';
+  const rate_to = s.rate_to ?? savedRate.rate_to ?? savedRate.rateTo ?? '';
+  const rate_value = s.rate_value ?? savedRate.rate_value ?? savedRate.rateValue ?? '';
+
+  const docsFromState = Array.isArray(s.docs) ? s.docs : [];
+  const docs = docsFromState.length ? docsFromState : savedDocsData;
 
   const formatList = (arr) => Array.isArray(arr) && arr.length ? arr.join(', ') : '-';
 
@@ -61,43 +89,90 @@ const WorkerReviewPost = ({ handleBack }) => {
   };
 
   const handleConfirm = async () => {
+    setSubmitError('');
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      const payload = {
+        worker_id: localStorage.getItem('worker_id') || null,
+        first_name,
+        last_name,
+        email_address: email,
+        contact_number,
+        barangay,
+        street,
+        birth_date,
+        age,
+        facebook: savedInfo.facebook || '',
+        instagram: savedInfo.instagram || '',
+        linkedin: savedInfo.linkedin || '',
+        profile_picture: profile_picture || null,
+        profile_picture_name,
+        service_types,
+        job_details,
+        years_experience,
+        tools_provided,
+        work_description: service_description,
+        rate_type,
+        rate_from,
+        rate_to,
+        rate_value,
+        docs,
+        metadata: {
+          agree_verify: !!savedAgree.agree_verify,
+          agree_tos: !!savedAgree.agree_tos,
+          agree_privacy: !!savedAgree.agree_privacy
+        }
+      };
+
+      const resp = await fetch(`${API_BASE}/api/workerapplication/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err?.message || 'Submission failed');
+      }
+
       setIsSubmitting(false);
       setShowSuccess(true);
-    }, 800);
+    } catch (e) {
+      setIsSubmitting(false);
+      setSubmitError(String(e.message || 'Submission failed'));
+    }
   };
 
   const handleGoDashboard = () => {
+    clearWorkerApplicationDrafts();
     navigate('/workerdashboard', { state: { submitted: true }});
   };
 
-  // inside WorkerReviewPost component
-useEffect(() => {
-  const lock = isSubmitting || showSuccess;
-  if (!lock) return;
+  useEffect(() => {
+    const lock = isSubmitting || showSuccess;
+    if (!lock) return;
 
-  const onPopState = () => { window.history.pushState(null, '', window.location.href); };
-  window.history.pushState(null, '', window.location.href);
-  window.addEventListener('popstate', onPopState, true);
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
 
-  const html = document.documentElement;
-  const body = document.body;
-  const prevHtmlOverflow = html.style.overflow;
-  const prevBodyOverflow = body.style.overflow;
-  html.style.overflow = 'hidden';
-  body.style.overflow = 'hidden';
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
 
-  const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
-  window.addEventListener('keydown', blockKeys, true);
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
 
-  return () => {
-    window.removeEventListener('popstate', onPopState, true);
-    html.style.overflow = prevHtmlOverflow || '';
-    body.style.overflow = prevBodyOverflow || '';
-    window.removeEventListener('keydown', blockKeys, true);
-  };
-}, [isSubmitting, showSuccess]);
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      html.style.overflow = prevHtmlOverflow || '';
+      body.style.overflow = prevBodyOverflow || '';
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [isSubmitting, showSuccess]);
 
   return (
     <div className="space-y-8 pb-20">
@@ -112,21 +187,14 @@ useEffect(() => {
                 <LabelValue label="Birthdate" value={birth_date} />
                 <LabelValue label="Contact Number" value={contact_number} />
                 <LabelValue label="Email" value={email} />
-                <LabelValue
-                  label="Address"
-                  value={street && barangay ? `${street}, ${barangay}` : street || barangay}
-                />
-                {additional_address ? (
-                  <LabelValue label="Additional Address" value={additional_address} />
-                ) : (
-                  <div className="hidden md:block mt-14" />
-                )}
+                <LabelValue label="Address" value={street && barangay ? `${street}, ${barangay}` : street || barangay} />
+                <div className="hidden md:block mt-14" />
                 <div className="md:col-span-2 pt-2 mt-7">
                   <h4 className="text-2xl font-semibold">Social Media</h4>
                 </div>
-                <LabelValue label="Facebook" value={facebook} emptyAs="None" />
-                <LabelValue label="Instagram" value={instagram} emptyAs="None" />
-                <LabelValue label="LinkedIn" value={linkedin} emptyAs="None" />
+                <LabelValue label="Facebook" value={savedInfo.facebook || '-'} emptyAs="None" />
+                <LabelValue label="Instagram" value={savedInfo.instagram || '-'} emptyAs="None" />
+                <LabelValue label="LinkedIn" value={savedInfo.linkedin || '-'} emptyAs="None" />
               </div>
               <div className="md:col-span-1">
                 <h4 className="text-xl font-semibold mb-2">Profile Picture</h4>
@@ -196,7 +264,7 @@ useEffect(() => {
             Back : Step 5
           </button>
 
-          <button
+        <button
             type="button"
             onClick={handleConfirm}
             className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 -mt-4"
@@ -204,6 +272,10 @@ useEffect(() => {
             Confirm Application
           </button>
         </div>
+
+        {submitError && (
+          <div className="mt-6 text-red-600 text-sm">{submitError}</div>
+        )}
       </div>
 
       {isSubmitting && (
@@ -275,12 +347,8 @@ useEffect(() => {
             </div>
             <div className="mt-6 text-center space-y-2">
               <div className="text-lg font-semibold text-gray-900">Application Submitted!</div>
-              <div className="text-sm text-gray-600">
-                Please wait for admin approval.
-              </div>
-              <div className="text-xs text-gray-500">
-                The details below will remain on this page for your reference.
-              </div>
+              <div className="text-sm text-gray-600">Please wait for admin approval.</div>
+              <div className="text-xs text-gray-500">The details below will remain on this page for your reference.</div>
             </div>
             <div className="mt-6">
               <button

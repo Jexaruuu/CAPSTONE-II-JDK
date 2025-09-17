@@ -124,6 +124,18 @@ const WorkerNavigation = () => {
   const role = localStorage.getItem('role');
   const logoTo = role === 'worker' ? '/workerdashboard' : '/workerwelcome';
 
+  /* NEW: clear worker application drafts when going to Dashboard or clicking the logo */
+  const clearWorkerApplicationDrafts = () => {
+    try {
+      localStorage.removeItem('workerInformationForm');
+      localStorage.removeItem('workerWorkInformation');
+      localStorage.removeItem('workerDocuments');
+      localStorage.removeItem('workerDocumentsData');
+      localStorage.removeItem('workerRate');
+      localStorage.removeItem('workerAgreements');
+    } catch {}
+  };
+
   /* NEW: controlled search for Clients */
   const [searchQuery, setSearchQuery] = useState('');
   const goSearch = () => {
@@ -138,7 +150,7 @@ const WorkerNavigation = () => {
     <div className="bg-white sticky top-0 z-50">
       <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
         <div className="flex items-center space-x-6">
-          <Link to={logoTo} replace>
+          <Link to={logoTo} replace onClick={clearWorkerApplicationDrafts}>
             <img src="/jdklogo.png" alt="Logo" className="h-48 w-48 object-contain" />
           </Link>
           <ul className="flex space-x-7 mt-4 text-md">
@@ -187,7 +199,12 @@ const WorkerNavigation = () => {
             </li>
 
             <li>
-              <Link to="/workerdashboard" className="text-black font-medium" replace>
+              <Link
+                to="/workerdashboard"
+                className="text-black font-medium"
+                replace
+                onClick={clearWorkerApplicationDrafts}
+              >
                 Dashboard
               </Link>
             </li>
