@@ -20,6 +20,7 @@ const clientservicerequestsRoutes = require("./routes/clientservicerequestsRoute
 const adminservicerequestsRoutes  = require("./routes/adminservicerequestsRoutes");
 const workerapplicationRoutes = require("./routes/workerapplicationRoutes");
 const adminworkerapplicationRoutes = require("./routes/adminworkerapplicationRoutes");
+const pendingservicerequestsRoutes = require("./routes/pendingservicerequestsRoutes");
 
 dotenv.config();
 
@@ -214,6 +215,7 @@ app.use("/api/clientservicerequests", clientservicerequestsRoutes);
 app.use("/api/admin/servicerequests", adminservicerequestsRoutes);
 app.use("/api/workerapplication", workerapplicationRoutes);
 app.use("/api/admin/workerapplications", adminworkerapplicationRoutes);
+app.use("/api/pendingservicerequests", pendingservicerequestsRoutes);
 
 ensureStorageBucket('wa-attachments', true).catch(() => {});
 

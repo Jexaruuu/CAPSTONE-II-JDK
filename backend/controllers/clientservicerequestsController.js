@@ -17,18 +17,13 @@ function friendlyError(err) {
   return raw;
 }
 
-/* helpers to detect "expired" based on preferred_date (date-only comparison) */
 function dateOnlyFrom(input) {
   if (!input) return null;
   const raw = String(input).trim();
   const token = raw.split('T')[0].split(' ')[0];
   let m;
-  if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(token))) {
-    return new Date(+m[1], +m[2] - 1, +m[3]);
-  }
-  if ((m = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(token))) {
-    return new Date(+m[3], +m[1] - 1, +m[2]);
-  }
+  if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(token))) return new Date(+m[1], +m[2] - 1, +m[3]);
+  if ((m = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(token))) return new Date(+m[3], +m[1] - 1, +m[2]);
   const d = new Date(raw);
   return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -39,6 +34,17 @@ function isExpiredPreferredDate(val) {
   today.setHours(0, 0, 0, 0);
   return d < today;
 }
+
+function toBoolStrict(v) {
+  if (typeof v === 'boolean') return v;
+  if (v === 1 || v === '1') return true;
+  if (v === 0 || v === '0') return false;
+  const s = String(v ?? '').trim().toLowerCase();
+  if (['yes', 'y', 'true', 't'].includes(s)) return true;
+  if (['no', 'n', 'false', 'f'].includes(s)) return false;
+  return false;
+}
+const yesNo = (b) => (b ? 'Yes' : 'No');
 
 exports.submitFullRequest = async (req, res) => {
   try {
@@ -144,8 +150,10 @@ exports.submitFullRequest = async (req, res) => {
       return res.status(400).json({ message: friendlyError(e) });
     }
 
-    const yesNo = v => (v ? 'Yes' : 'No');
     const firstUpload = uploaded[0] || null;
+
+    const urgentRaw = is_urgent ?? metadata.is_urgent ?? metadata.urgency ?? metadata.priority ?? '';
+    const toolsRaw = tools_provided ?? metadata.tools_provided ?? metadata.tools ?? '';
 
     const detailsRow = {
       request_group_id,
@@ -156,8 +164,8 @@ exports.submitFullRequest = async (req, res) => {
       service_task: service_task || metadata.service_task || null,
       preferred_date: preferred_date || null,
       preferred_time: preferred_time || null,
-      is_urgent: yesNo(!!is_urgent),
-      tools_provided: yesNo(!!tools_provided),
+      is_urgent: yesNo(toBoolStrict(urgentRaw)),
+      tools_provided: yesNo(toBoolStrict(toolsRaw)),
       service_description: description,
       image_url: firstUpload?.url ?? metadata.image_url ?? null,
       image_name: firstUpload?.name ?? metadata.image_name ?? null,
@@ -267,9 +275,15 @@ exports.listApproved = async (req, res) => {
     if (error) throw error;
 
     const items = Array.isArray(data) ? data : [];
-    const filtered = items.filter((it) => !isExpiredPreferredDate(it?.details?.preferred_date));
+    const fixed = items.map((it) => {
+      const d = { ...(it.details || {}) };
+      if (d.is_urgent !== undefined) d.is_urgent = yesNo(toBoolStrict(d.is_urgent));
+      if (d.tools_provided !== undefined) d.tools_provided = yesNo(toBoolStrict(d.tools_provided));
+      return { ...it, details: d };
+    });
+    const filtered = fixed.filter((it) => !isExpiredPreferredDate(it?.details?.preferred_date));
     return res.status(200).json({ items: filtered });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ message: 'Failed to load approved requests' });
   }
 };

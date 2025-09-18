@@ -1,32 +1,36 @@
+// WorkerAvailableServiceRequest.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 
+const avatarFromName = (name) =>
+  `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
+
 const WorkerAvailableServiceRequest = () => {
-  const workers = [
-    { id: 1, name: 'Juan Dela Cruz', skill: 'Plumber', image: '/workers/juan.png' },
-    { id: 2, name: 'Maria Santos', skill: 'Electrician', image: '/workers/maria.png' },
-    { id: 3, name: 'Pedro Reyes', skill: 'Carpenter', image: '/workers/pedro.png' },
-    { id: 4, name: 'Ana Lopez', skill: 'House Cleaner', image: '/workers/ana.png' },
-    { id: 5, name: 'Ana Lopez', skill: 'House Cleaner', image: '/workers/ana.png' },
-    { id: 6, name: 'Ana Lopez', skill: 'House Cleaner', image: '/workers/ana.png' },
-    { id: 7, name: 'J Lopez',  skill: 'House Cleaner', image: '/workers/ana.png' },
+  const requests = [
+    { id: 1, name: 'Carlos Rivera', task: 'Fix leaking sink', image: '/clients/carlos.png' },
+    { id: 2, name: 'Liza Cruz', task: 'Rewire living room', image: '/clients/liza.png' },
+    { id: 3, name: 'Mark Tan', task: 'Build storage shelf', image: '/clients/mark.png' },
+    { id: 4, name: 'Jenna Uy', task: 'Deep house cleaning', image: '/clients/jenna.png' },
+    { id: 5, name: 'R. Santos', task: 'Car wash + waxing', image: '/clients/rsantos.png' },
+    { id: 6, name: 'A. Lim', task: 'Laundry & folding', image: '/clients/alim.png' },
+    { id: 7, name: 'P. Dela Cruz', task: 'Bathroom plumbing', image: '/clients/pdc.png' },
   ];
 
   const PER_PAGE = 3;
 
   const scrollRef = useRef(null);
-  const wrapRef   = useRef(null);
-  const cardRefs  = useRef([]);
+  const wrapRef = useRef(null);
+  const cardRefs = useRef([]);
 
   const [current, setCurrent] = useState(0);
   const [positions, setPositions] = useState([]);
 
   const GAP = 24;
 
-  const [cardW, setCardW]   = useState(340);
+  const [cardW, setCardW] = useState(340);
   const [endPad, setEndPad] = useState(0);
 
-  const totalSlides = Math.max(1, Math.ceil(workers.length / PER_PAGE));
+  const totalSlides = Math.max(1, Math.ceil(requests.length / PER_PAGE));
 
   const handleScroll = (direction) => {
     const next = direction === 'left' ? current - 1 : current + 1;
@@ -47,7 +51,7 @@ const WorkerAvailableServiceRequest = () => {
   const scrollToIndex = (i) => {
     const el = scrollRef.current;
     if (!el) return;
-    const idx  = Math.max(0, Math.min(totalSlides - 1, i));
+    const idx = Math.max(0, Math.min(totalSlides - 1, i));
     const left = positions.length ? positions[idx] : idx * ((cardW + GAP) * PER_PAGE - GAP);
     el.scrollTo({ left, behavior: 'smooth' });
     setCurrent(idx);
@@ -59,17 +63,17 @@ const WorkerAvailableServiceRequest = () => {
   };
 
   const recomputeCardWidth = () => {
-    const wrap  = wrapRef.current;
+    const wrap = wrapRef.current;
     const track = scrollRef.current;
     if (!wrap || !track) return;
 
     const visible = wrap.clientWidth - getHPad(wrap) - getHPad(track);
-    const exact   = Math.floor((visible - GAP * (PER_PAGE - 1)) / PER_PAGE);
+    const exact = Math.floor((visible - GAP * (PER_PAGE - 1)) / PER_PAGE);
     const clamped = Math.max(300, Math.min(520, exact));
     setCardW(clamped);
 
     const pageWidth = PER_PAGE * clamped + GAP * (PER_PAGE - 1);
-    const rem       = workers.length % PER_PAGE;
+    const rem = requests.length % PER_PAGE;
     const lastCount = rem === 0 ? PER_PAGE : rem;
     const lastWidth = lastCount * clamped + GAP * Math.max(0, lastCount - 1);
     const padNeeded = Math.max(0, pageWidth - lastWidth);
@@ -93,13 +97,13 @@ const WorkerAvailableServiceRequest = () => {
 
   useEffect(() => {
     requestAnimationFrame(recomputePositions);
-  }, [workers.length, cardW, endPad]);
+  }, [requests.length, cardW, endPad]);
 
   const isPointerDownRef = useRef(false);
-  const pointerIdRef     = useRef(null);
-  const startXRef        = useRef(0);
-  const startLeftRef     = useRef(0);
-  const movedRef         = useRef(false);
+  const pointerIdRef = useRef(null);
+  const startXRef = useRef(0);
+  const startLeftRef = useRef(0);
+  const movedRef = useRef(false);
 
   const snapToNearestSlide = () => {
     const el = scrollRef.current;
@@ -157,9 +161,9 @@ const WorkerAvailableServiceRequest = () => {
   return (
     <div className="max-w-[1525px] mx-auto px-6 py-10 relative">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800">Available Service Request</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">Available Service Requests</h2>
         <a
-          href="/browse-workers"
+          href="/browse-requests"
           className="text-[#008cfc] flex items-center gap-1 font-medium hover:underline"
         >
           Browse available requests <ArrowRight size={16} />
@@ -178,7 +182,7 @@ const WorkerAvailableServiceRequest = () => {
           <div
             ref={scrollRef}
             onScroll={onTrackScroll}
-            className="flex space-x-6 overflow-x-scroll scroll-smooth pl-4 pr-4 select-none no-scrollbar no-hand"
+            className="flex space-x-6 overflow-x-scroll scroll-smooth no-scrollbar pl-4 pr-4 select-none no-hand"
             style={{ touchAction: 'pan-x' }}
             onPointerDown={onDragPointerDown}
             onPointerMove={onDragPointerMove}
@@ -187,33 +191,48 @@ const WorkerAvailableServiceRequest = () => {
             onPointerLeave={endDrag}
             onClickCapture={onTrackClickCapture}
           >
-            {workers.map((worker, i) => (
+            {requests.map((req, i) => (
               <div
-                key={worker.id}
+                key={req.id}
                 ref={(el) => (cardRefs.current[i] = el)}
                 className="relative overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto flex-shrink-0 bg-white border border-gray-300 rounded-xl p-6 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl hover:ring-inset card-border-fix flex flex-col"
                 style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
               >
                 <div className="flex items-center gap-3">
-                  <img
-                    src={worker.image}
-                    alt={worker.name}
-                    className="w-16 h-16 object-cover rounded-full border-4 border-white shadow-inner ring-2 ring-[#008cfc]"
-                    onLoad={() => requestAnimationFrame(recomputePositions)}
-                  />
+                  <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-200 border-4 border-white shadow-inner ring-2 ring-[#008cfc]">
+                    <img
+                      src={req.image || avatarFromName(req.name)}
+                      alt={req.name}
+                      className="h-full w-full object-cover"
+                      onLoad={() => requestAnimationFrame(recomputePositions)}
+                      onError={({ currentTarget }) => {
+                        currentTarget.style.display = 'none';
+                        const parent = currentTarget.parentElement;
+                        if (parent) {
+                          parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-lg font-semibold">${(req.name || '?')
+                            .trim()
+                            .charAt(0)
+                            .toUpperCase()}</div>`;
+                        }
+                        requestAnimationFrame(recomputePositions);
+                      }}
+                    />
+                  </div>
                   <div className="min-w-0">
                     <div className="text-lg font-semibold text-gray-900 truncate">
-                      {worker.name}
+                      {req.task}
                     </div>
                     <div className="text-sm text-gray-600 truncate">
-                      {worker.skill}
+                      {req.name}
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-auto pt-4">
-                  <button className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition">
-                    View Profile
+                  <button
+                    className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition"
+                  >
+                    View Request
                   </button>
                 </div>
               </div>

@@ -11,7 +11,6 @@ const ACTION_ALIGN_RIGHT = false;
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
-/* add gray style for expired */
 function StatusPill({ value }) {
   const v = String(value || "").toLowerCase();
   const cfg =
@@ -39,7 +38,6 @@ function StatusPill({ value }) {
   );
 }
 
-/* expiry helpers */
 function dateOnlyFrom(val) {
   if (!val) return null;
   const raw = String(val).trim();
@@ -65,7 +63,6 @@ export default function AdminServiceRequests() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
 
-  // ✅ Default alphabetical by first name
   const [sort, setSort] = useState({ key: "name_first", dir: "asc" });
 
   const [selected, setSelected] = useState(() => new Set());
@@ -76,18 +73,21 @@ export default function AdminServiceRequests() {
   const [searchTerm, setSearchTerm] = useState("");
   const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0, total: 0 });
 
-  // client-side expired count
   const [expiredCount, setExpiredCount] = useState(0);
 
-  const isYes = (v) => String(v ?? "").toLowerCase() === "yes";
+  const isYes = (v) => {
+    if (typeof v === "boolean") return v;
+    if (v === 1 || v === "1") return true;
+    if (v === 0 || v === "0") return false;
+    const s = String(v ?? "").trim().toLowerCase();
+    if (["yes", "y", "true", "t"].includes(s)) return true;
+    if (["no", "n", "false", "f"].includes(s)) return false;
+    return false;
+  };
   const rate_toNumber = (x) => (x === null || x === undefined || x === "" ? null : Number(x));
 
-  // Summarize counts locally so approved/pending/declined exclude expired
   const summarizeCounts = (items = []) => {
-    let pending = 0,
-      approved = 0,
-      declined = 0,
-      expired = 0;
+    let pending = 0, approved = 0, declined = 0, expired = 0;
     for (const r of items) {
       const s = String(r?.status || "pending").toLowerCase();
       const exp = isExpired(r?.details?.preferred_date);
@@ -101,13 +101,11 @@ export default function AdminServiceRequests() {
         pending++;
       }
     }
-    // ✅ All count includes expired now
     return { pending, approved, declined, total: pending + approved + declined + expired, expired };
   };
 
   const fetchCounts = async () => {
     try {
-      // keep your server counts call (acts as fallback)
       const res = await axios.get(`${API_BASE}/api/admin/servicerequests/count`, {
         withCredentials: true,
       });
@@ -118,11 +116,7 @@ export default function AdminServiceRequests() {
         declined: c.declined || 0,
         total: c.total || 0,
       });
-    } catch {
-      // silent
-    }
-
-    // compute client-side counts to exclude expired from approved/pending/declined
+    } catch {}
     try {
       const resAll = await axios.get(`${API_BASE}/api/admin/servicerequests`, {
         withCredentials: true,
@@ -131,9 +125,7 @@ export default function AdminServiceRequests() {
       const s = summarizeCounts(items);
       setCounts({ pending: s.pending, approved: s.approved, declined: s.declined, total: s.total });
       setExpiredCount(s.expired);
-    } catch {
-      // if this fails, leave previous counts
-    }
+    } catch {}
   };
 
   const fetchItems = async (statusArg = filter, qArg = searchTerm) => {
@@ -141,7 +133,6 @@ export default function AdminServiceRequests() {
     setLoadError("");
     try {
       const params = {};
-      // don't send status for 'all' or client-only 'expired'
       if (statusArg && statusArg !== "all" && statusArg !== "expired") params.status = statusArg;
       if (qArg && qArg.trim()) params.q = qArg.trim();
 
@@ -182,21 +173,17 @@ export default function AdminServiceRequests() {
         };
       });
 
-      // ✅ All shows everything (including expired)
-      //    Expired shows only expired
-      //    Other tabs (pending/approved/declined) hide expired
       let finalRows;
       if (statusArg === "expired") {
         finalRows = mapped.filter((r) => r._expired);
       } else if (statusArg === "all") {
-        finalRows = mapped; // include expired + non-expired
+        finalRows = mapped;
       } else {
         finalRows = mapped.filter((r) => !r._expired);
       }
 
       setRows(finalRows);
 
-      // keep counts fresh when not requesting a specific status from server
       if (!params.status) {
         const s = summarizeCounts(items);
         setExpiredCount(s.expired);
@@ -210,13 +197,11 @@ export default function AdminServiceRequests() {
     }
   };
 
-  // Initial load
   useEffect(() => {
     fetchCounts();
     fetchItems();
-  }, []); // eslint-disable-line
+  }, []);
 
-  // Checkbox indeterminate (no-op when selection disabled)
   useEffect(() => {
     if (!ENABLE_SELECTION) return;
     const el = headerCheckboxRef.current;
@@ -232,13 +217,11 @@ export default function AdminServiceRequests() {
     }
   }, [selected, rows.length]);
 
-  // Debounced refetch on filter/search changes
   useEffect(() => {
     const t = setTimeout(() => {
       fetchItems(filter, searchTerm);
     }, 400);
     return () => clearInterval(t);
-    // eslint-disable-next-line
   }, [filter, searchTerm]);
 
   const sortedRows = useMemo(() => {
@@ -293,11 +276,11 @@ export default function AdminServiceRequests() {
   };
 
   const tabs = [
-    { key: "all", label: "All", count: counts.total },                 // includes expired now
-    { key: "pending", label: "Pending", count: counts.pending },       // excludes expired
-    { key: "approved", label: "Approved", count: counts.approved },    // excludes expired
-    { key: "declined", label: "Declined", count: counts.declined },    // excludes expired
-    { key: "expired", label: "Expired", count: expiredCount },         // only expired
+    { key: "all", label: "All", count: counts.total },
+    { key: "pending", label: "Pending", count: counts.pending },
+    { key: "approved", label: "Approved", count: counts.approved },
+    { key: "declined", label: "Declined", count: counts.declined },
+    { key: "expired", label: "Expired", count: expiredCount },
   ];
 
   const COLSPAN = ENABLE_SELECTION ? 7 : 6;
@@ -306,15 +289,12 @@ export default function AdminServiceRequests() {
     <main className="p-6">
       <div className="mb-4">
         <h1 className="text-xl font-semibold text-gray-900">Service Requests</h1>
-        <p className="text-gray-600 mt-2">
-          Browse, search, and manage all incoming and processed client requests.
-        </p>
+        <p className="text-gray-600 mt-2">Browse, search, and manage all incoming and processed client requests.</p>
       </div>
 
       <section className="mt-6">
         <div className="-mx-6">
           <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            {/* Tabs */}
             <div className="flex items-center gap-2">
               {tabs.map((t) => {
                 const active = filter === t.key;
@@ -343,7 +323,6 @@ export default function AdminServiceRequests() {
               })}
             </div>
 
-            {/* Right controls */}
             <div className="flex items-center gap-2">
               <div className="relative">
                 <input
@@ -446,9 +425,7 @@ export default function AdminServiceRequests() {
                         return (
                           <tr
                             key={u.id}
-                            className={`border-t border-gray-100 ${
-                              idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"
-                            }`}
+                            className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
                           >
                             {ENABLE_SELECTION && (
                               <td className="px-4 py-4">
@@ -466,30 +443,20 @@ export default function AdminServiceRequests() {
                               <div className="flex items-center gap-3">
                                 <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 ring-1 ring-gray-300">
                                   <img
-                                    src={avatarFromName(
-                                      `${u.name_first} ${u.name_last}`.trim()
-                                    )}
+                                    src={avatarFromName(`${u.name_first} ${u.name_last}`.trim())}
                                     alt={`${u.name_first} ${u.name_last}`}
                                     className="h-full w-full object-cover"
                                     onError={({ currentTarget }) => {
                                       currentTarget.style.display = "none";
                                       const parent = currentTarget.parentElement;
                                       if (parent) {
-                                        parent.innerHTML = `<div class="h-9 w-9 grid place-items-center bg-blue-100 text-blue-700 text-xs font-semibold">${(u.name_first ||
-                                          "?")
-                                          .trim()
-                                          .charAt(0)
-                                          .toUpperCase()}</div>`;
+                                        parent.innerHTML = `<div class="h-9 w-9 grid place-items-center bg-blue-100 text-blue-700 text-xs font-semibold">${(u.name_first || "?").trim().charAt(0).toUpperCase()}</div>`;
                                       }
                                     }}
                                   />
                                 </div>
                                 <div className="min-w-0">
-                                  <div
-                                    className={`text-gray-900 truncate ${
-                                      BOLD_FIRST_NAME ? "font-medium" : "font-normal"
-                                    }`}
-                                  >
+                                  <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"}`}>
                                     {u.name_first || "-"}
                                   </div>
                                 </div>
@@ -510,11 +477,7 @@ export default function AdminServiceRequests() {
                               <StatusPill value={u.ui_status} />
                             </td>
 
-                            <td
-                              className={`px-4 py-4 w-40 ${
-                                ACTION_ALIGN_RIGHT ? "text-right" : "text-left"
-                              }`}
-                            >
+                            <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"}`}>
                               <div className="inline-flex gap-3">
                                 <button
                                   onClick={() => setViewRow(u)}
@@ -544,10 +507,7 @@ export default function AdminServiceRequests() {
 
                       {!loading && !loadError && sortedRows.length === 0 && (
                         <tr>
-                          <td
-                            colSpan={COLSPAN}
-                            className="px-4 py-16 text-center text-gray-500"
-                          >
+                          <td colSpan={COLSPAN} className="px-4 py-16 text-center text-gray-500">
                             No requests found.
                           </td>
                         </tr>
@@ -607,12 +567,10 @@ export default function AdminServiceRequests() {
               <div className="col-span-2">
                 <div className="font-medium">Service</div>
                 <div>
-                  {viewRow.service_type}{" "}
-                  {viewRow.service_task ? `• ${viewRow.service_task}` : ""}
+                  {viewRow.service_type} {viewRow.service_task ? `• ${viewRow.service_task}` : ""}
                 </div>
                 <div>
-                  Urgent: {viewRow.is_urgent ? "Yes" : "No"} | Tools Provided:{" "}
-                  {viewRow.tools_provided ? "Yes" : "No"}
+                  Urgent: {viewRow.is_urgent ? "Yes" : "No"} | Tools Provided: {viewRow.tools_provided ? "Yes" : "No"}
                 </div>
               </div>
               <div className="col-span-2">
@@ -643,9 +601,7 @@ export default function AdminServiceRequests() {
                   );
                   setRows((r) =>
                     r.map((x) =>
-                      x.id === viewRow.id
-                        ? { ...x, status: "declined", ui_status: "declined" }
-                        : x
+                      x.id === viewRow.id ? { ...x, status: "declined", ui_status: "declined" } : x
                     )
                   );
                   setCounts((c) => ({
@@ -674,9 +630,7 @@ export default function AdminServiceRequests() {
                   );
                   setRows((r) =>
                     r.map((x) =>
-                      x.id === viewRow.id
-                        ? { ...x, status: "approved", ui_status: "approved" }
-                        : x
+                      x.id === viewRow.id ? { ...x, status: "approved", ui_status: "approved" } : x
                     )
                   );
                   setCounts((c) => ({

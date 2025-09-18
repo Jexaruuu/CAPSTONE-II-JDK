@@ -1,4 +1,3 @@
-// models/clientservicerequestModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 const crypto = require('crypto');
 
@@ -15,7 +14,6 @@ function safeExtFromMime(mime) {
 }
 
 function decodeDataUrl(dataUrl) {
-  // data:[mime];base64,XXXX
   const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl || '');
   if (!m) return null;
   const mime = m[1];
@@ -57,10 +55,9 @@ async function findClientByEmail(email) {
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  return data || null; // may be null if not found
+  return data || null;
 }
 
-/* Inserts */
 async function insertClientInformation(row) {
   const { data, error } = await supabaseAdmin
     .from('client_information')

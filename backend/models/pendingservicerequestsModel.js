@@ -1,4 +1,3 @@
-// backend/models/pendingservicerequestModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 
 async function insertPendingRequest(row) {
@@ -51,7 +50,6 @@ async function markStatus(id, status, reason = null) {
   return data;
 }
 
-/* 🔹 New: generic counter so we can return breakdown for sidebar badge */
 async function countByStatus(status) {
   const { count, error } = await supabaseAdmin
     .from('csr_pending')
@@ -67,5 +65,5 @@ module.exports = {
   countPending,
   getPendingById,
   markStatus,
-  countByStatus, // 🔹 added
+  countByStatus,
 };

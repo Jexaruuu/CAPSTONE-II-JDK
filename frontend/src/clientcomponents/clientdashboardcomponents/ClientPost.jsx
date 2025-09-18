@@ -48,21 +48,17 @@ function getClientProfile() {
         localStorage.getItem('firstName') ||
         ''
     ).trim();
-
   gender = String(gender || localStorage.getItem('gender') || localStorage.getItem('sex') || '').trim();
-
   return { firstName, gender };
 }
 
 function honorificFromGender(g) {
   const s = String(g || '').trim().toLowerCase();
   if (s === 'male' || s === 'm' || s === 'man' || s === 'mr') return 'Mr.';
-  if (s === 'female' || s === 'f' || s === 'woman' || s === 'ms' || s === 'mrs' || s === 'email')
-    return 'Ms.';
+  if (s === 'female' || s === 'f' || s === 'woman' || s === 'ms' || s === 'mrs' || s === 'email') return 'Ms.';
   return '';
 }
 
-/* helpers for expiry */
 function dateOnlyFrom(val) {
   if (!val) return null;
   const raw = String(val).trim();
@@ -79,6 +75,16 @@ function isExpired(val) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return d < today;
+}
+
+function toBoolStrictClient(v) {
+  if (typeof v === 'boolean') return v;
+  if (v === 1 || v === '1') return true;
+  if (v === 0 || v === '0') return false;
+  const s = String(v ?? '').trim().toLowerCase();
+  if (['yes', 'y', 'true', 't'].includes(s)) return true;
+  if (['no', 'n', 'false', 'f'].includes(s)) return false;
+  return null;
 }
 
 const ClientPost = () => {
@@ -119,10 +125,18 @@ const ClientPost = () => {
       .then((res) => {
         const items = Array.isArray(res?.data?.items) ? res.data.items : [];
         const filtered = items.filter((it) => !isExpired(it?.details?.preferred_date));
-        setApproved(filtered);
+        const normalized = filtered.map((it) => {
+          const d = { ...(it.details || {}) };
+          const b = toBoolStrictClient(d.is_urgent);
+          if (b !== null) d.is_urgent = b ? 'Yes' : 'No';
+          const t = toBoolStrictClient(d.tools_provided);
+          if (t !== null) d.tools_provided = t ? 'Yes' : 'No';
+          return { ...it, details: d };
+        });
+        setApproved(normalized);
         setCurrent(0);
-        if (filtered.length) {
-          const first = filtered[0];
+        if (normalized.length) {
+          const first = normalized[0];
           const fn =
             first?.info?.first_name ||
             first?.details?.first_name ||
@@ -219,11 +233,9 @@ const ClientPost = () => {
     const s = String(input).trim().replace(/\./g, '');
     const m = s.match(/^(\d{1,2})(?::(\d{1,2}))?(?::\d{1,2})?\s*(am|pm)?$/i);
     if (!m) return s;
-
     let h = parseInt(m[1], 10);
     let min = m[2] ? parseInt(m[2], 10) : 0;
     const hasAP = !!m[3];
-
     if (hasAP) {
       const mer = m[3].toUpperCase();
       if (h === 0) h = 12;
@@ -241,7 +253,6 @@ const ClientPost = () => {
     if (!val) return '';
     const raw = String(val).trim();
     const token = raw.split('T')[0].split(' ')[0];
-
     let m;
     if ((m = token.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) {
       const y = m[1];
@@ -266,10 +277,8 @@ const ClientPost = () => {
   };
 
   const buildLocation = (item) => {
-    const barangay =
-      item?.info?.barangay ?? item?.details?.barangay ?? item?.details?.brgy ?? '';
-    const street =
-      item?.info?.street ?? item?.details?.street ?? item?.details?.street_name ?? '';
+    const barangay = item?.info?.barangay ?? item?.details?.barangay ?? item?.details?.brgy ?? '';
+    const street = item?.info?.street ?? item?.details?.street ?? item?.details?.street_name ?? '';
     const parts = [];
     if (barangay) parts.push(`Barangay ${barangay}`);
     if (street) parts.push(street);
@@ -301,6 +310,21 @@ const ClientPost = () => {
       .join(' ');
   };
 
+  const resolveUrgentFlag = (item) => {
+    const primary = toBoolStrictClient(item?.details?.is_urgent);
+    if (primary !== null) return primary;
+    const t = String(
+      item?.details?.urgency ||
+      item?.details?.urgency_level ||
+      item?.details?.priority ||
+      ''
+    ).trim().toLowerCase();
+    if (!t) return null;
+    if (t.includes('urgent') || t === 'high') return true;
+    if (t === 'low' || t === 'normal' || t === 'standard') return false;
+    return null;
+  };
+
   const getRateType = (item) => {
     const raw =
       item?.rate?.rate_type ??
@@ -314,8 +338,7 @@ const ClientPost = () => {
     if (!raw) return '';
     const s = String(raw).toLowerCase();
     if (s.includes('hour')) return 'By the hour';
-    if (s.includes('job') || s.includes('fixed') || s.includes('project') || s.includes('task'))
-      return 'By the Job';
+    if (s.includes('job') || s.includes('fixed') || s.includes('project') || s.includes('task')) return 'By the Job';
     return s.charAt(0).toUpperCase() + s.slice(1);
   };
 
@@ -386,8 +409,7 @@ const ClientPost = () => {
   };
 
   const honorific = honorificFromGender(clientGender);
-  const capFirst =
-    clientFirstName ? clientFirstName.charAt(0).toUpperCase() + clientFirstName.slice(1) : 'Client';
+  const capFirst = clientFirstName ? clientFirstName.charAt(0).toUpperCase() + clientFirstName.slice(1) : 'Client';
 
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
@@ -452,20 +474,38 @@ const ClientPost = () => {
               >
                 {approved.map((item, i) => {
                   const type = item?.details?.service_type || '';
-                  const title =
-                    type + (item?.details?.service_task ? `: ${item.details.service_task}` : '');
+                  const title = type + (item?.details?.service_task ? `: ${item.details.service_task}` : '');
                   const IconComp = getServiceIcon(type);
+
+                  const urgentFlag = resolveUrgentFlag(item);
+
+                  const cardTone =
+                    urgentFlag === true || urgentFlag === false
+                      ? 'bg-blue-50 border-[#008cfc] hover:border-[#008cfc] hover:ring-[#008cfc]'
+                      : 'bg-white border-gray-300 hover:border-[#008cfc] hover:ring-[#008cfc]';
+
+                  const iconTone = 'border-gray-400 text-[#008cfc]';
+
+                  const urgentText = urgentFlag === true ? 'Yes' : urgentFlag === false ? 'No' : getUrgency(item) || '-';
+
+                  const urgentClass =
+                    urgentFlag === true
+                      ? 'text-[#008cfc] font-medium'
+                      : urgentFlag === false
+                      ? 'text-red-600 font-medium'
+                      : 'text-gray-700';
+
                   return (
                     <div
                       key={item.id}
                       ref={(el) => (cardRefs.current[i] = el)}
-                      className="overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto min-h-[220px] flex flex-col flex-shrink-0 bg-white border border-gray-300 rounded-xl p-6 text-left cursor-default shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl hover:ring-inset"
+                      className={`overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto min-h-[220px] flex flex-col flex-shrink-0 border rounded-xl p-6 text-left cursor-default shadow-sm transition-all duration-300 hover:ring-2 hover:shadow-xl hover:ring-inset ${cardTone}`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="text-lg font-semibold text-gray-900">
                           {title || 'Approved Service Request'}
                         </div>
-                        <div className="h-9 w-9 rounded-lg border border-gray-400 text-[#008cfc] flex items-center justify-center">
+                        <div className={`h-9 w-9 rounded-lg border ${iconTone} flex items-center justify-center bg-white`}>
                           <IconComp className="h-5 w-5" />
                         </div>
                       </div>
@@ -477,19 +517,15 @@ const ClientPost = () => {
                         </div>
                         <div className="text-gray-600">
                           <span className="font-medium text-gray-800">Preferred Date:</span>{' '}
-                          {item?.details?.preferred_date
-                            ? formatDateMMDDYYYY(item.details.preferred_date)
-                            : '-'}
+                          {item?.details?.preferred_date ? formatDateMMDDYYYY(item.details.preferred_date) : '-'}
                         </div>
                         <div className="text-gray-600">
                           <span className="font-medium text-gray-800">Preferred Time:</span>{' '}
-                          {item?.details?.preferred_time
-                            ? formatTime12h(item.details.preferred_time)
-                            : '-'}
+                          {item?.details?.preferred_time ? formatTime12h(item.details.preferred_time) : '-'}
                         </div>
                         <div className="text-gray-600">
                           <span className="font-medium text-gray-800">Urgency:</span>{' '}
-                          {getUrgency(item) || '-'}
+                          <span className={urgentClass}>{urgentText}</span>
                         </div>
                         <div className="text-gray-600">
                           <span className="font-medium text-gray-800">Service Price Rate:</span>{' '}
