@@ -8,6 +8,8 @@ import WorkerTermsAndAgreements from '../../workercomponents/workerpostcomponent
 import WorkerReviewPost from '../../workercomponents/workerpostcomponents/WorkerReviewPost';
 import WorkerFooter from '../../workercomponents/WorkerFooter';
 
+const TOTAL_STEPS = 6;
+
 const WorkerPost = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [title, setTitle] = useState('');
@@ -35,13 +37,17 @@ const WorkerPost = () => {
 
   return (
     <div className="min-h-screen bg-white overflow-hidden">
-      <WorkerNavigation />
+      <div className="fixed top-0 inset-x-0 z-[110]">
+        <WorkerNavigation />
+      </div>
+      <div className="h-[72px]" />
+
       <div className="max-w-[1550px] mx-auto px-6 py-12">
         <div className="flex flex-col min-h-[calc(100vh-200px)]">
           <div className="max-w-[1550px] mx-auto w-full">
             <div className="flex justify-start mb-6 ml-3">
               <div className="text-lg font-extralight">
-                {currentStep} of 6 | Post a Worker Application
+                {currentStep} of {TOTAL_STEPS} | Post a Worker Application
               </div>
             </div>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { compressImageFileToDataURL } from '../../utils/imageCompression';
+import ClientNavigation from '../../clientcomponents/ClientNavigation';
 
 const STORAGE_KEY = 'clientInformationForm';
 
@@ -26,6 +27,17 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   const [emailLocked, setEmailLocked] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+
+  // jump to top on mount
+useEffect(() => {
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+}, []);
+
+const jumpTop = () => {
+  try { 
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); 
+  } catch {}
+};
 
   const barangays = [
     'Alangilan', 'Alijis', 'Banago', 'Bata', 'Cabug', 'Estefania', 'Felisa',
@@ -209,23 +221,25 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
     };
   }, [isLoadingNext]);
 
-  const onNextClick = () => {
-    setAttempted(true);
-    if (isFormValid) {
-      setIsLoadingNext(true);
-      setTimeout(() => {
-        handleNext();
-      }, 2000);
-    }
-  };
+const onNextClick = () => {
+  setAttempted(true);
+  if (isFormValid) {
+    jumpTop();                // <— add this
+    setIsLoadingNext(true);
+    setTimeout(() => {
+      handleNext();
+    }, 2000);
+  }
+};
 
-  const clearDraftsAndGoDashboard = () => {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem('clientServiceRequestDetails');
-      localStorage.removeItem('clientServiceRate');
-    } catch {}
-  };
+const clearDraftsAndGoDashboard = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('clientServiceRequestDetails');
+    localStorage.removeItem('clientServiceRate');
+  } catch {}
+  jumpTop();                  // <— add this
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
@@ -506,7 +520,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
         >
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">

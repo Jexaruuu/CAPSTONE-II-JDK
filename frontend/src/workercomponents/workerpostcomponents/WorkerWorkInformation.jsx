@@ -7,15 +7,23 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   const [yearsExperience, setYearsExperience] = useState('');
   const [serviceDescription, setServiceDescription] = useState('');
   const [toolsProvided, setToolsProvided] = useState('');
-
   const [jobDetails, setJobDetails] = useState({});
   const dropdownRef = useRef(null);
 
-  // client-like flags
   const [attempted, setAttempted] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, []);
+
+  const jumpTop = () => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
+  };
 
   const serviceTypes = ['Carpenter', 'Electrician', 'Plumber', 'Carwasher', 'Laundry'];
 
@@ -85,7 +93,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     return () => { document.removeEventListener('mousedown', () => {}); };
   }, []);
 
-  // hydrate
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -101,7 +108,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     setHydrated(true);
   }, []);
 
-  // autosave
   useEffect(() => {
     if (!hydrated) return;
     const draft = {
@@ -114,7 +120,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
   }, [hydrated, serviceTypesSelected, jobDetails, serviceDescription, yearsExperience, toolsProvided]);
 
-  // lock back/keys/scroll while loading
   useEffect(() => {
     if (!isLoadingNext) return;
     const onPopState = () => { window.history.pushState(null, '', window.location.href); };
@@ -134,9 +139,33 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     };
   }, [isLoadingNext]);
 
-  const isYearsValid = yearsExperience !== '' && Number(yearsExperience) >= 0;
+  const handleYearsChange = (e) => {
+    const raw = e.target.value;
+    if (raw === '') { setYearsExperience(''); return; }
+    const onlyDigits = raw.replace(/\D/g, '');
+    if (onlyDigits === '') { setYearsExperience(''); return; }
+    let n = parseInt(onlyDigits, 10);
+    if (Number.isNaN(n)) { setYearsExperience(''); return; }
+    if (n < 1) n = 1;
+    if (n > 50) n = 50;
+    setYearsExperience(String(n));
+  };
+
+  const isYearsValid =
+    yearsExperience !== '' &&
+    /^\d+$/.test(yearsExperience) &&
+    Number(yearsExperience) >= 1 &&
+    Number(yearsExperience) <= 50;
+
+  const hasServiceDetails =
+    serviceTypesSelected.length > 0 &&
+    serviceTypesSelected.every((t) =>
+      (jobDetails[t] || []).some((v) => String(v || '').trim() !== '')
+    );
+
   const isFormValid =
     serviceTypesSelected.length > 0 &&
+    hasServiceDetails &&
     serviceDescription.trim() &&
     isYearsValid &&
     toolsProvided;
@@ -157,164 +186,213 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   const onNextClick = () => {
     setAttempted(true);
     if (!isFormValid) return;
+    jumpTop();
     setIsLoadingNext(true);
     setTimeout(() => { proceed(); }, 2000);
   };
 
+  const onBackClick = () => {
+    jumpTop();
+    handleBack?.();
+  };
+
   return (
-    <form className="space-y-8">
-      <div className="flex gap-8">
-        <div className="w-1/2 bg-white p-6 -ml-3">
-          <h3 className="text-2xl font-semibold mb-6">Type of Service</h3>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Service Type *</label>
-            <div className="grid grid-cols-2 gap-2">
-              {serviceTypes.map((type) => (
-                <label key={type} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={serviceTypesSelected.includes(type)}
-                    onChange={() => handleServiceTypeToggle(type)}
-                    className="h-4 w-4"
-                  />
-                  <span>{type}</span>
-                </label>
-              ))}
-            </div>
-            {attempted && serviceTypesSelected.length === 0 && (
-              <p className="text-xs text-red-600 mt-1">Select at least one service type.</p>
-            )}
+    <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
+      <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
+        <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+            <div className="text-lg font-semibold text-gray-900">Tell us about your work</div>
           </div>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:block text-xs text-gray-500">Step 2 of 4</div>
+            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden">
+              <div className="h-full w-1/2 bg-[#008cfc]" />
+            </div>
+          </div>
+        </div>
+      </div>
 
-          {serviceTypesSelected.length > 0 && (
+      <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 -ml-3">
+            <h3 className="text-xl md:text-2xl font-semibold mb-6">Type of Service</h3>
+
             <div className="mb-4">
-              <h4 className="text-md font-semibold mb-2">Service Details</h4>
-              {serviceTypesSelected.map((jobType) => (
-                <div key={jobType} className="mb-5 border p-3 rounded-md bg-gray-50">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {jobType} Services
-                  </label>
-
-                  {jobDetails[jobType]?.map((task, index) => (
-                    <div key={index} className="flex items-center mb-2">
-                      <select
-                        value={task}
-                        onChange={(e) => handleJobDetailChange(jobType, index, e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+              <label className="block text-sm font-medium text-gray-700 mb-2">Service Type *</label>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                {serviceTypes.map((type) => (
+                  <label key={type} className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={serviceTypesSelected.includes(type)}
+                      onChange={() => handleServiceTypeToggle(type)}
+                      className="peer sr-only"
+                    />
+                    <span
+                      className="relative h-5 w-5 rounded-md border border-gray-300 bg-white transition
+                                 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300
+                                 peer-checked:bg-[#008cfc] peer-checked:border-[#008cfc] grid place-items-center"
+                      aria-hidden="true"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-3.5 w-3.5 opacity-0 peer-checked:opacity-100 transition"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       >
-                        <option value="">Select a service</option>
-                        {jobTasks[jobType].map((taskOption, i) => {
-                          const isSelected = jobDetails[jobType].includes(taskOption) && taskOption !== task;
-                          return (
-                            <option key={i} value={taskOption} disabled={isSelected}>
-                              {taskOption}
-                            </option>
-                          );
-                        })}
-                      </select>
-                      {jobDetails[jobType].length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeTaskField(jobType, index)}
-                          className="ml-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  ))}
-
-                  <button
-                    type="button"
-                    onClick={() => addTaskField(jobType)}
-                    className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-2.5"
-                  >
-                    + Add Another Task
-                  </button>
-                </div>
-              ))}
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </span>
+                    <span className="text-sm font-medium text-gray-900">{type}</span>
+                  </label>
+                ))}
+              </div>
+              {attempted && serviceTypesSelected.length === 0 && (
+                <p className="text-xs text-red-600 mt-1">Select at least one service type.</p>
+              )}
             </div>
-          )}
+
+            {serviceTypesSelected.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-md font-semibold mb-2">Service Details</h4>
+                {serviceTypesSelected.map((jobType) => {
+                  const hasDetail = (jobDetails[jobType] || []).some(
+                    (v) => String(v || '').trim() !== ''
+                  );
+                  return (
+                    <div key={jobType} className="mb-5 border p-3 rounded-md bg-gray-50">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {jobType} Services
+                      </label>
+
+                      {jobDetails[jobType]?.map((task, index) => (
+                        <div key={index} className="flex items-center mb-2">
+                          <select
+                            value={task}
+                            onChange={(e) => handleJobDetailChange(jobType, index, e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                          >
+                            <option value="">Select a service</option>
+                            {jobTasks[jobType].map((taskOption, i) => {
+                              const isSelected = jobDetails[jobType].includes(taskOption) && taskOption !== task;
+                              return (
+                                <option key={i} value={taskOption} disabled={isSelected}>
+                                  {taskOption}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          {jobDetails[jobType].length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeTaskField(jobType, index)}
+                              className="ml-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      ))}
+
+                      {attempted && !hasDetail && (
+                        <p className="text-xs text-red-600 mt-1">Choose at least one {jobType} service.</p>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => addTaskField(jobType)}
+                        className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-2.5"
+                      >
+                        + Add Another Task
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 self-start">
+            <h3 className="text-xl md:text-2xl font-semibold mb-6">Service Description</h3>
+
+            <div className="mb-4">
+              <textarea
+                value={serviceDescription}
+                onChange={(e) => setServiceDescription(e.target.value)}
+                placeholder="Describe the service you offer"
+                className={`w-full h-[180px] px-4 py-3 border ${attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                required
+                aria-invalid={attempted && !serviceDescription.trim()}
+              />
+              {attempted && !serviceDescription.trim() && (
+                <p className="text-xs text-red-600 mt-1">Please describe your services.</p>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience *</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                step="1"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={yearsExperience}
+                onChange={handleYearsChange}
+                placeholder="Enter years of experience"
+                className={`w-full px-4 py-3 border ${attempted && !isYearsValid ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                required
+                aria-invalid={attempted && !isYearsValid}
+              />
+              {attempted && !isYearsValid && (
+                <p className="text-xs text-red-600 mt-1">Enter a valid number from 1–50.</p>
+              )}
+            </div>
+
+            <div className="mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Do you have your own tools or equipment? *</label>
+              <select
+                value={toolsProvided}
+                onChange={(e) => setToolsProvided(e.target.value)}
+                className={`w-full px-4 py-3 border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none`}
+                required
+                aria-invalid={attempted && !toolsProvided}
+              >
+                <option value="">Select Yes or No</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+              {attempted && !toolsProvided && (
+                <p className="text-xs text-red-600 mt-1">Please choose Yes or No.</p>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="w-1/2 bg-white p-6">
-          <h3 className="text-2xl font-semibold mb-6">Service Description</h3>
-
-          <div className="mb-4">
-            <textarea
-              value={serviceDescription}
-              onChange={(e) => setServiceDescription(e.target.value)}
-              placeholder="Describe the service you offer"
-              className={`w-full h-[180px] px-4 py-3 border ${attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
-              required
-              aria-invalid={attempted && !serviceDescription.trim()}
-            />
-            {attempted && !serviceDescription.trim() && (
-              <p className="text-xs text-red-600 mt-1">Please describe your services.</p>
-            )}
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Years of Experience *
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="50"
-              value={yearsExperience}
-              onChange={(e) => setYearsExperience(e.target.value)}
-              placeholder="Enter years of experience"
-              className={`w-full px-4 py-3 border ${attempted && !isYearsValid ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
-              required
-              aria-invalid={attempted && !isYearsValid}
-            />
-            {attempted && !isYearsValid && (
-              <p className="text-xs text-red-600 mt-1">Enter a valid number (0 or higher).</p>
-            )}
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Do you have your own tools or equipment? *
-            </label>
-            <select
-              value={toolsProvided}
-              onChange={(e) => setToolsProvided(e.target.value)}
-              className={`w-full px-4 py-3 border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none`}
-              required
-              aria-invalid={attempted && !toolsProvided}
-            >
-              <option value="">Select Yes or No</option>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-            {attempted && !toolsProvided && (
-              <p className="text-xs text-red-600 mt-1">Please choose Yes or No.</p>
-            )}
-          </div>
+        <div className="flex flex-col sm:flex-row justify-between gap-3">
+          <button
+            type="button"
+            onClick={onBackClick}
+            className="w-full sm:w-1/3 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition mt-2.5"
+          >
+            Back : Personal Information
+          </button>
+          <button
+            type="button"
+            onClick={onNextClick}
+            disabled={!isFormValid}
+            aria-disabled={!isFormValid}
+            className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm mt-2.5 ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
+          >
+            Next : Required Documents
+          </button>
         </div>
-      </div>
-
-      <div className="flex justify-between mt-8 ml-3">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 mt-2.5"
-        >
-          Back : Personal Information
-        </button>
-        <button
-          type="button"
-          onClick={onNextClick}
-          disabled={!isFormValid}
-          aria-disabled={!isFormValid}
-          className={`px-8 py-3 rounded-md shadow-md transition duration-300 mt-2.5 ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
-        >
-          Next : Required Documents
-        </button>
-      </div>
+      </form>
 
       {isLoadingNext && (
         <div
@@ -325,7 +403,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
         >
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
@@ -351,7 +429,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
           </div>
         </div>
       )}
-    </form>
+    </div>
   );
 };
 

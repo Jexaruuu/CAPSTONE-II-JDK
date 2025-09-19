@@ -21,6 +21,16 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
 
+  useEffect(() => {
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+}, []);
+
+const jumpTop = () => {
+  try { 
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); 
+  } catch {}
+};
+
   const serviceTypes = ['Carpentry', 'Electrical Works', 'Plumbing', 'Car Washing', 'Laundry'];
 
   const serviceTasks = {
@@ -185,15 +195,16 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     };
   }, [isLoadingNext]);
 
-  const onNextClick = () => {
-    setAttempted(true);
-    if (isFormValid) {
-      setIsLoadingNext(true);
-      setTimeout(() => {
-        handleNext();
-      }, 2000);
-    }
-  };
+const onNextClick = () => {
+  setAttempted(true);
+  if (isFormValid) {
+    jumpTop();                // <— add this
+    setIsLoadingNext(true);
+    setTimeout(() => {
+      handleNext();
+    }, 2000);
+  }
+};
 
   return (
    <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
@@ -372,13 +383,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between gap-3">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
-          >
-            Back : Step 1
-          </button>
+    <button
+  type="button"
+  onClick={() => { jumpTop(); handleBack(); }}   // <— wrap
+  className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+>
+  Back : Step 1
+</button>
 
           <button
             type="button"
@@ -401,7 +412,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
         >
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">

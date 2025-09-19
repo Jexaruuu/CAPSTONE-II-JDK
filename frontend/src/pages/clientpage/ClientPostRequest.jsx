@@ -30,7 +30,11 @@ const ClientPostRequest = () => {
 
   return (
     <div className="min-h-screen bg-white overflow-hidden">
-      <ClientNavigation />
+      <div className="fixed top-0 inset-x-0 z-[110]">
+        <ClientNavigation />
+      </div>
+      <div className="h-[72px]" />
+
       <div className="max-w-[1550px] mx-auto px-6 py-12">
         <div className="flex flex-col min-h-[calc(100vh-200px)]">
           <div className="max-w-[1550px] mx-auto w-full">
