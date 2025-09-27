@@ -1,4 +1,3 @@
-// App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 
@@ -14,6 +13,8 @@ import ClientPostRequest from './pages/clientpage/ClientPostRequest';
 import ClientReviewServiceRequest from './clientcomponents/requestcomponents/ClientReviewServiceRequest';
 import ClientDashboardPage from './pages/dashboardpage/ClientDashboard';
 import ClientMessages from './pages/clientpage/ClientMessages';
+import ClientAccountSettings from './pages/clientpage/ClientAccountSettings';
+import ClientNotifications from './pages/clientpage/ClientNotifications';
 
 import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from './pages/successpage/WorkerSuccess';
@@ -21,6 +22,8 @@ import WorkerWelcomePage from './pages/workerpage/WorkerWelcome';
 import WorkerPostApplication from './pages/workerpage/WorkerPostApplication';
 import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 import WorkerMessages from './pages/workerpage/WorkerMessages';
+import WorkerAccountSettings from './pages/workerpage/WorkerAccountSettings';
+import WorkerNotifications from './pages/workerpage/WorkerNotifications'; // ← NEW
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
 import AdminSignup from './pages/signuppage/AdminSignup';
@@ -90,7 +93,6 @@ const App = () => {
 
         <Route path="/adminsuccess" element={<AdminSuccessPage />} />
 
-        {/* PROTECTED: client messages */}
         <Route
           path="/clientmessages"
           element={
@@ -118,7 +120,28 @@ const App = () => {
         <Route path="/clientsignup" element={<GuestRoute><ClientSignUpPage /></GuestRoute>} />
         <Route path="/clientsuccess" element={<ClientSuccessPage />} />
 
-        {/* PROTECTED: worker messages */}
+        <Route
+          path="/account-settings"
+          element={
+            <ProtectedRoute>
+              <ClientOnlyRoute>
+                <ClientAccountSettings />
+              </ClientOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/client-notifications"
+          element={
+            <ProtectedRoute>
+              <ClientOnlyRoute>
+                <ClientNotifications />
+              </ClientOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/workermessages"
           element={
@@ -144,6 +167,29 @@ const App = () => {
         <Route path="/workerpostapplication" element={<WorkerPostApplication />} />
         <Route path="/workersignup" element={<GuestRoute><WorkerSignUpPage /></GuestRoute>} />
         <Route path="/workersuccess" element={<WorkerSuccessPage />} />
+
+        <Route
+          path="/worker-account-settings"
+          element={
+            <ProtectedRoute>
+              <WorkerOnlyRoute>
+                <WorkerAccountSettings />
+              </WorkerOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* NEW: protected worker notifications */}
+        <Route
+          path="/worker-notifications"
+          element={
+            <ProtectedRoute>
+              <WorkerOnlyRoute>
+                <WorkerNotifications />
+              </WorkerOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

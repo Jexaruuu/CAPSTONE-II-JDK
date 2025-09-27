@@ -27,17 +27,17 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   const [emailLocked, setEmailLocked] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+  const fileRef = useRef(null);
 
-  // jump to top on mount
-useEffect(() => {
-  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-}, []);
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, []);
 
-const jumpTop = () => {
-  try { 
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); 
-  } catch {}
-};
+  const jumpTop = () => {
+    try { 
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); 
+    } catch {}
+  };
 
   const barangays = [
     'Alangilan', 'Alijis', 'Banago', 'Bata', 'Cabug', 'Estefania', 'Felisa',
@@ -221,25 +221,25 @@ const jumpTop = () => {
     };
   }, [isLoadingNext]);
 
-const onNextClick = () => {
-  setAttempted(true);
-  if (isFormValid) {
-    jumpTop();                // <— add this
-    setIsLoadingNext(true);
-    setTimeout(() => {
-      handleNext();
-    }, 2000);
-  }
-};
+  const onNextClick = () => {
+    setAttempted(true);
+    if (isFormValid) {
+      jumpTop();
+      setIsLoadingNext(true);
+      setTimeout(() => {
+        handleNext();
+      }, 2000);
+    }
+  };
 
-const clearDraftsAndGoDashboard = () => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem('clientServiceRequestDetails');
-    localStorage.removeItem('clientServiceRate');
-  } catch {}
-  jumpTop();                  // <— add this
-};
+  const clearDraftsAndGoDashboard = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('clientServiceRequestDetails');
+      localStorage.removeItem('clientServiceRate');
+    } catch {}
+    jumpTop();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
@@ -468,20 +468,37 @@ const clearDraftsAndGoDashboard = () => {
                       className="w-36 h-36 md:w-40 md:h-40 rounded-full object-cover ring-2 ring-blue-100 shadow-sm"
                     />
                   )}
-                  <div className="w-full">
+                  <div className="w-full flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition w-full"
+                    >
+                      Choose Photo
+                    </button>
+                    {profilePicture && (
+                      <button
+                        type="button"
+                        onClick={() => { setProfilePicture(null); setProfilePictureName(''); }}
+                        className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
+                      >
+                        Remove
+                      </button>
+                    )}
                     <input
+                      ref={fileRef}
                       type="file"
                       accept="image/*"
+                      className="hidden"
                       onChange={handleProfilePictureChange}
-                      className={`mb-1 w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${attempted && !profilePicture ? 'border-red-500' : 'border-gray-300'}`}
                     />
-                    {profilePictureName && (
-                      <p className="text-xs text-gray-600 truncate text-center">Selected: {profilePictureName}</p>
-                    )}
-                    {attempted && !profilePicture && (
-                      <p className="text-xs text-red-600 text-center mt-1">Please upload a profile picture.</p>
-                    )}
                   </div>
+                  {profilePictureName && (
+                    <p className="text-xs text-gray-600 truncate text-center">Selected: {profilePictureName}</p>
+                  )}
+                  {attempted && !profilePicture && (
+                    <p className="text-xs text-red-600 text-center mt-1">Please upload a profile picture.</p>
+                  )}
                 </div>
               </div>
 

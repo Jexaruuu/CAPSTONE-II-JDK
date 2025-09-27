@@ -1,5 +1,5 @@
 const { supabaseAdmin } = require('../supabaseClient');
-const { listPending, markStatus, countByStatus } = require('../models/adminservicerequestsModel');
+const { listPending, markStatus } = require('../models/adminservicerequestsModel');
 
 function toBoolStrict(v) {
   if (typeof v === 'boolean') return v;
@@ -11,6 +11,24 @@ function toBoolStrict(v) {
   return false;
 }
 const yesNo = (b) => (b ? 'Yes' : 'No');
+
+function dateOnlyFrom(val) {
+  if (!val) return null;
+  const raw = String(val).trim();
+  const token = raw.split('T')[0].split(' ')[0];
+  let m;
+  if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(token))) return new Date(+m[1], +m[2] - 1, +m[3]);
+  if ((m = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(token))) return new Date(+m[3], +m[1] - 1, +m[2]);
+  const d = new Date(raw);
+  return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function isExpired(val) {
+  const d = dateOnlyFrom(val);
+  if (!d) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d < today;
+}
 
 async function hydrate(baseRows) {
   const gids = baseRows.map(r => r.request_group_id).filter(Boolean);
@@ -82,12 +100,17 @@ exports.list = async (req, res) => {
 
 exports.count = async (_req, res) => {
   try {
-    const [pending, approved, declined] = await Promise.all([
-      countByStatus('pending'),
-      countByStatus('approved'),
-      countByStatus('declined'),
-    ]);
-    return res.status(200).json({ pending, approved, declined, total: (pending + approved + declined) });
+    const base = await listPending(null, 2000, null);
+    const items = await hydrate(base);
+    let pending = 0, approved = 0, declined = 0;
+    for (const r of items) {
+      const s = String(r.status || 'pending').toLowerCase();
+      const expired = isExpired(r?.details?.preferred_date);
+      if (s === 'approved') approved++;
+      else if (s === 'declined') declined++;
+      else if (!expired) pending++;
+    }
+    return res.status(200).json({ pending, approved, declined, total: pending + approved + declined });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to get counts', error: err?.message });
   }

@@ -20,16 +20,17 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const dropdownRef = useRef(null);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+  const fileRef = useRef(null);
 
   useEffect(() => {
-  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-}, []);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, []);
 
-const jumpTop = () => {
-  try { 
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); 
-  } catch {}
-};
+  const jumpTop = () => {
+    try { 
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); 
+    } catch {}
+  };
 
   const serviceTypes = ['Carpentry', 'Electrical Works', 'Plumbing', 'Car Washing', 'Laundry'];
 
@@ -195,16 +196,16 @@ const jumpTop = () => {
     };
   }, [isLoadingNext]);
 
-const onNextClick = () => {
-  setAttempted(true);
-  if (isFormValid) {
-    jumpTop();                // <— add this
-    setIsLoadingNext(true);
-    setTimeout(() => {
-      handleNext();
-    }, 2000);
-  }
-};
+  const onNextClick = () => {
+    setAttempted(true);
+    if (isFormValid) {
+      jumpTop();
+      setIsLoadingNext(true);
+      setTimeout(() => {
+        handleNext();
+      }, 2000);
+    }
+  };
 
   return (
    <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
@@ -354,23 +355,43 @@ const onNextClick = () => {
                 <p className="text-sm text-gray-600 text-center mb-5">Upload an image to help describe the service request or what you need done.</p>
 
                 <div className="space-y-4">
+                  <div className="w-full flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition w-full"
+                    >
+                      Choose Photo
+                    </button>
+                    {image && (
+                      <button
+                        type="button"
+                        onClick={() => { setImage(null); setImageName(''); }}
+                        className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
+                      >
+                        Remove
+                      </button>
+                    )}
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                  </div>
+
                   {imageName && <p className="text-xs text-gray-600 truncate text-center">Selected: {imageName}</p>}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${attempted && !image ? 'border-red-500' : 'border-gray-300'}`}
-                    aria-invalid={attempted && !image}
-                  />
-                  {attempted && !image && <p className="text-xs text-red-600 text-center -mt-2">Please upload an image.</p>}
+
+                  {attempted && !image && <p className="text-xs text-red-600 text-center">Please upload an image.</p>}
 
                   <div className="mt-2">
                     {image ? (
-                      <div className="w-full h-[257px] bg-gray-200 rounded-xl overflow-hidden ring-2 ring-blue-100 shadow-sm">
+                      <div className="w-full h-[273px] bg-gray-200 rounded-xl overflow-hidden ring-2 ring-blue-100 shadow-sm">
                         <img src={image} alt="Uploaded Preview" className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className={`w-full h-[288px] rounded-xl flex items-center justify-center ${attempted ? 'bg-red-100 text-red-500' : 'bg-gray-200 text-gray-400'}`}>
+                      <div className={`w-full h-[308px] rounded-xl flex items-center justify-center ${attempted ? 'bg-red-100 text-red-500' : 'bg-gray-200 text-gray-400'}`}>
                         <span>No Image Selected</span>
                       </div>
                     )}
@@ -383,13 +404,13 @@ const onNextClick = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between gap-3">
-    <button
-  type="button"
-  onClick={() => { jumpTop(); handleBack(); }}   // <— wrap
-  className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
->
-  Back : Step 1
-</button>
+          <button
+            type="button"
+            onClick={() => { jumpTop(); handleBack(); }}
+            className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+          >
+            Back : Step 1
+          </button>
 
           <button
             type="button"
