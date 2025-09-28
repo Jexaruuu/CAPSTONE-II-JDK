@@ -14,6 +14,15 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
 
   const canProceed = agreeVerify && agreeTos && agreePrivacy;
 
+  // Smooth top like other forms
+  useEffect(() => {
+    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+  }, []);
+
+  const jumpTop = () => {
+    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+  };
+
   // Hydrate from localStorage
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -39,7 +48,7 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
   }, [hydrated, agreeVerify, agreeTos, agreePrivacy]);
 
-  // Lock back button / keys / scroll while loading (same as client)
+  // Lock back button / keys / scroll while loading (same as other forms)
   useEffect(() => {
     if (!isLoadingNext) return;
 
@@ -76,6 +85,7 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
 
   const onNextClick = () => {
     if (!canProceed) return;
+    jumpTop(); // match other pages
     setIsLoadingNext(true);
     setTimeout(() => {
       proceed();
@@ -83,86 +93,135 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
   };
 
   return (
-    <form className="space-y-8 pb-20">
-      <div className="flex flex-wrap gap-8">
-        <div className="w-full md:w-2/4 bg-white p-6 -ml-3">
-          <h3 className="text-2xl font-semibold mb-6">Agreements</h3>
-
-          <div className="space-y-5">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreeVerify}
-                onChange={(e) => setAgreeVerify(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <div className="text-sm text-gray-800">
-                  I consent to background checks and verify my documents. <span className="text-red-500">*</span>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  JD HOMECARE may verify the authenticity of your submitted documents.
-                </div>
-              </div>
-            </label>
-
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreeTos}
-                onChange={(e) => setAgreeTos(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <div className="text-sm text-gray-800">
-                  I agree to JD HOMECARE&apos;s Terms of Service and Privacy Policy. <span className="text-red-500">*</span>
-                </div>
-                <a href="#" onClick={(e) => e.preventDefault()} className="text-sm text-blue-600 hover:underline">
-                  View Terms of Service and Privacy Policy
-                </a>
-              </div>
-            </label>
-
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreePrivacy}
-                onChange={(e) => setAgreePrivacy(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <div className="text-sm text-gray-800">
-                  I consent to the collection and processing of my personal data in accordance with the Data Privacy Act (RA 10173). <span className="text-red-500">*</span>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Your data will be protected and processed in compliance with Philippine law.
-                </div>
-              </div>
-            </label>
+    <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
+      {/* Sticky header matching other screens */}
+      <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
+        <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+            <div className="text-lg font-semibold text-gray-900">Terms & Agreements</div>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Step display matches your pattern; adjust fraction as needed */}
+            <div className="hidden sm:block text-xs text-gray-500">Step 5 of 6</div>
+            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden">
+              <div className="h-full w-5/6 bg-[#008cfc]" />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex justify-between mt-8 ml-3">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 -mt-4"
-        >
-          Back : Set Your Price Rate
-        </button>
+      {/* Card layout matching your system */}
+      <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-5">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+            <h3 className="text-xl md:text-2xl font-semibold">Agreements</h3>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Required</span>
+          </div>
 
-        <button
-          type="button"
-          onClick={onNextClick}
-          className={`px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 -mt-4 ${!canProceed ? 'opacity-50 cursor-not-allowed' : ''}`}
-          disabled={!canProceed}
-          aria-disabled={!canProceed}
-        >
-          Next : Review Application
-        </button>
-      </div>
+          <div className="px-6 py-6">
+            {/* Keep your original content intact (class updates for uniform look) */}
+            <div className="space-y-5">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreeVerify}
+                  onChange={(e) => setAgreeVerify(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
+                />
+                <div>
+                  <div className="text-sm text-gray-800">
+                    I consent to background checks and verify my documents. <span className="text-red-500">*</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    JD HOMECARE may verify the authenticity of your submitted documents.
+                  </div>
+                </div>
+              </label>
 
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreeTos}
+                  onChange={(e) => setAgreeTos(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
+                />
+                <div>
+                  <div className="text-sm text-gray-800">
+                    I agree to JD HOMECARE&apos;s Terms of Service and Privacy Policy. <span className="text-red-500">*</span>
+                  </div>
+                  <a href="#" onClick={(e) => e.preventDefault()} className="text-sm text-blue-600 hover:underline">
+                    View Terms of Service and Privacy Policy
+                  </a>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreePrivacy}
+                  onChange={(e) => setAgreePrivacy(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
+                />
+                <div>
+                  <div className="text-sm text-gray-800">
+                    I consent to the collection and processing of my personal data in accordance with the Data Privacy Act (RA 10173). <span className="text-red-500">*</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Your data will be protected and processed in compliance with Philippine law.
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            {/* Keep original inside-card buttons but hide so code isn't removed */}
+            {false && (
+              <div className="flex justify-between mt-8 ml-3">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 -mt-4"
+                >
+                  Back : Set Your Price Rate
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onNextClick}
+                  className={`px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 -mt-4 ${!canProceed ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!canProceed}
+                  aria-disabled={!canProceed}
+                >
+                  Next : Review Application
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions OUTSIDE the card to match the rest of your flow */}
+        <div className="flex flex-col sm:flex-row justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => { jumpTop(); handleBack?.(); }}
+            className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+          >
+            Back : Set Your Price Rate
+          </button>
+
+          <button
+            type="button"
+            onClick={onNextClick}
+            className={`sm:w-1/3 w-full px-6 py-3 rounded-xl transition shadow-sm ${canProceed ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
+            disabled={!canProceed}
+            aria-disabled={!canProceed}
+          >
+            Next : Review Application
+          </button>
+        </div>
+      </form>
+
+      {/* Loading overlay — full-screen white, same style as other forms */}
       {isLoadingNext && (
         <div
           role="dialog"
@@ -172,7 +231,7 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
         >
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
@@ -209,7 +268,7 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
           </div>
         </div>
       )}
-    </form>
+    </div>
   );
 };
 

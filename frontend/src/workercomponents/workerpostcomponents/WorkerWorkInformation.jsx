@@ -15,6 +15,84 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
 
+  // ------- NEW: popover states/refs (same pattern as other pages) -------
+  const toolsRef = useRef(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
+
+  // Track which job task popover is open, by key `${jobType}-${index}`
+  const [openTaskKey, setOpenTaskKey] = useState(null);
+  const taskRowRefs = useRef({}); // map of key -> ref
+
+  const setTaskRowRef = (key, node) => {
+    if (!taskRowRefs.current) taskRowRefs.current = {};
+    taskRowRefs.current[key] = node;
+  };
+
+  const handleGlobalClick = (event) => {
+    const t = event.target;
+    if (toolsRef.current && !toolsRef.current.contains(t)) {
+      setToolsOpen(false);
+    }
+    if (openTaskKey) {
+      const refNode = taskRowRefs.current?.[openTaskKey];
+      if (refNode && !refNode.contains(t)) setOpenTaskKey(null);
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleGlobalClick);
+    return () => { document.removeEventListener('mousedown', handleGlobalClick); };
+  }, [openTaskKey]);
+
+  // Simple PopList (same design language as your other pages)
+  const PopList = ({
+    items,
+    value,
+    onSelect,
+    title = 'Select',
+    fullWidth = false,
+    emptyLabel = 'No options',
+    disabledLabel
+  }) => (
+    <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
+      <div className="text-sm font-semibold text-gray-800 px-2 pb-2">{title}</div>
+      <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
+        {items && items.length ? items.map((it) => {
+          const isSel = value === it;
+          const isDisabled = disabledLabel && disabledLabel(it);
+          return (
+            <button
+              key={it}
+              type="button"
+              disabled={isDisabled}
+              onClick={() => !isDisabled && onSelect(it)}
+              className={[
+                'text-left py-2 px-3 rounded-lg text-sm',
+                isDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50',
+                isSel && !isDisabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
+              ].join(' ')}
+            >
+              {it}
+            </button>
+          );
+        }) : (
+          <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
+        )}
+      </div>
+      <div className="flex items-center justify-between mt-3 px-2">
+        <button
+          type="button"
+          onClick={() => onSelect('')}
+          className="text-xs text-gray-500 hover:text-gray-700"
+        >
+          Clear
+        </button>
+        <span className="text-xs text-gray-400">&nbsp;</span>
+      </div>
+    </div>
+  );
+  // ---------------------------------------------------------------------
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
@@ -215,7 +293,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 -ml-3">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 -ml-3 mt-5">
             <h3 className="text-xl md:text-2xl font-semibold mb-6">Type of Service</h3>
 
             <div className="mb-4">
@@ -269,34 +347,83 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                         {jobType} Services
                       </label>
 
-                      {jobDetails[jobType]?.map((task, index) => (
-                        <div key={index} className="flex items-center mb-2">
-                          <select
-                            value={task}
-                            onChange={(e) => handleJobDetailChange(jobType, index, e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                          >
-                            <option value="">Select a service</option>
-                            {jobTasks[jobType].map((taskOption, i) => {
-                              const isSelected = jobDetails[jobType].includes(taskOption) && taskOption !== task;
-                              return (
-                                <option key={i} value={taskOption} disabled={isSelected}>
-                                  {taskOption}
-                                </option>
-                              );
-                            })}
-                          </select>
-                          {jobDetails[jobType].length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeTaskField(jobType, index)}
-                              className="ml-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                      {jobDetails[jobType]?.map((task, index) => {
+                        const key = `${jobType}-${index}`;
+                        const options = jobTasks[jobType] || [];
+
+                        // original select kept but hidden (do not remove)
+                        return (
+                          <div key={index} className="mb-2" ref={(node) => setTaskRowRef(key, node)}>
+                            <select
+                              value={task}
+                              onChange={(e) => handleJobDetailChange(jobType, index, e.target.value)}
+                              className="hidden"
+                              aria-hidden="true"
+                              tabIndex={-1}
                             >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                              <option value="">Select a service</option>
+                              {options.map((taskOption, i) => {
+                                const isSelectedElsewhere =
+                                  jobDetails[jobType]?.includes(taskOption) && taskOption !== task;
+                                return (
+                                  <option key={i} value={taskOption} disabled={isSelectedElsewhere}>
+                                    {taskOption}
+                                  </option>
+                                );
+                              })}
+                            </select>
+
+                            {/* Custom popover trigger (same width + right icon) */}
+                            <div className="relative">
+                              <div className={`flex items-center rounded-xl border ${attempted && !task ? 'border-red-500' : 'border-gray-300'}`}>
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenTaskKey((k) => (k === key ? null : key))}
+                                  className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  {task || 'Select a service'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenTaskKey((k) => (k === key ? null : key))}
+                                  className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                                  aria-label={`Open ${jobType} service options`}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                              </div>
+
+                              {openTaskKey === key && (
+                                <PopList
+                                  items={options}
+                                  value={task}
+                                  fullWidth
+                                  title={`Select ${jobType} Service`}
+                                  disabledLabel={(opt) =>
+                                    jobDetails[jobType]?.includes(opt) && opt !== task
+                                  }
+                                  onSelect={(val) => {
+                                    handleJobDetailChange(jobType, index, val);
+                                    setOpenTaskKey(null);
+                                  }}
+                                />
+                              )}
+                            </div>
+
+                            {jobDetails[jobType].length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeTaskField(jobType, index)}
+                                className="mt-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
 
                       {attempted && !hasDetail && (
                         <p className="text-xs text-red-600 mt-1">Choose at least one {jobType} service.</p>
@@ -316,7 +443,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             )}
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 self-start">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 self-start mt-5">
             <h3 className="text-xl md:text-2xl font-semibold mb-6">Service Description</h3>
 
             <div className="mb-4">
@@ -354,21 +481,54 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
               )}
             </div>
 
-            <div className="mb-2">
+            {/* Tools Provided: custom popover (same width + right icon) */}
+            <div className="mb-2 relative" ref={toolsRef}>
               <label className="block text-sm font-medium text-gray-700 mb-2">Do you have your own tools or equipment? *</label>
+
+              {/* Keep original select but hidden for compatibility */}
               <select
                 value={toolsProvided}
                 onChange={(e) => setToolsProvided(e.target.value)}
-                className={`w-full px-4 py-3 border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none`}
-                required
-                aria-invalid={attempted && !toolsProvided}
+                className="hidden"
+                aria-hidden="true"
+                tabIndex={-1}
               >
                 <option value="">Select Yes or No</option>
                 <option value="Yes">Yes</option>
                 <option value="No">No</option>
               </select>
+
+              <div className={`flex items-center rounded-xl border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'}`}>
+                <button
+                  type="button"
+                  onClick={() => setToolsOpen((s) => !s)}
+                  className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {toolsProvided || 'Select Yes or No'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setToolsOpen((s) => !s)}
+                  className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                  aria-label="Open tools provided options"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
               {attempted && !toolsProvided && (
                 <p className="text-xs text-red-600 mt-1">Please choose Yes or No.</p>
+              )}
+
+              {toolsOpen && (
+                <PopList
+                  items={['Yes', 'No']}
+                  value={toolsProvided}
+                  fullWidth
+                  title="Select Tools Provided"
+                  onSelect={(v) => { setToolsProvided(v); setToolsOpen(false); }}
+                />
               )}
             </div>
           </div>

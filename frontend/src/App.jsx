@@ -15,6 +15,9 @@ import ClientDashboardPage from './pages/dashboardpage/ClientDashboard';
 import ClientMessages from './pages/clientpage/ClientMessages';
 import ClientAccountSettings from './pages/clientpage/ClientAccountSettings';
 import ClientNotifications from './pages/clientpage/ClientNotifications';
+import ClientCurrentServiceRequest from './pages/clientpage/ClientCurrentServiceRequest';
+import ClientCompletedRequest from './pages/clientpage/ClientCompletedRequest';
+import ClientFindAvailableWorker from './pages/clientpage/ClientFindAvailableWorker';
 
 import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from './pages/successpage/WorkerSuccess';
@@ -23,7 +26,10 @@ import WorkerPostApplication from './pages/workerpage/WorkerPostApplication';
 import WorkerDashboardPage from './pages/dashboardpage/WorkerDashboard';
 import WorkerMessages from './pages/workerpage/WorkerMessages';
 import WorkerAccountSettings from './pages/workerpage/WorkerAccountSettings';
-import WorkerNotifications from './pages/workerpage/WorkerNotifications'; // ← NEW
+import WorkerNotifications from './pages/workerpage/WorkerNotifications';
+import WorkerCurrentApplication from './pages/workerpage/WorkerCurrentApplication';
+import WorkerCompletedWorks from './pages/workerpage/WorkerCompletedWorks';
+import WorkerFindAvailableClient from './pages/workerpage/WorkerFindAvailableClient';
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
 import AdminSignup from './pages/signuppage/AdminSignup';
@@ -143,6 +149,39 @@ const App = () => {
         />
 
         <Route
+          path="/current-service-request"
+          element={
+            <ProtectedRoute>
+              <ClientOnlyRoute>
+                <ClientCurrentServiceRequest />
+              </ClientOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/completed-service-request"
+          element={
+            <ProtectedRoute>
+              <ClientOnlyRoute>
+                <ClientCompletedRequest />
+              </ClientOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/find-a-worker"
+          element={
+            <ProtectedRoute>
+              <ClientOnlyRoute>
+                <ClientFindAvailableWorker />
+              </ClientOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/workermessages"
           element={
             <ProtectedRoute>
@@ -164,6 +203,7 @@ const App = () => {
           }
         />
         <Route path="/workerwelcome" element={<WorkerWelcomePage />} />
+        {/* Route already exists for Post Application */}
         <Route path="/workerpostapplication" element={<WorkerPostApplication />} />
         <Route path="/workersignup" element={<GuestRoute><WorkerSignUpPage /></GuestRoute>} />
         <Route path="/workersuccess" element={<WorkerSuccessPage />} />
@@ -179,13 +219,45 @@ const App = () => {
           }
         />
 
-        {/* NEW: protected worker notifications */}
         <Route
           path="/worker-notifications"
           element={
             <ProtectedRoute>
               <WorkerOnlyRoute>
                 <WorkerNotifications />
+              </WorkerOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/current-work-post"
+          element={
+            <ProtectedRoute>
+              <WorkerOnlyRoute>
+                <WorkerCurrentApplication />
+              </WorkerOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/completed-works"
+          element={
+            <ProtectedRoute>
+              <WorkerOnlyRoute>
+                <WorkerCompletedWorks />
+              </WorkerOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/find-a-client"
+          element={
+            <ProtectedRoute>
+              <WorkerOnlyRoute>
+                <WorkerFindAvailableClient />
               </WorkerOnlyRoute>
             </ProtectedRoute>
           }

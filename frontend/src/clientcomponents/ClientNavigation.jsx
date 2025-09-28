@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 const ClientNavigation = () => {
@@ -107,6 +107,8 @@ const ClientNavigation = () => {
   }, []);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const isFindWorker = location.pathname === '/find-a-worker';
 
   const handleLogout = async () => {
     try {
@@ -135,11 +137,31 @@ const ClientNavigation = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const goSearch = () => {
     const q = searchQuery.trim();
-    navigate(`/pending-offers${q ? `?search=${encodeURIComponent(q)}` : ''}`);
+    navigate(`/find-a-worker${q ? `?search=${encodeURIComponent(q)}` : ''}`);
   };
   const onSearchKey = (e) => {
     if (e.key === 'Enter') goSearch();
   };
+
+  const [navLoading, setNavLoading] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
+
+  useEffect(() => {
+    if (!navLoading) return;
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [navLoading]);
 
   return (
     <>
@@ -172,11 +194,22 @@ const ClientNavigation = () => {
                 {showHireWorkerDropdown && (
                   <div ref={hireWorkerDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                     <ul className="space-y-2 py-2">
-                      <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                        <Link to="/clientpostrequest">Post a Service Request</Link>
+                      <li
+                        className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200"
+                        onClick={() => {
+                          setShowHireWorkerDropdown(false);
+                          if (location.pathname === '/clientpostrequest') return;
+                          setNavLoading(true);
+                          setTimeout(() => {
+                            clearPostDrafts();
+                            navigate('/clientpostrequest');
+                          }, 2000);
+                        }}
+                      >
+                        Post a Service Request
                       </li>
                       <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                        <Link to="/pending-offers">Find a Worker</Link>
+                        <Link to="/find-a-worker">Find a Worker</Link>
                       </li>
                     </ul>
                   </div>
@@ -210,7 +243,7 @@ const ClientNavigation = () => {
                 )}
               </li>
 
-              <li className="relative cursor-pointer group">
+              <li className="relative cursor-pointer group hidden">
                 <span
                   onClick={() => handleDropdownToggle('Reports')}
                   className="text-black font-medium flex items-center relative"
@@ -254,32 +287,36 @@ const ClientNavigation = () => {
           </div>
 
           <div className="flex items-center space-x-3 mt-4 text-md">
-            <div
-              ref={searchBarRef}
-              className="flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2"
-            >
-              <span className="text-gray-500 text-lg">🔍︎</span>
-              <input
-                type="text"
-                className="border-none outline-none text-black w-56 sm:w-64 md:w-72 h-full"
-                placeholder="Search workers"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={onSearchKey}
-              />
-            </div>
+            {!isFindWorker && (
+              <>
+                <div
+                  ref={searchBarRef}
+                  className="flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2"
+                >
+                  <span className="text-gray-500 text-lg">🔍︎</span>
+                  <input
+                    type="text"
+                    className="border-none outline-none text-black w-56 sm:w-64 md:w-72 h-full"
+                    placeholder="Search workers"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={onSearchKey}
+                  />
+                </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                handleSearchBarDropdown();
-                const q = searchQuery.trim();
-                navigate(`/pending-offers${q ? `?search=${encodeURIComponent(q)}` : ''}`);
-              }}
-              className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
-            >
-              Search
-            </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSearchBarDropdown();
+                    const q = searchQuery.trim();
+                    navigate(`/find-a-worker${q ? `?search=${encodeURIComponent(q)}` : ''}`);
+                  }}
+                  className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+                >
+                  Search
+                </button>
+              </>
+            )}
 
             <div className="cursor-pointer relative" onClick={() => handleDropdownToggle('Bell')}>
               <img src="/Bellicon.png" alt="Notification Bell" className="h-8 w-8" />
@@ -328,6 +365,53 @@ const ClientNavigation = () => {
       </div>
 
       <div className="h-[90px]" aria-hidden />
+
+      {navLoading && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Loading next step"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
+        >
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900">Preparing Step</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

@@ -38,6 +38,11 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const [logoBroken, setLogoBroken] = useState(false);
   const [nameLocked, setNameLocked] = useState(false);
   const [emailLocked, setEmailLocked] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const [dpOpen, setDpOpen] = useState(false);
+  const [dpView, setDpView] = useState(new Date());
+  const dpRef = useRef(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -58,7 +63,39 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const sortedBarangays = useMemo(() => [...barangays].sort(), []);
 
   const validateEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || '').trim());
-  const isContactValid = contactNumber.replace(/\D/g, '').length === 10;
+
+  const allowedPHPrefixes = useMemo(
+    () =>
+      new Set([
+        '905','906','907','908','909','910','912','913','914','915','916','917','918','919',
+        '920','921','922','923','925','926','927','928','929',
+        '930','931','932','933','934','935','936','937','938','939',
+        '940','941','942','943','944','945','946','947','948','949',
+        '950','951','952','953','954','955','956','957','958','959',
+        '960','961','962','963','964','965','966','967','968','969',
+        '970','971','972','973','974','975','976','977','978','979',
+        '980','981','982','983','984','985','986','987','988','989',
+        '990','991','992','993','994','995','996','997','998','999'
+      ]),
+    []
+  );
+
+  const isTriviallyFake = (d) => {
+    if (/^(\d)\1{9}$/.test(d)) return true;
+    const asc = '0123456789';
+    const desc = '9876543210';
+    if (('9' + d).includes(asc) || ('9' + d).includes(desc)) return true;
+    const uniq = new Set(d.split(''));
+    return uniq.size < 4;
+  };
+
+  const isValidPHMobile = (d) => {
+    if (d.length !== 10) return false;
+    if (d[0] !== '9') return false;
+    if (isTriviallyFake(d)) return false;
+    const p = d.slice(0, 3);
+    return allowedPHPrefixes.has(p);
+  };
 
   const computeAge = (iso) => {
     if (!iso) return '';
@@ -70,12 +107,50 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
     if (m < 0 || (m === 0 && today.getDate() < b.getDate())) age--;
     return age < 0 || age > 120 ? '' : String(age);
   };
-  const age = computeAge(birthDate);
+
+  const toYMD = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const toMDY = (d) => {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const y = d.getFullYear();
+  return `${m}/${day}/${y}`;
+};
+
+const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = useMemo(() => {
+  const today = new Date();
+  const max = new Date(today.getFullYear() - 21, today.getMonth(), today.getDate());
+  const min = new Date(today.getFullYear() - 55, today.getMonth(), today.getDate());
+  return {
+    minDOB: toYMD(min),
+    maxDOB: toYMD(max),
+    minDOBDate: min,
+    maxDOBDate: max,
+    minDOBLabel: toMDY(min),
+    maxDOBLabel: toMDY(max),
+  };
+}, []);
+
+  const birthAge = computeAge(birthDate);
+  const isBirthdateValid = useMemo(() => {
+    if (!birthDate) return false;
+    const d = new Date(birthDate);
+    if (isNaN(d.getTime())) return false;
+    return birthDate >= minDOB && birthDate <= maxDOB;
+  }, [birthDate, minDOB, maxDOB]);
+
+  const isContactValid = isValidPHMobile(contactNumber.replace(/\D/g, ''));
 
   const isFormValid =
     firstName.trim() &&
     lastName.trim() &&
     birthDate &&
+    isBirthdateValid &&
     validateEmail(email) &&
     isContactValid &&
     barangay.trim() &&
@@ -105,6 +180,14 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   };
 
   useEffect(() => {
+    const handleOutside = (e) => {
+      if (dpRef.current && !dpRef.current.contains(e.target)) setDpOpen(false);
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => { document.removeEventListener('mousedown', handleClickOutside); };
   }, []);
@@ -126,10 +209,13 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
         setLinkedin(d.linkedin || '');
         setProfilePicture(d.profilePicture || null);
         setProfilePictureName(d.profilePictureName || '');
+        if (d.birth_date) setDpView(new Date(d.birth_date));
       } catch {}
+    } else {
+      setDpView(new Date(maxDOBDate));
     }
     setHydrated(true);
-  }, []);
+  }, [maxDOBDate]);
 
   useEffect(() => {
     const authFirst = localStorage.getItem('first_name') || '';
@@ -163,12 +249,12 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
       linkedin,
       profilePicture,
       profilePictureName,
-      age: age ? Number(age) : null
+      age: birthAge ? Number(birthAge) : null
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
   }, [
     hydrated, firstName, lastName, birthDate, contactNumber, email, barangay,
-    street, facebook, instagram, linkedin, profilePicture, profilePictureName, age
+    street, facebook, instagram, linkedin, profilePicture, profilePictureName, birthAge
   ]);
 
   useEffect(() => {
@@ -218,7 +304,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
       linkedin,
       profile_picture: profileFile || null,
       profile_picture_name: profilePictureName || '',
-      age: age ? Number(age) : null
+      age: birthAge ? Number(birthAge) : null
     });
     handleNext?.();
   };
@@ -234,6 +320,26 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const onBackClick = () => {
     try { clearWorkerApplicationDrafts(); } catch {}
     jumpTop();
+  };
+
+  const monthName = (d) =>
+    d.toLocaleString('default', { month: 'long' }) + ' ' + d.getFullYear();
+
+  const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
+  const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const isSameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  const canGoPrev = () => addMonths(startOfMonth(dpView), -1) >= startOfMonth(minDOBDate);
+  const canGoNext = () => addMonths(startOfMonth(dpView), 1) <= startOfMonth(maxDOBDate);
+
+  const inRange = (date) => date >= minDOBDate && date <= maxDOBDate;
+
+  const openCalendar = () => {
+    if (birthDate) setDpView(new Date(birthDate));
+    else setDpView(new Date(maxDOBDate));
+    setDpOpen((s) => !s);
   };
 
   return (
@@ -254,7 +360,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
       </div>
 
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <h3 className="text-xl md:text-2xl font-semibold">Personal Information</h3>
             <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Worker</span>
@@ -298,23 +404,146 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                     />
                   </div>
 
-                  <div>
+                  {/* Birthdate (same-width popover + right icon) */}
+                  <div className="relative" ref={dpRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Birthdate</label>
-                    <input
-                      type="date"
-                      value={birthDate}
-                      onChange={(e) => setBirthDate(e.target.value)}
-                      className={`w-full px-4 py-3 border ${attempted && !birthDate ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                      required
-                      aria-invalid={attempted && !birthDate}
-                    />
+                    <div className={`flex items-center rounded-xl border ${attempted && (!birthDate || !isBirthdateValid) ? 'border-red-500' : 'border-gray-300'}`}>
+                     <input
+  type="text"
+  value={birthDate ? toMDY(new Date(birthDate)) : ''}
+  onFocus={openCalendar}
+  readOnly
+  placeholder="mm/dd/yyyy"
+  title={`Allowed: ${minDOBLabel} to ${maxDOBLabel} (21–55 years old)`}
+  className="w-full px-4 py-3 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+  required
+  aria-invalid={attempted && (!birthDate || !isBirthdateValid)}
+  aria-describedby="birthdate-help"
+  inputMode="none"
+/>
+                      <button
+                        type="button"
+                        onClick={openCalendar}
+                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                        aria-label="Open calendar"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" />
+                          <path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" />
+                        </svg>
+                      </button>
+                    </div>
+                   <p id="birthdate-help" className="text-xs text-gray-500 mt-1">
+  Must be between <span className="font-medium">{minDOBLabel}</span> and <span className="font-medium">{maxDOBLabel}</span> (21–55 yrs).
+</p>
+                    {attempted && (!birthDate || !isBirthdateValid) && (
+                      <p className="text-xs text-red-600 mt-1">Birthdate must make you between 21 and 55 years old.</p>
+                    )}
+
+                    {dpOpen && (
+                      <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-3">
+                        <div className="flex items-center justify-between px-2 pb-2">
+                          <button
+                            type="button"
+                            onClick={() => canGoPrev() && setDpView(addMonths(dpView, -1))}
+                            className={`p-2 rounded-lg hover:bg-gray-100 ${canGoPrev() ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
+                            aria-label="Previous month"
+                          >
+                            ‹
+                          </button>
+                          <div className="text-sm font-semibold text-gray-800">{monthName(dpView)}</div>
+                          <button
+                            type="button"
+                            onClick={() => canGoNext() && setDpView(addMonths(dpView, 1))}
+                            className={`p-2 rounded-lg hover:bg-gray-100 ${canGoNext() ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
+                            aria-label="Next month"
+                          >
+                            ›
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
+                          {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d) => (
+                            <div key={d} className="py-1">{d}</div>
+                          ))}
+                        </div>
+
+                        {(() => {
+                          const first = startOfMonth(dpView);
+                          const last = endOfMonth(dpView);
+                          const offset = first.getDay();
+                          const total = offset + last.getDate();
+                          const rows = Math.ceil(total / 7);
+                          const selected = birthDate ? new Date(birthDate) : null;
+                          const cells = [];
+
+                          for (let r = 0; r < rows; r++) {
+                            const row = [];
+                            for (let c = 0; c < 7; c++) {
+                              const idx = r * 7 + c;
+                              const dayNum = idx - offset + 1;
+                              if (dayNum < 1 || dayNum > last.getDate()) {
+                                row.push(<div key={`x-${r}-${c}`} className="py-2" />);
+                              } else {
+                                const d = new Date(dpView.getFullYear(), dpView.getMonth(), dayNum);
+                                const disabled = !inRange(d);
+                                const isSelected = selected && isSameDay(selected, d);
+                                row.push(
+                                  <button
+                                    key={`d-${dayNum}`}
+                                    type="button"
+                                    disabled={disabled}
+                                    onClick={() => {
+                                      setBirthDate(toYMD(d));
+                                      setDpOpen(false);
+                                    }}
+                                    className={[
+                                      'py-2 rounded-lg transition text-sm',
+                                      disabled
+                                        ? 'text-gray-300 cursor-not-allowed'
+                                        : 'hover:bg-blue-50 text-gray-700',
+                                      isSelected && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
+                                    ].join(' ')}
+                                  >
+                                    {dayNum}
+                                  </button>
+                                );
+                              }
+                            }
+                            cells.push(
+                              <div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">
+                                {row}
+                              </div>
+                            );
+                          }
+                          return <div className="mt-1">{cells}</div>;
+                        })()}
+
+                        <div className="flex items-center justify-between mt-3 px-2">
+                          <button
+                            type="button"
+                            onClick={() => { setBirthDate(''); setDpOpen(false); }}
+                            className="text-xs text-gray-500 hover:text-gray-700"
+                          >
+                            Clear
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setDpView(new Date(maxDOBDate)); }}
+                            className="text-xs text-blue-600 hover:text-blue-700"
+                          >
+                            Jump to latest allowed
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
                     <input
                       type="text"
-                      value={age}
+                      value={birthAge}
                       readOnly
                       aria-readonly
                       placeholder="Auto-calculated"
@@ -348,7 +577,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                       />
                     </div>
                     {attempted && !isContactValid && (
-                      <p className="text-xs text-red-600 mt-1">Enter a 10-digit PH mobile number (e.g., 9XXXXXXXXX).</p>
+                      <p className="text-xs text-red-600 mt-1">Enter a valid PH mobile number with a real prefix (e.g., 9XXXXXXXXX).</p>
                     )}
                   </div>
 
@@ -371,38 +600,64 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                     )}
                   </div>
 
+                  {/* Barangay (same-width popover + right icon) */}
                   <div className="relative" ref={dropdownRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
-                    <button
-                      type="button"
-                      onClick={toggleDropdown}
-                      className={`w-full px-4 py-3 border ${attempted && !barangay.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-left`}
-                      aria-expanded={showDropdown}
-                      aria-haspopup="listbox"
-                    >
-                      {barangay || 'Select Barangay'}
-                    </button>
+                    <div className={`flex items-center rounded-xl border ${attempted && !barangay.trim() ? 'border-red-500' : 'border-gray-300'}`}>
+                      <button
+                        type="button"
+                        onClick={toggleDropdown}
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-expanded={showDropdown}
+                        aria-haspopup="listbox"
+                      >
+                        {barangay || 'Select Barangay'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={toggleDropdown}
+                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                        aria-label="Open barangay options"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+
                     {showDropdown && (
                       <div
-                        className="absolute bg-white border border-gray-200 rounded-xl shadow-lg mt-2 p-2"
-                        style={{ top: '100%', left: '0', zIndex: 10, width: 'calc(100% + 250px)' }}
+                        className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-2"
                         role="listbox"
                       >
-                        <div className="grid grid-cols-3 gap-1 max-h-56 overflow-y-auto">
+                        <div className="grid grid-cols-3 gap-1 max-h-56 overflow-y-auto px-1">
                           {sortedBarangays.map((barangayName, index) => (
-                            <div
+                            <button
                               key={index}
+                              type="button"
                               onClick={() => { setBarangay(barangayName); setShowDropdown(false); }}
-                              className="px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-100"
+                              className="text-left px-3 py-2 rounded-lg hover:bg-blue-50 text-sm text-gray-700"
                               role="option"
                               aria-selected={barangayName === barangay}
                             >
                               {barangayName}
-                            </div>
+                            </button>
                           ))}
+                        </div>
+                        <div className="flex items-center justify-between mt-2 px-2">
+                          <button
+                            type="button"
+                            onClick={() => { setBarangay(''); setShowDropdown(false); }}
+                            className="text-xs text-gray-500 hover:text-gray-700"
+                          >
+                            Clear
+                          </button>
+                          {/* Keep space for parity with other popovers; add helper if you want */}
+                          <span className="text-xs text-gray-400">&nbsp;</span>
                         </div>
                       </div>
                     )}
+
                     {attempted && !barangay.trim() && (
                       <p className="text-xs text-red-600 mt-1">Please select your barangay.</p>
                     )}
@@ -477,13 +732,22 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                   )}
                   <div className="w-full">
                     <input
+                      ref={fileInputRef}
+                      id="worker-profile-file"
                       type="file"
                       accept="image/*"
                       onChange={handleProfilePictureChange}
-                      className={`mb-1 w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${attempted && !profilePicture ? 'border-red-500' : 'border-gray-300'}`}
+                      className="hidden"
                     />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition w-full"
+                    >
+                      Choose Photo
+                    </button>
                     {profilePictureName && (
-                      <p className="text-xs text-gray-600 truncate text-center">Selected: {profilePictureName}</p>
+                      <p className="text-xs text-gray-600 truncate text-center mt-2">Selected: {profilePictureName}</p>
                     )}
                     {attempted && !profilePicture && (
                       <p className="text-xs text-red-600 text-center mt-1">Please upload a profile picture.</p>

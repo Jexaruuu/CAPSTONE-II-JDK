@@ -133,7 +133,7 @@ const handleReviewClick = () => {
       </div>
 
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <h3 className="text-xl md:text-2xl font-semibold">Service Request Price Rate</h3>
             <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Rate</span>

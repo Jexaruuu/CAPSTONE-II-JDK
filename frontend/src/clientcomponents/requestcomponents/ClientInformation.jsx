@@ -49,7 +49,41 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   const sortedBarangays = useMemo(() => [...barangays].sort(), []);
 
   const validateEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
-  const isContactValid = contactNumber.replace(/\D/g, '').length === 10;
+
+  const allowedPHPrefixes = useMemo(
+    () =>
+      new Set([
+        '905','906','907','908','909','910','912','913','914','915','916','917','918','919',
+        '920','921','922','923','925','926','927','928','929',
+        '930','931','932','933','934','935','936','937','938','939',
+        '940','941','942','943','944','945','946','947','948','949',
+        '950','951','952','953','954','955','956','957','958','959',
+        '960','961','962','963','964','965','966','967','968','969',
+        '970','971','972','973','974','975','976','977','978','979',
+        '980','981','982','983','984','985','986','987','988','989',
+        '990','991','992','993','994','995','996','997','998','999'
+      ]),
+    []
+  );
+
+  const isTriviallyFake = (d) => {
+    if (/^(\d)\1{9}$/.test(d)) return true;
+    const asc = '0123456789';
+    const desc = '9876543210';
+    if (('9' + d).includes(asc) || ('9' + d).includes(desc)) return true;
+    const uniq = new Set(d.split(''));
+    return uniq.size < 4;
+  };
+
+  const isValidPHMobile = (d) => {
+    if (d.length !== 10) return false;
+    if (d[0] !== '9') return false;
+    if (isTriviallyFake(d)) return false;
+    const p = d.slice(0, 3);
+    return allowedPHPrefixes.has(p);
+  };
+
+  const isContactValid = isValidPHMobile(contactNumber);
 
   const isFormValid =
     firstName.trim() &&
@@ -259,7 +293,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
       </div>
 
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <h3 className="text-xl md:text-2xl font-semibold">Personal Information</h3>
             <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Client</span>
@@ -326,7 +360,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                       />
                     </div>
                     {attempted && !isContactValid && (
-                      <p className="text-xs text-red-600 mt-1">Enter a 10-digit PH mobile number (e.g., 9XXXXXXXXX).</p>
+                      <p className="text-xs text-red-600 mt-1">Enter a valid PH mobile number with a real prefix (e.g., 9XXXXXXXXX).</p>
                     )}
                   </div>
 
@@ -349,43 +383,72 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                     )}
                   </div>
 
-                  <div className="relative" ref={dropdownRef}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
-                    <button
-                      type="button"
-                      onClick={toggleDropdown}
-                      className={`w-full px-4 py-3 border ${attempted && !barangay.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-left`}
-                      aria-expanded={showDropdown}
-                      aria-haspopup="listbox"
-                    >
-                      {barangay || 'Select Barangay'}
-                    </button>
-                    {showDropdown && (
-                      <div
-                        className="absolute bg-white border border-gray-200 rounded-xl shadow-lg mt-2 p-2"
-                        style={{ top: '100%', left: '0', zIndex: 10, width: 'calc(100% + 250px)' }}
-                        role="listbox"
-                      >
-                        <div className="grid grid-cols-3 gap-1 max-h-56 overflow-y-auto">
-                          {sortedBarangays.map((barangayName, index) => (
-                            <div
-                              key={index}
-                              onClick={() => { setBarangay(barangayName); setShowDropdown(false); }}
-                              className="px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-100"
-                              role="option"
-                              aria-selected={barangayName === barangay}
-                            >
-                              {barangayName}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {attempted && !barangay.trim() && (
-                      <p className="text-xs text-red-600 mt-1">Please select your barangay.</p>
-                    )}
-                  </div>
+                 <div className="relative" ref={dropdownRef}>
+  <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
+  <div className={`flex items-center rounded-xl border ${attempted && !barangay.trim() ? 'border-red-500' : 'border-gray-300'}`}>
+    <button
+      type="button"
+      onClick={toggleDropdown}
+      className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+      aria-expanded={showDropdown}
+      aria-haspopup="listbox"
+    >
+      {barangay || 'Select Barangay'}
+    </button>
+    <button
+      type="button"
+      onClick={toggleDropdown}
+      className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+      aria-label="Open barangay list"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+      </svg>
+    </button>
+  </div>
 
+  {showDropdown && (
+    <div
+      className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-3"
+      role="listbox"
+    >
+      <div className="text-sm font-semibold text-gray-800 px-2 pb-2">Select Barangay</div>
+      <div className="grid grid-cols-3 gap-1 max-h-56 overflow-y-auto px-2">
+        {sortedBarangays.map((barangayName, index) => {
+          const isSelected = barangayName === barangay;
+          return (
+            <button
+              key={index}
+              type="button"
+              onClick={() => { setBarangay(barangayName); setShowDropdown(false); }}
+              className={[
+                'text-left px-3 py-2 rounded-lg text-sm',
+                isSelected ? 'bg-blue-600 text-white hover:bg-blue-600' : 'text-gray-700 hover:bg-blue-50'
+              ].join(' ')}
+              role="option"
+              aria-selected={isSelected}
+            >
+              {barangayName}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center justify-end mt-3 px-2">
+        <button
+          type="button"
+          onClick={() => { setBarangay(''); setShowDropdown(false); }}
+          className="text-xs text-gray-500 hover:text-gray-700"
+        >
+          Clear
+        </button>
+      </div>
+    </div>
+  )}
+
+  {attempted && !barangay.trim() && (
+    <p className="text-xs text-red-600 mt-1">Please select your barangay.</p>
+  )}
+</div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Street</label>
                     <input

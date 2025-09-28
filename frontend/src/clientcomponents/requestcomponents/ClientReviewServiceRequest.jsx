@@ -287,7 +287,7 @@ const handleGoDashboard = () => {
             </div>
           )}
 
-          <div className="space-y-6">
+          <div className="space-y-6 mt-5">
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
                 <h3 className="text-xl md:text-2xl font-semibold">Personal Information</h3>

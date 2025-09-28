@@ -8,16 +8,13 @@ export default function WorkerSettingsSidebar({ active, onChange }) {
       <button
         onClick={() => onChange(id)}
         className={[
-          // base layout (kept)
           "w-full flex items-center gap-3 rounded-xl border transition",
-          // single, non-conflicting typography & spacing
           "text-[15px] md:text-base px-3.5 py-2.5",
           selected
             ? "bg-[#008cfc] text-white border-[#008cfc]"
             : "bg-white text-gray-800 border-gray-200 hover:bg-gray-50",
         ].join(" ")}
       >
-        {/* single size for icon — no duplicates */}
         <Icon className="h-5 w-5" />
         <span className="truncate leading-5">{label}</span>
       </button>
@@ -27,7 +24,6 @@ export default function WorkerSettingsSidebar({ active, onChange }) {
   return (
     <aside className="w-full">
       <div className="rounded-2xl border border-gray-200 bg-white p-3">
-        {/* keep your text-1xl, add safe bump without conflicts */}
         <div className="mb-2 px-2 text-1xl text-lg md:text-xl font-semibold text-gray-900 tracking-wide">
           Settings
         </div>
@@ -36,8 +32,8 @@ export default function WorkerSettingsSidebar({ active, onChange }) {
           <Item id="security" icon={ShieldCheck} label="Password" />
           <button
             className={[
+              "hidden",
               "w-full flex items-center gap-3 rounded-xl border bg-white text-gray-800 border-gray-200 opacity-60 cursor-not-allowed",
-              // unified size & spacing (no duplicates)
               "text-[15px] md:text-base px-3.5 py-2.5",
             ].join(" ")}
             disabled
