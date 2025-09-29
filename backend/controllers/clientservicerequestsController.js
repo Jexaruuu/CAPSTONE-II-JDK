@@ -5,6 +5,7 @@ const {
   insertServiceRate,
   newGroupId,
   findClientByEmail,
+  findClientById,
 } = require('../models/clientservicerequestsModel');
 const { insertPendingRequest } = require('../models/pendingservicerequestsModel');
 const { supabaseAdmin } = require('../supabaseClient');
@@ -34,7 +35,6 @@ function isExpiredPreferredDate(val) {
   today.setHours(0, 0, 0, 0);
   return d < today;
 }
-
 function toBoolStrict(v) {
   if (typeof v === 'boolean') return v;
   if (v === 1 || v === '1') return true;
@@ -78,10 +78,26 @@ exports.submitFullRequest = async (req, res) => {
     const serviceKind = service_type || category;
 
     let effectiveClientId = client_id || null;
-    if (!effectiveClientId && email_address) {
+    let effectiveAuthUid = null;
+    let canonicalEmail = String(email_address || '').trim() || null;
+
+    if (effectiveClientId) {
       try {
-        const found = await findClientByEmail(email_address);
-        if (found && found.id) effectiveClientId = found.id;
+        const foundById = await findClientById(effectiveClientId);
+        if (foundById) {
+          effectiveAuthUid = foundById.auth_uid || null;
+          if (!canonicalEmail && foundById.email_address) canonicalEmail = foundById.email_address;
+        }
+      } catch {}
+    }
+    if (!effectiveClientId && canonicalEmail) {
+      try {
+        const found = await findClientByEmail(canonicalEmail);
+        if (found && found.id) {
+          effectiveClientId = found.id;
+          effectiveAuthUid = found.auth_uid || null;
+          if (found.email_address) canonicalEmail = found.email_address;
+        }
       } catch {}
     }
 
@@ -119,8 +135,8 @@ exports.submitFullRequest = async (req, res) => {
     const infoRow = {
       request_group_id,
       client_id: effectiveClientId,
-      auth_uid: auth_uid ?? metadata.auth_uid ?? null,
-      email_address: email_address || metadata.email || null,
+      auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
+      email_address: canonicalEmail || metadata.email || null,
       first_name: first_name || metadata.first_name || null,
       last_name: last_name || metadata.last_name || null,
       contact_number: (contact_number ?? metadata.contact_number ?? '').toString(),
@@ -158,7 +174,7 @@ exports.submitFullRequest = async (req, res) => {
     const detailsRow = {
       request_group_id,
       client_id: effectiveClientId,
-      auth_uid: auth_uid ?? metadata.auth_uid ?? null,
+      auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
       email_address: infoRow.email_address,
       service_type: serviceKind,
       service_task: service_task || metadata.service_task || null,
@@ -184,7 +200,7 @@ exports.submitFullRequest = async (req, res) => {
     const rateRow = {
       request_group_id,
       client_id: effectiveClientId,
-      auth_uid: auth_uid ?? metadata.auth_uid ?? null,
+      auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
       email_address: infoRow.email_address,
       rate_type: rate_type || null,
       rate_from: rate_from || null,

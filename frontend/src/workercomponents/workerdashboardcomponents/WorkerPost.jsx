@@ -19,6 +19,14 @@ function getWorkerEmail() {
   );
 }
 
+function getWorkerId() {
+  try {
+    const auth = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+    if (auth && (auth.id || auth.worker_id)) return String(auth.id || auth.worker_id);
+  } catch {}
+  return String(localStorage.getItem('worker_id') || localStorage.getItem('id') || '').trim();
+}
+
 function getWorkerProfile() {
   let firstName = '';
   let gender = '';
@@ -48,21 +56,28 @@ function getWorkerProfile() {
         localStorage.getItem('firstName') ||
         ''
     ).trim();
-
   gender = String(gender || localStorage.getItem('gender') || localStorage.getItem('sex') || '').trim();
-
   return { firstName, gender };
 }
 
 function honorificFromGender(g) {
   const s = String(g || '').trim().toLowerCase();
   if (s === 'male' || s === 'm' || s === 'man' || s === 'mr') return 'Mr.';
-  if (s === 'female' || s === 'f' || s === 'woman' || s === 'ms' || s === 'mrs' || s === 'email')
-    return 'Ms.';
+  if (s === 'female' || s === 'f' || s === 'woman' || s === 'ms' || s === 'mrs' || s === 'email') return 'Ms.';
   return '';
 }
 
-const WorkerPost = () => {
+function toBoolStrict(v) {
+  if (typeof v === 'boolean') return v;
+  if (v === 1 || v === '1') return true;
+  if (v === 0 || v === '0') return false;
+  const s = String(v ?? '').trim().toLowerCase();
+  if (['yes', 'y', 'true', 't'].includes(s)) return true;
+  if (['no', 'n', 'false', 'f'].includes(s)) return false;
+  return null;
+}
+
+export default function WorkerPost() {
   const [loading, setLoading] = useState(true);
   const [approved, setApproved] = useState([]);
   const [current, setCurrent] = useState(0);
@@ -88,21 +103,28 @@ const WorkerPost = () => {
 
   useEffect(() => {
     const email = getWorkerEmail();
-    if (!email) {
+    const workerId = getWorkerId();
+    if (!email && !workerId) {
       setLoading(false);
       return;
     }
     axios
       .get(`${API_BASE}/api/workerapplications/approved`, {
-        params: { email, limit: 10 },
-        withCredentials: true,
+        params: { email, worker_id: workerId, limit: 10 },
+        withCredentials: true
       })
       .then((res) => {
         const items = Array.isArray(res?.data?.items) ? res.data.items : [];
-        setApproved(items);
+        const normalized = items.map((it) => {
+          const details = { ...(it.work || it.details || {}) };
+          const t = toBoolStrict(details.tools_provided);
+          if (t !== null) details.tools_provided = t ? 'Yes' : 'No';
+          return { ...it, details };
+        });
+        setApproved(normalized);
         setCurrent(0);
-        if (items.length) {
-          const first = items[0];
+        if (normalized.length) {
+          const first = normalized[0];
           const fn =
             first?.info?.first_name ||
             first?.details?.first_name ||
@@ -110,11 +132,7 @@ const WorkerPost = () => {
             first?.details?.firstname ||
             '';
           const g =
-            first?.info?.gender ||
-            first?.details?.gender ||
-            first?.info?.sex ||
-            first?.details?.sex ||
-            '';
+            first?.info?.gender || first?.details?.gender || first?.info?.sex || first?.details?.sex || '';
           setWorkerFirstName((prev) => prev || (fn ? String(fn).trim() : ''));
           setWorkerGender((prev) => prev || (g ? String(g).trim() : ''));
         }
@@ -237,7 +255,7 @@ const WorkerPost = () => {
     isPointerDownRef.current = false;
     const wrap = trackRef.current;
     if (wrap && pointerIdRef.current != null) {
-      wrap.releasePointerCapture?.(pointerIdRef.current);
+      wrap.releasePointerCapture?.(e.pointerId);
       wrap.classList.remove('drag-active');
     }
     pointerIdRef.current = null;
@@ -261,14 +279,11 @@ const WorkerPost = () => {
   };
 
   const honorific = honorificFromGender(workerGender);
-  const capFirst =
-    workerFirstName ? workerFirstName.charAt(0).toUpperCase() + workerFirstName.slice(1) : 'Worker';
+  const capFirst = workerFirstName ? workerFirstName.charAt(0).toUpperCase() + workerFirstName.slice(1) : 'Worker';
 
   const buildLocation = (item) => {
-    const barangay =
-      item?.info?.barangay ?? item?.details?.barangay ?? item?.details?.brgy ?? '';
-    const street =
-      item?.info?.street ?? item?.details?.street ?? item?.details?.street_name ?? '';
+    const barangay = item?.info?.barangay ?? item?.details?.barangay ?? item?.details?.brgy ?? '';
+    const street = item?.info?.street ?? item?.details?.street ?? item?.details?.street_name ?? '';
     const parts = [];
     if (barangay) parts.push(`Barangay ${barangay}`);
     if (street) parts.push(street);
@@ -276,31 +291,24 @@ const WorkerPost = () => {
   };
 
   const buildServiceType = (item) => {
-    const st =
-      item?.details?.service_types ||
-      item?.details?.service_type ||
-      item?.details?.primary_service ||
-      item?.service?.types ||
-      [];
+    const d = item?.work || item?.details || {};
+    const st = d.service_types || d.service_type || d.primary_service || [];
     if (Array.isArray(st) && st.length) return st[0];
     return typeof st === 'string' && st ? st : '';
   };
 
   const getRateType = (item) => {
+    const d = item?.rate || item?.details || {};
     const raw =
-      item?.rate?.rate_type ??
-      item?.details?.rate_type ??
-      item?.details?.pricing_type ??
-      item?.details?.price_rate ??
-      item?.details?.service_price_rate ??
-      item?.pricing?.rate_type ??
-      item?.payment?.rate_type ??
+      d.rate_type ||
+      d.pricing_type ||
+      d.price_rate ||
+      d.service_price_rate ||
       '';
     if (!raw) return '';
     const s = String(raw).toLowerCase();
     if (s.includes('hour')) return 'By the hour';
-    if (s.includes('job') || s.includes('fixed') || s.includes('project') || s.includes('task'))
-      return 'By the Job';
+    if (s.includes('job') || s.includes('fixed') || s.includes('project') || s.includes('task')) return 'By the Job';
     return s.charAt(0).toUpperCase() + s.slice(1);
   };
 
@@ -326,11 +334,7 @@ const WorkerPost = () => {
         {!hasApproved && (
           <div className="bg-white border border-gray-200 rounded-lg p-6 text-center shadow-sm">
             <div className="flex justify-center mb-4">
-              <img
-                src="/Resume.png"
-                alt="Resume"
-                className="w-20 h-20 object-contain"
-              />
+              <img src="/Resume.png" alt="Resume" className="w-20 h-20 object-contain" />
             </div>
             <p className="text-gray-600 mb-4">
               {loading
@@ -373,27 +377,20 @@ const WorkerPost = () => {
                   const type = buildServiceType(item) || '';
                   const title = type || 'Approved Application';
                   const IconComp = getServiceIcon(type);
-                  const years =
-                    item?.details?.years_experience ??
-                    item?.experience?.years ??
-                    item?.details?.yearsExperience ??
-                    '';
-                  const tools =
-                    item?.details?.tools_provided ??
-                    item?.details?.toolsProvided ??
-                    item?.tools?.provided ??
-                    '';
+                  const years = (item?.details?.years_experience ?? item?.experience?.years ?? item?.details?.yearsExperience ?? '');
+                  const tools = item?.details?.tools_provided ?? item?.details?.toolsProvided ?? item?.tools?.provided ?? '';
+
                   return (
                     <div
                       key={item.id || i}
                       ref={(el) => (cardRefs.current[i] = el)}
-                      className="overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto min-h-[220px] flex flex-col flex-shrink-0 bg-white border border-gray-300 rounded-xl p-6 text-left cursor-default shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl hover:ring-inset"
+                      className="overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto min-h-[220px] flex flex-col flex-shrink-0 border rounded-xl p-6 text-left cursor-default shadow-sm transition-all duration-300 hover:ring-2 hover:shadow-xl hover:ring-inset bg-blue-50 border-[#008cfc] hover:border-[#008cfc] hover:ring-[#008cfc]"
                     >
                       <div className="flex items-start justify-between">
                         <div className="text-lg font-semibold text-gray-900">
                           {title}
                         </div>
-                        <div className="h-9 w-9 rounded-lg border border-gray-400 text-[#008cfc] flex items-center justify-center">
+                        <div className="h-9 w-9 rounded-lg border border-gray-400 text-[#008cfc] flex items-center justify-center bg-white">
                           <IconComp className="h-5 w-5" />
                         </div>
                       </div>
@@ -409,9 +406,7 @@ const WorkerPost = () => {
                         </div>
                         <div className="text-gray-600">
                           <span className="font-medium text-gray-800">Tools Provided:</span>{' '}
-                          {typeof tools === 'boolean'
-                            ? tools ? 'Yes' : 'No'
-                            : (String(tools || '').trim() || '-')}
+                          {typeof tools === 'boolean' ? (tools ? 'Yes' : 'No') : (String(tools || '').trim() || '-')}
                         </div>
                         <div className="text-gray-600">
                           <span className="font-medium text-gray-800">Service Price Rate:</span>{' '}
@@ -427,7 +422,7 @@ const WorkerPost = () => {
                           View details
                         </button>
 
-                        <span className="inline-flex items-center !h-11 whitespace-nowrap rounded-lg border border-green-200 bg-green-50 px-3 text-xs font-medium text-green-700">
+                        <span className="inline-flex items-center !h-11 whitespace-nowrap rounded-lg border border-yellow-200 bg-yellow-50 px-3 text-xs font-medium text-yellow-700">
                           Active Application
                           <span className="ml-2 inline-flex w-6 justify-between font-mono">
                             <span className={`transition-opacity duration-200 ${dotStep >= 1 ? 'opacity-100' : 'opacity-0'}`}>.</span>
@@ -477,6 +472,4 @@ const WorkerPost = () => {
       </div>
     </div>
   );
-};
-
-export default WorkerPost;
+}

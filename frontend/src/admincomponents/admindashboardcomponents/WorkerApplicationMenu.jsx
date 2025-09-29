@@ -127,7 +127,7 @@ export default function WorkerApplicationMenu() {
   useEffect(() => {
     fetchCounts();
     fetchItems();
-  }, []); 
+  }, []);
 
   useEffect(() => {
     if (!ENABLE_SELECTION) return;
@@ -149,7 +149,7 @@ export default function WorkerApplicationMenu() {
       fetchItems(filter, searchTerm);
     }, 400);
     return () => clearInterval(t);
-  }, [filter, searchTerm]); 
+  }, [filter, searchTerm]);
 
   const sortedRows = useMemo(() => {
     if (!sort.key) return rows;
@@ -181,25 +181,35 @@ export default function WorkerApplicationMenu() {
     });
 
   const approve = async (id) => {
-    await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/approve`, {}, { withCredentials: true });
-    setRows((r) => r.map((x) => (x.id === id ? { ...x, status: "approved" } : x)));
-    setSelected((s) => {
-      const n = new Set(s);
-      n.delete(id);
-      return n;
-    });
-    setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
+    setLoadError("");
+    try {
+      await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/approve`, {}, { withCredentials: true });
+      setRows((r) => r.map((x) => (x.id === id ? { ...x, status: "approved" } : x)));
+      setSelected((s) => {
+        const n = new Set(s);
+        n.delete(id);
+        return n;
+      });
+      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
+    } catch (err) {
+      setLoadError(err?.response?.data?.message || err?.message || "Failed to approve");
+    }
   };
 
   const decline = async (id) => {
-    await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/decline`, {}, { withCredentials: true });
-    setRows((r) => r.map((x) => (x.id === id ? { ...x, status: "declined" } : x)));
-    setSelected((s) => {
-      const n = new Set(s);
-      n.delete(id);
-      return n;
-    });
-    setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
+    setLoadError("");
+    try {
+      await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/decline`, {}, { withCredentials: true });
+      setRows((r) => r.map((x) => (x.id === id ? { ...x, status: "declined" } : x)));
+      setSelected((s) => {
+        const n = new Set(s);
+        n.delete(id);
+        return n;
+      });
+      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
+    } catch (err) {
+      setLoadError(err?.response?.data?.message || err?.message || "Failed to decline");
+    }
   };
 
   const tabs = [
@@ -517,10 +527,14 @@ export default function WorkerApplicationMenu() {
               </button>
               <button
                 onClick={async () => {
-                  await axios.post(`${API_BASE}/api/admin/workerapplications/${viewRow.id}/decline`, {}, { withCredentials: true });
-                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined" } : x)));
-                  setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
-                  setViewRow(null);
+                  try {
+                    await axios.post(`${API_BASE}/api/admin/workerapplications/${viewRow.id}/decline`, {}, { withCredentials: true });
+                    setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined" } : x)));
+                    setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
+                    setViewRow(null);
+                  } catch (err) {
+                    setLoadError(err?.response?.data?.message || err?.message || "Failed to decline");
+                  }
                 }}
                 className="rounded-lg px-3 py-1.5 bg-red-600 text-white disabled:bg-gray-200 disabled:text-gray-500"
                 disabled={viewRow.status === "declined" || viewRow.status === "approved"}
@@ -529,10 +543,14 @@ export default function WorkerApplicationMenu() {
               </button>
               <button
                 onClick={async () => {
-                  await axios.post(`${API_BASE}/api/admin/workerapplications/${viewRow.id}/approve`, {}, { withCredentials: true });
-                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved" } : x)));
-                  setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
-                  setViewRow(null);
+                  try {
+                    await axios.post(`${API_BASE}/api/admin/workerapplications/${viewRow.id}/approve`, {}, { withCredentials: true });
+                    setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved" } : x)));
+                    setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
+                    setViewRow(null);
+                  } catch (err) {
+                    setLoadError(err?.response?.data?.message || err?.message || "Failed to approve");
+                  }
                 }}
                 className="rounded-lg px-3 py-1.5 bg-emerald-600 text-white disabled:bg-gray-200 disabled:text-gray-500"
                 disabled={viewRow.status === "approved" || viewRow.status === "declined"}

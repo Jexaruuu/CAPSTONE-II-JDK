@@ -6,7 +6,8 @@ const {
   insertWorkerRequiredDocuments,
   insertPendingApplication,
   newGroupId,
-  findWorkerByEmail
+  findWorkerByEmail,
+  findWorkerById
 } = require('../models/workerapplicationModel');
 const { supabaseAdmin, ensureStorageBucket } = require('../supabaseClient');
 
@@ -20,15 +21,9 @@ function dateOnlyFrom(input) {
   const d = new Date(raw);
   return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
-function isExpiredPreferredDate(val) {
-  const d = dateOnlyFrom(val);
-  if (!d) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return d < today;
-}
 function friendlyError(err) {
   const raw = err?.message || String(err);
+  if (/row-level security/i.test(raw)) return 'Server is not using service-role for a write. Check service key env and restart the server.';
   if (/bucket/i.test(raw) && /not.*found/i.test(raw)) return 'Storage bucket missing.';
   if (/worker_information|worker_work_information|worker_rate|worker_required_documents|wa_pending/i.test(raw)) return `Database error: ${raw}`;
   return raw;
@@ -45,6 +40,7 @@ function ageFromBirthDate(birth_date) {
 
 exports.submitFullApplication = async (req, res) => {
   try {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(500).json({ message: 'Service role key missing on server' });
     await ensureStorageBucket('wa-attachments', true);
 
     const {
@@ -77,10 +73,26 @@ exports.submitFullApplication = async (req, res) => {
     } = req.body || {};
 
     let effectiveWorkerId = worker_id || null;
-    if (!effectiveWorkerId && email_address) {
+    let effectiveAuthUid = null;
+    let canonicalEmail = String(email_address || '').trim() || null;
+
+    if (effectiveWorkerId) {
       try {
-        const found = await findWorkerByEmail(email_address);
-        if (found && found.id) effectiveWorkerId = found.id;
+        const foundById = await findWorkerById(effectiveWorkerId);
+        if (foundById) {
+          canonicalEmail = canonicalEmail || foundById.email_address || null;
+          effectiveAuthUid = foundById.auth_uid || null;
+        }
+      } catch {}
+    }
+    if (!effectiveWorkerId && canonicalEmail) {
+      try {
+        const found = await findWorkerByEmail(canonicalEmail);
+        if (found && found.id) {
+          effectiveWorkerId = found.id;
+          effectiveAuthUid = found.auth_uid || null;
+          canonicalEmail = found.email_address || canonicalEmail;
+        }
       } catch {}
     }
     if (!effectiveWorkerId) return res.status(400).json({ message: 'Unable to identify worker. Provide worker_id or a known email_address.' });
@@ -110,7 +122,8 @@ exports.submitFullApplication = async (req, res) => {
     const infoRow = {
       request_group_id,
       worker_id: effectiveWorkerId,
-      email_address: email_address || metadata.email || null,
+      auth_uid: effectiveAuthUid,
+      email_address: canonicalEmail || metadata.email || null,
       first_name: first_name || metadata.first_name || null,
       last_name: last_name || metadata.last_name || null,
       contact_number: (contact_number ?? metadata.contact_number ?? '').toString(),
@@ -133,11 +146,7 @@ exports.submitFullApplication = async (req, res) => {
     if (infoRow.barangay === '') missingInfo.push('barangay');
     if (missingInfo.length) return res.status(400).json({ message: `Missing required worker_information fields: ${missingInfo.join(', ')}` });
 
-    try {
-      await insertWorkerInformation(infoRow);
-    } catch (e) {
-      return res.status(400).json({ message: friendlyError(e) });
-    }
+    const infoIns = await insertWorkerInformation(infoRow);
 
     const detailsRow = {
       request_group_id,
@@ -156,15 +165,12 @@ exports.submitFullApplication = async (req, res) => {
     if (!detailsRow.work_description) missingWork.push('work_description');
     if (missingWork.length) return res.status(400).json({ message: `Missing required worker_work_information fields: ${missingWork.join(', ')}` });
 
-    try {
-      await insertWorkerWorkInformation(detailsRow);
-    } catch (e) {
-      return res.status(400).json({ message: friendlyError(e) });
-    }
+    const workIns = await insertWorkerWorkInformation(detailsRow);
 
     const rateRow = {
       request_group_id,
       worker_id: effectiveWorkerId,
+      email_address: infoRow.email_address,
       rate_type: rate_type || null,
       rate_from: rate_from || null,
       rate_to: rate_to || null,
@@ -177,11 +183,7 @@ exports.submitFullApplication = async (req, res) => {
     if (rateRow.rate_type === 'By the Job Rate' && !rateRow.rate_value) missingRate.push('rate_value');
     if (missingRate.length) return res.status(400).json({ message: `Missing required worker_rate fields: ${missingRate.join(', ')}` });
 
-    try {
-      await insertWorkerRate(rateRow);
-    } catch (e) {
-      return res.status(400).json({ message: friendlyError(e) });
-    }
+    const rateIns = await insertWorkerRate(rateRow);
 
     let docsJson = {};
     if (Array.isArray(docs) && docs.length) {
@@ -209,15 +211,9 @@ exports.submitFullApplication = async (req, res) => {
     }
 
     try {
-      await insertWorkerRequiredDocuments({
-        request_group_id,
-        worker_id: effectiveWorkerId,
-        docs: docsJson
-      });
+      await insertWorkerRequiredDocuments({ request_group_id, worker_id: effectiveWorkerId, docs: docsJson });
     } catch (e) {
-      if (!/column .*docs/i.test(e?.message || '')) {
-        return res.status(400).json({ message: friendlyError(e) });
-      }
+      if (!/column .*docs/i.test(e?.message || '')) return res.status(400).json({ message: friendlyError(e) });
     }
 
     let preferredDate = null;
@@ -255,28 +251,23 @@ exports.submitFullApplication = async (req, res) => {
       rate_value: rateRow.rate_value
     };
 
-    let pendingRow;
-    try {
-      pendingRow = await insertPendingApplication({
-        request_group_id,
-        email_address: infoRow.email_address,
-        info: pendingInfo,
-        work: pendingWork,
-        rate: pendingRate,
-        docs: docsJson,
-        status: 'pending'
-      });
-    } catch (e) {
-      return res.status(400).json({ message: friendlyError(e) });
-    }
+    const pendingIns = await insertPendingApplication({
+      request_group_id,
+      email_address: infoRow.email_address,
+      info: pendingInfo,
+      work: pendingWork,
+      rate: pendingRate,
+      docs: docsJson,
+      status: 'pending'
+    });
 
     return res.status(201).json({
       message: 'Application submitted',
       request: {
-        id: pendingRow.id,
+        id: pendingIns.id,
         request_group_id,
         status: 'pending',
-        created_at: pendingRow.created_at
+        created_at: pendingIns.created_at
       }
     });
   } catch (err) {
@@ -286,20 +277,30 @@ exports.submitFullApplication = async (req, res) => {
 
 exports.listApproved = async (req, res) => {
   try {
-    const email = String(req.query.email || '').trim();
+    let email = String(req.query.email || '').trim();
+    const workerId = String(req.query.worker_id || '').trim();
+    if (!email && workerId) {
+      try {
+        const foundById = await findWorkerById(workerId);
+        if (foundById?.email_address) {
+          email = String(foundById.email_address).trim();
+        }
+      } catch {}
+    }
     if (!email) return res.status(400).json({ message: 'Email is required' });
+
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
     const { data, error } = await supabaseAdmin
       .from('wa_pending')
       .select('id, request_group_id, status, created_at, email_address, info, work, rate, docs')
       .eq('status', 'approved')
-      .eq('email_address', email)
+      .ilike('email_address', email)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw error;
+
     const items = Array.isArray(data) ? data : [];
-    const filtered = items.filter((it) => !isExpiredPreferredDate(it?.work?.preferred_date));
-    return res.status(200).json({ items: filtered });
+    return res.status(200).json({ items });
   } catch {
     return res.status(500).json({ message: 'Failed to load approved applications' });
   }

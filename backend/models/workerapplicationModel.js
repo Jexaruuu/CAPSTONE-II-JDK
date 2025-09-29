@@ -31,32 +31,69 @@ async function uploadDataUrlToBucket(bucket, dataUrl, filenameBase) {
 async function findWorkerByEmail(email) {
   const e = String(email || '').trim();
   if (!e) return null;
-  const { data, error } = await supabaseAdmin.from('user_worker').select('id, auth_uid, email_address').ilike('email_address', e).limit(1).maybeSingle();
+  const { data, error } = await supabaseAdmin
+    .from('user_worker')
+    .select('id, auth_uid, email_address')
+    .ilike('email_address', e)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+async function findWorkerById(id) {
+  const n = parseInt(id, 10);
+  if (!Number.isFinite(n)) return null;
+  const { data, error } = await supabaseAdmin
+    .from('user_worker')
+    .select('id, auth_uid, email_address')
+    .eq('id', n)
+    .limit(1)
+    .maybeSingle();
   if (error) throw error;
   return data || null;
 }
 async function insertWorkerInformation(row) {
-  const { data, error } = await supabaseAdmin.from('worker_information').insert([row]).select('id').single();
+  const { data, error } = await supabaseAdmin
+    .from('worker_information')
+    .insert([row])
+    .select('id')
+    .single();
   if (error) throw error;
   return data;
 }
 async function insertWorkerWorkInformation(row) {
-  const { data, error } = await supabaseAdmin.from('worker_work_information').insert([row]).select('id').single();
+  const { data, error } = await supabaseAdmin
+    .from('worker_work_information')
+    .insert([row])
+    .select('id')
+    .single();
   if (error) throw error;
   return data;
 }
 async function insertWorkerRate(row) {
-  const { data, error } = await supabaseAdmin.from('worker_rate').insert([row]).select('id').single();
+  const { data, error } = await supabaseAdmin
+    .from('worker_rate')
+    .insert([row])
+    .select('id')
+    .single();
   if (error) throw error;
   return data;
 }
 async function insertWorkerRequiredDocuments(row) {
-  const { data, error } = await supabaseAdmin.from('worker_required_documents').insert([row]).select('id').single();
+  const { data, error } = await supabaseAdmin
+    .from('worker_required_documents')
+    .insert([row])
+    .select('id')
+    .single();
   if (error) throw error;
   return data;
 }
 async function insertPendingApplication(row) {
-  const { data, error } = await supabaseAdmin.from('wa_pending').insert([row]).select('id, created_at').single();
+  const { data, error } = await supabaseAdmin
+    .from('wa_pending')
+    .insert([row])
+    .select('id, created_at')
+    .single();
   if (error) throw error;
   return data;
 }
@@ -67,6 +104,7 @@ function newGroupId() {
 module.exports = {
   uploadDataUrlToBucket,
   findWorkerByEmail,
+  findWorkerById,
   insertWorkerInformation,
   insertWorkerWorkInformation,
   insertWorkerRate,

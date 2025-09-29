@@ -1,4 +1,3 @@
-// backend/models/pendingworkerapplicationsModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 
 async function insertPendingApplication(row) {
@@ -41,11 +40,12 @@ async function getPendingById(id) {
   return data;
 }
 
-async function markStatus(id, status, reason = null) {
+async function markStatus(id, status) {
+  const idKey = Number.isFinite(Number(id)) ? Number(id) : id;
   const { data, error } = await supabaseAdmin
     .from('wa_pending')
-    .update({ status, decision_reason: reason, decided_at: new Date().toISOString() })
-    .eq('id', id)
+    .update({ status })
+    .eq('id', idKey)
     .select('id, status, request_group_id')
     .single();
   if (error) throw error;

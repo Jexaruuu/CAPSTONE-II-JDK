@@ -11,9 +11,7 @@ async function listApplications({ status = "", q = "", limit = 500 }) {
     .select("id, request_group_id, status, created_at, email_address, info, work, rate, docs")
     .order("created_at", { ascending: false })
     .limit(Math.min(Math.max(parseInt(limit || 500, 10), 1), 1000));
-
   if (status && status !== "all") query = query.eq("status", status);
-
   if (q) {
     const t = likeTerm(q);
     query = query.or(
@@ -27,7 +25,6 @@ async function listApplications({ status = "", q = "", limit = 500 }) {
       ].join(",")
     );
   }
-
   const { data, error } = await query;
   if (error) throw error;
   return Array.isArray(data) ? data : [];
@@ -50,15 +47,30 @@ async function countAllStatuses() {
   return { pending, approved, declined, total };
 }
 
-async function markStatus(id, status, reason = null) {
+async function markStatus(id, status) {
+  const idKey = Number.isFinite(Number(id)) ? Number(id) : id;
+
+  const { data: existing, error: getErr } = await supabaseAdmin
+    .from("wa_pending")
+    .select("id, status, request_group_id")
+    .eq("id", idKey)
+    .maybeSingle();
+  if (getErr) throw getErr;
+  if (!existing) {
+    const e = new Error("Application not found");
+    e.status = 404;
+    throw e;
+  }
+  if (existing.status === status) return existing;
+
   const { data, error } = await supabaseAdmin
     .from("wa_pending")
-    .update({ status, decision_reason: reason || null, decided_at: new Date().toISOString() })
-    .eq("id", id)
+    .update({ status })
+    .eq("id", idKey)
     .select("id, status, request_group_id")
-    .single();
+    .maybeSingle();
   if (error) throw error;
-  return data;
+  return data || { id: existing.id, status, request_group_id: existing.request_group_id };
 }
 
 module.exports = {

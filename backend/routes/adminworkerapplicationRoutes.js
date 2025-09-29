@@ -1,10 +1,15 @@
 const express = require("express");
 const router = express.Router();
-const ctrl = require("../controllers/adminworkerapplicationController");
+const {
+  list,
+  count,
+  approve,
+  decline,
+} = require("../controllers/adminworkerapplicationController");
 
-router.get("/", ctrl.list);
-router.get("/count", ctrl.count);
-router.post("/:id/approve", ctrl.approve);
-router.post("/:id/decline", ctrl.decline);
+router.get("/", list);
+router.get("/count", count);
+router.post("/:id/approve", approve);
+router.post("/:id/decline", decline);
 
 module.exports = router;

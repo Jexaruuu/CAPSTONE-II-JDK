@@ -46,36 +46,24 @@ const ProtectedRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
   const lastName = localStorage.getItem('last_name');
   const role = localStorage.getItem('role');
-  return firstName && lastName && role ? children : <Navigate to="/login" />;
+  return firstName && lastName && role ? children : <Navigate to="/login" replace />;
 };
 
 const GuestRoute = ({ children }) => {
-  const firstName = localStorage.getItem('first_name');
-  const lastName = localStorage.getItem('last_name');
-  const role = localStorage.getItem('role');
-  if (firstName && lastName && role) {
-    if (role === 'client') return <Navigate to="/clientdashboard" />;
-    if (role === 'worker') return <Navigate to="/workerdashboard" />;
-  }
+  const role = String(localStorage.getItem('role') || '').toLowerCase();
+  if (role === 'client') return <Navigate to="/clientdashboard" replace />;
+  if (role === 'worker') return <Navigate to="/workerdashboard" replace />;
   return children;
 };
 
 const ClientOnlyRoute = ({ children }) => {
-  const role = localStorage.getItem('role');
-  return role === 'client'
-    ? children
-    : role
-      ? <Navigate to="/workerdashboard" replace />
-      : <Navigate to="/login" replace />;
+  const role = String(localStorage.getItem('role') || '').toLowerCase();
+  return role === 'client' ? children : <Navigate to="/login" replace />;
 };
 
 const WorkerOnlyRoute = ({ children }) => {
-  const role = localStorage.getItem('role');
-  return role === 'worker'
-    ? children
-    : role
-      ? <Navigate to="/clientdashboard" replace />
-      : <Navigate to="/login" replace />;
+  const role = String(localStorage.getItem('role') || '').toLowerCase();
+  return role === 'worker' ? children : <Navigate to="/login" replace />;
 };
 
 const App = () => {

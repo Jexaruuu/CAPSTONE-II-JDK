@@ -21,6 +21,7 @@ const adminservicerequestsRoutes  = require("./routes/adminservicerequestsRoutes
 const workerapplicationRoutes = require("./routes/workerapplicationRoutes");
 const adminworkerapplicationRoutes = require("./routes/adminworkerapplicationRoutes");
 const pendingservicerequestsRoutes = require("./routes/pendingservicerequestsRoutes");
+const pendingworkerapplicationRoutes = require("./routes/pendingworkerapplicationRoutes");
 
 dotenv.config();
 
@@ -124,7 +125,7 @@ app.post("/api/auth/check-email", async (req, res) => {
   }
 });
 
-const mailTransport = nodemailer.createTransport({
+const nodemailerTransport = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
   port: Number(process.env.SMTP_PORT || 465),
   secure: String(process.env.SMTP_PORT || "465") === "465",
@@ -162,7 +163,7 @@ app.post("/api/auth/request-otp", async (req, res) => {
     const hash = hashOtp(email, code);
     otpStore.set(email, { hash, expiresAt: now + OTP_TTL_MS, attempts: 0, lastSentAt: now });
     const from = process.env.SMTP_FROM || process.env.SMTP_USER || "no-reply@localhost";
-    await mailTransport.sendMail({
+    await nodemailerTransport.sendMail({
       from: `"JDK HOMECARE" <${from}>`,
       to: email,
       subject: "Your JDK HOMECARE verification code",
@@ -217,6 +218,7 @@ app.use("/api/workerapplication", workerapplicationRoutes);
 app.use("/api/workerapplications", workerapplicationRoutes);
 app.use("/api/admin/workerapplications", adminworkerapplicationRoutes);
 app.use("/api/pendingservicerequests", pendingservicerequestsRoutes);
+app.use("/api/pendingworkerapplication", pendingworkerapplicationRoutes);
 
 ensureStorageBucket('wa-attachments', true).catch(() => {});
 

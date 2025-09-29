@@ -1,27 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Users,
-  ClipboardList,
-  FileText,
-  LogOut,
-} from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, FileText, LogOut } from 'lucide-react';
 import axios from 'axios';
 import { sbAdmin as supabase } from '../supabaseBrowser';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const navItems = [
-  { label: 'Dashboard',           to: '/admindashboard',                  icon: LayoutDashboard },
-  { label: 'Manage Users',        to: '/admindashboard/manage-users',     icon: Users },
-  { label: 'Service Request',     to: '/admindashboard/service-requests', icon: FileText, badgeKey: 'service' },
-  { label: 'Worker Applications', to: '/admindashboard/worker-applications', icon: ClipboardList },
+  { label: 'Dashboard',           to: '/admindashboard',                     icon: LayoutDashboard },
+  { label: 'Manage Users',        to: '/admindashboard/manage-users',        icon: Users },
+  { label: 'Service Request',     to: '/admindashboard/service-requests',    icon: FileText,       badgeKey: 'service' },
+  { label: 'Worker Applications', to: '/admindashboard/worker-applications', icon: ClipboardList,  badgeKey: 'worker' },
 ];
 
 const AdminSideNavigation = () => {
   const navigate = useNavigate();
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingWorkerCount, setPendingWorkerCount] = useState(0);
 
   const handleLogout = async () => {
     try {
@@ -43,14 +38,22 @@ const AdminSideNavigation = () => {
 
   useEffect(() => {
     let t;
-    const fetchCount = async () => {
+    const fetchCounts = async () => {
       try {
-        const { data } = await axios.get(`${API_BASE}/api/admin/servicerequests/count`, { withCredentials: true });
+        const h = await axios.get(`${API_BASE}/healthz`, { withCredentials: true, timeout: 2500 });
+        if (String(h?.data).toLowerCase() !== 'ok') return;
+      } catch { return; }
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/admin/servicerequests/count`, { withCredentials: true, timeout: 5000 });
         setPendingCount(Number(data?.pending || 0));
       } catch {}
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/admin/workerapplications/count`, { withCredentials: true, timeout: 5000 });
+        setPendingWorkerCount(Number(data?.pending || 0));
+      } catch {}
     };
-    fetchCount();
-    t = setInterval(fetchCount, 15000);
+    fetchCounts();
+    t = setInterval(fetchCounts, 15000);
     return () => clearInterval(t);
   }, []);
 
@@ -79,6 +82,11 @@ const AdminSideNavigation = () => {
               {badgeKey === 'service' && pendingCount > 0 && (
                 <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] leading-none text-white">
                   {pendingCount}
+                </span>
+              )}
+              {badgeKey === 'worker' && pendingWorkerCount > 0 && (
+                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] leading-none text-white">
+                  {pendingWorkerCount}
                 </span>
               )}
             </NavLink>

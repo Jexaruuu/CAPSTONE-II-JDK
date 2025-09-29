@@ -35,7 +35,8 @@ exports.approve = async (req, res) => {
     const row = await markStatus(id, "approved");
     return res.status(200).json({ id: row.id, status: row.status, request_group_id: row.request_group_id });
   } catch (err) {
-    return res.status(400).json({ message: err?.message || "Failed to approve" });
+    const code = err?.status || 400;
+    return res.status(code).json({ message: err?.message || "Failed to approve" });
   }
 };
 
@@ -46,6 +47,7 @@ exports.decline = async (req, res) => {
     const row = await markStatus(id, "declined");
     return res.status(200).json({ id: row.id, status: row.status, request_group_id: row.request_group_id });
   } catch (err) {
-    return res.status(400).json({ message: err?.message || "Failed to decline" });
+    const code = err?.status || 400;
+    return res.status(code).json({ message: err?.message || "Failed to decline" });
   }
 };
