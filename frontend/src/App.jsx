@@ -203,7 +203,6 @@ const App = () => {
           }
         />
         <Route path="/workerwelcome" element={<WorkerWelcomePage />} />
-        {/* Route already exists for Post Application */}
         <Route path="/workerpostapplication" element={<WorkerPostApplication />} />
         <Route path="/workersignup" element={<GuestRoute><WorkerSignUpPage /></GuestRoute>} />
         <Route path="/workersuccess" element={<WorkerSuccessPage />} />

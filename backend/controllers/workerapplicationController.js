@@ -187,13 +187,20 @@ exports.submitFullApplication = async (req, res) => {
     if (Array.isArray(docs) && docs.length) {
       try {
         const uploads = {};
-        for (const d of docs) {
-          const kind = String(d?.kind || '').toLowerCase().replace(/\s+/g, '_');
-          const dataUrl = d?.data_url || d?.dataUrl || null;
-          const name = d?.name || kind || 'doc';
-          if (!dataUrl || !kind) continue;
-          const up = await uploadDataUrlToBucket('wa-attachments', dataUrl, `${request_group_id}-${kind}`);
-          uploads[kind] = { url: up?.url || null, name: up?.name || name };
+        for (let i = 0; i < docs.length; i++) {
+          const d = docs[i] || {};
+          const rawKind = String(d.kind || d.type || d.label || '').trim();
+          const kind = (rawKind || (d.name || `doc_${i}`)).toLowerCase().replace(/\.[a-z0-9]+$/i, '').replace(/\s+/g, '_');
+          const dataUrl = d.data_url || d.dataUrl || null;
+          const urlAlready = typeof d.url === 'string' && d.url.startsWith('http') ? d.url : null;
+          const base = `${request_group_id}-${kind || `doc_${i}`}`;
+          if (urlAlready && !dataUrl) {
+            uploads[kind] = { url: urlAlready, name: d.name || kind };
+            continue;
+          }
+          if (!dataUrl) continue;
+          const up = await uploadDataUrlToBucket('wa-attachments', dataUrl, base);
+          uploads[kind] = { url: up?.url || null, name: up?.name || d.name || kind };
         }
         docsJson = uploads;
       } catch {

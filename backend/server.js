@@ -214,6 +214,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/clientservicerequests", clientservicerequestsRoutes);
 app.use("/api/admin/servicerequests", adminservicerequestsRoutes);
 app.use("/api/workerapplication", workerapplicationRoutes);
+app.use("/api/workerapplications", workerapplicationRoutes);
 app.use("/api/admin/workerapplications", adminworkerapplicationRoutes);
 app.use("/api/pendingservicerequests", pendingservicerequestsRoutes);
 

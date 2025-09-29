@@ -7,26 +7,31 @@ function safeExtFromMime(mime) {
   return map[mime] || 'bin';
 }
 function decodeDataUrl(dataUrl) {
-  const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl || '');
+  const m = /^data:([^;]+);base64,(.+)$/.exec(String(dataUrl || '').trim());
   if (!m) return null;
   const mime = m[1];
   const b64 = m[2];
   return { mime, buffer: Buffer.from(b64, 'base64') };
+}
+function sanitizeName(name) {
+  return String(name || '').replace(/[^a-zA-Z0-9._-]/g, '_');
 }
 async function uploadDataUrlToBucket(bucket, dataUrl, filenameBase) {
   if (!dataUrl) return { url: null, name: null };
   const decoded = decodeDataUrl(dataUrl);
   if (!decoded) return { url: null, name: null };
   const ext = safeExtFromMime(decoded.mime);
-  const name = `${filenameBase}.${ext}`;
+  const name = sanitizeName(`${filenameBase}.${ext}`);
   const path = name;
-  const { error: upErr } = await supabaseAdmin.storage.from(bucket).upload(path, decoded.buffer, { contentType: decoded.mime, upsert: false });
+  const { error: upErr } = await supabaseAdmin.storage.from(bucket).upload(path, decoded.buffer, { contentType: decoded.mime, upsert: true });
   if (upErr) throw upErr;
   const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
   return { url: pub?.publicUrl || null, name };
 }
 async function findWorkerByEmail(email) {
-  const { data, error } = await supabaseAdmin.from('user_worker').select('id, auth_uid').eq('email_address', email).limit(1).maybeSingle();
+  const e = String(email || '').trim();
+  if (!e) return null;
+  const { data, error } = await supabaseAdmin.from('user_worker').select('id, auth_uid, email_address').ilike('email_address', e).limit(1).maybeSingle();
   if (error) throw error;
   return data || null;
 }

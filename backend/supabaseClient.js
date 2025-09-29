@@ -25,8 +25,12 @@ function computeRedirectTo() {
   return `${trimmed}/auth/callback`;
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
 
 async function createSupabaseAuthUser(email, password, metadata = {}) {
   try {
@@ -92,25 +96,18 @@ async function resendSignupEmail(email) {
   return data;
 }
 
-/* --------------------  ADD: ensureStorageBucket helper  -------------------- */
 async function ensureStorageBucket(name, isPublic = true) {
   try {
-    // Check if bucket exists
     const { data: exists, error: getErr } = await supabaseAdmin.storage.getBucket(name);
     if (exists && !getErr) return exists;
-  } catch (_) {
-    // ignore and try to create below
-  }
-
-  // Create if missing
+  } catch (_) {}
   const { data: created, error: createErr } = await supabaseAdmin.storage.createBucket(name, {
     public: isPublic,
-    fileSizeLimit: 10 * 1024 * 1024 // 10MB cap per file; tweak if you like
+    fileSizeLimit: 10 * 1024 * 1024
   });
   if (createErr) throw createErr;
   return created;
 }
-/* ------------------------------------------------------------------------- */
 
 module.exports = {
   supabase,

@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-// add these helpers above handleConfirm
 const toBool = (v) => {
   if (typeof v === 'boolean') return v;
   const s = String(v ?? '').trim().toLowerCase();
@@ -76,6 +75,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [requestGroupId, setRequestGroupId] = useState(null);
 
   useEffect(() => {
     try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
@@ -141,96 +141,100 @@ const WorkerReviewPost = ({ handleBack }) => {
     else navigate(-1);
   };
 
-// replace your handleConfirm with this version
-const handleConfirm = async () => {
-  setSubmitError('');
-  setIsSubmitting(true);
-  try {
-    const base = String(API_BASE || '').replace(/\/+$/, '');
+  const handleConfirm = async () => {
+    setSubmitError('');
+    setIsSubmitting(true);
+    try {
+      const base = String(API_BASE || '').replace(/\/+$/, '');
 
-    const payloadRaw = {
-      worker_id: localStorage.getItem('worker_id') || null,
-      first_name: first_name?.trim() || undefined,
-      last_name: last_name?.trim() || undefined,
-      email_address: email?.trim() || undefined,
-      contact_number: contact_number?.trim() || undefined,
-      barangay: barangay?.trim() || undefined,
-      street: street?.trim() || undefined,
-      birth_date: birth_date || undefined,
-      age: toNum(age),
-      facebook: savedInfo.facebook || undefined,
-      instagram: savedInfo.instagram || undefined,
-      linkedin: savedInfo.linkedin || undefined,
-      profile_picture: typeof profile_picture === 'string' ? profile_picture : undefined,
-      profile_picture_name: profile_picture_name || undefined,
-      service_types: onlyStrings(service_types),
-      job_details: onlyStringArrayValues(job_details),
-      years_experience: toNum(years_experience),
-      tools_provided: toBool(tools_provided),
-      work_description: service_description || undefined,
-      rate_type: rate_type || undefined,
-      rate_from: toNum(rate_from),
-      rate_to: toNum(rate_to),
-      rate_value: toNum(rate_value),
-      docs: onlyStrings(docs),
-      metadata: {
-        agree_verify: !!savedAgree.agree_verify,
-        agree_tos: !!savedAgree.agree_tos,
-        agree_privacy: !!savedAgree.agree_privacy
+      const payloadRaw = {
+        worker_id: localStorage.getItem('worker_id') || null,
+        first_name: first_name?.trim() || undefined,
+        last_name: last_name?.trim() || undefined,
+        email_address: email?.trim() || undefined,
+        contact_number: contact_number?.trim() || undefined,
+        barangay: barangay?.trim() || undefined,
+        street: street?.trim() || undefined,
+        birth_date: birth_date || undefined,
+        age: toNum(age),
+        facebook: savedInfo.facebook || undefined,
+        instagram: savedInfo.instagram || undefined,
+        linkedin: savedInfo.linkedin || undefined,
+        profile_picture: typeof profile_picture === 'string' ? profile_picture : undefined,
+        profile_picture_name: profile_picture_name || undefined,
+        service_types: onlyStrings(service_types),
+        job_details: onlyStringArrayValues(job_details),
+        years_experience: toNum(years_experience),
+        tools_provided: toBool(tools_provided),
+        work_description: service_description || undefined,
+        rate_type: rate_type || undefined,
+        rate_from: toNum(rate_from),
+        rate_to: toNum(rate_to),
+        rate_value: toNum(rate_value),
+        docs: Array.isArray(docs) ? docs : [],
+        metadata: {
+          agree_verify: !!savedAgree.agree_verify,
+          agree_tos: !!savedAgree.agree_tos,
+          agree_privacy: !!savedAgree.agree_privacy
+        }
+      };
+
+      const payload = pruneEmpty(payloadRaw) || {};
+
+      const resp = await fetch(`${base}/api/workerapplication/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+
+      let bodyText = '';
+      try { bodyText = await resp.text(); } catch {}
+
+      if (!resp.ok) {
+        let msg = '';
+        try { msg = JSON.parse(bodyText)?.message; } catch {}
+        throw new Error(msg || bodyText || `${resp.status} ${resp.statusText}`);
       }
-    };
 
-    const payload = pruneEmpty(payloadRaw) || {};
+      try {
+        const json = bodyText ? JSON.parse(bodyText) : {};
+        setRequestGroupId(json?.request?.request_group_id || null);
+      } catch {
+        setRequestGroupId(null);
+      }
 
-    const resp = await fetch(`${base}/api/workerapplication/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload)
-    });
-
-    let bodyText = '';
-    try { bodyText = await resp.text(); } catch {}
-
-    if (!resp.ok) {
-      let msg = '';
-      try { msg = JSON.parse(bodyText)?.message; } catch {}
-      throw new Error(msg || bodyText || `${resp.status} ${resp.statusText}`);
+      setIsSubmitting(false);
+      setShowSuccess(true);
+    } catch (e) {
+      setIsSubmitting(false);
+      setSubmitError(String(e.message || 'Submission failed'));
+      console.error('Worker submit failed:', e);
     }
-
-    setIsSubmitting(false);
-    setShowSuccess(true);
-  } catch (e) {
-    setIsSubmitting(false);
-    setSubmitError(String(e.message || 'Submission failed'));
-    console.error('Worker submit failed:', e);
-  }
-};
+  };
 
   const handleGoDashboard = () => {
     clearWorkerApplicationDrafts();
     jumpTop();
-    navigate('/workerdashboard', { state: { submitted: true }, replace: true });
+    const path = '/workerdashboard';
+    try { navigate(path, { state: { submitted: true, request_group_id: requestGroupId, __forceTop: true }, replace: true }); } catch {}
+    try { window.location.assign(path); } catch {}
   };
 
   useEffect(() => {
     const lock = isSubmitting || showSuccess;
     if (!lock) return;
-
     const onPopState = () => { window.history.pushState(null, '', window.location.href); };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
-
     const html = document.documentElement;
     const body = document.body;
     const prevHtmlOverflow = html.style.overflow;
     const prevBodyOverflow = body.style.overflow;
     html.style.overflow = 'hidden';
     body.style.overflow = 'hidden';
-
     const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
     window.addEventListener('keydown', blockKeys, true);
-
     return () => {
       window.removeEventListener('popstate', onPopState, true);
       html.style.overflow = prevHtmlOverflow || '';
@@ -342,7 +346,7 @@ const handleConfirm = async () => {
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
                 <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
                   <h3 className="text-xl md:text-2xl font-semibold">Service Rate</h3>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Pricing</span>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100">Pricing</span>
                 </div>
                 <div className="px-6 py-6">
                   <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
