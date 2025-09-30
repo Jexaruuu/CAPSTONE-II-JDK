@@ -249,7 +249,8 @@ const WorkerNavigation = () => {
                 )}
               </li>
 
-              <li className="relative cursor-pointer group">
+              {/* Dashboard menu item hidden but kept */}
+              <li className="relative cursor-pointer group hidden">
                 <Link
                   to="/workerdashboard"
                   className="text-black font-medium relative inline-block"

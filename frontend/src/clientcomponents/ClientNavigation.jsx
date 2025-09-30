@@ -270,7 +270,8 @@ const ClientNavigation = () => {
                 )}
               </li>
 
-              <li className="relative cursor-pointer group">
+              {/* Dashboard menu item hidden but kept */}
+              <li className="relative cursor-pointer group hidden">
                 <Link to="/clientdashboard" className="text-black font-medium relative inline-block" replace onClick={clearPostDrafts}>
                   Dashboard
                   <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
@@ -339,7 +340,7 @@ const ClientNavigation = () => {
             </div>
 
             <div className="cursor-pointer relative" onClick={handleProfileDropdown}>
-              <img src="/Clienticon.png" alt="User Profile"className="h-8 w-8 rounded-full"/>
+              <img src="/Clienticon.png" alt="User Profile" className="h-8 w-8 rounded-full"/>
               {showProfileDropdown && (
                 <div ref={profileDropdownRef} className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
                   <div className="px-4 py-3 border-b flex items-center space-x-3">

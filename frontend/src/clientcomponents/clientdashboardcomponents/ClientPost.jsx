@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
+import { ArrowRight, ArrowLeft} from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -105,7 +105,6 @@ const ClientPost = () => {
   const [bannerIdx, setBannerIdx] = useState(0);
   const [dotStep, setDotStep] = useState(0);
 
-  // —— NEW: same loading overlay behavior as navigation ——
   const navigate = useNavigate();
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
@@ -116,12 +115,11 @@ const ClientPost = () => {
     setNavLoading(true);
     setTimeout(() => {
       navigate('/clientpostrequest');
-    }, 2000); // match your navigation delay
+    }, 2000);
   };
 
   useEffect(() => {
     if (!navLoading) return;
-    // disable back navigation and keyboard during overlay, same as nav
     const onPopState = () => {
       window.history.pushState(null, '', window.location.href);
     };
@@ -141,7 +139,6 @@ const ClientPost = () => {
       window.removeEventListener('keydown', blockKeys, true);
     };
   }, [navLoading]);
-  // ————————————————————————————————————————————————
 
   useEffect(() => {
     const { firstName, gender } = getClientProfile();
@@ -149,7 +146,13 @@ const ClientPost = () => {
     if (gender) setClientGender(gender);
   }, []);
 
+  const FETCH_REQUESTS = false;
+
   useEffect(() => {
+    if (!FETCH_REQUESTS) {
+      setLoading(false);
+      return;
+    }
     const email = getClientEmail();
     if (!email) {
       setLoading(false);
@@ -213,7 +216,8 @@ const ClientPost = () => {
     return () => clearInterval(id);
   }, []);
 
-  const hasApproved = approved.length > 0;
+  const hasApproved = false;
+
   const totalSlides = Math.max(1, Math.ceil(approved.length / PER_PAGE));
 
   const recomputePositions = () => {
@@ -449,6 +453,8 @@ const ClientPost = () => {
   const honorific = honorificFromGender(clientGender);
   const capFirst = clientFirstName ? clientFirstName.charAt(0).toUpperCase() + clientFirstName.slice(1) : 'Client';
 
+  const SHOW_CAROUSEL = false;
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <h2 className="text-4xl font-semibold mb-10">
@@ -475,9 +481,7 @@ const ClientPost = () => {
               <img src="/Request.png" alt="Request" className="w-20 h-20 object-contain" />
             </div>
             <p className="text-gray-600 mb-4">
-              {loading
-                ? 'Checking for approved requests…'
-                : 'No active service requests found. You can post a new service request to find available workers.'}
+              Start by posting a service request to find available workers.
             </p>
             <Link
               to="/clientpostrequest"
@@ -490,7 +494,7 @@ const ClientPost = () => {
         )}
       </div>
 
-      {hasApproved && (
+      {SHOW_CAROUSEL && hasApproved && (
         <div className="mb-8">
           <div className="relative w-full flex justify-center items-center">
             <button
@@ -630,7 +634,6 @@ const ClientPost = () => {
         </div>
       </div>
 
-      {/* —— Loading overlay copied from navigation —— */}
       {navLoading && (
         <div
           role="dialog"

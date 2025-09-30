@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -95,13 +95,51 @@ function WorkerPost() {
   const [bannerIdx, setBannerIdx] = useState(0);
   const [dotStep, setDotStep] = useState(0);
 
+  const navigate = useNavigate();
+  const [navLoading, setNavLoading] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
+
+  const handleBecomeWorkerClick = (e) => {
+    e.preventDefault();
+    if (navLoading) return;
+    setNavLoading(true);
+    setTimeout(() => {
+      navigate('/workerpostapplication');
+    }, 2000);
+  };
+
+  useEffect(() => {
+    if (!navLoading) return;
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [navLoading]);
+
   useEffect(() => {
     const { firstName, gender } = getWorkerProfile();
     if (firstName) setWorkerFirstName(firstName);
     if (gender) setWorkerGender(gender);
   }, []);
 
+  const FETCH_APPLICATIONS = false;
+
   useEffect(() => {
+    if (!FETCH_APPLICATIONS) {
+      setLoading(false);
+      return;
+    }
     const email = getWorkerEmail();
     const workerId = getWorkerId();
     if (!email && !workerId) {
@@ -159,7 +197,8 @@ function WorkerPost() {
     return () => clearInterval(id);
   }, []);
 
-  const hasApproved = approved.length > 0;
+  const hasApproved = false;
+
   const totalSlides = Math.max(1, Math.ceil(approved.length / PER_PAGE));
 
   const recomputePositions = () => {
@@ -314,6 +353,8 @@ function WorkerPost() {
     return s.charAt(0).toUpperCase() + s.slice(1);
   };
 
+  const SHOW_CAROUSEL = false;
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <h2 className="text-4xl font-semibold mb-10">
@@ -326,6 +367,7 @@ function WorkerPost() {
           {hasApproved && (
             <Link
               to="/workerpostapplication"
+              onClick={handleBecomeWorkerClick}
               className="inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition"
             >
               + Become a worker
@@ -340,11 +382,12 @@ function WorkerPost() {
             </div>
             <p className="text-gray-600 mb-4">
               {loading
-                ? 'Checking for approved applications…'
-                : 'No applications found. You can post your application now to start finding jobs and get hired for home service work.'}
+                ? 'Checking for applications…'
+                : 'Start by posting your application to get hired for home service jobs.'}
             </p>
             <Link
               to="/workerpostapplication"
+              onClick={handleBecomeWorkerClick}
               className="inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition"
             >
               + Become a worker
@@ -353,7 +396,7 @@ function WorkerPost() {
         )}
       </div>
 
-      {hasApproved && (
+      {SHOW_CAROUSEL && hasApproved && (
         <div className="mb-8">
           <div className="relative w-full flex justify-center items-center">
             <button
@@ -381,7 +424,6 @@ function WorkerPost() {
                   const IconComp = getServiceIcon(type);
                   const years = (item?.details?.years_experience ?? item?.experience?.years ?? item?.details?.yearsExperience ?? '');
                   const tools = item?.details?.tools_provided ?? item?.details?.toolsProvided ?? item?.tools?.provided ?? '';
-
                   return (
                     <div
                       key={item.id || i}
@@ -399,20 +441,16 @@ function WorkerPost() {
 
                       <div className="mt-3 text-sm text-gray-700 space-y-1">
                         <div className="text-gray-600">
-                          <span className="font-medium text-gray-800">Location:</span>{' '}
-                          {buildLocation(item) || '-'}
+                          <span className="font-medium text-gray-800">Location:</span> {buildLocation(item) || '-'}
                         </div>
                         <div className="text-gray-600">
-                          <span className="font-medium text-gray-800">Years of Experience:</span>{' '}
-                          {years !== '' && years !== null && years !== undefined ? String(years) : '-'}
+                          <span className="font-medium text-gray-800">Years of Experience:</span> {years !== '' && years !== null && years !== undefined ? String(years) : '-'}
                         </div>
                         <div className="text-gray-600">
-                          <span className="font-medium text-gray-800">Tools Provided:</span>{' '}
-                          {typeof tools === 'boolean' ? (tools ? 'Yes' : 'No') : (String(tools || '').trim() || '-')}
+                          <span className="font-medium text-gray-800">Tools Provided:</span> {typeof tools === 'boolean' ? (tools ? 'Yes' : 'No') : (String(tools || '').trim() || '-')}
                         </div>
                         <div className="text-gray-600">
-                          <span className="font-medium text-gray-800">Service Price Rate:</span>{' '}
-                          {getRateType(item) || '-'}
+                          <span className="font-medium text-gray-800">Service Price Rate:</span> {getRateType(item) || '-'}
                         </div>
                       </div>
 
@@ -472,6 +510,52 @@ function WorkerPost() {
           ))}
         </div>
       </div>
+
+      {navLoading && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Loading next step"
+          tabIndex={-1}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        >
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900">Preparing Step</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
