@@ -77,7 +77,7 @@ function toBoolStrict(v) {
   return null;
 }
 
-export default function WorkerPost() {
+function WorkerPost() {
   const [loading, setLoading] = useState(true);
   const [approved, setApproved] = useState([]);
   const [current, setCurrent] = useState(0);
@@ -250,12 +250,13 @@ export default function WorkerPost() {
     wrap.scrollLeft = startLeftRef.current - dx;
   };
 
-  const onDragPointerUp = () => {
+  const onDragPointerUp = (e) => {
     if (!isPointerDownRef.current) return;
     isPointerDownRef.current = false;
     const wrap = trackRef.current;
-    if (wrap && pointerIdRef.current != null) {
-      wrap.releasePointerCapture?.(e.pointerId);
+    const pid = e?.pointerId ?? pointerIdRef.current;
+    if (wrap && pid != null) {
+      try { wrap.releasePointerCapture?.(pid); } catch {}
       wrap.classList.remove('drag-active');
     }
     pointerIdRef.current = null;
@@ -267,6 +268,7 @@ export default function WorkerPost() {
     isPointerDownRef.current = false;
     const wrap = trackRef.current;
     if (wrap) wrap.classList.remove('drag-active');
+    pointerIdRef.current = null;
     snapToNearestSlide();
   };
 
@@ -473,3 +475,5 @@ export default function WorkerPost() {
     </div>
   );
 }
+
+export default WorkerPost;
