@@ -98,44 +98,50 @@ const ClientPost = () => {
   const [clientFirstName, setClientFirstName] = useState('');
   const [clientGender, setClientGender] = useState('');
 
-  const PER_PAGE = 1;
+  const PER_PAGE = 3;
 
   const banners = ['/Banner1.png', '/Banner2.png'];
 
   const [bannerIdx, setBannerIdx] = useState(0);
   const [dotStep, setDotStep] = useState(0);
 
-  // --- Post button -> popup loader like navigation ---
+  // —— NEW: same loading overlay behavior as navigation ——
   const navigate = useNavigate();
-  const [posting, setPosting] = useState(false);
+  const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
-  const SHOW_INLINE_BTN_SPINNER = false; // keep code but hide inline spinner per your request
 
   const handlePostClick = (e) => {
     e.preventDefault();
-    if (posting) return;
-    setPosting(true);
-    // navigate after a short prep time (same idea as your nav)
-    setTimeout(() => navigate('/clientpostrequest'), 2000);
+    if (navLoading) return;
+    setNavLoading(true);
+    setTimeout(() => {
+      navigate('/clientpostrequest');
+    }, 2000); // match your navigation delay
   };
 
-  // mirror the nav "loading modal" behavior (disable back/scroll/keys) while posting
   useEffect(() => {
-    if (!posting) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    if (!navLoading) return;
+    // disable back navigation and keyboard during overlay, same as nav
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
+
     const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
     window.addEventListener('keydown', blockKeys, true);
-    window.addEventListener('popstate', onPopState, true);
+
     return () => {
-      window.removeEventListener('keydown', blockKeys, true);
       window.removeEventListener('popstate', onPopState, true);
       document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', blockKeys, true);
     };
-  }, [posting]);
+  }, [navLoading]);
+  // ————————————————————————————————————————————————
 
   useEffect(() => {
     const { firstName, gender } = getClientProfile();
@@ -374,13 +380,11 @@ const ClientPost = () => {
     return s.charAt(0).toUpperCase() + s.slice(1);
   };
 
-  // Keep refs for drag handlers but DISABLE dragging/scrolling by user
   const isPointerDownRef = useRef(false);
   const pointerIdRef = useRef(null);
   const startXRef = useRef(0);
   const startLeftRef = useRef(0);
   const movedRef = useRef(false);
-  const DRAG_ENABLED = false;
 
   const snapToNearestSlide = () => {
     const wrap = trackRef.current;
@@ -394,7 +398,6 @@ const ClientPost = () => {
   };
 
   const onDragPointerDown = (e) => {
-    if (!DRAG_ENABLED) { e.preventDefault(); return; }
     const wrap = trackRef.current;
     if (!wrap) return;
     isPointerDownRef.current = true;
@@ -407,7 +410,6 @@ const ClientPost = () => {
   };
 
   const onDragPointerMove = (e) => {
-    if (!DRAG_ENABLED) return;
     if (!isPointerDownRef.current) return;
     const wrap = trackRef.current;
     if (!wrap) return;
@@ -417,7 +419,6 @@ const ClientPost = () => {
   };
 
   const onDragPointerUp = () => {
-    if (!DRAG_ENABLED) return;
     if (!isPointerDownRef.current) return;
     isPointerDownRef.current = false;
     const wrap = trackRef.current;
@@ -430,7 +431,6 @@ const ClientPost = () => {
   };
 
   const onDragPointerLeave = () => {
-    if (!DRAG_ENABLED) return;
     if (!isPointerDownRef.current) return;
     isPointerDownRef.current = false;
     const wrap = trackRef.current;
@@ -439,7 +439,6 @@ const ClientPost = () => {
   };
 
   const onTrackClickCapture = (e) => {
-    if (!DRAG_ENABLED) return;
     if (movedRef.current) {
       e.stopPropagation();
       e.preventDefault();
@@ -463,13 +462,9 @@ const ClientPost = () => {
             <Link
               to="/clientpostrequest"
               onClick={handlePostClick}
-              className={`inline-flex items-center gap-2 px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition ${posting ? 'opacity-70 cursor-wait' : ''}`}
-              aria-disabled={posting ? 'true' : undefined}
+              className="inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition"
             >
-              {SHOW_INLINE_BTN_SPINNER && posting && (
-                <span className="inline-block h-4 w-4 rounded-full border-2 border-[#008cfc] border-t-transparent animate-spin" />
-              )}
-              {posting ? 'Loading…' : '+ Post a service request'}
+              + Post a service request
             </Link>
           )}
         </div>
@@ -487,71 +482,52 @@ const ClientPost = () => {
             <Link
               to="/clientpostrequest"
               onClick={handlePostClick}
-              className={`inline-flex items-center gap-2 px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition ${posting ? 'opacity-70 cursor-wait' : ''}`}
-              aria-disabled={posting ? 'true' : undefined}
+              className="inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition"
             >
-              {SHOW_INLINE_BTN_SPINNER && posting && (
-                <span className="inline-block h-4 w-4 rounded-full border-2 border-[#008cfc] border-t-transparent animate-spin" />
-              )}
-              {posting ? 'Loading…' : '+ Post a service request'}
+              + Post a service request
             </Link>
           </div>
         )}
       </div>
 
-      <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mt-2">
-        <div className="relative h-36 sm:h-44 md:h-52 lg:h-72">
-          {banners.map((src, i) => (
-            <img
-              key={i}
-              src={src}
-              alt=""
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${i === bannerIdx ? 'opacity-100' : 'opacity-0'}`}
-            />
-          ))}
-        </div>
-      </div>
-
       {hasApproved && (
-        <div className="mt-10">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-2xl font-semibold">Active Service Request</h3>
-          </div>
-
-          {/* arrows + track in 3-col grid; track centered with gutters; user drag disabled */}
-          <div className="grid grid-cols-[auto,1fr,auto] items-center gap-4 w-full">
+        <div className="mb-8">
+          <div className="relative w-full flex justify-center items-center">
             <button
               onClick={() => handleScroll('left')}
-              className={`bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 transition ${totalSlides <= 1 ? 'opacity-50 pointer-events-none' : ''}`}
-              aria-label="Previous"
+              className="absolute -left-2 md:left-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
             >
               <ArrowLeft size={22} />
             </button>
 
-            <div className="w-full overflow-x-scroll [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:none]">
+            <div className="w-full max-w-[1425px] overflow-hidden px-12 py-2">
               <div
                 ref={trackRef}
                 onScroll={onTrackScroll}
-                className="flex space-x-0"
+                className="flex space-x-6 overflow-x-scroll scroll-smooth pl-4 pr-4 select-none cursor-grab active:cursor-grabbing [touch-action:pan-x] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 onPointerDown={onDragPointerDown}
                 onPointerMove={onDragPointerMove}
                 onPointerUp={onDragPointerUp}
                 onPointerCancel={onDragPointerUp}
                 onPointerLeave={onDragPointerLeave}
                 onClickCapture={onTrackClickCapture}
-                onWheel={(e) => e.preventDefault()}
               >
                 {approved.map((item, i) => {
                   const type = item?.details?.service_type || '';
                   const title = type + (item?.details?.service_task ? `: ${item.details.service_task}` : '');
                   const IconComp = getServiceIcon(type);
+
                   const urgentFlag = resolveUrgentFlag(item);
+
                   const cardTone =
                     urgentFlag === true || urgentFlag === false
                       ? 'bg-blue-50 border-[#008cfc] hover:border-[#008cfc] hover:ring-[#008cfc]'
                       : 'bg-white border-gray-300 hover:border-[#008cfc] hover:ring-[#008cfc]';
+
                   const iconTone = 'border-gray-400 text-[#008cfc]';
+
                   const urgentText = urgentFlag === true ? 'Yes' : urgentFlag === false ? 'No' : getUrgency(item) || '-';
+
                   const urgentClass =
                     urgentFlag === true
                       ? 'text-[#008cfc] font-medium'
@@ -559,60 +535,60 @@ const ClientPost = () => {
                       ? 'text-red-600 font-medium'
                       : 'text-gray-700';
 
-                 return (
-    <div key={item.id} ref={(el) => (cardRefs.current[i] = el)} className="min-w-full px-4 sm:px-6 lg:px-10">
-      <div
-        className={`max-w-[1350px] mx-auto overflow-hidden w-full h-auto min-h-[220px] flex flex-col flex-shrink-0 border rounded-xl p-6 text-left cursor-default shadow-sm transition-all duration-300 hover:ring-2 hover:shadow-xl hover:ring-inset ${cardTone}`}
-      >
-                        <div className="flex items-start justify-between">
-                          <div className="text-lg font-semibold text-gray-900">
-                            {title || 'Approved Service Request'}
-                          </div>
-                          <div className={`h-9 w-9 rounded-lg border ${iconTone} flex items-center justify-center bg-white`}>
-                            <IconComp className="h-5 w-5" />
-                          </div>
+                  return (
+                    <div
+                      key={item.id}
+                      ref={(el) => (cardRefs.current[i] = el)}
+                      className={`overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto min-h-[220px] flex flex-col flex-shrink-0 border rounded-xl p-6 text-left cursor-default shadow-sm transition-all duration-300 hover:ring-2 hover:shadow-xl hover:ring-inset ${cardTone}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="text-lg font-semibold text-gray-900">
+                          {title || 'Approved Service Request'}
                         </div>
-
-                        <div className="mt-3 text-sm text-gray-700 space-y-1">
-                          <div className="text-gray-600">
-                            <span className="font-medium text-gray-800">Location:</span>{' '}
-                            {buildLocation(item) || '-'}
-                          </div>
-                          <div className="text-gray-600">
-                            <span className="font-medium text-gray-800">Preferred Date:</span>{' '}
-                            {item?.details?.preferred_date ? formatDateMMDDYYYY(item.details.preferred_date) : '-'}
-                          </div>
-                          <div className="text-gray-600">
-                            <span className="font-medium text-gray-800">Preferred Time:</span>{' '}
-                            {item?.details?.preferred_time ? formatTime12h(item.details.preferred_time) : '-'}
-                          </div>
-                          <div className="text-gray-600">
-                            <span className="font-medium text-gray-800">Urgency:</span>{' '}
-                            <span className={urgentClass}>{urgentText}</span>
-                          </div>
-                          <div className="text-gray-600">
-                            <span className="font-medium text-gray-800">Service Price Rate:</span>{' '}
-                            {getRateType(item) || '-'}
-                          </div>
+                        <div className={`h-9 w-9 rounded-lg border ${iconTone} flex items-center justify-center bg-white`}>
+                          <IconComp className="h-5 w-5" />
                         </div>
+                      </div>
 
-                        <div className="mt-auto pt-4 flex items-center justify-between">
-                          <button
-                            type="button"
-                            className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition !h-11"
-                          >
-                            View details
-                          </button>
+                      <div className="mt-3 text-sm text-gray-700 space-y-1">
+                        <div className="text-gray-600">
+                          <span className="font-medium text-gray-800">Location:</span>{' '}
+                          {buildLocation(item) || '-'}
+                        </div>
+                        <div className="text-gray-600">
+                          <span className="font-medium text-gray-800">Preferred Date:</span>{' '}
+                          {item?.details?.preferred_date ? formatDateMMDDYYYY(item.details.preferred_date) : '-'}
+                        </div>
+                        <div className="text-gray-600">
+                          <span className="font-medium text-gray-800">Preferred Time:</span>{' '}
+                          {item?.details?.preferred_time ? formatTime12h(item.details.preferred_time) : '-'}
+                        </div>
+                        <div className="text-gray-600">
+                          <span className="font-medium text-gray-800">Urgency:</span>{' '}
+                          <span className={urgentClass}>{urgentText}</span>
+                        </div>
+                        <div className="text-gray-600">
+                          <span className="font-medium text-gray-800">Service Price Rate:</span>{' '}
+                          {getRateType(item) || '-'}
+                        </div>
+                      </div>
 
-                          <span className="inline-flex items-center !h-11 whitespace-nowrap rounded-lg border border-yellow-200 bg-yellow-50 px-3 text-xs font-medium text-yellow-700">
-                            Waiting for a Worker
-                            <span className="ml-2 inline-flex w-6 justify-between font-mono">
-                              <span className={`transition-opacity duration-200 ${dotStep >= 1 ? 'opacity-100' : 'opacity-0'}`}>.</span>
-                              <span className={`transition-opacity duration-200 ${dotStep >= 2 ? 'opacity-100' : 'opacity-0'}`}>.</span>
-                              <span className={`transition-opacity duration-200 ${dotStep >= 3 ? 'opacity-100' : 'opacity-0'}`}>.</span>
-                            </span>
+                      <div className="mt-auto pt-4 flex items-center justify-between">
+                        <button
+                          type="button"
+                          className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition !h-11"
+                        >
+                          View details
+                        </button>
+
+                        <span className="inline-flex items-center !h-11 whitespace-nowrap rounded-lg border border-yellow-200 bg-yellow-50 px-3 text-xs font-medium text-yellow-700">
+                          Waiting for a Worker
+                          <span className="ml-2 inline-flex w-6 justify-between font-mono">
+                            <span className={`transition-opacity duration-200 ${dotStep >= 1 ? 'opacity-100' : 'opacity-0'}`}>.</span>
+                            <span className={`transition-opacity duration-200 ${dotStep >= 2 ? 'opacity-100' : 'opacity-0'}`}>.</span>
+                            <span className={`transition-opacity duration-200 ${dotStep >= 3 ? 'opacity-100' : 'opacity-0'}`}>.</span>
                           </span>
-                        </div>
+                        </span>
                       </div>
                     </div>
                   );
@@ -622,8 +598,7 @@ const ClientPost = () => {
 
             <button
               onClick={() => scrollToIndex(Math.min(totalSlides - 1, current + 1))}
-              className={`bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 transition ${totalSlides <= 1 ? 'opacity-50 pointer-events-none' : ''}`}
-              aria-label="Next"
+              className="absolute -right-2 md:right-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
             >
               <ArrowRight size={22} />
             </button>
@@ -642,17 +617,29 @@ const ClientPost = () => {
         </div>
       )}
 
-      {/* Popup loading overlay — same UX as navigation */}
-      {posting && (
+      <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mt-8">
+        <div className="relative h-36 sm:h-44 md:h-52 lg:h-72">
+          {banners.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt=""
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${i === bannerIdx ? 'opacity-100' : 'opacity-0'}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* —— Loading overlay copied from navigation —— */}
+      {navLoading && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Preparing Step"
+          aria-label="Loading next step"
           tabIndex={-1}
-          autoFocus
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
         >
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">

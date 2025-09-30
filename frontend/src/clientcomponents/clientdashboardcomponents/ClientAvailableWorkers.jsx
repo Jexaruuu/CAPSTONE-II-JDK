@@ -159,7 +159,7 @@ const ClientAvailableWorkers = () => {
   };
 
   return (
-    <div className="max-w-[1525px] mx-auto px-6 py-10 relative">
+    <div className="max-w-[1525px] mx-auto px-6 -py-10 relative">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold text-gray-800">Available Workers</h2>
         <a
