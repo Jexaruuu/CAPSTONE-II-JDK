@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { compressImageFileToDataURL } from '../../utils/imageCompression';
 import ClientNavigation from '../../clientcomponents/ClientNavigation';
@@ -14,9 +13,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   const [street, setStreet]         = useState('');
   const [barangay, setBarangay]     = useState('');
   const [additionalAddress, setAdditionalAddress] = useState('');
-  const [facebook, setFacebook]     = useState('');
-  const [instagram, setInstagram]   = useState('');
-  const [linkedin, setLinkedin]     = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
   const [profilePictureName, setProfilePictureName] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -129,9 +125,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
         setStreet(data.street || '');
         setBarangay(data.barangay || '');
         setAdditionalAddress(data.additionalAddress || '');
-        setFacebook(data.facebook || '');
-        setInstagram(data.instagram || '');
-        setLinkedin(data.linkedin || '');
         setProfilePicture(data.profilePicture || null);
         setProfilePictureName(data.profilePictureName || '');
       } catch {}
@@ -202,9 +195,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
       street,
       barangay,
       additionalAddress,
-      facebook,
-      instagram,
-      linkedin,
       profilePicture,
       profilePictureName,
     };
@@ -218,9 +208,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
     street,
     barangay,
     additionalAddress,
-    facebook,
-    instagram,
-    linkedin,
     profilePicture,
     profilePictureName,
   ]);
@@ -475,43 +462,6 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                     {attempted && !additionalAddress.trim() && (
                       <p className="text-xs text-red-600 mt-1">Please provide a landmark or additional address.</p>
                     )}
-                  </div>
-                </div>
-
-                <div className="mt-10">
-                  <div className="text-base font-semibold mb-3">Social Media</div>
-                  <p className="text-sm text-gray-600 mb-4">Please provide your social media links.</p>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <FaFacebookF className="text-blue-600" />
-                      <input
-                        type="text"
-                        value={facebook}
-                        onChange={(e) => setFacebook(e.target.value)}
-                        placeholder="Facebook Link"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FaInstagram className="text-pink-500" />
-                      <input
-                        type="text"
-                        value={instagram}
-                        onChange={(e) => setInstagram(e.target.value)}
-                        placeholder="Instagram Link"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FaLinkedinIn className="text-blue-600" />
-                      <input
-                        type="text"
-                        value={linkedin}
-                        onChange={(e) => setLinkedin(e.target.value)}
-                        placeholder="LinkedIn Link"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
                   </div>
                 </div>
               </div>

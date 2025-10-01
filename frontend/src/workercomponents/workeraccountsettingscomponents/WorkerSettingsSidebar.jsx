@@ -28,7 +28,7 @@ export default function WorkerSettingsSidebar({ active, onChange }) {
           Settings
         </div>
         <div className="space-y-2">
-          <Item id="profile" icon={User2} label="Edit Profile" />
+          <Item id="profile" icon={User2} label="My Information" />
           <Item id="security" icon={ShieldCheck} label="Password" />
           <button
             className={[

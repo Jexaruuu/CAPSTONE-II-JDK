@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
 const ClientNavigation = () => {
   const [selectedOption, setSelectedOption] = useState('Worker');
   const [showSubDropdown, setShowSubDropdown] = useState(false);
@@ -17,6 +19,12 @@ const ClientNavigation = () => {
   const profileDropdownRef = useRef(null);
   const reportsDropdownRef = useRef(null);
   const bellDropdownRef = useRef(null);
+
+  const goTop = () => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
+  };
 
   const handleClickOutside = (event) => {
     const t = event.target;
@@ -37,6 +45,7 @@ const ClientNavigation = () => {
   };
 
   const handleDropdownToggle = (dropdownName) => {
+    goTop();
     setShowHireWorkerDropdown(false);
     setShowManageRequestDropdown(false);
     setShowProfileDropdown(false);
@@ -66,6 +75,7 @@ const ClientNavigation = () => {
   };
 
   const handleProfileDropdown = () => {
+    goTop();
     setShowProfileDropdown(!showProfileDropdown);
     setShowHireWorkerDropdown(false);
     setShowManageRequestDropdown(false);
@@ -75,6 +85,7 @@ const ClientNavigation = () => {
   };
 
   const handleSearchBarDropdown = () => {
+    goTop();
     setShowHireWorkerDropdown(false);
     setShowManageRequestDropdown(false);
     setShowReportsDropdown(false);
@@ -84,6 +95,7 @@ const ClientNavigation = () => {
   };
 
   const handleOptionClick = (option) => {
+    goTop();
     setSelectedOption(option);
     setShowSubDropdown(false);
   };
@@ -95,15 +107,44 @@ const ClientNavigation = () => {
 
   const [fullName, setFullName] = useState('');
   const [prefix, setPrefix] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('/Clienticon.png');
 
   useEffect(() => {
-    const fName = localStorage.getItem('first_name') || '';
-    const lName = localStorage.getItem('last_name') || '';
-    const sex = localStorage.getItem('sex') || '';
-    if (sex === 'Male') setPrefix('Mr.');
-    else if (sex === 'Female') setPrefix('Ms.');
-    else setPrefix('');
-    setFullName(`${fName} ${lName}`);
+    const init = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/account/me`, { withCredentials: true });
+        const f = data?.first_name || localStorage.getItem('first_name') || '';
+        const l = data?.last_name || localStorage.getItem('last_name') || '';
+        const sx = data?.sex || localStorage.getItem('sex') || '';
+        const av = data?.avatar_url || localStorage.getItem('clientAvatarUrl') || '/Clienticon.png';
+        if (sx === 'Male') setPrefix('Mr.');
+        else if (sx === 'Female') setPrefix('Ms.');
+        else setPrefix('');
+        setFullName(`${f} ${l}`.trim());
+        setAvatarUrl(av);
+        localStorage.setItem('first_name', f);
+        localStorage.setItem('last_name', l);
+        if (sx) localStorage.setItem('sex', sx);
+        if (av) localStorage.setItem('clientAvatarUrl', av);
+      } catch {
+        const fName = localStorage.getItem('first_name') || '';
+        const lName = localStorage.getItem('last_name') || '';
+        const sex = localStorage.getItem('sex') || '';
+        const av = localStorage.getItem('clientAvatarUrl') || '/Clienticon.png';
+        if (sex === 'Male') setPrefix('Mr.');
+        else if (sex === 'Female') setPrefix('Ms.');
+        else setPrefix('');
+        setFullName(`${fName} ${lName}`.trim());
+        setAvatarUrl(av);
+      }
+    };
+    init();
+    const onAvatar = (e) => {
+      const u = e?.detail?.url || localStorage.getItem('clientAvatarUrl') || '/Clienticon.png';
+      setAvatarUrl(u);
+    };
+    window.addEventListener('client-avatar-updated', onAvatar);
+    return () => window.removeEventListener('client-avatar-updated', onAvatar);
   }, []);
 
   const navigate = useNavigate();
@@ -112,13 +153,12 @@ const ClientNavigation = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post('http://localhost:5000/api/login/logout', {}, { withCredentials: true });
+      await axios.post(`${API_BASE}/api/login/logout`, {}, { withCredentials: true });
       localStorage.clear();
+      goTop();
       navigate('/', { replace: true });
       window.location.reload();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    } catch (error) {}
   };
 
   const clearPostDrafts = () => {
@@ -126,9 +166,7 @@ const ClientNavigation = () => {
       localStorage.removeItem('clientInformationForm');
       localStorage.removeItem('clientServiceRequestDetails');
       localStorage.removeItem('clientServiceRate');
-    } catch (e) {
-      console.warn('Failed clearing drafts', e);
-    }
+    } catch {}
   };
 
   const role = localStorage.getItem('role');
@@ -137,6 +175,7 @@ const ClientNavigation = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const goSearch = () => {
     const q = searchQuery.trim();
+    goTop();
     navigate(`/find-a-worker${q ? `?search=${encodeURIComponent(q)}` : ''}`);
   };
   const onSearchKey = (e) => {
@@ -168,7 +207,14 @@ const ClientNavigation = () => {
       <div className="bg-white/95 backdrop-blur fixed top-0 left-0 right-0 z-50">
         <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
           <div className="flex items-center space-x-6 -ml-2.5">
-            <Link to={logoTo} replace onClick={clearPostDrafts}>
+            <Link
+              to={logoTo}
+              replace
+              onClick={() => {
+                clearPostDrafts();
+                goTop();
+              }}
+            >
               <img
                 src="/jdklogo.png"
                 alt="Logo"
@@ -180,48 +226,10 @@ const ClientNavigation = () => {
             <ul className="flex space-x-7 mt-4 text-md">
               <li className="relative cursor-pointer group">
                 <span
-                  onClick={() => handleDropdownToggle('HireWorker')}
-                  className="text-black font-medium flex items-center relative"
-                >
-                  <span className="relative">
-                    Hire a Worker
-                    <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
-                  </span>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1 inline-block">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </span>
-                {showHireWorkerDropdown && (
-                  <div ref={hireWorkerDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
-                    <ul className="space-y-2 py-2">
-                      <li
-                        className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200"
-                        onClick={() => {
-                          setShowHireWorkerDropdown(false);
-                          if (location.pathname === '/clientpostrequest') return;
-                          setNavLoading(true);
-                          setTimeout(() => {
-                            clearPostDrafts();
-                            navigate('/clientpostrequest');
-                          }, 2000);
-                        }}
-                      >
-                        Post a Service Request
-                      </li>
-                      <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                        <Link to="/find-a-worker">Find a Worker</Link>
-                      </li>
-                    </ul>
-                  </div>
-                )}
-              </li>
-
-              <li className="relative cursor-pointer group">
-                <span
                   onClick={() => handleDropdownToggle('ManageRequest')}
                   className="text-black font-medium flex items-center relative"
                 >
-                  <span className="relative">
+                  <span className="relative -ml-2.5">
                     Manage Request
                     <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
                   </span>
@@ -233,14 +241,30 @@ const ClientNavigation = () => {
                   <div ref={manageRequestDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                     <ul className="space-y-2 py-2">
                       <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                        <Link to="/current-service-request">Current Service Request</Link>
+                        <Link to="/current-service-request" onClick={goTop}>Current Service Request</Link>
                       </li>
                       <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                        <Link to="/completed-service-request">Completed Requests</Link>
+                        <Link to="/completed-service-request" onClick={goTop}>Completed Requests</Link>
                       </li>
                     </ul>
                   </div>
                 )}
+              </li>
+
+              <li className="relative cursor-pointer group">
+                <Link
+                  to="/find-a-worker"
+                  className="text-black font-medium relative inline-block"
+                  onClick={() => {
+                    handleSearchBarDropdown();
+                    goTop();
+                  }}
+                >
+                  <span className="relative">
+                    Hire a Worker
+                    <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
+                  </span>
+                </Link>
               </li>
 
               <li className="relative cursor-pointer group hidden">
@@ -270,17 +294,24 @@ const ClientNavigation = () => {
                 )}
               </li>
 
-              {/* Dashboard menu item hidden but kept */}
               <li className="relative cursor-pointer group hidden">
-                <Link to="/clientdashboard" className="text-black font-medium relative inline-block" replace onClick={clearPostDrafts}>
+                <Link
+                  to="/clientdashboard"
+                  className="text-black font-medium relative inline-block"
+                  replace
+                  onClick={() => {
+                    clearPostDrafts();
+                    goTop();
+                  }}
+                >
                   Dashboard
                   <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
                 </Link>
               </li>
 
               <li className="relative cursor-pointer group">
-                <Link to="/clientmessages" className="text-black font-medium relative inline-block">
-                  Messages
+                <Link to="/clientmessages" className="text-black font-medium relative inline-block" onClick={goTop}>
+                Messages
                   <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
                 </Link>
               </li>
@@ -309,8 +340,7 @@ const ClientNavigation = () => {
                   type="button"
                   onClick={() => {
                     handleSearchBarDropdown();
-                    const q = searchQuery.trim();
-                    navigate(`/find-a-worker${q ? `?search=${encodeURIComponent(q)}` : ''}`);
+                    goSearch();
                   }}
                   className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
                 >
@@ -330,6 +360,7 @@ const ClientNavigation = () => {
                     className="px-4 py-2 text-blue-500 cursor-pointer hover:bg-gray-100"
                     onClick={() => {
                       setShowBellDropdown(false);
+                      goTop();
                       navigate('/client-notifications');
                     }}
                   >
@@ -340,11 +371,11 @@ const ClientNavigation = () => {
             </div>
 
             <div className="cursor-pointer relative" onClick={handleProfileDropdown}>
-              <img src="/Clienticon.png" alt="User Profile" className="h-8 w-8 rounded-full"/>
+              <img src={avatarUrl || "/Clienticon.png"} alt="User Profile" className="h-8 w-8 rounded-full object-cover"/>
               {showProfileDropdown && (
                 <div ref={profileDropdownRef} className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
                   <div className="px-4 py-3 border-b flex items-center space-x-3">
-                    <img src="/Clienticon.png" alt="Profile Icon" className="h-8 w-8 rounded-full object-cover" />
+                    <img src={avatarUrl || "/Clienticon.png"} alt="Profile Icon" className="h-8 w-8 rounded-full object-cover" />
                     <div>
                       <p className="font-semibold text-sm">{prefix} {fullName}</p>
                       <p className="text-xs text-gray-600">Client</p>
@@ -352,7 +383,7 @@ const ClientNavigation = () => {
                   </div>
                   <ul className="py-2">
                     <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                      <Link to="/account-settings">Account Settings</Link>
+                      <Link to="/account-settings" onClick={goTop}>Account Settings</Link>
                     </li>
                     <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
                       <span onClick={handleLogout}>Log out</span>

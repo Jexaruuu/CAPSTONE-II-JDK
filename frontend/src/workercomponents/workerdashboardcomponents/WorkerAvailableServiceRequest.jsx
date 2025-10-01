@@ -16,6 +16,22 @@ const WorkerAvailableServiceRequest = () => {
     { id: 7, name: 'P. Dela Cruz', task: 'Bathroom plumbing', image: '/clients/pdc.png' },
   ];
 
+  const items = requests.map((r, i) => ({
+    ...r,
+    country: ['Philippines','United States','Portugal','India'][i % 4],
+    stat1Title: 'Priority',
+    stat1Value: ['Normal','Urgent','Normal','Urgent'][i % 4],
+    stat2Title: 'Jobs Posted',
+    stat2Value: [5,12,2,18][i % 4],
+    stat3Title: 'Budget',
+    stat3Value: ['₱800','₱1,500','₱2,000','₱600'][i % 4],
+    desc:
+      'Looking for a reliable professional. Materials can be discussed. Please include availability and a brief approach.',
+    meetText: ['₱150 for 15 minutes Zoom chat','₱200 for 20 minutes Zoom chat','₱300 for 30 minutes Zoom chat','₱100 for 10 minutes Zoom chat'][i % 4]
+  }));
+
+  const displayItems = items.slice(0, 10);
+
   const PER_PAGE = 3;
 
   const scrollRef = useRef(null);
@@ -30,54 +46,26 @@ const WorkerAvailableServiceRequest = () => {
   const [cardW, setCardW] = useState(340);
   const [endPad, setEndPad] = useState(0);
 
-  const totalSlides = Math.max(1, Math.ceil(requests.length / PER_PAGE));
-
-  const handleScroll = (direction) => {
-    const next = direction === 'left' ? current - 1 : current + 1;
-    scrollToIndex(next);
-  };
-
-  const onTrackScroll = () => {
-    const el = scrollRef.current;
-    if (!el || positions.length === 0) return;
-    const sl = el.scrollLeft;
-    let nearest = 0;
-    for (let i = 1; i < positions.length; i++) {
-      if (Math.abs(positions[i] - sl) < Math.abs(positions[nearest] - sl)) nearest = i;
-    }
-    if (nearest !== current) setCurrent(nearest);
-  };
-
-  const scrollToIndex = (i) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const idx = Math.max(0, Math.min(totalSlides - 1, i));
-    const left = positions.length ? positions[idx] : idx * ((cardW + GAP) * PER_PAGE - GAP);
-    el.scrollTo({ left, behavior: 'smooth' });
-    setCurrent(idx);
-  };
+  const totalSlides = Math.max(1, Math.ceil(displayItems.length / PER_PAGE));
 
   const getHPad = (el) => {
     const cs = getComputedStyle(el);
     return (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+  };
+  const getRightPad = (el) => {
+    const cs = getComputedStyle(el);
+    return parseFloat(cs.paddingRight) || 0;
   };
 
   const recomputeCardWidth = () => {
     const wrap = wrapRef.current;
     const track = scrollRef.current;
     if (!wrap || !track) return;
-
     const visible = wrap.clientWidth - getHPad(wrap) - getHPad(track);
     const exact = Math.floor((visible - GAP * (PER_PAGE - 1)) / PER_PAGE);
     const clamped = Math.max(300, Math.min(520, exact));
     setCardW(clamped);
-
-    const pageWidth = PER_PAGE * clamped + GAP * (PER_PAGE - 1);
-    const rem = requests.length % PER_PAGE;
-    const lastCount = rem === 0 ? PER_PAGE : rem;
-    const lastWidth = lastCount * clamped + GAP * Math.max(0, lastCount - 1);
-    const padNeeded = Math.max(0, pageWidth - lastWidth);
-    setEndPad(rem === 0 ? 0 : padNeeded);
+    setEndPad(0);
   };
 
   const recomputePositions = () => {
@@ -97,7 +85,44 @@ const WorkerAvailableServiceRequest = () => {
 
   useEffect(() => {
     requestAnimationFrame(recomputePositions);
-  }, [requests.length, cardW, endPad]);
+  }, [displayItems.length, cardW, endPad]);
+
+  const getViewSlideLefts = () => {
+    const el = scrollRef.current;
+    if (!el || positions.length === 0) return positions;
+    const arr = positions.slice();
+    arr[arr.length - 1] = Math.max(0, el.scrollWidth - el.clientWidth - getRightPad(el));
+    return arr;
+  };
+
+  const handleScroll = (direction) => {
+    const next = direction === 'left' ? current - 1 : current + 1;
+    scrollToIndex(next);
+  };
+
+  const onTrackScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const slideLefts = getViewSlideLefts();
+    if (slideLefts.length === 0) return;
+    const sl = el.scrollLeft;
+    let nearest = 0;
+    for (let i = 1; i < slideLefts.length; i++) {
+      if (Math.abs(slideLefts[i] - sl) < Math.abs(slideLefts[nearest] - sl)) nearest = i;
+    }
+    if (nearest !== current) setCurrent(nearest);
+  };
+
+  const scrollToIndex = (i) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const idx = Math.max(0, Math.min(totalSlides - 1, i));
+    const slideLefts = getViewSlideLefts();
+    const fallback = idx * ((cardW + GAP) * PER_PAGE - GAP);
+    const left = slideLefts.length ? slideLefts[idx] : fallback;
+    el.scrollTo({ left, behavior: 'smooth' });
+    setCurrent(idx);
+  };
 
   const isPointerDownRef = useRef(false);
   const pointerIdRef = useRef(null);
@@ -107,11 +132,13 @@ const WorkerAvailableServiceRequest = () => {
 
   const snapToNearestSlide = () => {
     const el = scrollRef.current;
-    if (!el || !positions.length) return;
+    if (!el) return;
+    const slideLefts = getViewSlideLefts();
+    if (!slideLefts.length) return;
     const sl = el.scrollLeft;
     let nearest = 0;
-    for (let i = 1; i < positions.length; i++) {
-      if (Math.abs(positions[i] - sl) < Math.abs(positions[nearest] - sl)) nearest = i;
+    for (let i = 1; i < slideLefts.length; i++) {
+      if (Math.abs(slideLefts[i] - sl) < Math.abs(slideLefts[nearest] - sl)) nearest = i;
     }
     scrollToIndex(nearest);
   };
@@ -159,13 +186,10 @@ const WorkerAvailableServiceRequest = () => {
   };
 
   return (
-    <div className="max-w-[1525px] mx-auto px-6 -py-10 relative">
-      <div className="flex justify-between items-center mb-6">
+    <div className="max-w-[1525px] mx-auto px-6 -py-5 relative">
+      <div className="flex justify-between items-center mb-3">
         <h2 className="text-2xl font-semibold text-gray-800">Available Service Requests</h2>
-        <a
-          href="/browse-requests"
-          className="text-[#008cfc] flex items-center gap-1 font-medium hover:underline"
-        >
+        <a href="/browse-requests" className="text-[#008cfc] flex items-center gap-1 font-medium hover:underline">
           Browse available requests <ArrowRight size={16} />
         </a>
       </div>
@@ -178,7 +202,7 @@ const WorkerAvailableServiceRequest = () => {
           <ArrowLeft size={22} />
         </button>
 
-        <div ref={wrapRef} className="w-full max-w-[1425px] overflow-hidden px-12 py-2">
+        <div ref={wrapRef} className="w-full max-w-[1425px] overflow-visible px-12 py-2">
           <div
             ref={scrollRef}
             onScroll={onTrackScroll}
@@ -191,15 +215,19 @@ const WorkerAvailableServiceRequest = () => {
             onPointerLeave={endDrag}
             onClickCapture={onTrackClickCapture}
           >
-            {requests.map((req, i) => (
+            {displayItems.map((req, i) => (
               <div
                 key={req.id}
                 ref={(el) => (cardRefs.current[i] = el)}
-                className="relative overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto flex-shrink-0 bg-white border border-gray-300 rounded-xl p-6 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl hover:ring-inset card-border-fix flex flex-col"
+                className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-300 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:shadow-lg"
                 style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
               >
+                <button className="absolute top-4 right-4 h-8 w-8 rounded-full grid place-items-center hover:bg-gray-100">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 text-gray-400"><path d="M12 21s-7.5-4.35-10-8.74C.35 9.36 2.01 6 5.2 6c1.92 0 3.09 1.02 3.8 2.06C9.71 7.02 10.88 6 12.8 6c3.19 0 4.85 3.36 3.2 6.26C19.5 16.65 12 21 12 21z" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
+                </button>
+
                 <div className="flex items-center gap-3">
-                  <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-200 border-4 border-white shadow-inner ring-2 ring-[#008cfc]">
+                  <div className="h-12 w-12 rounded-full overflow-hidden">
                     <img
                       src={req.image || avatarFromName(req.name)}
                       alt={req.name}
@@ -209,32 +237,46 @@ const WorkerAvailableServiceRequest = () => {
                         currentTarget.style.display = 'none';
                         const parent = currentTarget.parentElement;
                         if (parent) {
-                          parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-lg font-semibold">${(req.name || '?')
-                            .trim()
-                            .charAt(0)
-                            .toUpperCase()}</div>`;
+                          parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-base font-semibold">${(req.name || '?').trim().charAt(0).toUpperCase()}</div>`;
                         }
                         requestAnimationFrame(recomputePositions);
                       }}
                     />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-lg font-semibold text-gray-900 truncate">
-                      {req.task}
-                    </div>
-                    <div className="text-sm text-gray-600 truncate">
-                      {req.name}
-                    </div>
+                    <div className="text-lg font-semibold text-gray-900 truncate">{req.name}</div>
+                    <div className="text-sm text-gray-600">{req.country}</div>
                   </div>
                 </div>
 
-                <div className="mt-auto pt-4">
-                  <button
-                    className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition"
-                  >
-                    View Request
-                  </button>
+                <div className="mt-5 grid grid-cols-3 gap-2 text-sm">
+                  <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
+                    <div className="font-semibold text-gray-900">{req.stat1Value}</div>
+                    <div className="text-gray-500 text-xs">{req.stat1Title}</div>
+                  </div>
+                  <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
+                    <div className="font-semibold text-gray-900">{req.stat2Value}</div>
+                    <div className="text-gray-500 text-xs">{req.stat2Title}</div>
+                  </div>
+                  <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
+                    <div className="font-semibold text-gray-900">{req.stat3Value}</div>
+                    <div className="text-gray-500 text-xs">{req.stat3Title}</div>
+                  </div>
                 </div>
+
+                <div className="mt-4">
+                  <div className="font-semibold text-gray-900 leading-snug line-clamp-2">{req.task}</div>
+                  <div className="mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3">{req.desc}</div>
+                </div>
+
+                <a href="#" className="mt-4 inline-flex items-center gap-2 text-sm text-[#008cfc] hover:underline">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4"><path d="M3 5h18v14H3z" fill="none" stroke="currentColor" strokeWidth="1.5"/><path d="M9 10l3 2 3-2" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
+                  {req.meetText}
+                </a>
+
+                <button className="mt-4 w-full h-11 rounded-lg border border-emerald-500 text-emerald-600 font-medium hover:bg-emerald-50 transition">
+                  Send a proposal
+                </button>
               </div>
             ))}
             <div aria-hidden className="flex-shrink-0" style={{ width: `${endPad}px` }} />
@@ -266,6 +308,8 @@ const WorkerAvailableServiceRequest = () => {
         .drag-active { cursor: default !important; }
         .no-hand { cursor: default !important; }
         .card-border-fix::after { content: none; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
       `}</style>
     </div>
   );

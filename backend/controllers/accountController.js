@@ -1,0 +1,105 @@
+const accountModel = require("../models/accountModel");
+const { supabase } = require("../supabaseClient");
+
+function parseCookie(str) {
+  const out = {};
+  if (!str) return out;
+  str.split(';').forEach(p => {
+    const i = p.indexOf('=');
+    if (i > -1) {
+      const k = p.slice(0, i).trim();
+      const v = p.slice(i + 1).trim();
+      out[k] = v;
+    }
+  });
+  return out;
+}
+
+function sess(req) {
+  const s = req.session?.user || {};
+  let role = s.role;
+  let email = s.email_address || null;
+  let auth_uid = s.auth_uid || null;
+  if (!role || (!email && !auth_uid)) {
+    const c = parseCookie(req.headers.cookie || '');
+    if (c.app_u) {
+      try {
+        const j = JSON.parse(decodeURIComponent(c.app_u));
+        role = role || j.r;
+        email = email || j.e || null;
+        auth_uid = auth_uid || j.au || null;
+      } catch {}
+    }
+  }
+  return { role, email, auth_uid, id: s.id || null };
+}
+
+exports.me = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "client" || (!s.auth_uid && !s.email)) return res.status(401).json({ message: "Unauthorized" });
+    const payload = await accountModel.getClientAccountProfile({ auth_uid: s.auth_uid, email: s.email });
+    return res.status(200).json(payload);
+  } catch {
+    return res.status(400).json({ message: "Failed to load profile" });
+  }
+};
+
+exports.avatar = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "client" || (!s.auth_uid && !s.email)) return res.status(401).json({ message: "Unauthorized" });
+    const { data_url } = req.body || {};
+    const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
+    const uid = row?.auth_uid || s.auth_uid;
+    const url = await accountModel.uploadClientAvatarDataUrl(uid, data_url);
+    await accountModel.updateClientAvatarUrl(uid, url);
+    await accountModel.updateAuthUserAvatarMeta(uid, url);
+    return res.status(200).json({ avatar_url: url });
+  } catch {
+    return res.status(400).json({ message: "Failed to save avatar" });
+  }
+};
+
+exports.password = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "client" || (!s.auth_uid && !s.email)) return res.status(401).json({ message: "Unauthorized" });
+    const { current_password, new_password, confirm_password } = req.body || {};
+    if (!current_password || !new_password || new_password !== confirm_password) return res.status(400).json({ message: "Invalid request" });
+    const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
+    const acctEmail = row?.email_address || s.email;
+    const sign = await supabase.auth.signInWithPassword({ email: acctEmail, password: current_password });
+    if (sign.error) return res.status(400).json({ message: "Current password is incorrect" });
+    const uid = row?.auth_uid || s.auth_uid;
+    await accountModel.updateAuthPassword(uid, new_password);
+    await accountModel.updateClientPassword(uid, new_password);
+    return res.status(200).json({ message: "Password updated" });
+  } catch {
+    return res.status(400).json({ message: "Failed to update password" });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "client" || (!s.auth_uid && !s.email)) return res.status(401).json({ message: "Unauthorized" });
+    const patch = {};
+    ["first_name","last_name","phone","facebook","instagram","linkedin"].forEach(k => {
+      if (k in req.body) patch[k] = typeof req.body[k] === "string" ? req.body[k].trim() : req.body[k];
+    });
+    const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
+    const uid = row?.auth_uid || s.auth_uid;
+    await accountModel.updateClientProfile(uid, patch);
+    if ("first_name" in patch || "last_name" in patch) {
+      const meta = {};
+      if ("first_name" in patch) meta.first_name = patch.first_name || "";
+      if ("last_name" in patch) meta.last_name = patch.last_name || "";
+      await accountModel.updateAuthUserMeta(uid, meta);
+    }
+    const payload = await accountModel.getClientAccountProfile({ auth_uid: uid, email: s.email });
+    return res.status(200).json(payload);
+  } catch {
+    return res.status(400).json({ message: "Failed to update profile" });
+  }
+};

@@ -22,6 +22,7 @@ const workerapplicationRoutes = require("./routes/workerapplicationRoutes");
 const adminworkerapplicationRoutes = require("./routes/adminworkerapplicationRoutes");
 const pendingservicerequestsRoutes = require("./routes/pendingservicerequestsRoutes");
 const pendingworkerapplicationRoutes = require("./routes/pendingworkerapplicationRoutes");
+const accountRoutes = require("./routes/accountRoutes");
 
 dotenv.config();
 
@@ -211,6 +212,7 @@ app.use("/api/workers", workerRoutes);
 app.use("/api/login", loginRoutes);
 app.use("/api/admins", adminRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/account", accountRoutes);
 
 app.use("/api/clientservicerequests", clientservicerequestsRoutes);
 app.use("/api/admin/servicerequests", adminservicerequestsRoutes);
@@ -221,6 +223,7 @@ app.use("/api/pendingservicerequests", pendingservicerequestsRoutes);
 app.use("/api/pendingworkerapplication", pendingworkerapplicationRoutes);
 
 ensureStorageBucket('wa-attachments', true).catch(() => {});
+ensureStorageBucket('client-avatars', true).catch(() => {});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

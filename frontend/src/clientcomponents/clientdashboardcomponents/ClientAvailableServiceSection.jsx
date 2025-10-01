@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const services = [
   {
@@ -22,13 +23,16 @@ const services = [
     description: 'Want a spotless car? Book a car wash today and enjoy a clean, shiny ride without the hassle!',
   },
   {
-    image: '/Laundry.jpg', 
+    image: '/Laundry.jpg',
     title: 'Laundry',
     description: 'Need your clothes cleaned? Book a laundry service today for fresh, clean clothes delivered right to your door!',
   },
 ];
 
 const ClientAvailableServiceSection = () => {
+  const navigate = useNavigate();
+  const goFindWorker = () => navigate('/find-a-worker');
+
   return (
     <section id="services" className="bg-white py-20">
       <div className="max-w-[1525px] mx-auto px-6">
@@ -42,7 +46,11 @@ const ClientAvailableServiceSection = () => {
           {services.map((service, idx) => (
             <div
               key={idx}
-              className="relative group rounded-md overflow-hidden p-4 bg-white border border-gray-300 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl"
+              className="relative group rounded-md overflow-hidden p-4 bg-white border border-gray-300 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl cursor-pointer"
+              onClick={goFindWorker}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') goFindWorker(); }}
             >
               <img
                 src={service.image}

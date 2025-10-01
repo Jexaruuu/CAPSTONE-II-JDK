@@ -10,9 +10,9 @@ const createClient = async (auth_uid, firstName, lastName, sex, email, password,
         last_name: lastName,
         sex,
         email_address: email,
-        password,                 
-        is_agreed_to_terms: isAgreedToTerms,  
-        agreed_at: agreedAt                    
+        password,
+        is_agreed_to_terms: isAgreedToTerms,
+        agreed_at: agreedAt
       }]);
     if (error) throw error;
     return data;
@@ -47,8 +47,29 @@ const checkEmailExistenceAcrossAllUsers = async (email) => {
   return [...clientData, ...workerData];
 };
 
+const getByAuthUid = async (auth_uid) => {
+  const { data, error } = await supabaseAdmin.from('user_client').select('*').eq('auth_uid', auth_uid).limit(1);
+  if (error) throw error;
+  return data && data[0] ? data[0] : null;
+};
+
+const updateAvatarUrl = async (auth_uid, avatar_url) => {
+  const { data, error } = await supabaseAdmin.from('user_client').update({ avatar_url }).eq('auth_uid', auth_uid);
+  if (error) throw error;
+  return data;
+};
+
+const updatePassword = async (auth_uid, password) => {
+  const { data, error } = await supabaseAdmin.from('user_client').update({ password }).eq('auth_uid', auth_uid);
+  if (error) throw error;
+  return data;
+};
+
 module.exports = {
   createClient,
   checkEmailExistence,
-  checkEmailExistenceAcrossAllUsers
+  checkEmailExistenceAcrossAllUsers,
+  getByAuthUid,
+  updateAvatarUrl,
+  updatePassword
 };

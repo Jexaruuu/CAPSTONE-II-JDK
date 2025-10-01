@@ -2,11 +2,20 @@ import React from "react";
 import { User2, ShieldCheck, Bell } from "lucide-react";
 
 export default function ClientSettingsSidebar({ active, onChange }) {
+  const goTop = () => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    } catch {}
+  };
+
   const Item = ({ id, icon: Icon, label }) => {
     const selected = active === id;
     return (
       <button
-        onClick={() => onChange(id)}
+        onClick={() => {
+          goTop();
+          onChange(id);
+        }}
         className={[
           "w-full flex items-center gap-3 rounded-xl border transition",
           "text-[15px] md:text-base px-3.5 py-2.5",
@@ -28,9 +37,10 @@ export default function ClientSettingsSidebar({ active, onChange }) {
           Settings
         </div>
         <div className="space-y-2">
-          <Item id="profile" icon={User2} label="Edit Profile" />
+          <Item id="profile" icon={User2} label="My Information" />
           <Item id="security" icon={ShieldCheck} label="Password" />
           <button
+            onClick={goTop}
             className={[
               "hidden",
               "w-full flex items-center gap-3 rounded-xl border bg-white text-gray-800 border-gray-200 opacity-60 cursor-not-allowed",

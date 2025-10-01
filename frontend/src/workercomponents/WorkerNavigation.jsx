@@ -25,7 +25,6 @@ const WorkerNavigation = () => {
     const insideProfile = !!profileDropdownRef.current?.contains(t);
     const insideReports = !!reportsDropdownRef.current?.contains(t);
     const insideBell = !!bellDropdownRef.current?.contains(t);
-
     if (!insideHire && !insideManage && !insideProfile && !insideReports && !insideBell) {
       setShowHireWorkerDropdown(false);
       setShowManageRequestDropdown(false);
@@ -43,7 +42,6 @@ const WorkerNavigation = () => {
     setShowReportsDropdown(false);
     setShowBellDropdown(false);
     setShowSubDropdown(false);
-
     switch (dropdownName) {
       case 'HireWorker':
         setShowHireWorkerDropdown(!showHireWorkerDropdown);
@@ -177,44 +175,6 @@ const WorkerNavigation = () => {
             </Link>
             <ul className="flex space-x-7 mt-4 text-md">
               <li className="relative cursor-pointer group">
-                <span onClick={() => handleDropdownToggle('HireWorker')} className="text-black font-medium flex items-center relative">
-                  <span className="relative">
-                    Find Work
-                    <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
-                  </span>
-                  <svg className="w-4 h-4 ml-1 inline-block" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                </span>
-                {showHireWorkerDropdown && (
-                  <div ref={hireWorkerDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
-                    <ul className="space-y-2 py-2">
-                      <li className="px-4 py-2 hover:bg-gray-300 transition">
-                        <Link
-                          to="/workerpostapplication"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setShowHireWorkerDropdown(false);
-                            if (isPostApplication) {
-                              navigate('/workerpostapplication');
-                              return;
-                            }
-                            setNavLoading(true);
-                            setTimeout(() => {
-                              clearWorkerApplicationDrafts();
-                              navigate('/workerpostapplication');
-                              setNavLoading(false);
-                            }, 2000);
-                          }}
-                        >
-                          Post a Application
-                        </Link>
-                      </li>
-                      <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/find-a-client">Find a Client</Link></li>
-                    </ul>
-                  </div>
-                )}
-              </li>
-
-              <li className="relative cursor-pointer group">
                 <span onClick={() => handleDropdownToggle('ManageRequest')} className="text-black font-medium flex items-center relative">
                   <span className="relative">
                     Manage Post
@@ -230,6 +190,13 @@ const WorkerNavigation = () => {
                     </ul>
                   </div>
                 )}
+              </li>
+
+              <li className="relative cursor-pointer group">
+                <Link to="/find-a-client" className="text-black font-medium relative inline-block">
+                  Find a Client
+                  <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
+                </Link>
               </li>
 
               <li className="relative cursor-pointer group hidden">
@@ -249,7 +216,6 @@ const WorkerNavigation = () => {
                 )}
               </li>
 
-              {/* Dashboard menu item hidden but kept */}
               <li className="relative cursor-pointer group hidden">
                 <Link
                   to="/workerdashboard"

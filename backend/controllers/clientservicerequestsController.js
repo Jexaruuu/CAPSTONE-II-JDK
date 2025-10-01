@@ -1,3 +1,4 @@
+// controllers/clientservicerequestsController.js
 const {
   uploadDataUrlToBucket,
   insertClientInformation,
@@ -143,9 +144,6 @@ exports.submitFullRequest = async (req, res) => {
       street: (streetVal ?? '').toString(),
       barangay: (barangay ?? metadata.barangay ?? '').toString(),
       additional_address: (addlVal ?? '').toString(),
-      facebook: metadata.facebook ?? null,
-      instagram: metadata.instagram ?? null,
-      linkedin: metadata.linkedin ?? null,
       profile_picture_url: metadata.profile_picture ?? null,
       profile_picture_name: metadata.profile_picture_name ?? null,
     };
