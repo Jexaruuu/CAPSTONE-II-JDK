@@ -7,13 +7,14 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
-export default function WorkerProfile() {
+export default function ClientProfile() {
   const fileRef = useRef(null);
   const btnRef = useRef(null);
   const jdkRowRef = useRef(null);
   const gridRef = useRef(null);
 
   const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [avatarSize, setAvatarSize] = useState(80);
   const [alignOffset, setAlignOffset] = useState(0);
   const [btnFixedWidth, setBtnFixedWidth] = useState(140);
@@ -27,7 +28,6 @@ export default function WorkerProfile() {
     phone: "",
     facebook: "",
     instagram: "",
-    linkedin: "",
   });
 
   const [base, setBase] = useState(null);
@@ -56,8 +56,20 @@ export default function WorkerProfile() {
 
   useEffect(() => {
     const init = async () => {
+      const appU = (() => {
+        try {
+          const a = JSON.parse(localStorage.getItem("clientAuth") || "{}");
+          const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem("auth_uid") || "";
+          const e = a.email || localStorage.getItem("client_email") || localStorage.getItem("email_address") || localStorage.getItem("email") || "";
+          return encodeURIComponent(JSON.stringify({ r: "client", e, au }));
+        } catch {}
+        return "";
+      })();
       try {
-        const { data } = await axios.get(`${API_BASE}/api/account/me`, { withCredentials: true });
+        const { data } = await axios.get(`${API_BASE}/api/account/me`, {
+          withCredentials: true,
+          headers: appU ? { "x-app-u": appU } : {}
+        });
         setForm((f) => ({
           ...f,
           first_name: data?.first_name || "",
@@ -65,8 +77,7 @@ export default function WorkerProfile() {
           email: data?.email_address || "",
           phone: data?.phone || "",
           facebook: data?.facebook || "",
-          instagram: data?.instagram || "",
-          linkedin: data?.linkedin || ""
+          instagram: data?.instagram || ""
         }));
         setBase({
           first_name: data?.first_name || "",
@@ -74,8 +85,7 @@ export default function WorkerProfile() {
           email: data?.email_address || "",
           phone: data?.phone || "",
           facebook: data?.facebook || "",
-          instagram: data?.instagram || "",
-          linkedin: data?.linkedin || ""
+          instagram: data?.instagram || ""
         });
         localStorage.setItem("first_name", data?.first_name || "");
         localStorage.setItem("last_name", data?.last_name || "");
@@ -131,71 +141,209 @@ export default function WorkerProfile() {
   const isPhoneValid = !form.phone || isValidPHMobile(form.phone);
   const showPhoneError = editingPhone && form.phone.length > 0 && !isPhoneValid;
 
-  const storedAvatar = typeof window !== "undefined" ? localStorage.getItem("clientAvatarUrl") : "";
+  const storedAvatar =
+    typeof window !== "undefined" ? localStorage.getItem("clientAvatarUrl") : "";
+  const fullName = `${form.first_name} ${form.last_name}`.trim();
   const avatarUrl = useMemo(() => {
     if (avatarFile) return URL.createObjectURL(avatarFile);
+    if (avatarRemoved) return "/Clienticon.png";
     if (storedAvatar) return storedAvatar;
     if (!avatarBroken) return "/Clienticon.png";
-    return avatarFromName(`${form.first_name} ${form.last_name}`.trim());
-  }, [avatarFile, avatarBroken, form.first_name, form.last_name, storedAvatar]);
+    return "/Clienticon.png";
+  }, [avatarFile, avatarRemoved, avatarBroken, fullName, storedAvatar]);
 
-  async function fileToDataUrl(file) {
+  function createImage(src) {
     return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = reject;
-      r.readAsDataURL(file);
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
     });
   }
 
-  async function uploadAvatar(file) {
-    const data_url = await fileToDataUrl(file);
-    const { data } = await axios.post(`${API_BASE}/api/account/avatar`, { data_url }, { withCredentials: true });
-    const url = data?.avatar_url || "";
-    if (url) {
-      localStorage.setItem("clientAvatarUrl", url);
-      window.dispatchEvent(new CustomEvent("client-avatar-updated", { detail: { url } }));
+  async function fileToDataUrl(file) {
+    try {
+      const objectUrl = URL.createObjectURL(file);
+      try {
+        const img = await createImage(objectUrl);
+        const maxSide = 1200;
+        const w0 = img.naturalWidth || img.width || 1;
+        const h0 = img.naturalHeight || img.height || 1;
+        const scale = Math.min(1, maxSide / Math.max(w0, h0));
+        const w = Math.max(1, Math.round(w0 * scale));
+        const h = Math.max(1, Math.round(h0 * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        const preferJpeg = file.type && /jpe?g/i.test(file.type);
+        const mime = preferJpeg ? "image/jpeg" : "image/png";
+        const quality = preferJpeg ? 0.9 : 0.92;
+        const dataUrl = canvas.toDataURL(mime, quality);
+        return dataUrl;
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    } catch {
+      return await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
     }
-    return url;
   }
 
-  const dirty = useMemo(() => {
-    if (!base) return false;
-    const keys = ["phone","facebook","instagram","linkedin"];
-    return keys.some(k => String(base[k] || "") !== String(form[k] || ""));
-  }, [base, form.phone, form.facebook, form.instagram, form.linkedin]);
+  function buildAppU() {
+    try {
+      const a = JSON.parse(localStorage.getItem("clientAuth") || "{}");
+      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem("auth_uid") || "";
+      const e = a.email || localStorage.getItem("client_email") || localStorage.getItem("email_address") || localStorage.getItem("email") || "";
+      return encodeURIComponent(JSON.stringify({ r: "client", e, au }));
+    } catch {}
+    return "";
+  }
 
-  const canSave = dirty && !saving && isPhoneValid;
+  function isValidFacebookUrl(url) {
+    if (!url) return true;
+    try {
+      const u = new URL(url);
+      const host = u.hostname.toLowerCase();
+      const okHost = host === "facebook.com" || host === "www.facebook.com" || host === "m.facebook.com" || host === "fb.com" || host === "www.fb.com";
+      if (!okHost) return false;
+      if (!u.pathname || u.pathname === "/") return false;
+      if (u.pathname === "/profile.php") return u.searchParams.has("id") && /^\d+$/.test(u.searchParams.get("id"));
+      return /^\/[A-Za-z0-9.]+\/?$/.test(u.pathname);
+    } catch {
+      return false;
+    }
+  }
+
+  function isValidInstagramUrl(url) {
+    if (!url) return true;
+    try {
+      const u = new URL(url);
+      const host = u.hostname.toLowerCase();
+      const okHost = host === "instagram.com" || host === "www.instagram.com" || host === "m.instagram.com";
+      if (!okHost) return false;
+      if (!u.pathname || u.pathname === "/") return false;
+      return /^\/[A-Za-z0-9._]+\/?$/.test(u.pathname);
+    } catch {
+      return false;
+    }
+  }
+
+  const facebookValid = isValidFacebookUrl(form.facebook);
+  const instagramValid = isValidInstagramUrl(form.instagram);
+
+  const socialDirty = useMemo(() => {
+    if (!base) return false;
+    const keys = ["phone","facebook","instagram"];
+    return keys.some(k => String(base[k] || "") !== String(form[k] || ""));
+  }, [base, form.phone, form.facebook, form.instagram]);
+
+  const avatarDirty = !!avatarFile || avatarRemoved;
+  const dirty = socialDirty || avatarDirty;
+  const canSave = dirty && !saving && isPhoneValid && facebookValid && instagramValid;
+
+  async function uploadAvatar(file) {
+    try {
+      const data_url = await fileToDataUrl(file);
+      const appU = buildAppU();
+      const { data } = await axios.post(
+        `${API_BASE}/api/account/avatar`,
+        { data_url },
+        {
+          withCredentials: true,
+          headers: { "Content-Type": "application/json", Accept: "application/json", ...(appU ? { "x-app-u": appU } : {}) }
+        }
+      );
+      const url = data?.avatar_url || "";
+      if (url) {
+        localStorage.setItem("clientAvatarUrl", url);
+        window.dispatchEvent(new CustomEvent("client-avatar-updated", { detail: { url } }));
+      }
+      return url;
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Upload failed";
+      console.error("Avatar upload error:", msg);
+      return "";
+    }
+  }
+
+  async function removeAvatarServer() {
+    try {
+      const appU = buildAppU();
+      const { data } = await axios.delete(`${API_BASE}/api/account/avatar`, {
+        withCredentials: true,
+        headers: appU ? { "x-app-u": appU } : {}
+      });
+      const url = data?.avatar_url || "";
+      if (url === "" || url == null) {
+        localStorage.removeItem("clientAvatarUrl");
+        window.dispatchEvent(new CustomEvent("client-avatar-updated", { detail: { url: "" } }));
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   const onSave = async () => {
     if (!canSave) return;
     setSaving(true);
     setSaved(false);
     try {
-      const payload = {
-        phone: form.phone || "",
-        facebook: form.facebook || "",
-        instagram: form.instagram || "",
-        linkedin: form.linkedin || ""
-      };
-      const { data } = await axios.post(`${API_BASE}/api/account/profile`, payload, { withCredentials: true });
-      setBase({
-        first_name: data?.first_name || form.first_name,
-        last_name: data?.last_name || form.last_name,
-        email: data?.email_address || form.email,
-        phone: data?.phone || payload.phone,
-        facebook: data?.facebook || payload.facebook,
-        instagram: data?.instagram || payload.instagram,
-        linkedin: data?.linkedin || payload.linkedin
-      });
+      if (avatarFile) {
+        const u = await uploadAvatar(avatarFile);
+        if (!u) setAvatarBroken(true);
+        setAvatarFile(null);
+        setAvatarRemoved(false);
+      } else if (avatarRemoved) {
+        await removeAvatarServer();
+        setAvatarRemoved(false);
+        setAvatarBroken(true);
+      }
+      if (socialDirty) {
+        const payload = {
+          phone: form.phone || "",
+          facebook: form.facebook || "",
+          instagram: form.instagram || ""
+        };
+        const appU = buildAppU();
+        const { data } = await axios.post(
+          `${API_BASE}/api/account/profile`,
+          payload,
+          {
+            withCredentials: true,
+            headers: { "Content-Type": "application/json", ...(appU ? { "x-app-u": appU } : {}) }
+          }
+        );
+        setBase({
+          first_name: data?.first_name || form.first_name,
+          last_name: data?.last_name || form.last_name,
+          email: data?.email_address || form.email,
+          phone: data?.phone ?? payload.phone,
+          facebook: data?.facebook ?? payload.facebook,
+          instagram: data?.instagram ?? payload.instagram
+        });
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
-    } catch {}
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || "Failed to save profile";
+      console.error("Save profile error:", msg);
+    }
     setSaving(false);
   };
 
   return (
-    <main className="min-h-[65vh] pb-24 md:pb-32">
+    <main className="min-h-[65vh] pb-24 md:pb-2">
       <div className="mb-3 flex items-start justify-between">
         <div>
           <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Personal Information</h2>
@@ -217,13 +365,8 @@ export default function WorkerProfile() {
           <div className="md:col-span-1">
             <div className="flex items-start md:items-center gap-4">
               <div className="flex flex-col items-center" style={{ width: avatarSize }}>
-                <p className="text-sm md:text-base font-semibold text-gray-900 text-center mb-2">
-                  Profile Picture
-                </p>
-                <div
-                  className="rounded-full ring-2 ring-gray-300 bg-gray-100 overflow-hidden"
-                  style={{ width: avatarSize, height: avatarSize }}
-                >
+                <p className="text-sm md:text-base font-semibold text-gray-900 text-center mb-2">Profile Picture</p>
+                <div className="rounded-full ring-2 ring-gray-300 bg-gray-100 overflow-hidden" style={{ width: avatarSize, height: avatarSize }}>
                   <img
                     src={avatarUrl}
                     alt="Avatar"
@@ -249,23 +392,20 @@ export default function WorkerProfile() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={async (e) => {
+                onChange={(e) => {
                   const f = e.target.files?.[0] || null;
                   setAvatarFile(f);
+                  setAvatarRemoved(false);
                   setAvatarBroken(false);
-                  if (f) {
-                    const url = await uploadAvatar(f);
-                    setAvatarFile(null);
-                    if (!url) setAvatarBroken(true);
-                  }
                 }}
               />
-              {avatarFile && (
+              {(avatarFile || (!avatarFile && !avatarRemoved && (storedAvatar || !avatarBroken))) && (
                 <button
                   type="button"
                   onClick={() => {
                     setAvatarFile(null);
-                    setAvatarBroken(false);
+                    setAvatarRemoved(true);
+                    setAvatarBroken(true);
                   }}
                   className="flex-none rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
                   style={{ width: btnFixedWidth }}
@@ -281,10 +421,8 @@ export default function WorkerProfile() {
               <div className="w-[280px] shrink-0">
                 <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">First Name</p>
                 <p className="mt-1 text-base text-gray-900">{form.first_name || "—"}</p>
-
                 <div className="mt-6 min-h-[170px]">
                   <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Contact Number</p>
-
                   {!editingPhone && (
                     <div className="mt-1">
                       {form.phone ? (
@@ -298,7 +436,6 @@ export default function WorkerProfile() {
                       )}
                     </div>
                   )}
-
                   {!form.phone && !editingPhone && (
                     <button
                       type="button"
@@ -308,7 +445,6 @@ export default function WorkerProfile() {
                       + Add contact number
                     </button>
                   )}
-
                   {form.phone && !editingPhone && (
                     <button
                       type="button"
@@ -318,7 +454,6 @@ export default function WorkerProfile() {
                       Change
                     </button>
                   )}
-
                   {(editingPhone || !!form.phone) && editingPhone && (
                     <div className="mt-3 w-[280px]">
                       <div className={`flex items-center rounded-md border ${showPhoneError ? "border-red-500" : "border-gray-300"} overflow-hidden pl-3 pr-4 w-full h-10`}>
@@ -357,11 +492,8 @@ export default function WorkerProfile() {
                       </div>
                     </div>
                   )}
-
                   {showPhoneError && (
-                    <div className="mt-2 text-xs text-red-600">
-                      Enter a valid PH mobile number with a real prefix (e.g., 9XXXXXXXXX).
-                    </div>
+                    <div className="mt-2 text-xs text-red-600">Enter a valid PH mobile number with a real prefix (e.g., 9XXXXXXXXX).</div>
                   )}
                 </div>
               </div>
@@ -389,39 +521,73 @@ export default function WorkerProfile() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <FaFacebookF className="text-blue-600" />
-            <input
-              type="url"
-              placeholder="Facebook Link"
-              value={form.facebook}
-              onChange={(e) => setForm({ ...form, facebook: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="w-full">
+              <div className="relative">
+                <input
+                  type="url"
+                  placeholder="Facebook Link"
+                  value={form.facebook}
+                  onChange={(e) => setForm({ ...form, facebook: e.target.value })}
+                  className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 pr-28 ${facebookValid ? "border-gray-300 focus:ring-blue-500" : "border-red-500 focus:ring-red-500"}`}
+                />
+                {form.facebook ? (
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, facebook: "" })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-8 px-2 text-red-600 hover:text-red-700 text-sm font-medium"
+                    aria-label="Remove Facebook link"
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+              {!facebookValid && (
+                <div className="mt-1 text-xs text-red-600">Enter a valid Facebook profile URL, e.g. https://facebook.com/username or https://facebook.com/profile.php?id=123456789</div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
             <FaInstagram className="text-pink-500" />
-            <input
-              type="url"
-              placeholder="Instagram Link"
-              value={form.instagram}
-              onChange={(e) => setForm({ ...form, instagram: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="w-full">
+              <div className="relative">
+                <input
+                  type="url"
+                  placeholder="Instagram Link"
+                  value={form.instagram}
+                  onChange={(e) => setForm({ ...form, instagram: e.target.value })}
+                  className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 pr-28 ${instagramValid ? "border-gray-300 focus:ring-blue-500" : "border-red-500 focus:ring-red-500"}`}
+                />
+                {form.instagram ? (
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, instagram: "" })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-8 px-2 text-red-600 hover:text-red-700 text-sm font-medium"
+                    aria-label="Remove Instagram link"
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+              {!instagramValid && (
+                <div className="mt-1 text-xs text-red-600">Enter a valid Instagram profile URL, e.g. https://instagram.com/username</div>
+              )}
+            </div>
           </div>
         </div>
-
-        <div className="mt-6 flex items-center justify-end gap-3">
-          {saved ? <span className="text-sm text-emerald-600">Saved</span> : null}
-          <button
-            type="button"
-            disabled={!canSave}
-            onClick={onSave}
-            className={`rounded-md px-5 py-2.5 text-sm font-medium transition ${canSave ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}
-          >
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
       </section>
+
+      <div className="mt-6 flex items-center justify-end gap-3">
+        {saved ? <span className="text-sm text-emerald-600">Saved</span> : null}
+        <button
+          type="button"
+          disabled={!canSave}
+          onClick={onSave}
+          className={`rounded-md px-5 py-2.5 text-sm font-medium transition ${canSave ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}
+        >
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
     </main>
   );
 }

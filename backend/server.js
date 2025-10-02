@@ -86,6 +86,31 @@ app.use(
   })
 );
 
+app.use((req, res, next) => {
+  try {
+    if (!req.session.user) {
+      const h = req.headers["x-app-u"];
+      if (h) {
+        const j = JSON.parse(decodeURIComponent(h));
+        if (j && j.r && (j.e || j.au)) {
+          req.session.user = { role: j.r, email_address: j.e || null, auth_uid: j.au || null };
+        }
+      }
+    }
+    if (!req.session.user) {
+      const raw = req.headers.cookie || "";
+      const m = /(?:^|;\s*)app_u=([^;]+)/.exec(raw);
+      if (m) {
+        const j = JSON.parse(decodeURIComponent(m[1]));
+        if (j && j.r && (j.e || j.au)) {
+          req.session.user = { role: j.r, email_address: j.e || null, auth_uid: j.au || null };
+        }
+      }
+    }
+  } catch {}
+  next();
+});
+
 app.get("/test", (req, res) => {
   res.json({ message: "Server is up and running" });
 });
@@ -215,6 +240,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/account", accountRoutes);
 
 app.use("/api/clientservicerequests", clientservicerequestsRoutes);
+app.use("/api/client/service-requests", clientservicerequestsRoutes);
 app.use("/api/admin/servicerequests", adminservicerequestsRoutes);
 app.use("/api/workerapplication", workerapplicationRoutes);
 app.use("/api/workerapplications", workerapplicationRoutes);

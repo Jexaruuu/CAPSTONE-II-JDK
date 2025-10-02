@@ -4,6 +4,9 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
+const avatarFromName = (name) =>
+  `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
+
 const ClientNavigation = () => {
   const [selectedOption, setSelectedOption] = useState('Worker');
   const [showSubDropdown, setShowSubDropdown] = useState(false);
@@ -33,7 +36,6 @@ const ClientNavigation = () => {
     const insideProfile = !!profileDropdownRef.current?.contains(t);
     const insideReports = !!reportsDropdownRef.current?.contains(t);
     const insideBell = !!bellDropdownRef.current?.contains(t);
-
     if (!insideHire && !insideManage && !insideProfile && !insideReports && !insideBell) {
       setShowHireWorkerDropdown(false);
       setShowManageRequestDropdown(false);
@@ -52,7 +54,6 @@ const ClientNavigation = () => {
     setShowReportsDropdown(false);
     setShowBellDropdown(false);
     setShowSubDropdown(false);
-
     switch (dropdownName) {
       case 'HireWorker':
         setShowHireWorkerDropdown(!showHireWorkerDropdown);
@@ -105,47 +106,117 @@ const ClientNavigation = () => {
     return () => { document.removeEventListener('mousedown', handleClickOutside); };
   }, []);
 
-  const [fullName, setFullName] = useState('');
-  const [prefix, setPrefix] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('/Clienticon.png');
+  const initialFirst = typeof window !== 'undefined' ? (localStorage.getItem('first_name') || '') : '';
+  const initialLast = typeof window !== 'undefined' ? (localStorage.getItem('last_name') || '') : '';
+  const initialSex = typeof window !== 'undefined' ? (localStorage.getItem('sex') || '') : '';
+  const initialAvatar = typeof window !== 'undefined' ? (localStorage.getItem('clientAvatarUrl') || '') : '';
+
+  const [fullName, setFullName] = useState(`${initialFirst} ${initialLast}`.trim());
+  const [prefix, setPrefix] = useState(initialSex === 'Male' ? 'Mr.' : initialSex === 'Female' ? 'Ms.' : '');
+  const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
+  const [avatarReady, setAvatarReady] = useState(Boolean(initialAvatar));
+  const [avatarBroken, setAvatarBroken] = useState(false);
+
+  function preloadAvatar(src) {
+    return new Promise((resolve, reject) => {
+      if (!src) return reject(new Error('empty'));
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
 
   useEffect(() => {
     const init = async () => {
+      const appU = (() => {
+        try {
+          const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
+          const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
+          const e = a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+          return encodeURIComponent(JSON.stringify({ r: 'client', e, au }));
+        } catch {}
+        return '';
+      })();
       try {
-        const { data } = await axios.get(`${API_BASE}/api/account/me`, { withCredentials: true });
+        const { data } = await axios.get(`${API_BASE}/api/account/me`, {
+          withCredentials: true,
+          headers: appU ? { 'x-app-u': appU } : {}
+        });
         const f = data?.first_name || localStorage.getItem('first_name') || '';
         const l = data?.last_name || localStorage.getItem('last_name') || '';
         const sx = data?.sex || localStorage.getItem('sex') || '';
-        const av = data?.avatar_url || localStorage.getItem('clientAvatarUrl') || '/Clienticon.png';
+        const av = data?.avatar_url || localStorage.getItem('clientAvatarUrl') || '';
+
         if (sx === 'Male') setPrefix('Mr.');
         else if (sx === 'Female') setPrefix('Ms.');
         else setPrefix('');
+
         setFullName(`${f} ${l}`.trim());
-        setAvatarUrl(av);
+
+        if (av) {
+          try {
+            await preloadAvatar(av);
+            setAvatarUrl(av);
+            setAvatarReady(true);
+            setAvatarBroken(false);
+          } catch {
+            setAvatarReady(true);
+            setAvatarBroken(true);
+          }
+        } else {
+          setAvatarReady(true);
+          setAvatarBroken(true);
+        }
+
         localStorage.setItem('first_name', f);
         localStorage.setItem('last_name', l);
         if (sx) localStorage.setItem('sex', sx);
         if (av) localStorage.setItem('clientAvatarUrl', av);
       } catch {
-        const fName = localStorage.getItem('first_name') || '';
-        const lName = localStorage.getItem('last_name') || '';
-        const sex = localStorage.getItem('sex') || '';
-        const av = localStorage.getItem('clientAvatarUrl') || '/Clienticon.png';
-        if (sex === 'Male') setPrefix('Mr.');
-        else if (sex === 'Female') setPrefix('Ms.');
-        else setPrefix('');
-        setFullName(`${fName} ${lName}`.trim());
-        setAvatarUrl(av);
+        setAvatarReady(true);
+        if (!initialAvatar) setAvatarBroken(true);
       }
     };
+
+    if (!avatarReady) {
+      if (initialAvatar) {
+        preloadAvatar(initialAvatar)
+          .then(() => { setAvatarUrl(initialAvatar); setAvatarReady(true); setAvatarBroken(false); })
+          .catch(() => { setAvatarReady(true); setAvatarBroken(true); });
+      } else {
+        setAvatarReady(true);
+        setAvatarBroken(true);
+      }
+    }
+
     init();
-    const onAvatar = (e) => {
-      const u = e?.detail?.url || localStorage.getItem('clientAvatarUrl') || '/Clienticon.png';
-      setAvatarUrl(u);
+
+    const onAvatar = async (e) => {
+      const u = e?.detail?.url ?? '';
+      if (u) {
+        try {
+          await preloadAvatar(u);
+          localStorage.setItem('clientAvatarUrl', u);
+          setAvatarUrl(u);
+          setAvatarReady(true);
+          setAvatarBroken(false);
+        } catch {
+          setAvatarReady(true);
+          setAvatarBroken(true);
+          setAvatarUrl('');
+          localStorage.removeItem('clientAvatarUrl');
+        }
+      } else {
+        setAvatarBroken(true);
+        setAvatarUrl('');
+        setAvatarReady(true);
+        localStorage.removeItem('clientAvatarUrl');
+      }
     };
     window.addEventListener('client-avatar-updated', onAvatar);
     return () => window.removeEventListener('client-avatar-updated', onAvatar);
-  }, []);
+  }, []); 
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -158,7 +229,7 @@ const ClientNavigation = () => {
       goTop();
       navigate('/', { replace: true });
       window.location.reload();
-    } catch (error) {}
+    } catch {}
   };
 
   const clearPostDrafts = () => {
@@ -184,6 +255,8 @@ const ClientNavigation = () => {
 
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+
+  const displayAvatar = avatarUrl ? avatarUrl : "/Clienticon.png";
 
   useEffect(() => {
     if (!navLoading) return;
@@ -220,6 +293,7 @@ const ClientNavigation = () => {
                 alt="Logo"
                 className="h-48 w-48 object-contain"
                 style={{ margin: '0 10px' }}
+                onError={() => setLogoBroken(true)}
               />
             </Link>
 
@@ -311,7 +385,7 @@ const ClientNavigation = () => {
 
               <li className="relative cursor-pointer group">
                 <Link to="/clientmessages" className="text-black font-medium relative inline-block" onClick={goTop}>
-                Messages
+                  Messages
                   <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
                 </Link>
               </li>
@@ -353,9 +427,7 @@ const ClientNavigation = () => {
               <img src="/Bellicon.png" alt="Notification Bell" className="h-8 w-8" />
               {showBellDropdown && (
                 <div ref={bellDropdownRef} className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
-                  <div className="py-3 px-4 border-b text-sm font-semibold">
-                    Notifications
-                  </div>
+                  <div className="py-3 px-4 border-b text-sm font-semibold">Notifications</div>
                   <div
                     className="px-4 py-2 text-blue-500 cursor-pointer hover:bg-gray-100"
                     onClick={() => {
@@ -371,11 +443,33 @@ const ClientNavigation = () => {
             </div>
 
             <div className="cursor-pointer relative" onClick={handleProfileDropdown}>
-              <img src={avatarUrl || "/Clienticon.png"} alt="User Profile" className="h-8 w-8 rounded-full object-cover"/>
+              {avatarReady ? (
+                <img
+                  src={displayAvatar}
+                  alt="User Profile"
+                  className="h-8 w-8 rounded-full object-cover"
+                  loading="eager"
+                  decoding="sync"
+                  onError={() => { setAvatarBroken(true); setAvatarUrl(''); }}
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
+              )}
               {showProfileDropdown && (
                 <div ref={profileDropdownRef} className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
                   <div className="px-4 py-3 border-b flex items-center space-x-3">
-                    <img src={avatarUrl || "/Clienticon.png"} alt="Profile Icon" className="h-8 w-8 rounded-full object-cover" />
+                    {avatarReady ? (
+                      <img
+                        src={displayAvatar}
+                        alt="Profile Icon"
+                        className="h-8 w-8 rounded-full object-cover"
+                        loading="eager"
+                        decoding="sync"
+                        onError={() => { setAvatarBroken(true); setAvatarUrl(''); }}
+                      />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
+                    )}
                     <div>
                       <p className="font-semibold text-sm">{prefix} {fullName}</p>
                       <p className="text-xs text-gray-600">Client</p>

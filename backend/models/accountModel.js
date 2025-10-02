@@ -37,14 +37,14 @@ async function getClientAccountProfile({ auth_uid, email }) {
   const created_at = row?.created_at || user?.created_at || null;
   return {
     first_name: row?.first_name || user?.user_metadata?.first_name || "",
-    last_name: row?.last_name || user?.user_metadata?.last_name || "",
+    last_name:  row?.last_name  || user?.user_metadata?.last_name  || "",
     email_address: row?.email_address || user?.email || email || "",
     sex: row?.sex || user?.user_metadata?.sex || "",
-    avatar_url: row?.avatar_url || user?.user_metadata?.avatar_url || "",
-    phone: row?.phone || "",
-    facebook: row?.facebook || "",
-    instagram: row?.instagram || "",
-    linkedin: row?.linkedin || "",
+    avatar_url: row?.client_avatar || row?.avatar_url || user?.user_metadata?.avatar_url || "",
+    // Prefer the new columns; fall back to legacy if needed
+    phone: row?.contact_number ?? row?.phone ?? "",
+    facebook: row?.social_facebook ?? row?.facebook ?? "",
+    instagram: row?.social_instagram ?? row?.instagram ?? "",
     auth_uid: row?.auth_uid || auth_uid || "",
     created_at
   };
@@ -55,20 +55,40 @@ async function uploadClientAvatarDataUrl(auth_uid, data_url) {
   if (!parsed) throw new Error("Invalid image");
   await ensureStorageBucket(AVATAR_BUCKET, true);
   const key = `clients/${auth_uid || "unknown"}/${Date.now()}.${extFrom(parsed.contentType)}`;
-  const { error: upErr } = await supabaseAdmin.storage.from(AVATAR_BUCKET).upload(key, parsed.buf, { contentType: parsed.contentType, upsert: true });
+
+  const abuf = parsed.buf.buffer.slice(parsed.buf.byteOffset, parsed.buf.byteOffset + parsed.buf.byteLength);
+
+  const { error: upErr } = await supabaseAdmin
+    .storage
+    .from(AVATAR_BUCKET)
+    .upload(key, abuf, { contentType: parsed.contentType, upsert: true });
+
   if (upErr) throw upErr;
   const { data: pub } = supabaseAdmin.storage.from(AVATAR_BUCKET).getPublicUrl(key);
   return pub?.publicUrl || "";
 }
 
 async function updateClientAvatarUrl(auth_uid, avatar_url) {
-  const { error } = await supabaseAdmin.from("user_client").update({ avatar_url }).eq("auth_uid", auth_uid);
-  if (error) throw error;
+  const r1 = await supabaseAdmin.from("user_client").update({ client_avatar: avatar_url }).eq("auth_uid", auth_uid);
+  if (r1.error) throw r1.error;
+  try {
+    await supabaseAdmin.from("user_client").update({ avatar_url: avatar_url }).eq("auth_uid", auth_uid);
+  } catch {}
+  return true;
+}
+
+async function clearClientAvatar(auth_uid) {
+  const r1 = await supabaseAdmin.from("user_client").update({ client_avatar: null }).eq("auth_uid", auth_uid);
+  if (r1.error) throw r1.error;
+  try {
+    await supabaseAdmin.from("user_client").update({ avatar_url: null }).eq("auth_uid", auth_uid);
+  } catch {}
   return true;
 }
 
 async function updateAuthUserAvatarMeta(auth_uid, avatar_url) {
-  const { error } = await supabaseAdmin.auth.admin.updateUserById(auth_uid, { user_metadata: { avatar_url } });
+  const meta = avatar_url ? { avatar_url } : { avatar_url: null };
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(auth_uid, { user_metadata: meta });
   if (error) throw error;
   return true;
 }
@@ -91,7 +111,12 @@ async function updateClientPassword(auth_uid, new_password) {
 }
 
 async function updateClientProfile(auth_uid, patch) {
-  const { data, error } = await supabaseAdmin.from("user_client").update(patch).eq("auth_uid", auth_uid).select("*").limit(1);
+  const { data, error } = await supabaseAdmin
+    .from("user_client")
+    .update(patch)
+    .eq("auth_uid", auth_uid)
+    .select("*")
+    .limit(1);
   if (error) throw error;
   return data && data[0] ? data[0] : null;
 }
@@ -108,6 +133,7 @@ module.exports = {
   getClientAccountProfile,
   uploadClientAvatarDataUrl,
   updateClientAvatarUrl,
+  clearClientAvatar,
   updateAuthUserAvatarMeta,
   verifyCurrentPassword,
   updateAuthPassword,

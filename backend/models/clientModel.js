@@ -12,12 +12,14 @@ const createClient = async (auth_uid, firstName, lastName, sex, email, password,
         email_address: email,
         password,
         is_agreed_to_terms: isAgreedToTerms,
-        agreed_at: agreedAt
+        agreed_at: agreedAt,
+        contact_number: null,
+        social_facebook: null,
+        social_instagram: null
       }]);
     if (error) throw error;
     return data;
   } catch (err) {
-    console.error('Error inserting client:', err);
     throw err;
   }
 };
@@ -37,13 +39,11 @@ const checkEmailExistenceAcrossAllUsers = async (email) => {
     .select('*')
     .eq('email_address', email);
   if (clientError) throw clientError;
-
   const { data: workerData, error: workerError } = await supabaseAdmin
     .from('user_worker')
     .select('*')
     .eq('email_address', email);
   if (workerError) throw workerError;
-
   return [...clientData, ...workerData];
 };
 
@@ -54,7 +54,7 @@ const getByAuthUid = async (auth_uid) => {
 };
 
 const updateAvatarUrl = async (auth_uid, avatar_url) => {
-  const { data, error } = await supabaseAdmin.from('user_client').update({ avatar_url }).eq('auth_uid', auth_uid);
+  const { data, error } = await supabaseAdmin.from('user_client').update({ avatar_url, client_avatar: avatar_url }).eq('auth_uid', auth_uid);
   if (error) throw error;
   return data;
 };
