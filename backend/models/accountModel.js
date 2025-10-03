@@ -16,6 +16,61 @@ function extFrom(contentType) {
   return "bin";
 }
 
+function stripTrailingSlash(p) {
+  return p.endsWith("/") ? p.slice(0, -1) : p;
+}
+
+function normalizeFacebook(url) {
+  try {
+    const u = new URL(String(url).trim());
+    let host = u.hostname.toLowerCase();
+    if (host === "m.facebook.com" || host === "www.facebook.com" || host === "fb.com" || host === "www.fb.com") host = "facebook.com";
+    const isId = u.pathname === "/profile.php" && u.searchParams.has("id");
+    if (isId) return `https://${host}/profile.php?id=${u.searchParams.get("id")}`;
+    const seg = u.pathname.split("/").filter(Boolean)[0] || "";
+    if (!seg) return `https://${host}`;
+    return `https://${host}/${stripTrailingSlash(seg)}`;
+  } catch {
+    return String(url || "").trim();
+  }
+}
+
+function normalizeInstagram(url) {
+  try {
+    const u = new URL(String(url).trim());
+    let host = u.hostname.toLowerCase();
+    if (host === "www.instagram.com" || host === "m.instagram.com") host = "instagram.com";
+    const seg = u.pathname.split("/").filter(Boolean)[0] || "";
+    if (!seg) return `https://${host}`;
+    return `https://${host}/${stripTrailingSlash(seg)}`;
+  } catch {
+    return String(url || "").trim();
+  }
+}
+
+function fbKey(url) {
+  try {
+    const u = new URL(String(url).trim());
+    if (u.hostname.includes("facebook") || u.hostname.includes("fb.com")) {
+      if (u.pathname === "/profile.php" && u.searchParams.has("id")) return `id:${u.searchParams.get("id")}`;
+      const seg = u.pathname.split("/").filter(Boolean)[0] || "";
+      if (seg) return `user:${seg.toLowerCase()}`;
+    }
+  } catch {}
+  return "";
+}
+
+function igKey(url) {
+  try {
+    const u = new URL(String(url).trim());
+    if (u.hostname.includes("instagram")) {
+      const seg = u.pathname.split("/").filter(Boolean)[0] || "";
+      if (seg) return seg.toLowerCase();
+    }
+  } catch {}
+  return "";
+}
+
 async function getClientByAuthOrEmail({ auth_uid, email }) {
   let q = supabaseAdmin.from("user_client").select("*").limit(1);
   if (auth_uid) q = q.eq("auth_uid", auth_uid);
@@ -180,15 +235,58 @@ async function updateAuthUserMeta(auth_uid, patch) {
 async function isContactNumberTakenAcrossAll(phone, excludeAuthUid) {
   const p = String(phone || "").trim();
   if (!p) return false;
-  const q1 = supabaseAdmin.from("user_client").select("auth_uid").eq("contact_number", p);
-  const q2 = supabaseAdmin.from("user_worker").select("auth_uid").eq("contact_number", p);
+  const q1 = supabaseAdmin.from("user_client").select("auth_uid,contact_number");
+  const q2 = supabaseAdmin.from("user_worker").select("auth_uid,contact_number");
   const [{ data: c, error: ec }, { data: w, error: ew }] = await Promise.all([q1, q2]);
   if (ec) throw ec;
   if (ew) throw ew;
-  const hits = [...(c || []), ...(w || [])].map(r => r.auth_uid).filter(Boolean);
+  const hits = [...(c || []), ...(w || [])].filter(r => String(r.contact_number || "") === p).map(r => r.auth_uid).filter(Boolean);
   if (!hits.length) return false;
   if (!excludeAuthUid) return true;
   return hits.some(uid => uid !== excludeAuthUid);
+}
+
+async function isSocialLinkTakenAcrossAll(kind, value, excludeAuthUid) {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+  const canon = kind === "facebook" ? normalizeFacebook(raw) : normalizeInstagram(raw);
+  const key = kind === "facebook" ? fbKey(canon) : igKey(canon);
+  const col1 = kind === "facebook" ? "social_facebook" : "social_instagram";
+  const legacy1 = kind === "facebook" ? "facebook" : "instagram";
+  const patterns = [];
+  patterns.push(`${canon}`);
+  patterns.push(`${canon}/`);
+  if (key) {
+    if (kind === "facebook") {
+      if (key.startsWith("id:")) patterns.push("profile.php?id=" + key.split(":")[1]);
+      if (key.startsWith("user:")) patterns.push("/" + key.split(":")[1]);
+    } else {
+      patterns.push("/" + key);
+    }
+  }
+  function buildOr(cols, pats) {
+    const segs = [];
+    for (const col of cols) for (const p of pats) segs.push(`${col}.ilike.*${p}*`);
+    return segs.join(",");
+  }
+  const orClient = buildOr([col1, legacy1], patterns);
+  const orWorker = buildOr([col1, legacy1], patterns);
+  const q1 = supabaseAdmin.from("user_client").select(`auth_uid, ${col1}, ${legacy1}`).or(orClient);
+  const q2 = supabaseAdmin.from("user_worker").select(`auth_uid, ${col1}, ${legacy1}`).or(orWorker);
+  const [{ data: c, error: ec }, { data: w, error: ew }] = await Promise.all([q1, q2]);
+  if (ec) throw ec;
+  if (ew) throw ew;
+  const all = [...(c || []), ...(w || [])];
+  const match = all.find(r => {
+    const vals = [r[col1], r[legacy1]].filter(Boolean).map(String);
+    return vals.some(v => {
+      const n = kind === "facebook" ? normalizeFacebook(v) : normalizeInstagram(v);
+      return n.toLowerCase() === canon.toLowerCase();
+    });
+  });
+  if (!match) return false;
+  if (!excludeAuthUid) return true;
+  return match.auth_uid && match.auth_uid !== excludeAuthUid;
 }
 
 module.exports = {
@@ -211,5 +309,8 @@ module.exports = {
   updateClientProfile,
   updateWorkerProfile,
   updateAuthUserMeta,
-  isContactNumberTakenAcrossAll
+  isContactNumberTakenAcrossAll,
+  isSocialLinkTakenAcrossAll,
+  normalizeFacebook,
+  normalizeInstagram
 };

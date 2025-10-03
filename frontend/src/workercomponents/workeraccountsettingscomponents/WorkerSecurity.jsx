@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -8,13 +8,17 @@ export default function WorkerSecurity() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [show, setShow] = useState({ current: false, next: false, confirm: false });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reauthOpen, setReauthOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = confirmOpen || reauthOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [confirmOpen, reauthOpen]);
 
   const rules = useMemo(() => {
     const v = form.new_password || "";
-    const len = v.length >= 12;
-    const upper = /[A-Z]/.test(v);
-    const num = /\d/.test(v);
-    const special = /[^A-Za-z0-9]/.test(v);
+    const len = v.length >= 12, upper = /[A-Z]/.test(v), num = /\d/.test(v), special = /[^A-Za-z0-9]/.test(v);
     const match = form.new_password && form.new_password === form.confirm_password;
     const score = [len, upper, num, special].filter(Boolean).length;
     return { len, upper, num, special, match, score };
@@ -30,29 +34,52 @@ export default function WorkerSecurity() {
     return "";
   }
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const disabled = saving || !rules.len || !rules.upper || !rules.num || !rules.special || !rules.match;
+
+  const clearWorkerStorage = () => {
+    localStorage.removeItem("workerAuth");
+    localStorage.removeItem("worker_email");
+    localStorage.removeItem("workerAvatarUrl");
+    localStorage.removeItem("worker_auth_uid");
+    localStorage.removeItem("email_address");
+    localStorage.removeItem("email");
+    localStorage.removeItem("first_name");
+    localStorage.removeItem("last_name");
+    localStorage.removeItem("role");
+  };
+
+  const doUpdate = async () => {
     if (!form.new_password || form.new_password !== form.confirm_password) return;
-    setSaving(true);
-    setSaved(false);
+    setSaving(true); setSaved(false);
     try {
       const appU = buildAppU();
-      await axios.post(`${API_BASE}/api/account/password`, form, {
-        withCredentials: true,
-        headers: appU ? { "x-app-u": appU } : {}
-      });
-      setSaved(true);
+      await axios.post(`${API_BASE}/api/account/password`, form, { withCredentials: true, headers: appU ? { "x-app-u": appU } : {} });
       setForm({ current_password: "", new_password: "", confirm_password: "" });
+      setConfirmOpen(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+      clearWorkerStorage();
+      setReauthOpen(true);
     } catch {}
     setSaving(false);
   };
 
-  const disabled = saving || !rules.len || !rules.upper || !rules.num || !rules.special || !rules.match;
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setConfirmOpen(true);
+  };
+
+  const signOutAndGoHome = async () => {
+    try { await axios.post(`${API_BASE}/api/logout`, {}, { withCredentials: true }); } catch {}
+    clearWorkerStorage();
+    setReauthOpen(false);
+    window.location.href = "/HomePage";
+  };
 
   return (
     <>
       <div className="mb-6">
-       <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Password</h2>
+        <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Password</h2>
         <p className="text-gray-500 text-sm">Change your password.</p>
       </div>
 
@@ -103,13 +130,10 @@ export default function WorkerSecurity() {
                   <div
                     className={[
                       "h-full transition-all",
-                      rules.score <= 1
-                        ? "bg-red-500 w-1/4"
-                        : rules.score === 2
-                        ? "bg-amber-500 w-2/4"
-                        : rules.score === 3
-                        ? "bg-yellow-500 w-3/4"
-                        : "bg-emerald-500 w-full",
+                      rules.score <= 1 ? "bg-red-500 w-1/4" :
+                      rules.score === 2 ? "bg-amber-500 w-2/4" :
+                      rules.score === 3 ? "bg-yellow-500 w-3/4" :
+                      "bg-emerald-500 w-full",
                     ].join(" ")}
                   />
                 </div>
@@ -131,9 +155,7 @@ export default function WorkerSecurity() {
                   onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
                   className={[
                     "w-full rounded-md border bg-white px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2",
-                    rules.match || !form.confirm_password
-                      ? "border-gray-300 focus:ring-[#008cfc]"
-                      : "border-red-300 focus:ring-red-400",
+                    rules.match || !form.confirm_password ? "border-gray-300 focus:ring-[#008cfc]" : "border-red-300 focus:ring-red-400",
                   ].join(" ")}
                   placeholder="••••••••"
                 />
@@ -145,9 +167,7 @@ export default function WorkerSecurity() {
                   {show.confirm ? "Hide" : "Show"}
                 </button>
               </div>
-              {!rules.match && form.confirm_password ? (
-                <p className="text-xs text-red-600">Passwords do not match</p>
-              ) : null}
+              {!rules.match && form.confirm_password ? <p className="text-xs text-red-600">Passwords do not match</p> : null}
             </div>
 
             <div className="flex items-center gap-3">
@@ -158,7 +178,7 @@ export default function WorkerSecurity() {
               >
                 {saving ? "Saving..." : "Update Password"}
               </button>
-              {saved && <span className="text-sm text-emerald-600">Updated</span>}
+              {saved && <span className="text-sm text-blue-700">Updated</span>}
             </div>
           </form>
 
@@ -192,6 +212,39 @@ export default function WorkerSecurity() {
           </aside>
         </div>
       </section>
+
+      {confirmOpen ? (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          <div className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-sm" onClick={() => setConfirmOpen(false)} />
+          <div className="relative z-[10000] w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h4 className="text-lg font-semibold text-gray-900">Update password?</h4>
+            <p className="mt-1 text-sm text-gray-600">Are you sure you want to save this new password?</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setConfirmOpen(false)} className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button type="button" disabled={disabled} onClick={doUpdate} className={`rounded-md px-5 py-2 text-sm font-medium transition ${!disabled ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}>{saving ? "Saving..." : "Save"}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {reauthOpen ? (
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center">
+          <div className="fixed inset-0 z-[10000] bg-black/40 backdrop-blur-sm" />
+          <div className="relative z-[10002] w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h4 className="text-lg font-semibold text-gray-900">Sign in required</h4>
+            <p className="mt-1 text-sm text-gray-600">Your password was changed. Please log in again.</p>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={signOutAndGoHome}
+                className="rounded-md px-5 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-blue-700"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

@@ -173,12 +173,20 @@ exports.updateProfile = async (req, res) => {
     if ("first_name" in patch) dbPatch.first_name = patch.first_name;
     if ("last_name" in patch) dbPatch.last_name = patch.last_name;
     if ("phone" in patch) dbPatch.contact_number = patch.phone;
-    if ("facebook" in patch) dbPatch.social_facebook = patch.facebook;
-    if ("instagram" in patch) dbPatch.social_instagram = patch.instagram;
+    if ("facebook" in patch) dbPatch.social_facebook = patch.facebook ? accountModel.normalizeFacebook(patch.facebook) : null;
+    if ("instagram" in patch) dbPatch.social_instagram = patch.instagram ? accountModel.normalizeInstagram(patch.instagram) : null;
 
     if ("phone" in patch && patch.phone) {
       const taken = await accountModel.isContactNumberTakenAcrossAll(patch.phone, s.auth_uid);
       if (taken) return res.status(400).json({ message: "Contact number already in use" });
+    }
+    if ("facebook" in patch && patch.facebook) {
+      const takenFb = await accountModel.isSocialLinkTakenAcrossAll("facebook", patch.facebook, s.auth_uid);
+      if (takenFb) return res.status(400).json({ message: "Facebook already in use" });
+    }
+    if ("instagram" in patch && patch.instagram) {
+      const takenIg = await accountModel.isSocialLinkTakenAcrossAll("instagram", patch.instagram, s.auth_uid);
+      if (takenIg) return res.status(400).json({ message: "Instagram already in use" });
     }
 
     if (s.role === "client") {
