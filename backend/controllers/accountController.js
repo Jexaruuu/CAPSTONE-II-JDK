@@ -175,6 +175,12 @@ exports.updateProfile = async (req, res) => {
     if ("phone" in patch) dbPatch.contact_number = patch.phone;
     if ("facebook" in patch) dbPatch.social_facebook = patch.facebook;
     if ("instagram" in patch) dbPatch.social_instagram = patch.instagram;
+
+    if ("phone" in patch && patch.phone) {
+      const taken = await accountModel.isContactNumberTakenAcrossAll(patch.phone, s.auth_uid);
+      if (taken) return res.status(400).json({ message: "Contact number already in use" });
+    }
+
     if (s.role === "client") {
       const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
       const uid = row?.auth_uid || s.auth_uid;

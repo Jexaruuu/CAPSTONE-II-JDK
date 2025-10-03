@@ -34,6 +34,14 @@ export default function ClientProfile() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [createdAt, setCreatedAt] = useState("");
+  const [phoneTaken, setPhoneTaken] = useState(false);
+  const [phoneEditCommitted, setPhoneEditCommitted] = useState(true);
+  const [phoneErrorAfterDone, setPhoneErrorAfterDone] = useState(false);
+
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savedProfile, setSavedProfile] = useState(false);
+  const [savingSocial, setSavingSocial] = useState(false);
+  const [savedSocial, setSavedSocial] = useState(false);
 
   useEffect(() => {
     const update = () => {
@@ -139,7 +147,7 @@ export default function ClientProfile() {
   };
 
   const isPhoneValid = !form.phone || isValidPHMobile(form.phone);
-  const showPhoneError = editingPhone && form.phone.length > 0 && !isPhoneValid;
+  const showPhoneError = editingPhone && phoneErrorAfterDone && !isPhoneValid && form.phone.length > 0;
 
   const storedAvatar =
     typeof window !== "undefined" ? localStorage.getItem("clientAvatarUrl") : "";
@@ -237,15 +245,35 @@ export default function ClientProfile() {
   const facebookValid = isValidFacebookUrl(form.facebook);
   const instagramValid = isValidInstagramUrl(form.instagram);
 
-  const socialDirty = useMemo(() => {
+  const phoneDirty = useMemo(() => {
     if (!base) return false;
-    const keys = ["phone","facebook","instagram"];
-    return keys.some(k => String(base[k] || "") !== String(form[k] || ""));
-  }, [base, form.phone, form.facebook, form.instagram]);
+    return String(base.phone || "") !== String(form.phone || "");
+  }, [base, form.phone]);
+
+  const facebookDirty = useMemo(() => {
+    if (!base) return false;
+    return String(base.facebook || "") !== String(form.facebook || "");
+  }, [base, form.facebook]);
+
+  const instagramDirty = useMemo(() => {
+    if (!base) return false;
+    return String(base.instagram || "") !== String(form.instagram || "");
+  }, [base, form.instagram]);
+
+  const socialDirty = facebookDirty || instagramDirty;
 
   const avatarDirty = !!avatarFile || avatarRemoved;
-  const dirty = socialDirty || avatarDirty;
-  const canSave = dirty && !saving && isPhoneValid && facebookValid && instagramValid;
+
+  const canSaveProfile =
+    (avatarDirty || phoneDirty) &&
+    !savingProfile &&
+    (!phoneDirty || (isPhoneValid && !phoneTaken && phoneEditCommitted));
+
+  const canSaveSocial =
+    socialDirty &&
+    !savingSocial &&
+    facebookValid &&
+    instagramValid;
 
   async function uploadAvatar(file) {
     try {
@@ -271,7 +299,6 @@ export default function ClientProfile() {
         err?.response?.data?.error ||
         err?.message ||
         "Upload failed";
-      console.error("Avatar upload error:", msg);
       return "";
     }
   }
@@ -294,8 +321,9 @@ export default function ClientProfile() {
     }
   }
 
-  const onSave = async () => {
-    if (!canSave) return;
+  const onSaveProfile = async () => {
+    if (!canSaveProfile) return;
+    setSavingProfile(true);
     setSaving(true);
     setSaved(false);
     try {
@@ -309,12 +337,8 @@ export default function ClientProfile() {
         setAvatarRemoved(false);
         setAvatarBroken(true);
       }
-      if (socialDirty) {
-        const payload = {
-          phone: form.phone || "",
-          facebook: form.facebook || "",
-          instagram: form.instagram || ""
-        };
+      if (phoneDirty) {
+        const payload = { phone: form.phone || "" };
         const appU = buildAppU();
         const { data } = await axios.post(
           `${API_BASE}/api/account/profile`,
@@ -324,21 +348,70 @@ export default function ClientProfile() {
             headers: { "Content-Type": "application/json", ...(appU ? { "x-app-u": appU } : {}) }
           }
         );
-        setBase({
+        setBase((b) => ({
+          ...(b || {}),
           first_name: data?.first_name || form.first_name,
           last_name: data?.last_name || form.last_name,
           email: data?.email_address || form.email,
           phone: data?.phone ?? payload.phone,
-          facebook: data?.facebook ?? payload.facebook,
-          instagram: data?.instagram ?? payload.instagram
-        });
+          facebook: b?.facebook ?? form.facebook,
+          instagram: b?.instagram ?? form.instagram
+        }));
+        setPhoneTaken(false);
       }
       setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
+      setSavedProfile(true);
+      setTimeout(() => {
+        setSaved(false);
+        setSavedProfile(false);
+      }, 1500);
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || "Failed to save profile";
-      console.error("Save profile error:", msg);
+      const msg = (err?.response?.data?.message || err?.message || "").toLowerCase();
+      if (msg.includes("contact number already in use")) {
+        setPhoneTaken(true);
+        setEditingPhone(true);
+        setPhoneEditCommitted(false);
+      }
     }
+    setSavingProfile(false);
+    setSaving(false);
+  };
+
+  const onSaveSocial = async () => {
+    if (!canSaveSocial) return;
+    setSavingSocial(true);
+    setSaving(true);
+    setSaved(false);
+    try {
+      const payload = {};
+      if (facebookDirty) payload.facebook = form.facebook || "";
+      if (instagramDirty) payload.instagram = form.instagram || "";
+      const appU = buildAppU();
+      const { data } = await axios.post(
+        `${API_BASE}/api/account/profile`,
+        payload,
+        {
+          withCredentials: true,
+          headers: { "Content-Type": "application/json", ...(appU ? { "x-app-u": appU } : {}) }
+        }
+      );
+      setBase((b) => ({
+        ...(b || {}),
+        first_name: data?.first_name || form.first_name,
+        last_name: data?.last_name || form.last_name,
+        email: data?.email_address || form.email,
+        phone: b?.phone ?? form.phone,
+        facebook: data?.facebook ?? payload.facebook ?? form.facebook,
+        instagram: data?.instagram ?? payload.instagram ?? form.instagram
+      }));
+      setSaved(true);
+      setSavedSocial(true);
+      setTimeout(() => {
+        setSaved(false);
+        setSavedSocial(false);
+      }, 1500);
+    } catch {}
+    setSavingSocial(false);
     setSaving(false);
   };
 
@@ -423,9 +496,10 @@ export default function ClientProfile() {
                 <p className="mt-1 text-base text-gray-900">{form.first_name || "—"}</p>
                 <div className="mt-6 min-h-[170px]">
                   <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Contact Number</p>
+
                   {!editingPhone && (
                     <div className="mt-1">
-                      {form.phone ? (
+                      {form.phone && !phoneTaken ? (
                         <div className="inline-flex items-center gap-2">
                           <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
                           <span className="text-gray-700 text-sm">+63</span>
@@ -436,64 +510,111 @@ export default function ClientProfile() {
                       )}
                     </div>
                   )}
-                  {!form.phone && !editingPhone && (
-                    <button
-                      type="button"
-                      onClick={() => setEditingPhone(true)}
-                      className="mt-3 inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50"
-                    >
-                      + Add contact number
-                    </button>
+
+                  {(!form.phone || phoneTaken) && !editingPhone && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingPhone(true);
+                          setPhoneEditCommitted(false);
+                          setPhoneErrorAfterDone(false);
+                        }}
+                        className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50"
+                      >
+                        + Add contact number
+                      </button>
+                    </div>
                   )}
-                  {form.phone && !editingPhone && (
-                    <button
-                      type="button"
-                      onClick={() => setEditingPhone(true)}
-                      className="mt-3 inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50"
-                    >
-                      Change
-                    </button>
+
+                  {form.phone && !phoneTaken && !editingPhone && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingPhone(true);
+                          setPhoneEditCommitted(false);
+                          setPhoneErrorAfterDone(false);
+                        }}
+                        className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm({ ...form, phone: "" });
+                          setPhoneTaken(false);
+                          setEditingPhone(false);
+                          setPhoneEditCommitted(true);
+                          setPhoneErrorAfterDone(false);
+                        }}
+                        className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   )}
+
                   {(editingPhone || !!form.phone) && editingPhone && (
                     <div className="mt-3 w-[280px]">
-                      <div className={`flex items-center rounded-md border ${showPhoneError ? "border-red-500" : "border-gray-300"} overflow-hidden pl-3 pr-4 w-full h-10`}>
+                      <div className={`flex items-center rounded-md border ${showPhoneError || phoneTaken ? "border-red-500" : "border-gray-300"} overflow-hidden pl-3 pr-4 w-full h-10`}>
                         <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm mr-2 object-cover" />
                         <span className="text-gray-700 text-sm mr-3">+63</span>
                         <span className="h-6 w-px bg-gray-200 mr-3" />
                         <input
                           type="tel"
                           value={form.phone}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setForm({
                               ...form,
                               phone: e.target.value.replace(/\D/g, "").slice(0, 10),
-                            })
-                          }
+                            });
+                            setPhoneTaken(false);
+                          }}
                           placeholder="9XXXXXXXXX"
                           className="w-full outline-none text-sm placeholder:text-gray-400 h-full"
                         />
                       </div>
+
+                      {showPhoneError && (
+                        <div className="mt-2 text-xs text-red-600">Enter a valid PH mobile number with a real prefix (e.g., 9XXXXXXXXX).</div>
+                      )}
+                      {phoneTaken && (
+                        <div className="mt-2 text-xs text-red-600">Contact number already in use.</div>
+                      )}
+
                       <div className="mt-3 flex items-center gap-3">
                         <button
                           type="button"
-                          onClick={() => setEditingPhone(false)}
-                          disabled={!isPhoneValid}
-                          className={`rounded-md px-4 text-sm font-medium transition h-10 ${isPhoneValid ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-50 cursor-not-allowed"}`}
+                          onClick={() => {
+                            if (!isPhoneValid || phoneTaken) {
+                              setPhoneErrorAfterDone(true);
+                              return;
+                            }
+                            setEditingPhone(false);
+                            setPhoneEditCommitted(true);
+                            setPhoneErrorAfterDone(false);
+                          }}
+                          className={`rounded-md px-4 text-sm font-medium transition h-10 ${!isPhoneValid || phoneTaken ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}
                         >
                           Done
                         </button>
                         <button
                           type="button"
-                          onClick={() => setEditingPhone(false)}
+                          onClick={() => {
+                            setForm({ ...form, phone: base?.phone || "" });
+                            setEditingPhone(false);
+                            setPhoneEditCommitted(true);
+                            setPhoneErrorAfterDone(false);
+                            setPhoneTaken(false);
+                          }}
                           className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50"
                         >
                           Cancel
                         </button>
                       </div>
                     </div>
-                  )}
-                  {showPhoneError && (
-                    <div className="mt-2 text-xs text-red-600">Enter a valid PH mobile number with a real prefix (e.g., 9XXXXXXXXX).</div>
                   )}
                 </div>
               </div>
@@ -509,6 +630,18 @@ export default function ClientProfile() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          {savedProfile ? <span className="text-sm text-emerald-600">Saved</span> : null}
+          <button
+            type="button"
+            disabled={!canSaveProfile}
+            onClick={onSaveProfile}
+            className={`rounded-md px-5 py-2.5 text-sm font-medium transition ${canSaveProfile ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}
+          >
+            {savingProfile ? "Saving..." : "Confirm"}
+          </button>
         </div>
       </section>
 
@@ -575,19 +708,19 @@ export default function ClientProfile() {
             </div>
           </div>
         </div>
-      </section>
 
-      <div className="mt-6 flex items-center justify-end gap-3">
-        {saved ? <span className="text-sm text-emerald-600">Saved</span> : null}
-        <button
-          type="button"
-          disabled={!canSave}
-          onClick={onSave}
-          className={`rounded-md px-5 py-2.5 text-sm font-medium transition ${canSave ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}
-        >
-          {saving ? "Saving..." : "Save Changes"}
-        </button>
-      </div>
+        <div className="mt-6 flex items-center justify-end gap-3">
+          {savedSocial ? <span className="text-sm text-emerald-600">Saved</span> : null}
+          <button
+            type="button"
+            disabled={!canSaveSocial}
+            onClick={onSaveSocial}
+            className={`rounded-md px-5 py-2.5 text-sm font-medium transition ${canSaveSocial ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}
+          >
+            {savingSocial ? "Saving..." : "Confirm"}
+          </button>
+        </div>
+      </section>
     </main>
   );
 }

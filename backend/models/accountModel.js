@@ -177,6 +177,20 @@ async function updateAuthUserMeta(auth_uid, patch) {
   return true;
 }
 
+async function isContactNumberTakenAcrossAll(phone, excludeAuthUid) {
+  const p = String(phone || "").trim();
+  if (!p) return false;
+  const q1 = supabaseAdmin.from("user_client").select("auth_uid").eq("contact_number", p);
+  const q2 = supabaseAdmin.from("user_worker").select("auth_uid").eq("contact_number", p);
+  const [{ data: c, error: ec }, { data: w, error: ew }] = await Promise.all([q1, q2]);
+  if (ec) throw ec;
+  if (ew) throw ew;
+  const hits = [...(c || []), ...(w || [])].map(r => r.auth_uid).filter(Boolean);
+  if (!hits.length) return false;
+  if (!excludeAuthUid) return true;
+  return hits.some(uid => uid !== excludeAuthUid);
+}
+
 module.exports = {
   getClientByAuthOrEmail,
   getWorkerByAuthOrEmail,
@@ -196,5 +210,6 @@ module.exports = {
   updateWorkerPassword,
   updateClientProfile,
   updateWorkerProfile,
-  updateAuthUserMeta
+  updateAuthUserMeta,
+  isContactNumberTakenAcrossAll
 };
