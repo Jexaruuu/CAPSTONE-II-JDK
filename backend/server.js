@@ -29,29 +29,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const rawAllowed = (process.env.ALLOWED_ORIGINS || "")
-  .split(",")
-  .map(s => s.trim())
-  .filter(Boolean);
-
-const wcToReg = pat =>
-  new RegExp("^" + pat.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
-
+const rawAllowed = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
+const wcToReg = pat => new RegExp("^" + pat.replace(/[.+^${}()|[\\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
 const allowedRegexes = rawAllowed.map(wcToReg);
-
-const isLocal = origin =>
-  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
-  /^https?:\/\/(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
-
-const isAllowed = origin =>
-  !origin ||
-  isLocal(origin) ||
-  allowedRegexes.some(rx => rx.test(origin));
-
-const corsOrigin = (origin, cb) => {
-  if (isAllowed(origin)) return cb(null, true);
-  return cb(new Error("Not allowed by CORS"));
-};
+const isLocal = origin => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) || /^https?:\/\/(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
+const isAllowed = origin => !origin || isLocal(origin) || allowedRegexes.some(rx => rx.test(origin));
+const corsOrigin = (origin, cb) => isAllowed(origin) ? cb(null, true) : cb(new Error("Not allowed by CORS"));
 
 app.use(cors({ origin: corsOrigin, credentials: true }));
 
@@ -71,20 +54,18 @@ if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
 const useSecure = process.env.COOKIE_SECURE === "true" || process.env.NODE_ENV === "production";
 const cookieSameSite = useSecure ? "none" : "lax";
 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "change-me",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: useSecure,
-      httpOnly: true,
-      sameSite: cookieSameSite,
-      domain: process.env.COOKIE_DOMAIN || undefined,
-      maxAge: 1000 * 60 * 60 * 2
-    }
-  })
-);
+app.use(session({
+  secret: process.env.SESSION_SECRET || "change-me",
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: useSecure,
+    httpOnly: true,
+    sameSite: cookieSameSite,
+    domain: process.env.COOKIE_DOMAIN || undefined,
+    maxAge: 1000 * 60 * 60 * 2
+  }
+}));
 
 app.use((req, res, next) => {
   try {
@@ -92,9 +73,7 @@ app.use((req, res, next) => {
       const h = req.headers["x-app-u"];
       if (h) {
         const j = JSON.parse(decodeURIComponent(h));
-        if (j && j.r && (j.e || j.au)) {
-          req.session.user = { role: j.r, email_address: j.e || null, auth_uid: j.au || null };
-        }
+        if (j && j.r && (j.e || j.au)) req.session.user = { role: j.r, email_address: j.e || null, auth_uid: j.au || null };
       }
     }
     if (!req.session.user) {
@@ -102,22 +81,15 @@ app.use((req, res, next) => {
       const m = /(?:^|;\s*)app_u=([^;]+)/.exec(raw);
       if (m) {
         const j = JSON.parse(decodeURIComponent(m[1]));
-        if (j && j.r && (j.e || j.au)) {
-          req.session.user = { role: j.r, email_address: j.e || null, auth_uid: j.au || null };
-        }
+        if (j && j.r && (j.e || j.au)) req.session.user = { role: j.r, email_address: j.e || null, auth_uid: j.au || null };
       }
     }
   } catch {}
   next();
 });
 
-app.get("/test", (req, res) => {
-  res.json({ message: "Server is up and running" });
-});
-
-app.get("/healthz", (req, res) => {
-  res.status(200).send("ok");
-});
+app.get("/test", (req, res) => res.json({ message: "Server is up and running" }));
+app.get("/healthz", (req, res) => res.status(200).send("ok"));
 
 app.post("/api/auth/resend", async (req, res) => {
   try {
@@ -131,38 +103,14 @@ app.post("/api/auth/resend", async (req, res) => {
   }
 });
 
-app.post("/api/auth/check-email", async (req, res) => {
-  try {
-    const { email } = req.body || {};
-    if (!email) return res.status(400).json({ message: "Email is required" });
-    const [clientFound, workerFound, adminFound] = await Promise.all([
-      clientModel.checkEmailExistenceAcrossAllUsers(email),
-      workerModel.checkEmailExistenceAcrossAllUsers(email),
-      adminModel.checkEmailExistenceAcrossAllUsers ? adminModel.checkEmailExistenceAcrossAllUsers(email) : false
-    ]);
-    const flatten = v =>
-      v === true ||
-      (Array.isArray(v) && v.length > 0) ||
-      (!!v && typeof v === "object" && Array.isArray(v.data) && v.data.length > 0);
-    const exists = flatten(clientFound) || flatten(workerFound) || flatten(adminFound);
-    return res.status(200).json({ exists });
-  } catch (e) {
-    return res.status(400).json({ message: "Failed to check email" });
-  }
-});
-
 const nodemailerTransport = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
   port: Number(process.env.SMTP_PORT || 465),
   secure: String(process.env.SMTP_PORT || "465") === "465",
-  auth: {
-    user: process.env.SMTP_USER || "YOUR_EMAIL@example.com",
-    pass: process.env.SMTP_PASS || "YOUR_APP_PASSWORD"
-  }
+  auth: { user: process.env.SMTP_USER || "YOUR_EMAIL@example.com", pass: process.env.SMTP_PASS || "YOUR_APP_PASSWORD" }
 });
 
 const otpStore = new Map();
-
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
@@ -189,15 +137,9 @@ app.post("/api/auth/request-otp", async (req, res) => {
     const hash = hashOtp(email, code);
     otpStore.set(email, { hash, expiresAt: now + OTP_TTL_MS, attempts: 0, lastSentAt: now });
     const from = process.env.SMTP_FROM || process.env.SMTP_USER || "no-reply@localhost";
-    await nodemailerTransport.sendMail({
-      from: `"JDK HOMECARE" <${from}>`,
-      to: email,
-      subject: "Your JDK HOMECARE verification code",
-      text: `Your verification code is ${code}. It expires in 10 minutes.`,
-      html: `<div style="font-family:Arial,sans-serif;font-size:16px;color:#333;"><p>Hi,</p><p>Your JDK HOMECARE verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${code}</p><p>This code will expire in <b>10 minutes</b>.</p><p>If you didn't request this, you can ignore this email.</p></div>`
-    });
+    await nodemailerTransport.sendMail({ from: `"JDK HOMECARE" <${from}>`, to: email, subject: "Your JDK HOMECARE verification code", text: `Your verification code is ${code}. It expires in 10 minutes.`, html: `<div style="font-family:Arial,sans-serif;font-size:16px;color:#333;"><p>Hi,</p><p>Your JDK HOMECARE verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${code}</p><p>This code will expire in <b>10 minutes</b>.</p><p>If you didn't request this, you can ignore this email.</p></div>` });
     return res.status(200).json({ message: "OTP sent" });
-  } catch (err) {
+  } catch {
     return res.status(502).json({ message: "Failed to send OTP email. Check SMTP settings." });
   }
 });
@@ -227,7 +169,7 @@ app.post("/api/auth/verify-otp", async (req, res) => {
     if (!req.session.verifiedEmails) req.session.verifiedEmails = {};
     req.session.verifiedEmails[email] = true;
     return res.status(200).json({ message: "OTP verified." });
-  } catch (err) {
+  } catch {
     return res.status(400).json({ message: "OTP verification failed." });
   }
 });
@@ -250,6 +192,7 @@ app.use("/api/pendingworkerapplication", pendingworkerapplicationRoutes);
 
 ensureStorageBucket('wa-attachments', true).catch(() => {});
 ensureStorageBucket('client-avatars', true).catch(() => {});
+ensureStorageBucket('worker-avatars', true).catch(() => {});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

@@ -20,13 +20,27 @@ export default function WorkerSecurity() {
     return { len, upper, num, special, match, score };
   }, [form.new_password, form.confirm_password]);
 
+  function buildAppU() {
+    try {
+      const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
+      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem("worker_auth_uid") || "";
+      const e = a.email || localStorage.getItem("worker_email") || localStorage.getItem("email_address") || localStorage.getItem("email") || "";
+      return encodeURIComponent(JSON.stringify({ r: "worker", e, au }));
+    } catch {}
+    return "";
+  }
+
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!form.new_password || form.new_password !== form.confirm_password) return;
     setSaving(true);
     setSaved(false);
     try {
-      await axios.post(`${API_BASE}/api/account/password`, form, { withCredentials: true });
+      const appU = buildAppU();
+      await axios.post(`${API_BASE}/api/account/password`, form, {
+        withCredentials: true,
+        headers: appU ? { "x-app-u": appU } : {}
+      });
       setSaved(true);
       setForm({ current_password: "", new_password: "", confirm_password: "" });
     } catch {}
@@ -38,7 +52,7 @@ export default function WorkerSecurity() {
   return (
     <section className="w-full rounded-2xl border border-gray-200 bg-white p-6">
       <div className="mb-6">
-        <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Password</h2>
+        <h2 className="text-xl md:2xl font-semibold text-gray-900">Password</h2>
         <p className="text-gray-500 text-sm">Change your password.</p>
       </div>
 

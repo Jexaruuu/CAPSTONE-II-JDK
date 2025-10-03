@@ -95,6 +95,7 @@ const WorkerNavigation = () => {
 
   const [fullName, setFullName] = useState('');
   const [prefix, setPrefix] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem('workerAvatarUrl') || '/Clienticon.png');
 
   useEffect(() => {
     const fName = localStorage.getItem('first_name') || '';
@@ -104,6 +105,12 @@ const WorkerNavigation = () => {
     else if (sex === 'Female') setPrefix('Ms.');
     else setPrefix('');
     setFullName(`${fName} ${lName}`);
+    const onAvatar = (e) => {
+      const url = e?.detail?.url || '';
+      setAvatarUrl(url || '/Clienticon.png');
+    };
+    window.addEventListener('worker-avatar-updated', onAvatar);
+    return () => window.removeEventListener('worker-avatar-updated', onAvatar);
   }, []);
 
   const navigate = useNavigate();
@@ -279,11 +286,11 @@ const WorkerNavigation = () => {
             </div>
 
             <div className="cursor-pointer relative" onClick={handleProfileDropdown}>
-              <img src="/Clienticon.png" alt="User Profile" className="h-8 w-8 rounded-full" />
+              <img src={avatarUrl || '/Clienticon.png'} alt="User Profile" className="h-8 w-8 rounded-full object-cover" />
               {showProfileDropdown && (
                 <div ref={profileDropdownRef} className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
                   <div className="px-4 py-3 border-b flex items-center space-x-3">
-                    <img src="/Clienticon.png" alt="Profile Icon" className="h-8 w-8 rounded-full object-cover" />
+                    <img src={avatarUrl || '/Clienticon.png'} alt="Profile Icon" className="h-8 w-8 rounded-full object-cover" />
                     <div>
                       <p className="font-semibold text-sm">{prefix} {fullName}</p>
                       <p className="text-xs text-gray-600">Worker</p>
