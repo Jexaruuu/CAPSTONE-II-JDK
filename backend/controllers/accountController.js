@@ -162,6 +162,7 @@ exports.updateProfile = async (req, res) => {
   try {
     const s = sess(req);
     if (!s.role || (!s.auth_uid && !s.email)) return res.status(401).json({ message: "Unauthorized" });
+
     const patch = {};
     ["first_name","last_name","phone","facebook","instagram"].forEach(k => {
       if (k in req.body) {
@@ -169,10 +170,11 @@ exports.updateProfile = async (req, res) => {
         patch[k] = v === "" ? null : v;
       }
     });
+
     const dbPatch = {};
     if ("first_name" in patch) dbPatch.first_name = patch.first_name;
     if ("last_name" in patch) dbPatch.last_name = patch.last_name;
-    if ("phone" in patch) dbPatch.contact_number = patch.phone;
+    if ("phone" in patch) dbPatch.contact_number = patch.phone ? patch.phone : null;
     if ("facebook" in patch) dbPatch.social_facebook = patch.facebook ? accountModel.normalizeFacebook(patch.facebook) : null;
     if ("instagram" in patch) dbPatch.social_instagram = patch.instagram ? accountModel.normalizeInstagram(patch.instagram) : null;
 
@@ -189,32 +191,40 @@ exports.updateProfile = async (req, res) => {
       if (takenIg) return res.status(400).json({ message: "Instagram already in use" });
     }
 
+    const hasAny = Object.keys(dbPatch).length > 0;
+
     if (s.role === "client") {
       const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
       const uid = row?.auth_uid || s.auth_uid;
-      await accountModel.updateClientProfile(uid, dbPatch);
-      if ("first_name" in patch || "last_name" in patch) {
-        const meta = {};
-        if ("first_name" in patch) meta.first_name = patch.first_name || "";
-        if ("last_name" in patch) meta.last_name = patch.last_name || "";
-        await accountModel.updateAuthUserMeta(uid, meta);
+      if (hasAny) {
+        await accountModel.updateClientProfile(uid, dbPatch);
+        if ("first_name" in patch || "last_name" in patch) {
+          const meta = {};
+          if ("first_name" in patch) meta.first_name = patch.first_name || "";
+          if ("last_name" in patch) meta.last_name = patch.last_name || "";
+          await accountModel.updateAuthUserMeta(uid, meta);
+        }
       }
       const payload = await accountModel.getClientAccountProfile({ auth_uid: uid, email: s.email });
       return res.status(200).json(payload);
     }
+
     if (s.role === "worker") {
       const row = await accountModel.getWorkerByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
       const uid = row?.auth_uid || s.auth_uid;
-      await accountModel.updateWorkerProfile(uid, dbPatch);
-      if ("first_name" in patch || "last_name" in patch) {
-        const meta = {};
-        if ("first_name" in patch) meta.first_name = patch.first_name || "";
-        if ("last_name" in patch) meta.last_name = patch.last_name || "";
-        await accountModel.updateAuthUserMeta(uid, meta);
+      if (hasAny) {
+        await accountModel.updateWorkerProfile(uid, dbPatch);
+        if ("first_name" in patch || "last_name" in patch) {
+          const meta = {};
+          if ("first_name" in patch) meta.first_name = patch.first_name || "";
+          if ("last_name" in patch) meta.last_name = patch.last_name || "";
+          await accountModel.updateAuthUserMeta(uid, meta);
+        }
       }
       const payload = await accountModel.getWorkerAccountProfile({ auth_uid: uid, email: s.email });
       return res.status(200).json(payload);
     }
+
     return res.status(401).json({ message: "Unauthorized" });
   } catch {
     return res.status(400).json({ message: "Failed to update profile" });

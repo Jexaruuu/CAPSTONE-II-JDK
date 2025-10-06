@@ -50,6 +50,8 @@ export default function WorkerProfile() {
   const [facebookTaken, setFacebookTaken] = useState(false);
   const [instagramTaken, setInstagramTaken] = useState(false);
 
+  const [editSocial, setEditSocial] = useState({ facebook: false, instagram: false });
+
   useEffect(() => {
     const update = () => {
       if (btnRef.current) {
@@ -303,11 +305,12 @@ export default function WorkerProfile() {
       setBase((b) => ({ ...(b || {}), first_name: data?.first_name || form.first_name, last_name: data?.last_name || form.last_name, email: data?.email_address || form.email, phone: b?.phone ?? form.phone, facebook: data?.facebook ?? payload.facebook ?? form.facebook, instagram: data?.instagram ?? payload.instagram ?? form.instagram }));
       setSaved(true); setSavedSocial(true);
       setFacebookTaken(false); setInstagramTaken(false);
+      setEditSocial({ facebook: false, instagram: false });
       setTimeout(() => { setSaved(false); setSavedSocial(false); }, 1500);
     } catch (err) {
       const msg = (err?.response?.data?.message || err?.message || "").toLowerCase();
-      if (msg.includes("facebook already in use") || msg.includes("facebook") && msg.includes("in use") || msg.includes("duplicate facebook")) setFacebookTaken(true);
-      if (msg.includes("instagram already in use") || msg.includes("instagram") && msg.includes("in use") || msg.includes("duplicate instagram")) setInstagramTaken(true);
+      if (msg.includes("facebook already in use") || (msg.includes("facebook") && msg.includes("in use")) || msg.includes("duplicate facebook")) setFacebookTaken(true);
+      if (msg.includes("instagram already in use") || (msg.includes("instagram") && msg.includes("in use")) || msg.includes("duplicate instagram")) setInstagramTaken(true);
     }
     setSavingSocial(false); setSaving(false);
   };
@@ -435,45 +438,69 @@ export default function WorkerProfile() {
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <FaFacebookF className="text-blue-600" />
+          <div className="flex items-start gap-2">
+            <FaFacebookF className="text-blue-600 mt-2" />
             <div className="w-full">
-              <div className="relative">
-                <input
-                  type="url"
-                  placeholder="Facebook Link"
-                  value={form.facebook}
-                  onChange={(e) => { setForm({ ...form, facebook: e.target.value }); setFacebookTaken(false); }}
-                  onBlur={() => setSocialTouched((s) => ({ ...s, facebook: true }))}
-                  className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 pr-28 ${fbErr ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
-                />
-                {form.facebook ? (
-                  <button type="button" onClick={() => { setForm({ ...form, facebook: "" }); setFacebookTaken(false); }} className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-8 px-2 text-red-600 hover:text-red-700 text-sm font-medium" aria-label="Remove Facebook link">Remove</button>
-                ) : null}
-              </div>
-              {(!facebookValid && socialTouched.facebook) && <div className="mt-1 text-xs text-red-600">Enter a valid Facebook profile URL, e.g. https://facebook.com/username or https://facebook.com/profile.php?id=123456789</div>}
-              {(facebookTaken && socialTouched.facebook) && <div className="mt-1 text-xs text-red-600">This Facebook link is already in use.</div>}
+              {!base?.facebook || editSocial.facebook ? (
+                <div>
+                  <input
+                    type="url"
+                    placeholder="Facebook Link"
+                    value={form.facebook}
+                    onChange={(e) => { setForm({ ...form, facebook: e.target.value }); setFacebookTaken(false); }}
+                    onBlur={() => setSocialTouched((s) => ({ ...s, facebook: true }))}
+                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!facebookValid || facebookTaken) && socialTouched.facebook ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
+                  />
+                  {(!facebookValid && socialTouched.facebook) && <div className="mt-1 text-xs text-red-600">Enter a valid Facebook profile URL, e.g. https://facebook.com/username or https://facebook.com/profile.php?id=123456789</div>}
+                  {(facebookTaken && socialTouched.facebook) && <div className="mt-1 text-xs text-red-600">This Facebook link is already in use.</div>}
+                  {base?.facebook && (
+                    <div className="mt-2 flex items-center gap-3">
+                      <button type="button" onClick={() => setEditSocial((s)=>({ ...s, facebook: false }))} className="text-sm text-gray-700 hover:underline">Cancel</button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <a href={base.facebook} target="_blank" rel="noreferrer" className="text-sm text-blue-700 break-all hover:underline">{base.facebook}</a>
+                  <div className="flex items-center gap-4">
+                    <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, facebook: true })); setSocialTouched((t)=>({ ...t, facebook: false })); }} className="text-sm text-[#008cfc] hover:underline">Change</button>
+                    <button type="button" onClick={() => { setForm((f)=>({ ...f, facebook: "" })); setEditSocial((s)=>({ ...s, facebook: true })); setSocialTouched((t)=>({ ...t, facebook: true })); setFacebookTaken(false); }} className="text-sm text-red-600 hover:underline">Remove</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <FaInstagram className="text-pink-500" />
+          <div className="flex items-start gap-2">
+            <FaInstagram className="text-pink-500 mt-2" />
             <div className="w-full">
-              <div className="relative">
-                <input
-                  type="url"
-                  placeholder="Instagram Link"
-                  value={form.instagram}
-                  onChange={(e) => { setForm({ ...form, instagram: e.target.value }); setInstagramTaken(false); }}
-                  onBlur={() => setSocialTouched((s) => ({ ...s, instagram: true }))}
-                  className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 pr-28 ${igErr ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
-                />
-                {form.instagram ? (
-                  <button type="button" onClick={() => { setForm({ ...form, instagram: "" }); setInstagramTaken(false); }} className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-8 px-2 text-red-600 hover:text-red-700 text-sm font-medium" aria-label="Remove Instagram link">Remove</button>
-                ) : null}
-              </div>
-              {(!instagramValid && socialTouched.instagram) && <div className="mt-1 text-xs text-red-600">Enter a valid Instagram profile URL, e.g. https://instagram.com/username</div>}
-              {(instagramTaken && socialTouched.instagram) && <div className="mt-1 text-xs text-red-600">This Instagram link is already in use.</div>}
+              {!base?.instagram || editSocial.instagram ? (
+                <div>
+                  <input
+                    type="url"
+                    placeholder="Instagram Link"
+                    value={form.instagram}
+                    onChange={(e) => { setForm({ ...form, instagram: e.target.value }); setInstagramTaken(false); }}
+                    onBlur={() => setSocialTouched((s) => ({ ...s, instagram: true }))}
+                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!instagramValid || instagramTaken) && socialTouched.instagram ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
+                  />
+                  {(!instagramValid && socialTouched.instagram) && <div className="mt-1 text-xs text-red-600">Enter a valid Instagram profile URL, e.g. https://instagram.com/username</div>}
+                  {(instagramTaken && socialTouched.instagram) && <div className="mt-1 text-xs text-red-600">This Instagram link is already in use.</div>}
+                  {base?.instagram && (
+                    <div className="mt-2 flex items-center gap-3">
+                      <button type="button" onClick={() => setEditSocial((s)=>({ ...s, instagram: false }))} className="text-sm text-gray-700 hover:underline">Cancel</button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <a href={base.instagram} target="_blank" rel="noreferrer" className="text-sm text-blue-700 break-all hover:underline">{base.instagram}</a>
+                  <div className="flex items-center gap-4">
+                    <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, instagram: true })); setSocialTouched((t)=>({ ...t, instagram: false })); }} className="text-sm text-[#008cfc] hover:underline">Change</button>
+                    <button type="button" onClick={() => { setForm((f)=>({ ...f, instagram: "" })); setEditSocial((s)=>({ ...s, instagram: true })); setSocialTouched((t)=>({ ...t, instagram: true })); setInstagramTaken(false); }} className="text-sm text-red-600 hover:underline">Remove</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
