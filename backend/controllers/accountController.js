@@ -226,7 +226,7 @@ exports.updateProfile = async (req, res) => {
     }
 
     return res.status(401).json({ message: "Unauthorized" });
-  } catch {
+  } catch (e) {
     return res.status(400).json({ message: "Failed to update profile" });
   }
 };

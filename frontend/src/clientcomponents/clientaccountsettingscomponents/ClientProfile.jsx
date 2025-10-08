@@ -464,84 +464,92 @@ export default function ClientProfile() {
         </div>
       </section>
 
-        <section className="w-full rounded-2xl border border-gray-200 bg-white p-6">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Social Media</h3>
-          </div>
+      <section className="w-full rounded-2xl border border-gray-200 bg-white p-6">
+        <div className="mb-10">
+          <h3 className="text-lg font-semibold text-gray-900">Social Media</h3>
+        </div>
 
-          <div className="space-y-4">
-            <div className="flex items-start gap-2">
-              <FaFacebookF className="text-blue-600 mt-2" />
-              <div className="w-full">
-                {!base?.facebook || editSocial.facebook ? (
-                  <div className="relative">
-                    <input
-                      type="url"
-                      placeholder="Facebook Link"
-                      value={form.facebook}
-                      onChange={(e) => { setForm({ ...form, facebook: e.target.value }); setFacebookTaken(false); }}
-                      onBlur={() => setSocialTouched((s) => ({ ...s, facebook: true }))}
-                      className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!facebookValid || facebookTaken) && socialTouched.facebook ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
-                    />
-                    {(!facebookValid && socialTouched.facebook) && <div className="mt-1 text-xs text-red-600">Enter a valid Facebook profile URL, e.g. https://facebook.com/username or https://facebook.com/profile.php?id=123456789</div>}
-                    {(facebookTaken && socialTouched.facebook) && <div className="mt-1 text-xs text-red-600">This Facebook link is already in use.</div>}
-                    {base?.facebook && (
-                      <div className="mt-2 flex items-center gap-3">
-                        <button type="button" onClick={() => setEditSocial((s)=>({ ...s, facebook: false }))} className="text-sm text-gray-700 hover:underline">Cancel</button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <a href={base.facebook} target="_blank" rel="noreferrer" className="text-sm text-blue-700 break-all hover:underline">{base.facebook}</a>
-                    <div className="flex items-center gap-4">
-                      <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, facebook: true })); setSocialTouched((t)=>({ ...t, facebook: false })); }} className="text-sm text-[#008cfc] hover:underline">Change</button>
-                      <button type="button" onClick={() => { setForm((f)=>({ ...f, facebook: "" })); setEditSocial((s)=>({ ...s, facebook: true })); setSocialTouched((t)=>({ ...t, facebook: true })); setFacebookTaken(false); }} className="text-sm text-red-600 hover:underline">Remove</button>
-                    </div>
-                  </div>
-                )}
-              </div>
+        <div className="grid grid-cols-[220px_1fr_220px] gap-6">
+          <div className="col-span-3 grid grid-cols-subgrid items-start">
+            <div className="flex items-center gap-2">
+              <FaFacebookF className="text-blue-600" />
+              <span className="text-sm uppercase tracking-wide font-semibold text-gray-900">Facebook</span>
             </div>
-
-            <div className="flex items-start gap-2">
-              <FaInstagram className="text-pink-500 mt-2" />
-              <div className="w-full">
-                {!base?.instagram || editSocial.instagram ? (
-                  <div className="relative">
-                    <input
-                      type="url"
-                      placeholder="Instagram Link"
-                      value={form.instagram}
-                      onChange={(e) => { setForm({ ...form, instagram: e.target.value }); setInstagramTaken(false); }}
-                      onBlur={() => setSocialTouched((s) => ({ ...s, instagram: true }))}
-                      className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!instagramValid || instagramTaken) && socialTouched.instagram ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
-                    />
-                    {(!instagramValid && socialTouched.instagram) && <div className="mt-1 text-xs text-red-600">Enter a valid Instagram profile URL, e.g. https://instagram.com/username</div>}
-                    {(instagramTaken && socialTouched.instagram) && <div className="mt-1 text-xs text-red-600">This Instagram link is already in use.</div>}
-                    {base?.instagram && (
-                      <div className="mt-2 flex items-center gap-3">
-                        <button type="button" onClick={() => setEditSocial((s)=>({ ...s, instagram: false }))} className="text-sm text-gray-700 hover:underline">Cancel</button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <a href={base.instagram} target="_blank" rel="noreferrer" className="text-sm text-blue-700 break-all hover:underline">{base.instagram}</a>
-                    <div className="flex items-center gap-4">
-                      <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, instagram: true })); setSocialTouched((t)=>({ ...t, instagram: false })); }} className="text-sm text-[#008cfc] hover:underline">Change</button>
-                      <button type="button" onClick={() => { setForm((f)=>({ ...f, instagram: "" })); setEditSocial((s)=>({ ...s, instagram: true })); setSocialTouched((t)=>({ ...t, instagram: true })); setInstagramTaken(false); }} className="text-sm text-red-600 hover:underline">Remove</button>
-                    </div>
-                  </div>
-                )}
-              </div>
+            <div>
+              {!base?.facebook || editSocial.facebook ? (
+                <>
+                  <input
+                    type="url"
+                    placeholder="https://facebook.com/username"
+                    value={form.facebook}
+                    onChange={(e) => { setForm({ ...form, facebook: e.target.value }); setFacebookTaken(false); }}
+                    onBlur={() => setSocialTouched((s) => ({ ...s, facebook: true }))}
+                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${fbErr ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
+                  />
+                  {fbErr && <div className="mt-1 text-xs text-red-600">Enter a valid Facebook profile URL.</div>}
+                </>
+              ) : (
+                <a href={base.facebook} target="_blank" rel="noreferrer" className="text-md text-blue-700 break-all hover:underline">{base.facebook}</a>
+              )}
+            </div>
+            <div className="flex items-center gap-3 justify-end">
+              {!base?.facebook || editSocial.facebook ? (
+                base?.facebook ? (
+                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, facebook: false })); setForm((f)=>({ ...f, facebook: base.facebook })); setFacebookTaken(false); setSocialTouched((t)=>({ ...t, facebook: false })); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
+                ) : null
+              ) : (
+                <>
+                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, facebook: true })); setSocialTouched((t)=>({ ...t, facebook: false })); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                  <button type="button" onClick={() => { setForm((f)=>({ ...f, facebook: "" })); setEditSocial((s)=>({ ...s, facebook: true })); setSocialTouched((t)=>({ ...t, facebook: true })); setFacebookTaken(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
+                </>
+              )}
             </div>
           </div>
 
-          <div className="mt-6 flex items-center justify-end gap-3">
-            {savedSocial ? <span className="text-sm text-blue-700">Saved</span> : null}
-            <button type="button" disabled={!canSaveSocial} onClick={() => openConfirm("social")} className={`rounded-md px-5 py-2.5 text-sm font-medium transition ${canSaveSocial ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}>{savingSocial ? "Saving..." : "Confirm"}</button>
+          <div className="col-span-3 h-px bg-gray-200" />
+
+          <div className="col-span-3 grid grid-cols-subgrid items-start">
+            <div className="flex items-center gap-2">
+              <FaInstagram className="text-pink-500" />
+              <span className="text-sm uppercase tracking-wide font-semibold text-gray-900">Instagram</span>
+            </div>
+            <div>
+              {!base?.instagram || editSocial.instagram ? (
+                <>
+                  <input
+                    type="url"
+                    placeholder="https://instagram.com/username"
+                    value={form.instagram}
+                    onChange={(e) => { setForm({ ...form, instagram: e.target.value }); setInstagramTaken(false); }}
+                    onBlur={() => setSocialTouched((s) => ({ ...s, instagram: true }))}
+                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${igErr ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
+                  />
+                  {igErr && <div className="mt-1 text-xs text-red-600">Enter a valid Instagram profile URL.</div>}
+                </>
+              ) : (
+                <a href={base.instagram} target="_blank" rel="noreferrer" className="text-md text-blue-700 break-all hover:underline">{base.instagram}</a>
+              )}
+            </div>
+            <div className="flex items-center gap-3 justify-end">
+              {!base?.instagram || editSocial.instagram ? (
+                base?.instagram ? (
+                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, instagram: false })); setForm((f)=>({ ...f, instagram: base.instagram })); setInstagramTaken(false); setSocialTouched((t)=>({ ...t, instagram: false })); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
+                ) : null
+              ) : (
+                <>
+                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, instagram: true })); setSocialTouched((t)=>({ ...t, instagram: false })); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                  <button type="button" onClick={() => { setForm((f)=>({ ...f, instagram: "" })); setEditSocial((s)=>({ ...s, instagram: true })); setSocialTouched((t)=>({ ...t, instagram: true })); setInstagramTaken(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
+                </>
+              )}
+            </div>
           </div>
-        </section>
+        </div>
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          {savedSocial ? <span className="text-sm text-blue-700">Saved</span> : null}
+          <button type="button" disabled={!canSaveSocial} onClick={() => openConfirm("social")} className={`rounded-md px-5 py-2.5 text-sm font-medium transition ${canSaveSocial ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}>{savingSocial ? "Saving..." : "Confirm"}</button>
+        </div>
+      </section>
 
       {confirmOpen ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
