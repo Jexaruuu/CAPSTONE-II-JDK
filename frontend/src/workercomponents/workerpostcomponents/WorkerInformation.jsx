@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { compressImageFileToDataURL } from '../../utils/imageCompression';
 
@@ -24,9 +23,6 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const [email, setEmail] = useState('');
   const [barangay, setBarangay] = useState('');
   const [street, setStreet] = useState('');
-  const [facebook, setFacebook] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [linkedin, setLinkedin] = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
   const [profileFile, setProfileFile] = useState(null);
   const [profilePictureName, setProfilePictureName] = useState('');
@@ -204,9 +200,6 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
         setEmail(d.email || '');
         setBarangay(d.barangay || '');
         setStreet(d.street || '');
-        setFacebook(d.facebook || '');
-        setInstagram(d.instagram || '');
-        setLinkedin(d.linkedin || '');
         setProfilePicture(d.profilePicture || null);
         setProfilePictureName(d.profilePictureName || '');
         if (d.birth_date) setDpView(new Date(d.birth_date));
@@ -244,9 +237,6 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
       email,
       barangay,
       street,
-      facebook,
-      instagram,
-      linkedin,
       profilePicture,
       profilePictureName,
       age: birthAge ? Number(birthAge) : null
@@ -254,7 +244,7 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
   }, [
     hydrated, firstName, lastName, birthDate, contactNumber, email, barangay,
-    street, facebook, instagram, linkedin, profilePicture, profilePictureName, birthAge
+    street, profilePicture, profilePictureName, birthAge
   ]);
 
   useEffect(() => {
@@ -283,9 +273,6 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
       email,
       barangay,
       street,
-      facebook,
-      instagram,
-      linkedin,
       profilePicture,
       profilePictureName
     };
@@ -299,9 +286,6 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
       email_address: email,
       barangay,
       street,
-      facebook,
-      instagram,
-      linkedin,
       profile_picture: profileFile || null,
       profile_picture_name: profilePictureName || '',
       age: birthAge ? Number(birthAge) : null
@@ -404,7 +388,6 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                     />
                   </div>
 
-                  {/* Birthdate (same-width popover + right icon) */}
                   <div className="relative" ref={dpRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Birthdate</label>
                     <div className={`flex items-center rounded-xl border ${attempted && (!birthDate || !isBirthdateValid) ? 'border-red-500' : 'border-gray-300'}`}>
@@ -600,7 +583,6 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                     )}
                   </div>
 
-                  {/* Barangay (same-width popover + right icon) */}
                   <div className="relative" ref={dropdownRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
                     <div className={`flex items-center rounded-xl border ${attempted && !barangay.trim() ? 'border-red-500' : 'border-gray-300'}`}>
@@ -652,7 +634,6 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                           >
                             Clear
                           </button>
-                          {/* Keep space for parity with other popovers; add helper if you want */}
                           <span className="text-xs text-gray-400">&nbsp;</span>
                         </div>
                       </div>
@@ -674,43 +655,6 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                       required
                       aria-invalid={attempted && !street.trim()}
                     />
-                  </div>
-                </div>
-
-                <div className="mt-10">
-                  <div className="text-base font-semibold mb-3">Social Media</div>
-                  <p className="text-sm text-gray-600 mb-4">Please provide your social media links.</p>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <FaFacebookF className="text-blue-600" />
-                      <input
-                        type="text"
-                        value={facebook}
-                        onChange={(e) => setFacebook(e.target.value)}
-                        placeholder="Facebook Link"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FaInstagram className="text-pink-500" />
-                      <input
-                        type="text"
-                        value={instagram}
-                        onChange={(e) => setInstagram(e.target.value)}
-                        placeholder="Instagram Link"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FaLinkedinIn className="text-blue-600" />
-                      <input
-                        type="text"
-                        value={linkedin}
-                        onChange={(e) => setLinkedin(e.target.value)}
-                        placeholder="LinkedIn Link"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
