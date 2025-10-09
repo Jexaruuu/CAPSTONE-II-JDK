@@ -1,5 +1,5 @@
 const clientModel = require('../models/clientModel');
-const { createSupabaseAuthUser, createConfirmedUser } = require('../supabaseClient');
+const { createConfirmedUser } = require('../supabaseClient');
 
 const registerClient = async (req, res) => {
   const { first_name, last_name, sex, email_address, password, is_agreed_to_terms } = req.body;

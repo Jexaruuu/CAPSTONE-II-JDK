@@ -324,8 +324,7 @@ export default function WorkerProfile() {
     }
 
     const fbReady = !("facebook" in payload) || payload.facebook == null || isValidFacebookUrl(payload.facebook);
-    the
-    const igReady = !("instagram" in payload) || payload.instagram == null || isValidInstagramUrl(payload.instagram);
+const igReady = !("instagram" in payload) || payload.instagram == null || isValidInstagramUrl(payload.instagram);
     if (!fbReady || !igReady || savingSocial || facebookTaken || instagramTaken) return;
 
     setSavingSocial(true); setSaving(true); setSaved(false);

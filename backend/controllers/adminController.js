@@ -49,7 +49,7 @@ exports.requestAdminNo = async (req, res) => {
     req.session.verifiedEmails[to] = true;
 
     return res.status(200).json({ sent: true });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ message: 'Unable to send Admin No.' });
   }
 };
@@ -103,7 +103,7 @@ exports.registerAdmin = async (req, res) => {
 
     const inserted = await adminModel.createAdmin(profile);
     if (!inserted) {
-      try { await supabaseAdmin.auth.admin.deleteUser(user.id); } catch (_) {}
+      try { await supabaseAdmin.auth.admin.deleteUser(user.id); } catch {}
       return res.status(500).json({
         message: 'Failed to persist admin profile.',
         hint:
@@ -122,7 +122,7 @@ exports.registerAdmin = async (req, res) => {
       admin_no: adminNo,
       role: 'admin',
     };
-    try { delete req.session.verifiedEmails[email]; } catch (_) {}
+    try { delete req.session.verifiedEmails[email]; } catch {}
 
     return res.status(201).json({
       success: true,
@@ -132,7 +132,7 @@ exports.registerAdmin = async (req, res) => {
       user: { first_name, last_name, sex, email_address: email, admin_no: adminNo },
       role: 'admin',
     });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ message: 'Server error during admin registration.' });
   }
 };
@@ -171,7 +171,7 @@ exports.loginAdmin = async (req, res) => {
     };
 
     return res.status(200).json({ user, role: 'admin' });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ message: 'Server error during admin login.' });
   }
 };
@@ -188,7 +188,7 @@ exports.sendAdminNoEmail = async (req, res) => {
       const byAdminNo = await adminModel.getByAdminNo(adminNo);
       if (byEmail && !first_name) first_name = byEmail.first_name || '';
       if (byEmail && !last_name) last_name = byEmail.last_name || '';
-    } catch (_) {}
+    } catch {}
 
     const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@localhost';
     const html = `
@@ -207,24 +207,23 @@ exports.sendAdminNoEmail = async (req, res) => {
     });
 
     return res.status(200).json({ ok: true });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ message: 'Unable to send Admin No. email.' });
   }
 };
 
-exports.logoutAdmin = async (req, res) => {
+exports.logoutAdmin = async (_req, res) => {
   try {
-    if (req.session) {
-      await new Promise((resolve) => req.session.destroy(() => resolve()));
+    if (_req.session) {
+      await new Promise((resolve) => _req.session.destroy(() => resolve()));
     }
     res.clearCookie('connect.sid', { path: '/' });
     return res.status(200).json({ message: 'Logged out' });
-  } catch (err) {
+  } catch {
     return res.status(200).json({ message: 'Logged out' });
   }
 };
 
-/* ---------------- List Clients + Workers for Manage Users (safe date handling) --------------- */
 exports.listAllUsers = async (_req, res) => {
   try {
     const [clients, workers] = await Promise.all([
@@ -232,8 +231,7 @@ exports.listAllUsers = async (_req, res) => {
       adminModel.listWorkers(),
     ]);
 
-    const getDate = (row) =>
-      row?.created_at || row?.createdAt || null; // don't assume inserted_at exists
+    const getDate = (row) => row?.created_at || row?.createdAt || null;
 
     const mapClient = (c) => ({
       id: c.auth_uid || c.id || c.email_address,
@@ -243,6 +241,10 @@ exports.listAllUsers = async (_req, res) => {
       sex: c.sex || '',
       email: c.email_address,
       date: getDate(c),
+      avatar: c.client_avatar || c.avatar_url || '',
+      phone: c.contact_number || '',
+      facebook: c.social_facebook || '',
+      instagram: c.social_instagram || ''
     });
 
     const mapWorker = (w) => ({
@@ -253,9 +255,12 @@ exports.listAllUsers = async (_req, res) => {
       sex: w.sex || '',
       email: w.email_address,
       date: getDate(w),
+      avatar: w.worker_avatar || w.avatar_url || '',
+      phone: w.contact_number || '',
+      facebook: w.social_facebook || '',
+      instagram: w.social_instagram || ''
     });
 
-    // merge + sort by date desc if present; stable if not
     const users = [
       ...(Array.isArray(clients) ? clients.map(mapClient) : []),
       ...(Array.isArray(workers) ? workers.map(mapWorker) : []),
@@ -266,7 +271,7 @@ exports.listAllUsers = async (_req, res) => {
     });
 
     return res.status(200).json({ users });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ message: 'Failed to fetch users.' });
   }
 };

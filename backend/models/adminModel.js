@@ -1,4 +1,3 @@
-// models/adminModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 
 const ADMIN_TABLE = 'user_admin';
@@ -32,7 +31,6 @@ exports.getByAdminNo = async (adminNo) => {
 };
 
 exports.createAdmin = async (profile) => {
-  // Insert only the columns we expect to exist
   const payload = {
     auth_uid: profile.auth_uid,
     first_name: profile.first_name,
@@ -41,7 +39,7 @@ exports.createAdmin = async (profile) => {
     email_address: profile.email_address,
     admin_no: profile.admin_no,
     role: profile.role ?? 'admin',
-    // created_at can be omitted if your table has DEFAULT now()
+    created_at: profile.created_at || null
   };
 
   const { data, error } = await supabaseAdmin
@@ -51,14 +49,13 @@ exports.createAdmin = async (profile) => {
     .maybeSingle();
 
   if (error) {
-    // 👇 this prints rich Postgres details in your server logs
     console.error('createAdmin insert error:', {
       message: error.message,
       details: error.details,
       hint: error.hint,
       code: error.code,
     });
-    return null; // keep your controller logic intact
+    return null;
   }
   return data || null;
 };
@@ -83,7 +80,7 @@ exports.checkEmailExistenceAcrossAllUsers = async (email) => {
     return !!found;
   } catch (err) {
     console.error('checkEmailExistenceAcrossAllUsers error:', err);
-    return true; // conservative
+    return true;
   }
 };
 
@@ -97,12 +94,10 @@ exports.adminNoExists = async (adminNo) => {
   return Array.isArray(data) && data.length > 0;
 };
 
-/* ---------------- FIXED: Lists for Manage Users (no inserted_at, no server-side order) ----------------- */
 exports.listClients = async () => {
-  // Only select columns we know exist in your inserts
   const { data, error } = await supabaseAdmin
     .from(CLIENT_TABLE)
-    .select('auth_uid, first_name, last_name, sex, email_address, created_at'); // created_at may exist (DEFAULT now())
+    .select('auth_uid, first_name, last_name, sex, email_address, created_at, client_avatar, avatar_url, contact_number, social_facebook, social_instagram');
   if (error) {
     console.error('listClients error:', error);
     return [];
@@ -113,7 +108,7 @@ exports.listClients = async () => {
 exports.listWorkers = async () => {
   const { data, error } = await supabaseAdmin
     .from(WORKER_TABLE)
-    .select('auth_uid, first_name, last_name, sex, email_address, created_at');
+    .select('auth_uid, first_name, last_name, sex, email_address, created_at, worker_avatar, avatar_url, contact_number, social_facebook, social_instagram');
   if (error) {
     console.error('listWorkers error:', error);
     return [];

@@ -15,7 +15,8 @@ const createClient = async (auth_uid, firstName, lastName, sex, email, password,
         agreed_at: agreedAt,
         contact_number: null,
         social_facebook: null,
-        social_instagram: null
+        social_instagram: null,
+        created_at: new Date().toISOString()
       }]);
     if (error) throw error;
     return data;
