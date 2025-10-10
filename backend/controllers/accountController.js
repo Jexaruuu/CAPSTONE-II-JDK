@@ -44,6 +44,17 @@ function sess(req) {
   return { role, email, auth_uid, id: s.id || null };
 }
 
+function computeAge(iso) {
+  if (!iso) return null;
+  const d = new Date(String(iso));
+  if (isNaN(d.getTime())) return null;
+  const t = new Date();
+  let a = t.getFullYear() - d.getFullYear();
+  const m = t.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
+  return a >= 0 && a <= 120 ? a : null;
+}
+
 exports.me = async (req, res) => {
   try {
     const s = sess(req);
@@ -164,7 +175,7 @@ exports.updateProfile = async (req, res) => {
     if (!s.role || (!s.auth_uid && !s.email)) return res.status(401).json({ message: "Unauthorized" });
 
     const patch = {};
-    ["first_name","last_name","phone","facebook","instagram"].forEach(k => {
+    ["first_name","last_name","phone","facebook","instagram","date_of_birth"].forEach(k => {
       if (k in req.body) {
         const v = typeof req.body[k] === "string" ? req.body[k].trim() : req.body[k];
         patch[k] = v === "" ? null : v;
@@ -177,6 +188,11 @@ exports.updateProfile = async (req, res) => {
     if ("phone" in patch) dbPatch.contact_number = patch.phone ? patch.phone : null;
     if ("facebook" in patch) dbPatch.social_facebook = patch.facebook ? accountModel.normalizeFacebook(patch.facebook) : null;
     if ("instagram" in patch) dbPatch.social_instagram = patch.instagram ? accountModel.normalizeInstagram(patch.instagram) : null;
+    if ("date_of_birth" in patch) {
+      dbPatch.date_of_birth = patch.date_of_birth ? patch.date_of_birth : null;
+      const a = computeAge(patch.date_of_birth);
+      dbPatch.age = a == null ? null : a;
+    }
 
     if ("phone" in patch && patch.phone) {
       const taken = await accountModel.isContactNumberTakenAcrossAll(patch.phone, s.auth_uid);

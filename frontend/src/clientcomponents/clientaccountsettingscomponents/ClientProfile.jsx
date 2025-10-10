@@ -56,6 +56,11 @@ export default function ClientProfile() {
 
   const [editingDob, setEditingDob] = useState(false);
   const [dobError, setDobError] = useState("");
+  const [dobEditCommitted, setDobEditCommitted] = useState(true);
+
+  const dpRef = useRef(null);
+  const [dpOpen, setDpOpen] = useState(false);
+  const [dpView, setDpView] = useState(new Date());
 
   useEffect(() => {
     const update = () => {
@@ -86,6 +91,33 @@ export default function ClientProfile() {
     return a >= 0 && a <= 120 ? a : null;
   }
 
+  const toYMD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  const toMDY = (d) => {
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const y = d.getFullYear();
+    return `${m}/${day}/${y}`;
+  };
+
+  const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = useMemo(() => {
+    const today = new Date();
+    const max = new Date(today.getFullYear() - 21, today.getMonth(), today.getDate());
+    const min = new Date(today.getFullYear() - 55, today.getMonth(), today.getDate());
+    return {
+      minDOB: toYMD(min),
+      maxDOB: toYMD(max),
+      minDOBDate: min,
+      maxDOBDate: max,
+      minDOBLabel: toMDY(min),
+      maxDOBLabel: toMDY(max)
+    };
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       const appU = (() => {
@@ -102,6 +134,7 @@ export default function ClientProfile() {
           withCredentials: true,
           headers: appU ? { "x-app-u": appU } : {}
         });
+        const dob = data?.date_of_birth ? String(data.date_of_birth).slice(0, 10) : "";
         setForm((f) => ({
           ...f,
           first_name: data?.first_name || "",
@@ -110,7 +143,7 @@ export default function ClientProfile() {
           phone: data?.phone || "",
           facebook: data?.facebook || "",
           instagram: data?.instagram || "",
-          date_of_birth: data?.date_of_birth ? String(data.date_of_birth).slice(0, 10) : ""
+          date_of_birth: dob
         }));
         setBase({
           first_name: data?.first_name || "",
@@ -119,7 +152,7 @@ export default function ClientProfile() {
           phone: data?.phone || "",
           facebook: data?.facebook || "",
           instagram: data?.instagram || "",
-          date_of_birth: data?.date_of_birth ? String(data.date_of_birth).slice(0, 10) : ""
+          date_of_birth: dob
         });
         localStorage.setItem("first_name", data?.first_name || "");
         localStorage.setItem("last_name", data?.last_name || "");
@@ -130,18 +163,28 @@ export default function ClientProfile() {
           setCreatedAt(t.toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "long", timeStyle: "short" }));
         }
         setAvatarBroken(!data?.avatar_url);
+        setDpView(dob ? new Date(dob) : new Date(maxDOBDate));
       } catch {
         const t = new Date();
         setCreatedAt(t.toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "long", timeStyle: "short" }));
+        setDpView(new Date(maxDOBDate));
       }
     };
     init();
-  }, []);
+  }, [maxDOBDate]);
 
   useEffect(() => {
     document.body.style.overflow = confirmOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [confirmOpen]);
+
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (dpRef.current && !dpRef.current.contains(e.target)) setDpOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
 
   const allowedPHPrefixes = useMemo(
     () => new Set([
@@ -270,7 +313,11 @@ export default function ClientProfile() {
   const socialDirty = facebookDirty || instagramDirty;
   const avatarDirty = !!avatarFile || avatarRemoved;
 
-  const canSaveProfile = (avatarDirty || phoneDirty || dobDirty) && !savingProfile && (!phoneDirty || (isPhoneValid && !phoneTaken && phoneEditCommitted));
+  const canSaveProfile =
+    (avatarDirty || phoneDirty || dobDirty) &&
+    !savingProfile &&
+    (!phoneDirty || (isPhoneValid && !phoneTaken && phoneEditCommitted)) &&
+    (!dobDirty || (((form.date_of_birth === "" || (form.date_of_birth && form.date_of_birth >= minDOB && form.date_of_birth <= maxDOB)) && dobEditCommitted)));
 
   const canSaveSocial = socialDirty && !savingSocial && facebookValid && instagramValid && !facebookTaken && !instagramTaken;
 
@@ -285,6 +332,43 @@ export default function ClientProfile() {
     const a = computeAge(iso);
     if (a == null) return "Invalid age";
     return "";
+  }
+
+  const monthName = (d) => d.toLocaleString("default", { month: "long" }) + " " + d.getFullYear();
+  const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
+  const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const isSameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const canGoPrev = () => addMonths(startOfMonth(dpView), -1) >= startOfMonth(minDOBDate);
+  const canGoNext = () => addMonths(startOfMonth(dpView), 1) <= startOfMonth(maxDOBDate);
+  const inRange = (date) => date >= minDOBDate && date <= maxDOBDate;
+  const openCalendar = () => {
+    if (!editingDob) setEditingDob(true);
+    if (form.date_of_birth) setDpView(new Date(form.date_of_birth));
+    else setDpView(new Date(maxDOBDate));
+    setDobEditCommitted(false);
+    setDpOpen(true);
+  };
+  const isBirthdateValid = useMemo(() => {
+    if (!form.date_of_birth) return false;
+    const d = new Date(form.date_of_birth);
+    if (isNaN(d.getTime())) return false;
+    return form.date_of_birth >= minDOB && form.date_of_birth <= maxDOB;
+  }, [form.date_of_birth, minDOB, maxDOB]);
+
+  const monthsList = useMemo(() => ["January","February","March","April","May","June","July","August","September","October","November","December"], []);
+  const yearsList = useMemo(() => {
+    const ys = [];
+    for (let y = minDOBDate.getFullYear(); y <= maxDOBDate.getFullYear(); y++) ys.push(y);
+    return ys;
+  }, [minDOBDate, maxDOBDate]);
+
+  function setMonthYear(m, y) {
+    const next = new Date(y, m, 1);
+    const minStart = startOfMonth(minDOBDate);
+    const maxStart = startOfMonth(maxDOBDate);
+    const clamped = next < minStart ? minStart : next > maxStart ? maxStart : next;
+    setDpView(clamped);
   }
 
   async function uploadAvatar(file) {
@@ -443,47 +527,201 @@ export default function ClientProfile() {
                 <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">First Name</p>
                 <p className="mt-1 text-base text-gray-900">{form.first_name || "—"}</p>
 
-                <div className="mt-6">
+                <div className="mt-6" ref={dpRef}>
                   <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Date of Birth</p>
+
                   {!editingDob && (
-                    <div className="mt-1">
-                      {form.date_of_birth ? (
-                        <p className="text-base text-gray-900">{new Date(form.date_of_birth).toLocaleDateString("en-PH")}</p>
-                      ) : (
-                        <p className="text-base text-gray-900">—</p>
-                      )}
-                    </div>
-                  )}
-                  {!form.date_of_birth && !editingDob && (
-                    <div className="mt-3 flex items-center gap-3">
-                      <button type="button" onClick={() => { setEditingDob(true); setDobError(""); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">+ Add date of birth</button>
-                    </div>
-                  )}
-                  {form.date_of_birth && !editingDob && (
-                    <div className="mt-3 flex items-center gap-3">
-                      <button type="button" onClick={() => { setEditingDob(true); setDobError(""); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
-                      <button type="button" onClick={() => { setForm({ ...form, date_of_birth: "" }); setDobError(""); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
-                    </div>
-                  )}
-                  {editingDob && (
-                    <div className="mt-3 w-[280px]">
-                      <input
-                        type="date"
-                        value={form.date_of_birth}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setForm({ ...form, date_of_birth: v });
-                          setDobError(validateDob(v));
-                        }}
-                        className={`w-full px-4 py-2 h-10 border rounded-md outline-none ${dobError ? "border-red-500" : "border-gray-300"}`}
-                        max={new Date().toISOString().slice(0,10)}
-                      />
-                      {dobError ? <div className="mt-2 text-xs text-red-600">{dobError}</div> : null}
-                      <div className="mt-3 flex items-center gap-3">
-                        <button type="button" onClick={() => { const err = validateDob(form.date_of_birth); if (err) { setDobError(err); return; } setEditingDob(false); }} className={`rounded-md px-4 text-sm font-medium transition h-10 ${dobError ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}>Done</button>
-                        <button type="button" onClick={() => { setForm({ ...form, date_of_birth: base?.date_of_birth || "" }); setEditingDob(false); setDobError(""); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
+                    <>
+                      <div className="mt-1">
+                        <p className="text-base text-gray-900">{form.date_of_birth ? toMDY(new Date(form.date_of_birth)) : "—"}</p>
                       </div>
-                    </div>
+                      <div className="mt-3 flex items-center gap-3">
+                        {!form.date_of_birth ? (
+                          <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">+ Add date of birth</button>
+                        ) : (
+                          <>
+                            <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                            <button type="button" onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {editingDob && (
+                    <>
+                      <div className="mt-1 flex items-center rounded-xl border border-gray-300">
+                        <input
+                          type="text"
+                          value={form.date_of_birth ? toMDY(new Date(form.date_of_birth)) : ""}
+                          onFocus={openCalendar}
+                          readOnly
+                          placeholder="mm/dd/yyyy"
+                          title={`Allowed: ${minDOBLabel} to ${maxDOBLabel} (21–55 years old)`}
+                          className="w-full px-4 py-3 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          inputMode="none"
+                        />
+                        <button
+                          type="button"
+                          onClick={openCalendar}
+                          className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                          aria-label="Open calendar"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" />
+                            <path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-gray-500 mt-1">Must be between <span className="font-medium">{minDOBLabel}</span> and <span className="font-medium">{maxDOBLabel}</span> (21–55 yrs).</p>
+                      {form.date_of_birth && !isBirthdateValid && <p className="text-xs text-red-600 mt-1">Birthdate must make you between 21 and 55 years old.</p>}
+
+                      {dpOpen && (
+                        <div className="absolute z-50 mt-2 w-[280px] rounded-xl border border-gray-200 bg-white shadow-xl p-3">
+                          <div className="flex items-center justify-between px-2 pb-2">
+                            <button
+                              type="button"
+                              onClick={() => canGoPrev() && setDpView(addMonths(dpView, -1))}
+                              className={`p-2 rounded-lg hover:bg-gray-100 ${canGoPrev() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`}
+                              aria-label="Previous month"
+                            >
+                              ‹
+                            </button>
+                            <div className="flex items-center gap-2">
+                              <select
+                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                value={dpView.getMonth()}
+                                onChange={(e) => setMonthYear(parseInt(e.target.value, 10), dpView.getFullYear())}
+                              >
+                                {monthsList.map((m, i) => (
+                                  <option key={m} value={i}>{m}</option>
+                                ))}
+                              </select>
+                              <select
+                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                value={dpView.getFullYear()}
+                                onChange={(e) => setMonthYear(dpView.getMonth(), parseInt(e.target.value, 10))}
+                              >
+                                {yearsList.map((y) => (
+                                  <option key={y} value={y}>{y}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => canGoNext() && setDpView(addMonths(dpView, 1))}
+                              className={`p-2 rounded-lg hover:bg-gray-100 ${canGoNext() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`}
+                              aria-label="Next month"
+                            >
+                              ›
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
+                            {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d) => (
+                              <div key={d} className="py-1">{d}</div>
+                            ))}
+                          </div>
+
+                          {(() => {
+                            const first = startOfMonth(dpView);
+                            const last = endOfMonth(dpView);
+                            const offset = first.getDay();
+                            const total = offset + last.getDate();
+                            const rows = Math.ceil(total / 7);
+                            const selected = form.date_of_birth ? new Date(form.date_of_birth) : null;
+                            const cells = [];
+
+                            for (let r = 0; r < rows; r++) {
+                              const row = [];
+                              for (let c = 0; c < 7; c++) {
+                                const idx = r * 7 + c;
+                                const dayNum = idx - offset + 1;
+                                if (dayNum < 1 || dayNum > last.getDate()) {
+                                  row.push(<div key={`x-${r}-${c}`} className="py-2" />);
+                                } else {
+                                  const d = new Date(dpView.getFullYear(), dpView.getMonth(), dayNum);
+                                  const disabled = !inRange(d);
+                                  const isSelected = selected && isSameDay(selected, d);
+                                  row.push(
+                                    <button
+                                      key={`d-${dayNum}`}
+                                      type="button"
+                                      disabled={disabled}
+                                      onClick={() => {
+                                        const ymd = toYMD(d);
+                                        setForm((f) => ({ ...f, date_of_birth: ymd }));
+                                        setDobError(validateDob(ymd));
+                                        setDpOpen(false);
+                                      }}
+                                      className={[
+                                        "py-2 rounded-lg transition text-sm",
+                                        disabled ? "text-gray-300 cursor-not-allowed" : "hover:bg-blue-50 text-gray-700",
+                                        isSelected && !disabled ? "bg-blue-600 text-white hover:bg-blue-600" : ""
+                                      ].join(" ")}
+                                    >
+                                      {dayNum}
+                                    </button>
+                                  );
+                                }
+                              }
+                              cells.push(
+                                <div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">
+                                  {row}
+                                </div>
+                              );
+                            }
+                            return <div className="mt-1">{cells}</div>;
+                          })()}
+
+                          <div className="flex items-center justify-between mt-3 px-2">
+                            <button
+                              type="button"
+                              onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setDpOpen(false); }}
+                              className="text-xs text-gray-500 hover:text-gray-700"
+                            >
+                              Clear
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setDpView(new Date(maxDOBDate)); }}
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              Jump to latest allowed
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (form.date_of_birth && !isBirthdateValid) return;
+                            setEditingDob(false);
+                            setDobEditCommitted(true);
+                            setDpOpen(false);
+                          }}
+                          className={`rounded-md px-4 text-sm font-medium transition h-10 ${form.date_of_birth && !isBirthdateValid ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}
+                        >
+                          Done
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm((f)=>({ ...f, date_of_birth: base?.date_of_birth || "" }));
+                            setDobError("");
+                            setEditingDob(false);
+                            setDobEditCommitted(true);
+                            setDpOpen(false);
+                          }}
+                          className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -574,9 +812,9 @@ export default function ClientProfile() {
                     value={form.facebook}
                     onChange={(e) => { setForm({ ...form, facebook: e.target.value }); setFacebookTaken(false); }}
                     onBlur={() => setSocialTouched((s) => ({ ...s, facebook: true }))}
-                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${fbErr ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
+                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!facebookValid || facebookTaken) && socialTouched.facebook ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
                   />
-                  {fbErr && <div className="mt-1 text-xs text-red-600">Enter a valid Facebook profile URL.</div>}
+                  {(!facebookValid || facebookTaken) && socialTouched.facebook && <div className="mt-1 text-xs text-red-600">Enter a valid Facebook profile URL.</div>}
                 </>
               ) : (
                 <a href={base.facebook} target="_blank" rel="noreferrer" className="text-md text-blue-700 break-all hover:underline">{base.facebook}</a>
@@ -612,9 +850,9 @@ export default function ClientProfile() {
                     value={form.instagram}
                     onChange={(e) => { setForm({ ...form, instagram: e.target.value }); setInstagramTaken(false); }}
                     onBlur={() => setSocialTouched((s) => ({ ...s, instagram: true }))}
-                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${igErr ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
+                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!instagramValid || instagramTaken) && socialTouched.instagram ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
                   />
-                  {igErr && <div className="mt-1 text-xs text-red-600">Enter a valid Instagram profile URL.</div>}
+                  {(!instagramValid || instagramTaken) && socialTouched.instagram && <div className="mt-1 text-xs text-red-600">Enter a valid Instagram profile URL.</div>}
                 </>
               ) : (
                 <a href={base.instagram} target="_blank" rel="noreferrer" className="text-md text-blue-700 break-all hover:underline">{base.instagram}</a>

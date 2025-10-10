@@ -1,3 +1,4 @@
+// WorkerProfile.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
@@ -28,6 +29,7 @@ export default function WorkerProfile() {
     phone: "",
     facebook: "",
     instagram: "",
+    date_of_birth: ""
   });
 
   const [base, setBase] = useState(null);
@@ -52,6 +54,14 @@ export default function WorkerProfile() {
 
   const [editSocial, setEditSocial] = useState({ facebook: false, instagram: false });
 
+  const [editingDob, setEditingDob] = useState(false);
+  const [dobError, setDobError] = useState("");
+  const [dobEditCommitted, setDobEditCommitted] = useState(true);
+
+  const dpRef = useRef(null);
+  const [dpOpen, setDpOpen] = useState(false);
+  const [dpView, setDpView] = useState(new Date());
+
   useEffect(() => {
     const update = () => {
       if (btnRef.current) {
@@ -70,6 +80,44 @@ export default function WorkerProfile() {
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  function computeAge(iso) {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    const t = new Date();
+    let a = t.getFullYear() - d.getFullYear();
+    const m = t.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
+    return a >= 0 && a <= 120 ? a : null;
+  }
+
+  const toYMD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  const toMDY = (d) => {
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const y = d.getFullYear();
+    return `${m}/${day}/${y}`;
+  };
+
+  const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = useMemo(() => {
+    const today = new Date();
+    const max = new Date(today.getFullYear() - 21, today.getMonth(), today.getDate());
+    const min = new Date(today.getFullYear() - 55, today.getMonth(), today.getDate());
+    return {
+      minDOB: toYMD(min),
+      maxDOB: toYMD(max),
+      minDOBDate: min,
+      maxDOBDate: max,
+      minDOBLabel: toMDY(min),
+      maxDOBLabel: toMDY(max)
+    };
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       const appU = (() => {
@@ -86,6 +134,7 @@ export default function WorkerProfile() {
           withCredentials: true,
           headers: appU ? { "x-app-u": appU } : {}
         });
+        const dob = data?.date_of_birth ? String(data.date_of_birth).slice(0, 10) : "";
         setForm((f) => ({
           ...f,
           first_name: data?.first_name || "",
@@ -93,7 +142,8 @@ export default function WorkerProfile() {
           email: data?.email_address || "",
           phone: data?.phone || "",
           facebook: data?.facebook || "",
-          instagram: data?.instagram || ""
+          instagram: data?.instagram || "",
+          date_of_birth: dob
         }));
         setBase({
           first_name: data?.first_name || "",
@@ -101,7 +151,8 @@ export default function WorkerProfile() {
           email: data?.email_address || "",
           phone: data?.phone || "",
           facebook: data?.facebook || "",
-          instagram: data?.instagram || ""
+          instagram: data?.instagram || "",
+          date_of_birth: dob
         });
         localStorage.setItem("worker_first_name", data?.first_name || "");
         localStorage.setItem("worker_last_name", data?.last_name || "");
@@ -116,18 +167,28 @@ export default function WorkerProfile() {
           setCreatedAt(t.toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "long", timeStyle: "short" }));
         }
         setAvatarBroken(!data?.avatar_url);
+        setDpView(dob ? new Date(dob) : new Date(maxDOBDate));
       } catch {
         const t = new Date();
         setCreatedAt(t.toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "long", timeStyle: "short" }));
+        setDpView(new Date(maxDOBDate));
       }
     };
     init();
-  }, []);
+  }, [maxDOBDate]);
 
   useEffect(() => {
     document.body.style.overflow = confirmOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [confirmOpen]);
+
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (dpRef.current && !dpRef.current.contains(e.target)) setDpOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
 
   const allowedPHPrefixes = useMemo(
     () => new Set([
@@ -251,12 +312,68 @@ export default function WorkerProfile() {
   const phoneDirty = useMemo(() => !!base && String(base.phone || "") !== String(form.phone || ""), [base, form.phone]);
   const facebookDirty = useMemo(() => !!base && String(base.facebook || "") !== String(form.facebook || ""), [base, form.facebook]);
   const instagramDirty = useMemo(() => !!base && String(base.instagram || "") !== String(form.instagram || ""), [base, form.instagram]);
+  const dobDirty = useMemo(() => !!base && String(base.date_of_birth || "") !== String(form.date_of_birth || ""), [base, form.date_of_birth]);
 
   const socialDirty = facebookDirty || instagramDirty;
   const avatarDirty = !!avatarFile || avatarRemoved;
 
-  const canSaveProfile = (avatarDirty || phoneDirty) && !savingProfile && (!phoneDirty || (isPhoneValid && !phoneTaken && phoneEditCommitted));
+  const canSaveProfile =
+    (avatarDirty || phoneDirty || dobDirty) &&
+    !savingProfile &&
+    (!phoneDirty || (isPhoneValid && !phoneTaken && phoneEditCommitted)) &&
+    (!dobDirty || (((form.date_of_birth === "" || (form.date_of_birth && form.date_of_birth >= minDOB && form.date_of_birth <= maxDOB)) && dobEditCommitted)));
+
   const canSaveSocial = socialDirty && !savingSocial && facebookValid && instagramValid && !facebookTaken && !instagramTaken;
+
+  const age = useMemo(() => computeAge(form.date_of_birth), [form.date_of_birth]);
+
+  function validateDob(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "Invalid date";
+    const now = new Date();
+    if (d > now) return "Date cannot be in the future";
+    const a = computeAge(iso);
+    if (a == null) return "Invalid age";
+    return "";
+  }
+
+  const monthName = (d) => d.toLocaleString("default", { month: "long" }) + " " + d.getFullYear();
+  const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
+  const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const isSameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const canGoPrev = () => addMonths(startOfMonth(dpView), -1) >= startOfMonth(minDOBDate);
+  const canGoNext = () => addMonths(startOfMonth(dpView), 1) <= startOfMonth(maxDOBDate);
+  const inRange = (date) => date >= minDOBDate && date <= maxDOBDate;
+  const openCalendar = () => {
+    if (!editingDob) setEditingDob(true);
+    if (form.date_of_birth) setDpView(new Date(form.date_of_birth));
+    else setDpView(new Date(maxDOBDate));
+    setDobEditCommitted(false);
+    setDpOpen(true);
+  };
+  const isBirthdateValid = useMemo(() => {
+    if (!form.date_of_birth) return false;
+    const d = new Date(form.date_of_birth);
+    if (isNaN(d.getTime())) return false;
+    return form.date_of_birth >= minDOB && form.date_of_birth <= maxDOB;
+  }, [form.date_of_birth, minDOB, maxDOB]);
+
+  const monthsList = useMemo(() => ["January","February","March","April","May","June","July","August","September","October","November","December"], []);
+  const yearsList = useMemo(() => {
+    const ys = [];
+    for (let y = minDOBDate.getFullYear(); y <= maxDOBDate.getFullYear(); y++) ys.push(y);
+    return ys;
+  }, [minDOBDate, maxDOBDate]);
+
+  function setMonthYear(m, y) {
+    const next = new Date(y, m, 1);
+    const minStart = startOfMonth(minDOBDate);
+    const maxStart = startOfMonth(maxDOBDate);
+    const clamped = next < minStart ? minStart : next > maxStart ? maxStart : next;
+    setDpView(clamped);
+  }
 
   async function uploadAvatar(file) {
     try {
@@ -290,12 +407,22 @@ export default function WorkerProfile() {
       } else if (avatarRemoved) {
         await removeAvatarServer(); setAvatarRemoved(false); setAvatarBroken(true);
       }
-      if (phoneDirty) {
-        const payload = { phone: form.phone || "" }, appU = buildAppU();
+      if (phoneDirty || dobDirty) {
+        const payload = {};
+        if (phoneDirty) payload.phone = form.phone || "";
+        if (dobDirty) payload.date_of_birth = form.date_of_birth || null;
+        const appU = buildAppU();
         const { data } = await axios.post(`${API_BASE}/api/account/profile`, payload, { withCredentials: true, headers: { "Content-Type": "application/json", ...(appU ? { "x-app-u": appU } : {}) } });
-        setBase((b) => ({ ...(b || {}), first_name: data?.first_name || form.first_name, last_name: data?.last_name || form.last_name, email: data?.email_address || form.email, phone: data?.phone ?? payload.phone, facebook: b?.facebook ?? form.facebook, instagram: b?.instagram ?? form.instagram }));
-        localStorage.setItem("first_name", data?.first_name || form.first_name || "");
-        localStorage.setItem("last_name", data?.last_name || form.last_name || "");
+        setBase((b) => ({
+          ...(b || {}),
+          first_name: data?.first_name || form.first_name,
+          last_name: data?.last_name || form.last_name,
+          email: data?.email_address || form.email,
+          phone: phoneDirty ? (data?.phone ?? payload.phone ?? "") : (b?.phone ?? form.phone),
+          facebook: b?.facebook ?? form.facebook,
+          instagram: b?.instagram ?? form.instagram,
+          date_of_birth: dobDirty ? (data?.date_of_birth ? String(data.date_of_birth).slice(0,10) : payload.date_of_birth || "") : (b?.date_of_birth ?? form.date_of_birth)
+        }));
         setPhoneTaken(false);
       }
       setSaved(true); setSavedProfile(true);
@@ -324,7 +451,7 @@ export default function WorkerProfile() {
     }
 
     const fbReady = !("facebook" in payload) || payload.facebook == null || isValidFacebookUrl(payload.facebook);
-const igReady = !("instagram" in payload) || payload.instagram == null || isValidInstagramUrl(payload.instagram);
+    const igReady = !("instagram" in payload) || payload.instagram == null || isValidInstagramUrl(payload.instagram);
     if (!fbReady || !igReady || savingSocial || facebookTaken || instagramTaken) return;
 
     setSavingSocial(true); setSaving(true); setSaved(false);
@@ -338,7 +465,8 @@ const igReady = !("instagram" in payload) || payload.instagram == null || isVali
         email: data?.email_address || form.email,
         phone: b?.phone ?? form.phone,
         facebook: data?.facebook ?? payload.facebook ?? form.facebook,
-        instagram: data?.instagram ?? payload.instagram ?? form.instagram
+        instagram: data?.instagram ?? payload.instagram ?? form.instagram,
+        date_of_birth: b?.date_of_birth ?? form.date_of_birth
       }));
       setSaved(true); setSavedSocial(true);
       setFacebookTaken(false); setInstagramTaken(false);
@@ -402,6 +530,220 @@ const igReady = !("instagram" in payload) || payload.instagram == null || isVali
               <div className="w-[280px] shrink-0">
                 <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">First Name</p>
                 <p className="mt-1 text-base text-gray-900">{form.first_name || "—"}</p>
+
+                <div className="mt-6" ref={dpRef}>
+                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Date of Birth</p>
+
+                  {!editingDob && (
+                    <>
+                      <div className="mt-1">
+                        <p className="text-base text-gray-900">{form.date_of_birth ? toMDY(new Date(form.date_of_birth)) : "—"}</p>
+                      </div>
+                      <div className="mt-3 flex items-center gap-3">
+                        {!form.date_of_birth ? (
+                          <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">+ Add date of birth</button>
+                        ) : (
+                          <>
+                            <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                            <button type="button" onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {editingDob && (
+                    <>
+                      <div className="mt-1 flex items-center rounded-xl border border-gray-300">
+                        <input
+                          type="text"
+                          value={form.date_of_birth ? toMDY(new Date(form.date_of_birth)) : ""}
+                          onFocus={openCalendar}
+                          readOnly
+                          placeholder="mm/dd/yyyy"
+                          title={`Allowed: ${minDOBLabel} to ${maxDOBLabel} (21–55 years old)`}
+                          className="w-full px-4 py-3 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          inputMode="none"
+                        />
+                        <button
+                          type="button"
+                          onClick={openCalendar}
+                          className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                          aria-label="Open calendar"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" />
+                            <path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-gray-500 mt-1">Must be between <span className="font-medium">{minDOBLabel}</span> and <span className="font-medium">{maxDOBLabel}</span> (21–55 yrs).</p>
+                      {form.date_of_birth && !isBirthdateValid && <p className="text-xs text-red-600 mt-1">Birthdate must make you between 21 and 55 years old.</p>}
+
+                      {dpOpen && (
+                        <div className="absolute z-50 mt-2 w-[280px] rounded-xl border border-gray-200 bg-white shadow-xl p-3">
+                          <div className="flex items-center justify-between px-2 pb-2">
+                            <button
+                              type="button"
+                              onClick={() => canGoPrev() && setDpView(addMonths(dpView, -1))}
+                              className={`p-2 rounded-lg hover:bg-gray-100 ${canGoPrev() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`}
+                              aria-label="Previous month"
+                            >
+                              ‹
+                            </button>
+                            <div className="flex items-center gap-2">
+                              <select
+                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                value={dpView.getMonth()}
+                                onChange={(e) => setMonthYear(parseInt(e.target.value, 10), dpView.getFullYear())}
+                              >
+                                {monthsList.map((m, i) => (
+                                  <option key={m} value={i}>{m}</option>
+                                ))}
+                              </select>
+                              <select
+                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                value={dpView.getFullYear()}
+                                onChange={(e) => setMonthYear(dpView.getMonth(), parseInt(e.target.value, 10))}
+                              >
+                                {yearsList.map((y) => (
+                                  <option key={y} value={y}>{y}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => canGoNext() && setDpView(addMonths(dpView, 1))}
+                              className={`p-2 rounded-lg hover:bg-gray-100 ${canGoNext() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`}
+                              aria-label="Next month"
+                            >
+                              ›
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
+                            {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d) => (
+                              <div key={d} className="py-1">{d}</div>
+                            ))}
+                          </div>
+
+                          {(() => {
+                            const first = startOfMonth(dpView);
+                            const last = endOfMonth(dpView);
+                            const offset = first.getDay();
+                            const total = offset + last.getDate();
+                            const rows = Math.ceil(total / 7);
+                            const selected = form.date_of_birth ? new Date(form.date_of_birth) : null;
+                            const cells = [];
+
+                            for (let r = 0; r < rows; r++) {
+                              const row = [];
+                              for (let c = 0; c < 7; c++) {
+                                const idx = r * 7 + c;
+                                const dayNum = idx - offset + 1;
+                                if (dayNum < 1 || dayNum > last.getDate()) {
+                                  row.push(<div key={`x-${r}-${c}`} className="py-2" />);
+                                } else {
+                                  const d = new Date(dpView.getFullYear(), dpView.getMonth(), dayNum);
+                                  const disabled = !inRange(d);
+                                  const isSelected = selected && isSameDay(selected, d);
+                                  row.push(
+                                    <button
+                                      key={`d-${dayNum}`}
+                                      type="button"
+                                      disabled={disabled}
+                                      onClick={() => {
+                                        const ymd = toYMD(d);
+                                        setForm((f) => ({ ...f, date_of_birth: ymd }));
+                                        setDobError(validateDob(ymd));
+                                        setDpOpen(false);
+                                      }}
+                                      className={[
+                                        "py-2 rounded-lg transition text-sm",
+                                        disabled ? "text-gray-300 cursor-not-allowed" : "hover:bg-blue-50 text-gray-700",
+                                        isSelected && !disabled ? "bg-blue-600 text-white hover:bg-blue-600" : ""
+                                      ].join(" ")}
+                                    >
+                                      {dayNum}
+                                    </button>
+                                  );
+                                }
+                              }
+                              cells.push(
+                                <div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">
+                                  {row}
+                                </div>
+                              );
+                            }
+                            return <div className="mt-1">{cells}</div>;
+                          })()}
+
+                          <div className="flex items-center justify-between mt-3 px-2">
+                            <button
+                              type="button"
+                              onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setDpOpen(false); }}
+                              className="text-xs text-gray-500 hover:text-gray-700"
+                            >
+                              Clear
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setDpView(new Date(maxDOBDate)); }}
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              Jump to latest allowed
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (form.date_of_birth && !isBirthdateValid) return;
+                            setEditingDob(false);
+                            setDobEditCommitted(true);
+                            setDpOpen(false);
+                          }}
+                          className={`rounded-md px-4 text-sm font-medium transition h-10 ${form.date_of_birth && !isBirthdateValid ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}
+                        >
+                          Done
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm((f)=>({ ...f, date_of_birth: base?.date_of_birth || "" }));
+                            setDobError("");
+                            setEditingDob(false);
+                            setDobEditCommitted(true);
+                            setDpOpen(false);
+                          }}
+                          className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="w-[220px] shrink-0">
+                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Last Name</p>
+                <p className="mt-1 text-base text-gray-900">{form.last_name || "—"}</p>
+
+                <div className="mt-6">
+                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Age</p>
+                  <p className="mt-1 text-base text-gray-900">{age != null ? `${age}` : "—"}</p>
+                </div>
+              </div>
+
+              <div className="w-[240px] shrink-0">
+                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Email</p>
+                <p className="mt-1 text-base text-gray-900">{form.email || "—"}</p>
+
                 <div className="mt-6 min-h-[170px]">
                   <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Contact Number</p>
 
@@ -449,16 +791,6 @@ const igReady = !("instagram" in payload) || payload.instagram == null || isVali
                     </div>
                   )}
                 </div>
-              </div>
-
-              <div className="w-[220px] shrink-0">
-                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Last Name</p>
-                <p className="mt-1 text-base text-gray-900">{form.last_name || "—"}</p>
-              </div>
-
-              <div className="w-[240px] shrink-0">
-                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Email</p>
-                <p className="mt-1 text-base text-gray-900">{form.email || "—"}</p>
               </div>
             </div>
           </div>

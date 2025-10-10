@@ -53,12 +53,64 @@ function igKey(url){
   return"";
 }
 
+function computeAge(iso){
+  if(!iso)return null;
+  const d=new Date(String(iso));
+  if(isNaN(d.getTime()))return null;
+  const t=new Date();
+  let a=t.getFullYear()-d.getFullYear();
+  const m=t.getMonth()-d.getMonth();
+  if(m<0||(m===0&&t.getDate()<d.getDate()))a--;
+  return a>=0&&a<=120?a:null;
+}
+
 async function getClientByAuthOrEmail({auth_uid,email}){let q=supabaseAdmin.from("user_client").select("*").limit(1);if(auth_uid)q=q.eq("auth_uid",auth_uid);else if(email)q=q.eq("email_address",email);const{data,error}=await q;if(error)throw error;return data&&data[0]?data[0]:null;}
 async function getWorkerByAuthOrEmail({auth_uid,email}){let q=supabaseAdmin.from("user_worker").select("*").limit(1);if(auth_uid)q=q.eq("auth_uid",auth_uid);else if(email)q=q.eq("email_address",email);const{data,error}=await q;if(error)throw error;return data&&data[0]?data[0]:null;}
 async function getAuthUserById(auth_uid){if(!auth_uid)return null;const{data,error}=await supabaseAdmin.auth.admin.getUserById(auth_uid);if(error)return null;return data?.user||null;}
 
-async function getClientAccountProfile({auth_uid,email}){const row=await getClientByAuthOrEmail({auth_uid,email});const user=await getAuthUserById(row?.auth_uid||auth_uid);const created_at=row?.created_at||user?.created_at||null;return{first_name:row?.first_name||user?.user_metadata?.first_name||"",last_name:row?.last_name||user?.user_metadata?.last_name||"",email_address:row?.email_address||user?.email||email||"",sex:row?.sex||user?.user_metadata?.sex||"",avatar_url:row?.client_avatar||row?.avatar_url||user?.user_metadata?.avatar_url||"",phone:row?.contact_number??row?.phone??"",facebook:row?.social_facebook??row?.facebook??"",instagram:row?.social_instagram??row?.instagram??"",auth_uid:row?.auth_uid||auth_uid||"",created_at};}
-async function getWorkerAccountProfile({auth_uid,email}){const row=await getWorkerByAuthOrEmail({auth_uid,email});const user=await getAuthUserById(row?.auth_uid||auth_uid);const created_at=row?.created_at||user?.created_at||null;return{first_name:row?.first_name||user?.user_metadata?.first_name||"",last_name:row?.last_name||user?.user_metadata?.last_name||"",email_address:row?.email_address||user?.email||email||"",sex:row?.sex||user?.user_metadata?.sex||"",avatar_url:row?.worker_avatar||row?.avatar_url||user?.user_metadata?.avatar_url||"",phone:row?.contact_number??row?.phone??"",facebook:row?.social_facebook??row?.facebook??"",instagram:row?.social_instagram??row?.instagram??"",auth_uid:row?.auth_uid||auth_uid||"",created_at};}
+async function getClientAccountProfile({auth_uid,email}){
+  const row=await getClientByAuthOrEmail({auth_uid,email});
+  const user=await getAuthUserById(row?.auth_uid||auth_uid);
+  const created_at=row?.created_at||user?.created_at||null;
+  const dob=row?.date_of_birth||user?.user_metadata?.date_of_birth||null;
+  const age=row?.age!=null?row.age:computeAge(dob);
+  return{
+    first_name:row?.first_name||user?.user_metadata?.first_name||"",
+    last_name:row?.last_name||user?.user_metadata?.last_name||"",
+    email_address:row?.email_address||user?.email||email||"",
+    sex:row?.sex||user?.user_metadata?.sex||"",
+    avatar_url:row?.client_avatar||row?.avatar_url||user?.user_metadata?.avatar_url||"",
+    phone:row?.contact_number??row?.phone??"",
+    facebook:row?.social_facebook??row?.facebook??"",
+    instagram:row?.social_instagram??row?.instagram??"",
+    auth_uid:row?.auth_uid||auth_uid||"",
+    created_at,
+    date_of_birth:dob,
+    age
+  };
+}
+// accountModel.js - replace getWorkerAccountProfile with this version
+async function getWorkerAccountProfile({auth_uid,email}){
+  const row=await getWorkerByAuthOrEmail({auth_uid,email});
+  const user=await getAuthUserById(row?.auth_uid||auth_uid);
+  const created_at=row?.created_at||user?.created_at||null;
+  const dob=row?.date_of_birth||user?.user_metadata?.date_of_birth||null;
+  const age=row?.age!=null?row.age:computeAge(dob);
+  return{
+    first_name:row?.first_name||user?.user_metadata?.first_name||"",
+    last_name:row?.last_name||user?.user_metadata?.last_name||"",
+    email_address:row?.email_address||user?.email||email||"",
+    sex:row?.sex||user?.user_metadata?.sex||"",
+    avatar_url:row?.worker_avatar||row?.avatar_url||user?.user_metadata?.avatar_url||"",
+    phone:row?.contact_number??row?.phone??"",
+    facebook:row?.social_facebook??row?.facebook??"",
+    instagram:row?.social_instagram??row?.instagram??"",
+    auth_uid:row?.auth_uid||auth_uid||"",
+    created_at,
+    date_of_birth:dob,
+    age
+  };
+}
 
 async function uploadClientAvatarDataUrl(auth_uid,data_url){const parsed=parseDataUrl(data_url);if(!parsed)throw new Error("Invalid image");await ensureStorageBucket(CLIENT_BUCKET,true);const key=`clients/${auth_uid||"unknown"}/${Date.now()}.${extFrom(parsed.contentType)}`;const abuf=parsed.buf.buffer.slice(parsed.buf.byteOffset,parsed.buf.byteOffset+parsed.buf.byteLength);const{error:upErr}=await supabaseAdmin.storage.from(CLIENT_BUCKET).upload(key,abuf,{contentType:parsed.contentType,upsert:true});if(upErr)throw upErr;const{data:pub}=supabaseAdmin.storage.from(CLIENT_BUCKET).getPublicUrl(key);return pub?.publicUrl||"";}
 async function uploadWorkerAvatarDataUrl(auth_uid,data_url){const parsed=parseDataUrl(data_url);if(!parsed)throw new Error("Invalid image");await ensureStorageBucket(WORKER_BUCKET,true);const key=`workers/${auth_uid||"unknown"}/${Date.now()}.${extFrom(parsed.contentType)}`;const abuf=parsed.buf.buffer.slice(parsed.buf.byteOffset,parsed.buf.byteOffset+parsed.buf.byteLength);const{error:upErr}=await supabaseAdmin.storage.from(WORKER_BUCKET).upload(key,abuf,{contentType:parsed.contentType,upsert:true});if(upErr)throw upErr;const{data:pub}=supabaseAdmin.storage.from(WORKER_BUCKET).getPublicUrl(key);return pub?.publicUrl||"";}
