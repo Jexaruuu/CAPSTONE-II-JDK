@@ -310,7 +310,7 @@ export default function AdminManageUser() {
                     <thead>
                       <tr className="text-left text-sm text-gray-600">
                         {ENABLE_SELECTION && (
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]">
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
                             <input
                               ref={headerCheckboxRef}
                               type="checkbox"
@@ -321,11 +321,11 @@ export default function AdminManageUser() {
                             />
                           </th>
                         )}
-                        <th className="hidden sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]">
+                        <th className="hidden sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
                           Avatar
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("first_name")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -334,7 +334,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("last_name")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -343,7 +343,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("sex")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -352,7 +352,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("email")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -361,7 +361,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("date")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -370,7 +370,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("role")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -378,7 +378,7 @@ export default function AdminManageUser() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-24 font-medium text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]">
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-medium text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
                           Action
                         </th>
                       </tr>
@@ -391,7 +391,7 @@ export default function AdminManageUser() {
                           className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
                         >
                           {ENABLE_SELECTION && (
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-4 border border-gray-200">
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -401,7 +401,7 @@ export default function AdminManageUser() {
                               />
                             </td>
                           )}
-                          <td className="hidden px-4 py-4">
+                          <td className="hidden px-4 py-4 border border-gray-200">
                             <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 ring-1 ring-gray-300">
                               <img
                                 src={u.avatar || "/Clienticon.png"}
@@ -417,7 +417,7 @@ export default function AdminManageUser() {
                               />
                             </div>
                           </td>
-                          <td className="px-4 py-4">
+                          <td className="px-4 py-4 border border-gray-200">
                             <div className="flex items-center gap-3">
                               <div className="min-w-0">
                                 <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"}`}>
@@ -426,13 +426,13 @@ export default function AdminManageUser() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-4">{u.last_name || "-"}</td>
-                          <td className="px-4 py-4">{u.sex || "-"}</td>
-                          <td className="px-4 py-4">
+                          <td className="px-4 py-4 border border-gray-200">{u.last_name || "-"}</td>
+                          <td className="px-4 py-4 border border-gray-200">{u.sex || "-"}</td>
+                          <td className="px-4 py-4 border border-gray-200">
                             <div className="text-gray-700 truncate">{u.email}</div>
                           </td>
-                          <td className="px-4 py-4">{formatPrettyDate(u.date)}</td>
-                          <td className="px-4 py-4">
+                          <td className="px-4 py-4 border border-gray-200">{formatPrettyDate(u.date)}</td>
+                          <td className="px-4 py-4 border border-gray-200">
                             <span
                               className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${
                                 (u.role || "").toLowerCase() === "worker"
@@ -444,15 +444,15 @@ export default function AdminManageUser() {
                               {u.role?.charAt(0).toUpperCase() + u.role?.slice(1)}
                             </span>
                           </td>
-                          <td className="px-4 py-4 w-24 text-left">
-                            <RowMenu onView={() => { setViewUser(u); setViewOpen(true); }} />
+                          <td className="px-4 py-4 w-40 text-left border border-gray-200">
+                            <RowMenu onView={() => { setViewUser(u); setViewOpen(true); }} onEdit={() => {}} onRemove={() => {}} />
                           </td>
                         </tr>
                       ))}
 
                       {!loading && !loadError && sortedRows.length === 0 && (
                         <tr>
-                          <td colSpan={COLSPAN} className="px-4 py-16 text-center text-gray-500">
+                          <td colSpan={COLSPAN} className="px-4 py-16 text-center text-gray-500 border border-gray-200">
                             No users found.
                           </td>
                         </tr>
@@ -497,7 +497,7 @@ export default function AdminManageUser() {
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl ring-1 ring-gray-200 overflow-hidden">
               <div className="relative h-40 bg-gray-100">
-                <img src="/jdklogo.png" alt="Banner" className="absolute inset-0 w-[200px] h-[200px] object-contain p-6 select-none pointer-events-none -mt-12" />
+                <img src="/jdklogo.png" alt="Banner" className="absolute right-4 top-1/2 -translate-y-1/2 w-[200px] h-[200px] object-contain p-6 select-none pointer-events-none" />
                 <div className="hidden absolute -top-6 -left-10 h-40 w-40 rounded-full bg-white/10 blur-md" />
                 <div className="hidden absolute -bottom-10 left-1/3 h-44 w-44 rounded-full bg-white/10 blur-md" />
                 <div className="hidden absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/10 blur-md" />
@@ -643,25 +643,26 @@ function RowMenu({ onView, onEdit, onRemove }) {
 
   return (
     <div className="relative inline-block text-left" ref={ref}>
-      <span
-        role="link"
-        tabIndex={0}
-        onClick={() => {
-          setOpen(false);
-          onView?.();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
+      <div className="flex items-center gap-2">
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            setOpen(false);
             onView?.();
-          }
-        }}
-        className="cursor-pointer text-blue-600 hover:underline font-medium inline-flex items-center"
-        aria-label="View user"
-      >
-        <MoreHorizontal className="hidden" aria-hidden="true" />
-        View
-      </span>
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onView?.();
+            }
+          }}
+          className="cursor-pointer inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+          aria-label="View user"
+        >
+          View
+        </span>
+      </div>
     </div>
   );
 }

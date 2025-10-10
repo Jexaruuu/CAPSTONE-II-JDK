@@ -373,7 +373,7 @@ export default function AdminServiceRequests() {
                     <thead>
                       <tr className="text-left text-sm text-gray-600">
                         {ENABLE_SELECTION && (
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]">
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
                             <input
                               ref={headerCheckboxRef}
                               type="checkbox"
@@ -386,7 +386,7 @@ export default function AdminServiceRequests() {
                         )}
 
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("name_first")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -395,7 +395,7 @@ export default function AdminServiceRequests() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("name_last")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -403,16 +403,16 @@ export default function AdminServiceRequests() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700">
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 border border-gray-200">
                           Email
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700">
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 border border-gray-200">
                           Service
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700">
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 border border-gray-200">
                           Status
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-medium text-gray-700">
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-medium text-gray-700 border border-gray-200">
                           Action
                         </th>
                       </tr>
@@ -428,7 +428,7 @@ export default function AdminServiceRequests() {
                             className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
                           >
                             {ENABLE_SELECTION && (
-                              <td className="px-4 py-4">
+                              <td className="px-4 py-4 border border-gray-200">
                                 <input
                                   type="checkbox"
                                   className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -439,22 +439,8 @@ export default function AdminServiceRequests() {
                               </td>
                             )}
 
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-4 border border-gray-200">
                               <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 ring-1 ring-gray-300">
-                                  <img
-                                    src={avatarFromName(`${u.name_first} ${u.name_last}`.trim())}
-                                    alt={`${u.name_first} ${u.name_last}`}
-                                    className="h-full w-full object-cover"
-                                    onError={({ currentTarget }) => {
-                                      currentTarget.style.display = "none";
-                                      const parent = currentTarget.parentElement;
-                                      if (parent) {
-                                        parent.innerHTML = `<div class="h-9 w-9 grid place-items-center bg-blue-100 text-blue-700 text-xs font-semibold">${(u.name_first || "?").trim().charAt(0).toUpperCase()}</div>`;
-                                      }
-                                    }}
-                                  />
-                                </div>
                                 <div className="min-w-0">
                                   <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"}`}>
                                     {u.name_first || "-"}
@@ -463,38 +449,38 @@ export default function AdminServiceRequests() {
                               </div>
                             </td>
 
-                            <td className="px-4 py-4">{u.name_last || "-"}</td>
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-4 border border-gray-200">{u.name_last || "-"}</td>
+                            <td className="px-4 py-4 border border-gray-200">
                               <div className="truncate">{u.email || "-"}</div>
                             </td>
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-4 border border-gray-200">
                               <div className="truncate">
                                 {u.service_type || "-"}
                                 {u.service_task ? ` • ${u.service_task}` : ""}
                               </div>
                             </td>
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-4 border border-gray-200">
                               <StatusPill value={u.ui_status} />
                             </td>
 
-                            <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"}`}>
-                              <div className="inline-flex gap-3">
+                            <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}>
+                              <div className="inline-flex gap-2">
                                 <button
                                   onClick={() => setViewRow(u)}
-                                  className="text-blue-600 hover:underline font-medium"
+                                  className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                                 >
                                   View
                                 </button>
                                 <button
                                   onClick={() => decline(u.id)}
-                                  className="font-medium disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed text-red-600 hover:underline"
+                                  className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                   disabled={disableActions}
                                 >
                                   Decline
                                 </button>
                                 <button
                                   onClick={() => approve(u.id)}
-                                  className="font-medium disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed text-emerald-600 hover:underline"
+                                  className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                   disabled={disableActions}
                                 >
                                   Approve
@@ -507,7 +493,7 @@ export default function AdminServiceRequests() {
 
                       {!loading && !loadError && sortedRows.length === 0 && (
                         <tr>
-                          <td colSpan={COLSPAN} className="px-4 py-16 text-center text-gray-500">
+                          <td colSpan={COLSPAN} className="px-4 py-16 text-center text-gray-500 border border-gray-200">
                             No requests found.
                           </td>
                         </tr>

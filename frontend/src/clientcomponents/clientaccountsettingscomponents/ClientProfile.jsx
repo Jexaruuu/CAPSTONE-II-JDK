@@ -15,6 +15,7 @@ export default function ClientProfile() {
 
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarRemoved, setAvatarRemoved] = useState(false);
+
   const [avatarSize, setAvatarSize] = useState(80);
   const [alignOffset, setAlignOffset] = useState(0);
   const [btnFixedWidth, setBtnFixedWidth] = useState(140);
@@ -28,6 +29,7 @@ export default function ClientProfile() {
     phone: "",
     facebook: "",
     instagram: "",
+    date_of_birth: ""
   });
 
   const [base, setBase] = useState(null);
@@ -52,6 +54,9 @@ export default function ClientProfile() {
 
   const [editSocial, setEditSocial] = useState({ facebook: false, instagram: false });
 
+  const [editingDob, setEditingDob] = useState(false);
+  const [dobError, setDobError] = useState("");
+
   useEffect(() => {
     const update = () => {
       if (btnRef.current) {
@@ -69,6 +74,17 @@ export default function ClientProfile() {
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
+
+  function computeAge(iso) {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    const t = new Date();
+    let a = t.getFullYear() - d.getFullYear();
+    const m = t.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
+    return a >= 0 && a <= 120 ? a : null;
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -93,7 +109,8 @@ export default function ClientProfile() {
           email: data?.email_address || "",
           phone: data?.phone || "",
           facebook: data?.facebook || "",
-          instagram: data?.instagram || ""
+          instagram: data?.instagram || "",
+          date_of_birth: data?.date_of_birth ? String(data.date_of_birth).slice(0, 10) : ""
         }));
         setBase({
           first_name: data?.first_name || "",
@@ -101,7 +118,8 @@ export default function ClientProfile() {
           email: data?.email_address || "",
           phone: data?.phone || "",
           facebook: data?.facebook || "",
-          instagram: data?.instagram || ""
+          instagram: data?.instagram || "",
+          date_of_birth: data?.date_of_birth ? String(data.date_of_birth).slice(0, 10) : ""
         });
         localStorage.setItem("first_name", data?.first_name || "");
         localStorage.setItem("last_name", data?.last_name || "");
@@ -247,12 +265,27 @@ export default function ClientProfile() {
   const phoneDirty = useMemo(() => !!base && String(base.phone || "") !== String(form.phone || ""), [base, form.phone]);
   const facebookDirty = useMemo(() => !!base && String(base.facebook || "") !== String(form.facebook || ""), [base, form.facebook]);
   const instagramDirty = useMemo(() => !!base && String(base.instagram || "") !== String(form.instagram || ""), [base, form.instagram]);
+  const dobDirty = useMemo(() => !!base && String(base.date_of_birth || "") !== String(form.date_of_birth || ""), [base, form.date_of_birth]);
 
   const socialDirty = facebookDirty || instagramDirty;
   const avatarDirty = !!avatarFile || avatarRemoved;
 
-  const canSaveProfile = (avatarDirty || phoneDirty) && !savingProfile && (!phoneDirty || (isPhoneValid && !phoneTaken && phoneEditCommitted));
+  const canSaveProfile = (avatarDirty || phoneDirty || dobDirty) && !savingProfile && (!phoneDirty || (isPhoneValid && !phoneTaken && phoneEditCommitted));
+
   const canSaveSocial = socialDirty && !savingSocial && facebookValid && instagramValid && !facebookTaken && !instagramTaken;
+
+  const age = useMemo(() => computeAge(form.date_of_birth), [form.date_of_birth]);
+
+  function validateDob(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "Invalid date";
+    const now = new Date();
+    if (d > now) return "Date cannot be in the future";
+    const a = computeAge(iso);
+    if (a == null) return "Invalid age";
+    return "";
+  }
 
   async function uploadAvatar(file) {
     try {
@@ -286,10 +319,22 @@ export default function ClientProfile() {
       } else if (avatarRemoved) {
         await removeAvatarServer(); setAvatarRemoved(false); setAvatarBroken(true);
       }
-      if (phoneDirty) {
-        const payload = { phone: form.phone || "" }, appU = buildAppU();
+      if (phoneDirty || dobDirty) {
+        const payload = {};
+        if (phoneDirty) payload.phone = form.phone || "";
+        if (dobDirty) payload.date_of_birth = form.date_of_birth || null;
+        const appU = buildAppU();
         const { data } = await axios.post(`${API_BASE}/api/account/profile`, payload, { withCredentials: true, headers: { "Content-Type": "application/json", ...(appU ? { "x-app-u": appU } : {}) } });
-        setBase((b) => ({ ...(b || {}), first_name: data?.first_name || form.first_name, last_name: data?.last_name || form.last_name, email: data?.email_address || form.email, phone: data?.phone ?? payload.phone, facebook: b?.facebook ?? form.facebook, instagram: b?.instagram ?? form.instagram }));
+        setBase((b) => ({
+          ...(b || {}),
+          first_name: data?.first_name || form.first_name,
+          last_name: data?.last_name || form.last_name,
+          email: data?.email_address || form.email,
+          phone: phoneDirty ? (data?.phone ?? payload.phone ?? "") : (b?.phone ?? form.phone),
+          facebook: b?.facebook ?? form.facebook,
+          instagram: b?.instagram ?? form.instagram,
+          date_of_birth: dobDirty ? (data?.date_of_birth ? String(data.date_of_birth).slice(0,10) : payload.date_of_birth || "") : (b?.date_of_birth ?? form.date_of_birth)
+        }));
         setPhoneTaken(false);
       }
       setSaved(true); setSavedProfile(true);
@@ -317,8 +362,8 @@ export default function ClientProfile() {
       payload.instagram = nig;
     }
 
-   const fbReady = !("facebook" in payload) || payload.facebook == null || isValidFacebookUrl(payload.facebook);
-const igReady = !("instagram" in payload) || payload.instagram == null || isValidInstagramUrl(payload.instagram);
+    const fbReady = !("facebook" in payload) || payload.facebook == null || isValidFacebookUrl(payload.facebook);
+    const igReady = !("instagram" in payload) || payload.instagram == null || isValidInstagramUrl(payload.instagram);
     if (!fbReady || !igReady || savingSocial || facebookTaken || instagramTaken) return;
 
     setSavingSocial(true); setSaving(true); setSaved(false);
@@ -332,7 +377,8 @@ const igReady = !("instagram" in payload) || payload.instagram == null || isVali
         email: data?.email_address || form.email,
         phone: b?.phone ?? form.phone,
         facebook: data?.facebook ?? payload.facebook ?? form.facebook,
-        instagram: data?.instagram ?? payload.instagram ?? form.instagram
+        instagram: data?.instagram ?? payload.instagram ?? form.instagram,
+        date_of_birth: b?.date_of_birth ?? form.date_of_birth
       }));
       setSaved(true); setSavedSocial(true);
       setFacebookTaken(false); setInstagramTaken(false);
@@ -396,9 +442,68 @@ const igReady = !("instagram" in payload) || payload.instagram == null || isVali
               <div className="w-[280px] shrink-0">
                 <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">First Name</p>
                 <p className="mt-1 text-base text-gray-900">{form.first_name || "—"}</p>
+
+                <div className="mt-6">
+                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Date of Birth</p>
+                  {!editingDob && (
+                    <div className="mt-1">
+                      {form.date_of_birth ? (
+                        <p className="text-base text-gray-900">{new Date(form.date_of_birth).toLocaleDateString("en-PH")}</p>
+                      ) : (
+                        <p className="text-base text-gray-900">—</p>
+                      )}
+                    </div>
+                  )}
+                  {!form.date_of_birth && !editingDob && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <button type="button" onClick={() => { setEditingDob(true); setDobError(""); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">+ Add date of birth</button>
+                    </div>
+                  )}
+                  {form.date_of_birth && !editingDob && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <button type="button" onClick={() => { setEditingDob(true); setDobError(""); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                      <button type="button" onClick={() => { setForm({ ...form, date_of_birth: "" }); setDobError(""); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
+                    </div>
+                  )}
+                  {editingDob && (
+                    <div className="mt-3 w-[280px]">
+                      <input
+                        type="date"
+                        value={form.date_of_birth}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setForm({ ...form, date_of_birth: v });
+                          setDobError(validateDob(v));
+                        }}
+                        className={`w-full px-4 py-2 h-10 border rounded-md outline-none ${dobError ? "border-red-500" : "border-gray-300"}`}
+                        max={new Date().toISOString().slice(0,10)}
+                      />
+                      {dobError ? <div className="mt-2 text-xs text-red-600">{dobError}</div> : null}
+                      <div className="mt-3 flex items-center gap-3">
+                        <button type="button" onClick={() => { const err = validateDob(form.date_of_birth); if (err) { setDobError(err); return; } setEditingDob(false); }} className={`rounded-md px-4 text-sm font-medium transition h-10 ${dobError ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}>Done</button>
+                        <button type="button" onClick={() => { setForm({ ...form, date_of_birth: base?.date_of_birth || "" }); setEditingDob(false); setDobError(""); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="w-[220px] shrink-0">
+                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Last Name</p>
+                <p className="mt-1 text-base text-gray-900">{form.last_name || "—"}</p>
+
+                <div className="mt-6">
+                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Age</p>
+                  <p className="mt-1 text-base text-gray-900">{age != null ? `${age}` : "—"}</p>
+                </div>
+              </div>
+
+              <div className="w-[240px] shrink-0">
+                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Email</p>
+                <p className="mt-1 text-base text-gray-900">{form.email || "—"}</p>
+
                 <div className="mt-6 min-h-[170px]">
                   <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Contact Number</p>
-
                   {!editingPhone && (
                     <div className="mt-1">
                       {form.phone && !phoneTaken ? (
@@ -410,32 +515,27 @@ const igReady = !("instagram" in payload) || payload.instagram == null || isVali
                       ) : <p className="text-base text-gray-900">—</p>}
                     </div>
                   )}
-
                   {(!form.phone || phoneTaken) && !editingPhone && (
                     <div className="mt-3 flex items-center gap-3">
                       <button type="button" onClick={() => { setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">+ Add contact number</button>
                     </div>
                   )}
-
                   {form.phone && !phoneTaken && !editingPhone && (
                     <div className="mt-3 flex items-center gap-3">
                       <button type="button" onClick={() => { setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
                       <button type="button" onClick={() => { setForm({ ...form, phone: "" }); setPhoneTaken(false); setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
                     </div>
                   )}
-
                   {(editingPhone || !!form.phone) && editingPhone && (
-                    <div className="mt-3 w-[280px]">
+                    <div className="mt-3 w-[240px]">
                       <div className={`flex items-center rounded-md border ${showPhoneError || phoneTaken ? "border-red-500" : "border-gray-300"} overflow-hidden pl-3 pr-4 w-full h-10`}>
                         <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm mr-2 object-cover" />
                         <span className="text-gray-700 text-sm mr-3">+63</span>
                         <span className="h-6 w-px bg-gray-200 mr-3" />
                         <input type="tel" value={form.phone} onChange={(e) => { setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }); setPhoneTaken(false); }} placeholder="9XXXXXXXXX" className="w-full outline-none text-sm placeholder:text-gray-400 h-full" />
                       </div>
-
                       {showPhoneError && <div className="mt-2 text-xs text-red-600">Enter a valid PH mobile number with a real prefix (e.g., 9XXXXXXXXX).</div>}
                       {phoneTaken && <div className="mt-2 text-xs text-red-600">Contact number already in use.</div>}
-
                       <div className="mt-3 flex items-center gap-3">
                         <button type="button" onClick={() => { if (!isPhoneValid || phoneTaken) { setPhoneErrorAfterDone(true); return; } setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); }} className={`rounded-md px-4 text-sm font-medium transition h-10 ${!isPhoneValid || phoneTaken ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}>Done</button>
                         <button type="button" onClick={() => { setForm({ ...form, phone: base?.phone || "" }); setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); setPhoneTaken(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
@@ -443,16 +543,6 @@ const igReady = !("instagram" in payload) || payload.instagram == null || isVali
                     </div>
                   )}
                 </div>
-              </div>
-
-              <div className="w-[220px] shrink-0">
-                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Last Name</p>
-                <p className="mt-1 text-base text-gray-900">{form.last_name || "—"}</p>
-              </div>
-
-              <div className="w-[240px] shrink-0">
-                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Email</p>
-                <p className="mt-1 text-base text-gray-900">{form.email || "—"}</p>
               </div>
             </div>
           </div>
