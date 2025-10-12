@@ -392,6 +392,13 @@ export default function ClientProfile() {
     } catch { return false; }
   }
 
+  async function createNotification(payload) {
+    try {
+      localStorage.setItem("client_has_unread", "1");
+      window.dispatchEvent(new Event("client-notifications-refresh"));
+    } catch {}
+  }
+
   const onSaveProfile = async () => {
     if (!canSaveProfile) return;
     setSavingProfile(true); setSaving(true); setSaved(false);
@@ -422,6 +429,7 @@ export default function ClientProfile() {
         setPhoneTaken(false);
       }
       setSaved(true); setSavedProfile(true);
+      await createNotification({ kind: "profile_updated", title: "Profile updated", message: "Your profile has been updated successfully." });
       setTimeout(() => { setSaved(false); setSavedProfile(false); }, 1500);
     } catch (err) {
       const msg = (err?.response?.data?.message || err?.message || "").toLowerCase();
@@ -467,6 +475,7 @@ export default function ClientProfile() {
       setSaved(true); setSavedSocial(true);
       setFacebookTaken(false); setInstagramTaken(false);
       setEditSocial({ facebook: false, instagram: false });
+      await createNotification({ kind: "profile_updated", title: "Profile updated", message: "Your profile has been updated successfully." });
       setTimeout(() => { setSaved(false); setSavedSocial(false); }, 1500);
     } catch (err) {
       const msg = (err?.response?.data?.message || err?.message || "").toLowerCase();

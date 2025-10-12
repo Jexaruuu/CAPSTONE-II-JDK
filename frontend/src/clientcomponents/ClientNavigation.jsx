@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+// ClientNavigation.jsx
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
@@ -24,9 +25,7 @@ const ClientNavigation = () => {
   const bellDropdownRef = useRef(null);
 
   const goTop = () => {
-    try {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    } catch {}
+    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
   };
 
   const handleClickOutside = (event) => {
@@ -117,6 +116,22 @@ const ClientNavigation = () => {
   const [avatarReady, setAvatarReady] = useState(Boolean(initialAvatar));
   const [avatarBroken, setAvatarBroken] = useState(false);
 
+  const [notifCount, setNotifCount] = useState(0);
+  const [notifItems, setNotifItems] = useState([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [notifSuppressed, setNotifSuppressed] = useState(
+    typeof window !== 'undefined' && localStorage.getItem('notifSuppressed') === '1'
+  );
+
+  function setSuppression(v) {
+    setNotifSuppressed(v);
+    try {
+      if (v) localStorage.setItem('notifSuppressed', '1');
+      else localStorage.removeItem('notifSuppressed');
+    } catch {}
+  }
+
   function preloadAvatar(src) {
     return new Promise((resolve, reject) => {
       if (!src) return reject(new Error('empty'));
@@ -127,17 +142,141 @@ const ClientNavigation = () => {
     });
   }
 
+  function buildAppU() {
+    try {
+      const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
+      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
+      const e = a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+      return encodeURIComponent(JSON.stringify({ r: 'client', e, au }));
+    } catch {}
+    return '';
+  }
+
+  function setAppUCookie(val) {
+    try { document.cookie = `app_u=${val}; Path=/; SameSite=Lax`; } catch {}
+  }
+
+  async function ensureSession() {
+    try {
+      const appU = buildAppU();
+      if (!appU) return false;
+      const { data } = await axios.get(`${API_BASE}/api/account/me`, {
+        withCredentials: true,
+        headers: { 'x-app-u': appU }
+      });
+      const uid = data?.auth_uid || '';
+      const email = data?.email_address || '';
+      if (uid) localStorage.setItem('auth_uid', uid);
+      if (email) {
+        localStorage.setItem('email_address', email);
+        localStorage.setItem('email', email);
+        localStorage.setItem('client_email', email);
+      }
+      const appU2 = encodeURIComponent(JSON.stringify({ r: 'client', e: email || '', au: uid || '' }));
+      setAppUCookie(appU2);
+      setSessionReady(true);
+      return Boolean(data);
+    } catch {
+      setSessionReady(false);
+      return false;
+    }
+  }
+
+  async function refreshNotifs() {
+    const appU = buildAppU();
+    if (!appU) {
+      setNotifCount(0);
+      return;
+    }
+    try {
+      const { data } = await axios.get(`${API_BASE}/api/notifications/count`, {
+        withCredentials: true,
+        headers: { 'x-app-u': appU }
+      });
+      const c = typeof data === 'number' ? data : Number(data?.count || 0);
+      setNotifCount(Number.isFinite(c) ? c : 0);
+    } catch {
+      const ok = await ensureSession();
+      if (!ok) {
+        setNotifCount(0);
+        return;
+      }
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/notifications/count`, {
+          withCredentials: true,
+          headers: { 'x-app-u': buildAppU() }
+        });
+        const c = typeof data === 'number' ? data : Number(data?.count || 0);
+        setNotifCount(Number.isFinite(c) ? c : 0);
+      } catch {
+        setNotifCount(0);
+      }
+    }
+  }
+
+  async function fetchNotifList() {
+    const tryFetch = async () => {
+      const appU = buildAppU();
+      if (!appU) {
+        setNotifItems([]);
+        return true;
+      }
+      const { data } = await axios.get(`${API_BASE}/api/notifications`, {
+        withCredentials: true,
+        headers: { 'x-app-u': appU }
+      });
+      const arr = Array.isArray(data) ? data : data?.items || [];
+      const normalized = arr.map((n, i) => ({
+        id: n.id ?? `${i}`,
+        title: n.title ?? 'Notification',
+        message: n.message ?? '',
+        created_at: n.created_at ?? new Date().toISOString(),
+        read: !!n.read
+      }));
+      setNotifItems(normalized);
+      return true;
+    };
+
+    try {
+      setNotifLoading(true);
+      const ok = await tryFetch();
+      if (ok) return;
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        const s = await ensureSession();
+        if (s) {
+          try { await tryFetch(); } catch { setNotifItems([]); }
+        } else {
+          setNotifItems([]);
+        }
+      } else {
+        setNotifItems([]);
+      }
+    } finally {
+      setNotifLoading(false);
+    }
+  }
+
+  function fmtDate(iso) {
+    try {
+      const d = new Date(iso);
+      const dPart = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const tPart = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `${dPart} • ${tPart}`;
+    } catch { return ''; }
+  }
+
   useEffect(() => {
     const init = async () => {
-      const appU = (() => {
-        try {
-          const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
-          const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
-          const e = a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
-          return encodeURIComponent(JSON.stringify({ r: 'client', e, au }));
-        } catch {}
-        return '';
-      })();
+      let hasSession = false;
+      try { hasSession = await ensureSession(); } catch {}
+      const appU = buildAppU();
+      if (!appU && !hasSession) {
+        setNotifCount(0);
+        setAvatarReady(true);
+        if (!initialAvatar) setAvatarBroken(true);
+        return;
+      }
       try {
         const { data } = await axios.get(`${API_BASE}/api/account/me`, {
           withCredentials: true,
@@ -147,13 +286,12 @@ const ClientNavigation = () => {
         const l = data?.last_name || localStorage.getItem('last_name') || '';
         const sx = data?.sex || localStorage.getItem('sex') || '';
         const av = data?.avatar_url || localStorage.getItem('clientAvatarUrl') || '';
-
+        const uid = data?.auth_uid || '';
+        if (uid) localStorage.setItem('auth_uid', uid);
         if (sx === 'Male') setPrefix('Mr.');
         else if (sx === 'Female') setPrefix('Ms.');
         else setPrefix('');
-
         setFullName(`${f} ${l}`.trim());
-
         if (av) {
           try {
             await preloadAvatar(av);
@@ -168,15 +306,16 @@ const ClientNavigation = () => {
           setAvatarReady(true);
           setAvatarBroken(true);
         }
-
         localStorage.setItem('first_name', f);
         localStorage.setItem('last_name', l);
         if (sx) localStorage.setItem('sex', sx);
         if (av) localStorage.setItem('clientAvatarUrl', av);
+        setSessionReady(true);
       } catch {
         setAvatarReady(true);
         if (!initialAvatar) setAvatarBroken(true);
       }
+      await refreshNotifs();
     };
 
     if (!avatarReady) {
@@ -214,9 +353,45 @@ const ClientNavigation = () => {
         localStorage.removeItem('clientAvatarUrl');
       }
     };
+    const onRefresh = () => refreshNotifs();
+    const onSuppress = () => setSuppression(true);
     window.addEventListener('client-avatar-updated', onAvatar);
-    return () => window.removeEventListener('client-avatar-updated', onAvatar);
-  }, []); 
+    window.addEventListener('client-notifications-refresh', onRefresh);
+    window.addEventListener('client-notifications-suppress', onSuppress);
+    return () => {
+      window.removeEventListener('client-avatar-updated', onAvatar);
+      window.removeEventListener('client-notifications-refresh', onRefresh);
+      window.removeEventListener('client-notifications-suppress', onSuppress);
+    };
+  }, []);
+
+  const esRef = useRef(null);
+  useEffect(() => {
+    if (!sessionReady) return;
+    try { if (esRef.current) { esRef.current.close(); esRef.current = null; } } catch {}
+    const appU = buildAppU();
+    if (!appU) return;
+    const src = new EventSource(`${API_BASE}/api/notifications/stream?app_u=${appU}`, { withCredentials: true });
+    esRef.current = src;
+    const onCount = (e) => {
+      try {
+        const j = JSON.parse(e.data || '{}');
+        const c = Number(j.count || 0);
+        if (Number.isFinite(c)) setNotifCount(c);
+      } catch {}
+    };
+    const onNotification = () => {
+      setNotifCount((c) => c + 1);
+      setSuppression(false);
+    };
+    src.addEventListener('count', onCount);
+    src.addEventListener('notification', onNotification);
+    src.onerror = () => {};
+    return () => {
+      try { src.close(); } catch {}
+      esRef.current = null;
+    };
+  }, [sessionReady]);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -249,9 +424,7 @@ const ClientNavigation = () => {
     goTop();
     navigate(`/find-a-worker${q ? `?search=${encodeURIComponent(q)}` : ''}`);
   };
-  const onSearchKey = (e) => {
-    if (e.key === 'Enter') goSearch();
-  };
+  const onSearchKey = (e) => { if (e.key === 'Enter') goSearch(); };
 
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
@@ -274,6 +447,59 @@ const ClientNavigation = () => {
       window.removeEventListener('keydown', blockKeys, true);
     };
   }, [navLoading]);
+
+  useEffect(() => {
+    if (location.pathname === '/client-notifications') {
+      setNotifCount(0);
+      setSuppression(true);
+      try { localStorage.setItem('notifSuppressed', '1'); } catch {}
+    }
+  }, [location.pathname]);
+
+  const markAllReadAndNavigate = async () => {
+    try {
+      const appU = buildAppU();
+      if (appU) {
+        await axios.post(`${API_BASE}/api/notifications/read-all`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
+      }
+    } catch {}
+    setNotifItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    setNotifCount(0);
+    setSuppression(true);
+    window.dispatchEvent(new Event('client-notifications-refresh'));
+    setShowBellDropdown(false);
+    goTop();
+    navigate('/client-notifications');
+  };
+
+  const markOneReadAndNavigate = async (id) => {
+    setNotifItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setNotifCount((c) => Math.max(0, c - 1));
+    try {
+      const appU = buildAppU();
+      if (appU) {
+        await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
+      }
+    } catch {}
+    setSuppression(true);
+    window.dispatchEvent(new Event('client-notifications-refresh'));
+    setShowBellDropdown(false);
+    goTop();
+    navigate('/client-notifications');
+  };
+
+  const markOneReadOnly = async (id) => {
+    setNotifItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setNotifCount((c) => Math.max(0, c - 1));
+    setSuppression(true);
+    try {
+      const appU = buildAppU();
+      if (appU) {
+        await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
+      }
+    } catch {}
+    window.dispatchEvent(new Event('client-notifications-refresh'));
+  };
 
   return (
     <>
@@ -423,17 +649,67 @@ const ClientNavigation = () => {
               </>
             )}
 
-            <div className="cursor-pointer relative" onClick={() => handleDropdownToggle('Bell')}>
+            <div
+              className="cursor-pointer relative"
+              onClick={async () => {
+                handleDropdownToggle('Bell');
+                await ensureSession();
+                await fetchNotifList();
+              }}
+            >
               <img src="/Bellicon.png" alt="Notification Bell" className="h-8 w-8" />
+              {notifCount > 0 && !notifSuppressed && (
+                <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 ring-2 ring-white" />
+              )}
               {showBellDropdown && (
-                <div ref={bellDropdownRef} className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
+                <div ref={bellDropdownRef} className="absolute top-full right-0 mt-4 w-80 bg-white border rounded-md shadow-md">
                   <div className="py-3 px-4 border-b text-sm font-semibold">Notifications</div>
+                  <div className="max-h-80 overflow-auto">
+                    {notifLoading ? (
+                      <div className="px-4 py-3 text-sm text-gray-600">Loading...</div>
+                    ) : notifItems.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-600">No notifications</div>
+                    ) : (
+                      notifItems.slice(0, 5).map((n) => (
+                        <div
+                          key={n.id}
+                          className="px-4 py-3 hover:bg-gray-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markOneReadAndNavigate(n.id);
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <img src="/Bellicon.png" alt="" className="h-4 w-4 opacity-80 mt-0.5" />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm text-gray-900 truncate">{n.title}</div>
+                              {n.message ? <div className="text-xs text-gray-600 truncate">{n.message}</div> : null}
+                              <div className="text-[11px] text-gray-500">{fmtDate(n.created_at)}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!n.read ? <span className="h-2 w-2 rounded-full bg-[#008cfc] mt-1" /> : null}
+                              {!n.read ? (
+                                <button
+                                  className="rounded border border-gray-200 px-2 py-1 text-[11px] text-[#008cfc] hover:bg-gray-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    markOneReadOnly(n.id);
+                                  }}
+                                >
+                                  Mark as read
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                   <div
-                    className="px-4 py-2 text-blue-500 cursor-pointer hover:bg-gray-100"
-                    onClick={() => {
-                      setShowBellDropdown(false);
-                      goTop();
-                      navigate('/client-notifications');
+                    className="px-4 py-2 text-blue-500 cursor-pointer hover:bg-gray-100 text-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      markAllReadAndNavigate();
                     }}
                   >
                     See all notifications
@@ -503,7 +779,7 @@ const ClientNavigation = () => {
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
         >
-          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="relative w-[320px] max-w={[90, 'vw']} rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
@@ -517,18 +793,12 @@ const ClientNavigation = () => {
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
-                {!logoBroken ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
-                    <span className="font-bold text-[#008cfc]">JDK</span>
-                  </div>
-                )}
+                <img
+                  src="/jdklogo.png"
+                  alt="JDK Homecare Logo"
+                  className="w-20 h-20 object-contain"
+                  onError={() => {}}
+                />
               </div>
             </div>
             <div className="mt-6 text-center">

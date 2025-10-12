@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
 const WorkerNavigation = () => {
   const [selectedOption, setSelectedOption] = useState('Worker');
   const [showSubDropdown, setShowSubDropdown] = useState(false);
@@ -113,10 +115,170 @@ const WorkerNavigation = () => {
     return () => window.removeEventListener('worker-avatar-updated', onAvatar);
   }, []);
 
+  function buildAppU() {
+    try {
+      const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('worker_auth_uid') || '';
+      const e = a.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+      return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
+    } catch {}
+    return '';
+  }
+
+  const [notifCount, setNotifCount] = useState(0);
+  const [notifItems, setNotifItems] = useState([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [notifSuppressed, setNotifSuppressed] = useState(
+    typeof window !== 'undefined' && localStorage.getItem('workerNotifSuppressed') === '1'
+  );
+
+  function setSuppression(v) {
+    setNotifSuppressed(v);
+    try {
+      if (v) localStorage.setItem('workerNotifSuppressed', '1');
+      else localStorage.removeItem('workerNotifSuppressed');
+    } catch {}
+  }
+
+  async function ensureSession() {
+    try {
+      const appU = buildAppU();
+      const { data } = await axios.get(`${API_BASE}/api/account/me`, {
+        withCredentials: true,
+        headers: appU ? { 'x-app-u': appU } : {}
+      });
+      const uid = data?.auth_uid || '';
+      const email = data?.email_address || '';
+      if (uid) localStorage.setItem('worker_auth_uid', uid);
+      if (email) {
+        localStorage.setItem('email_address', email);
+        localStorage.setItem('email', email);
+        localStorage.setItem('worker_email', email);
+      }
+      setSessionReady(true);
+      return true;
+    } catch {
+      setSessionReady(false);
+      return false;
+    }
+  }
+
+  async function refreshNotifs() {
+    if (!sessionReady) return;
+    const appU = buildAppU();
+    if (!appU) {
+      setNotifCount(0);
+      return;
+    }
+    try {
+      const { data } = await axios.get(`${API_BASE}/api/notifications/count`, {
+        withCredentials: true,
+        headers: { 'x-app-u': appU }
+      });
+      const c = typeof data === 'number' ? data : Number(data?.count || 0);
+      setNotifCount(Number.isFinite(c) ? c : 0);
+    } catch {
+      setNotifCount(0);
+    }
+  }
+
+  async function fetchNotifList() {
+    const tryFetch = async () => {
+      const appU = buildAppU();
+      if (!appU) {
+        setNotifItems([]);
+        return true;
+      }
+      const { data } = await axios.get(`${API_BASE}/api/notifications`, {
+        withCredentials: true,
+        headers: { 'x-app-u': appU }
+      });
+      const arr = Array.isArray(data) ? data : data?.items || [];
+      const normalized = arr.map((n, i) => ({
+        id: n.id ?? `${i}`,
+        title: n.title ?? 'Notification',
+        message: n.message ?? '',
+        created_at: n.created_at ?? new Date().toISOString(),
+        read: !!n.read
+      }));
+      setNotifItems(normalized);
+      return true;
+    };
+    try {
+      setNotifLoading(true);
+      await tryFetch();
+    } catch {
+      setNotifItems([]);
+    } finally {
+      setNotifLoading(false);
+    }
+  }
+
+  function fmtDate(iso) {
+    try {
+      const d = new Date(iso);
+      const dPart = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const tPart = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `${dPart} • ${tPart}`;
+    } catch { return ''; }
+  }
+
+  useEffect(() => {
+    (async () => {
+      await ensureSession();
+      await refreshNotifs();
+    })();
+    const onRefresh = () => refreshNotifs();
+    const onSuppress = () => setSuppression(true);
+    window.addEventListener('worker-notifications-refresh', onRefresh);
+    window.addEventListener('worker-notifications-suppress', onSuppress);
+    return () => {
+      window.removeEventListener('worker-notifications-refresh', onRefresh);
+      window.removeEventListener('worker-notifications-suppress', onSuppress);
+    };
+  }, [sessionReady]);
+
+  const esRef = useRef(null);
+  useEffect(() => {
+    if (!sessionReady) return;
+    try { if (esRef.current) { esRef.current.close(); esRef.current = null; } } catch {}
+    const appU = buildAppU();
+    if (!appU) return;
+    const src = new EventSource(`${API_BASE}/api/notifications/stream?app_u=${appU}`, { withCredentials: true });
+    esRef.current = src;
+    const onCount = (e) => {
+      try {
+        const j = JSON.parse(e.data || '{}');
+        const c = Number(j.count || 0);
+        if (Number.isFinite(c)) setNotifCount(c);
+      } catch {}
+    };
+    const onNotification = () => {
+      setNotifCount((c) => c + 1);
+      setSuppression(false);
+    };
+    src.addEventListener('count', onCount);
+    src.addEventListener('notification', onNotification);
+    src.onerror = () => {};
+    return () => {
+      try { src.close(); } catch {}
+      esRef.current = null;
+    };
+  }, [sessionReady]);
+
   const navigate = useNavigate();
   const location = useLocation();
   const isFindClient = location.pathname === '/find-a-client';
   const isPostApplication = location.pathname === '/workerpostapplication';
+
+  useEffect(() => {
+    if (location.pathname === '/worker-notifications') {
+      setNotifCount(0);
+      setSuppression(true);
+      try { localStorage.setItem('workerNotifSuppressed', '1'); } catch {}
+    }
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     try {
@@ -154,23 +316,6 @@ const WorkerNavigation = () => {
 
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
-
-  useEffect(() => {
-    if (!navLoading) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', onPopState, true);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
-    window.addEventListener('keydown', blockKeys, true);
-    return () => {
-      window.removeEventListener('popstate', onPopState, true);
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', blockKeys, true);
-    };
-  }, [navLoading]);
 
   return (
     <>
@@ -273,12 +418,69 @@ const WorkerNavigation = () => {
               </>
             )}
 
-            <div className="cursor-pointer relative" onClick={() => handleDropdownToggle('Bell')}>
+            <div
+              className="cursor-pointer relative"
+              onClick={async () => {
+                handleDropdownToggle('Bell');
+                await ensureSession();
+                await fetchNotifList();
+              }}
+            >
               <img src="/Bellicon.png" alt="Bell" className="h-8 w-8" />
+              {notifCount > 0 && !notifSuppressed && (
+                <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 ring-2 ring-white" />
+              )}
               {showBellDropdown && (
-                <div ref={bellDropdownRef} className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
+                <div ref={bellDropdownRef} className="absolute top-full right-0 mt-4 w-80 bg-white border rounded-md shadow-md">
                   <div className="py-3 px-4 border-b text-sm font-semibold">Notifications</div>
-                  <div className="px-4 py-2 text-blue-500 cursor-pointer hover:bg-gray-100" onClick={() => navigate('/worker-notifications')}>
+                  <div className="max-h-80 overflow-auto">
+                    {notifLoading ? (
+                      <div className="px-4 py-3 text-sm text-gray-600">Loading...</div>
+                    ) : notifItems.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-600">No notifications</div>
+                    ) : (
+                      notifItems.slice(0, 5).map((n) => (
+                        <div
+                          key={n.id}
+                          className="px-4 py-3 hover:bg-gray-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markOneReadAndNavigate(n.id);
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <img src="/Bellicon.png" alt="" className="h-4 w-4 opacity-80 mt-0.5" />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm text-gray-900 truncate">{n.title}</div>
+                              {n.message ? <div className="text-xs text-gray-600 truncate">{n.message}</div> : null}
+                              <div className="text-[11px] text-gray-500">{fmtDate(n.created_at)}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!n.read ? <span className="h-2 w-2 rounded-full bg-[#008cfc] mt-1" /> : null}
+                              {!n.read ? (
+                                <button
+                                  className="rounded border border-gray-200 px-2 py-1 text-[11px] text-[#008cfc] hover:bg-gray-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    markOneReadOnly(n.id);
+                                  }}
+                                >
+                                  Mark as read
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div
+                    className="px-4 py-2 text-blue-500 cursor-pointer hover:bg-gray-100 text-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      markAllReadAndNavigate();
+                    }}
+                  >
                     See all notifications
                   </div>
                 </div>
@@ -361,6 +563,49 @@ const WorkerNavigation = () => {
       )}
     </>
   );
+
+  function markAllReadAndNavigate() {
+    (async () => {
+      try {
+        const appU = buildAppU();
+        if (appU) await axios.post(`${API_BASE}/api/notifications/read-all`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
+      } catch {}
+      setNotifItems((prev) => prev.map((n) => ({ ...n, read: true })));
+      setNotifCount(0);
+      setSuppression(true);
+      window.dispatchEvent(new Event('worker-notifications-refresh'));
+      setShowBellDropdown(false);
+      navigate('/worker-notifications');
+    })();
+  }
+
+  function markOneReadAndNavigate(id) {
+    (async () => {
+      setNotifItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setNotifCount((c) => Math.max(0, c - 1));
+      try {
+        const appU = buildAppU();
+        if (appU) await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
+      } catch {}
+      setSuppression(true);
+      window.dispatchEvent(new Event('worker-notifications-refresh'));
+      setShowBellDropdown(false);
+      navigate('/worker-notifications');
+    })();
+  }
+
+  function markOneReadOnly(id) {
+    (async () => {
+      setNotifItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setNotifCount((c) => Math.max(0, c - 1));
+      setSuppression(true);
+      try {
+        const appU = buildAppU();
+        if (appU) await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
+      } catch {}
+      window.dispatchEvent(new Event('worker-notifications-refresh'));
+    })();
+  }
 };
 
 export default WorkerNavigation;

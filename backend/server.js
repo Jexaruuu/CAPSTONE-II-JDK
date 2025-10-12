@@ -7,7 +7,6 @@ const clientRoutes = require("./routes/clientRoutes");
 const workerRoutes = require("./routes/workerRoutes");
 const loginRoutes = require("./routes/loginRoutes");
 const adminRoutes = require("./routes/adminRoutes");
-
 const { resendSignupEmail, setDefaultRedirectBase, ensureStorageBucket } = require("./supabaseClient");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
@@ -23,6 +22,7 @@ const adminworkerapplicationRoutes = require("./routes/adminworkerapplicationRou
 const pendingservicerequestsRoutes = require("./routes/pendingservicerequestsRoutes");
 const pendingworkerapplicationRoutes = require("./routes/pendingworkerapplicationRoutes");
 const accountRoutes = require("./routes/accountRoutes");
+const notificationsRoutes = require("./routes/notificationsRoutes");
 
 dotenv.config();
 
@@ -30,7 +30,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 const rawAllowed = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
-const wcToReg = pat => new RegExp("^" + pat.replace(/[.+^${}()|[\\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
+const wcToReg = pat => new RegExp("^" + pat.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
 const allowedRegexes = rawAllowed.map(wcToReg);
 const isLocal = origin => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) || /^https?:\/\/(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
 const isAllowed = origin => !origin || isLocal(origin) || allowedRegexes.some(rx => rx.test(origin));
@@ -45,7 +45,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const BODY_LIMIT = process.env.MAX_BODY_SIZE || '25mb';
+const BODY_LIMIT = process.env.MAX_BODY_SIZE || "25mb";
 app.use(express.json({ limit: BODY_LIMIT }));
 app.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
 
@@ -180,6 +180,7 @@ app.use("/api/login", loginRoutes);
 app.use("/api/admins", adminRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/account", accountRoutes);
+app.use("/api/notifications", notificationsRoutes);
 
 app.use("/api/clientservicerequests", clientservicerequestsRoutes);
 app.use("/api/client/service-requests", clientservicerequestsRoutes);
@@ -190,9 +191,10 @@ app.use("/api/admin/workerapplications", adminworkerapplicationRoutes);
 app.use("/api/pendingservicerequests", pendingservicerequestsRoutes);
 app.use("/api/pendingworkerapplication", pendingworkerapplicationRoutes);
 
-ensureStorageBucket('wa-attachments', true).catch(() => {});
-ensureStorageBucket('client-avatars', true).catch(() => {});
-ensureStorageBucket('worker-avatars', true).catch(() => {});
+ensureStorageBucket("wa-attachments", true).catch(() => {});
+ensureStorageBucket("client-avatars", true).catch(() => {});
+ensureStorageBucket("worker-avatars", true).catch(() => {});
+ensureStorageBucket("user-notifications", true).catch(() => {});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

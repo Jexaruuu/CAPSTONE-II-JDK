@@ -1,5 +1,6 @@
 const accountModel = require("../models/accountModel");
 const { supabase } = require("../supabaseClient");
+const notifModel = require("../models/notificationsModel");
 
 function parseCookie(str) {
   const out = {};
@@ -210,8 +211,8 @@ exports.updateProfile = async (req, res) => {
     const hasAny = Object.keys(dbPatch).length > 0;
 
     if (s.role === "client") {
-      const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
-      const uid = row?.auth_uid || s.auth_uid;
+      const before = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
+      const uid = before?.auth_uid || s.auth_uid;
       if (hasAny) {
         await accountModel.updateClientProfile(uid, dbPatch);
         if ("first_name" in patch || "last_name" in patch) {
@@ -220,14 +221,23 @@ exports.updateProfile = async (req, res) => {
           if ("last_name" in patch) meta.last_name = patch.last_name || "";
           await accountModel.updateAuthUserMeta(uid, meta);
         }
+        const changes = [];
+        if (("first_name" in patch) || ("last_name" in patch)) changes.push("name");
+        if ("phone" in patch) changes.push("contact number");
+        if ("facebook" in patch) changes.push("facebook");
+        if ("instagram" in patch) changes.push("instagram");
+        if ("date_of_birth" in patch) changes.push("date of birth");
+        const title = "Profile updated successfully";
+        const message = changes.length ? `Updated ${changes.join(", ")}.` : "Your details are now up to date.";
+        await notifModel.create({ auth_uid: uid, role: "client", title, message });
       }
       const payload = await accountModel.getClientAccountProfile({ auth_uid: uid, email: s.email });
       return res.status(200).json(payload);
     }
 
     if (s.role === "worker") {
-      const row = await accountModel.getWorkerByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
-      const uid = row?.auth_uid || s.auth_uid;
+      const before = await accountModel.getWorkerByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
+      const uid = before?.auth_uid || s.auth_uid;
       if (hasAny) {
         await accountModel.updateWorkerProfile(uid, dbPatch);
         if ("first_name" in patch || "last_name" in patch) {
@@ -236,6 +246,15 @@ exports.updateProfile = async (req, res) => {
           if ("last_name" in patch) meta.last_name = patch.last_name || "";
           await accountModel.updateAuthUserMeta(uid, meta);
         }
+        const changes = [];
+        if (("first_name" in patch) || ("last_name" in patch)) changes.push("name");
+        if ("phone" in patch) changes.push("contact number");
+        if ("facebook" in patch) changes.push("facebook");
+        if ("instagram" in patch) changes.push("instagram");
+        if ("date_of_birth" in patch) changes.push("date of birth");
+        const title = "Profile updated successfully";
+        const message = changes.length ? `Updated ${changes.join(", ")}.` : "Your details are now up to date.";
+        await notifModel.create({ auth_uid: uid, role: "worker", title, message });
       }
       const payload = await accountModel.getWorkerAccountProfile({ auth_uid: uid, email: s.email });
       return res.status(200).json(payload);
