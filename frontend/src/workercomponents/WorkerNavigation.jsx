@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
@@ -190,6 +190,36 @@ const WorkerNavigation = () => {
     }
   }
 
+  function stripRedundantFieldUpdateTitle(title) {
+    const t = (title || '').trim();
+    if (/^(birth\s*date|birthdate)\s*updated$/i.test(t)) return true;
+    if (/^(contact|contact\s*number|phone|mobile)(\s*(no\.|number))?\s*updated$/i.test(t)) return true;
+    if (/^(profile\s*)?picture\s*updated$/i.test(t)) return true;
+    if (/^(socials?|social\s*media(\s*links?)?)\s*updated$/i.test(t)) return true;
+    return false;
+  }
+
+  function collapseProfileChangeDuplicates(arr) {
+    const keepTypes = new Set(['DOB', 'Contact', 'Photo', 'Socials']);
+    const map = new Map();
+    for (const n of arr) {
+      const text = `${n.title || ''} ${n.message || ''}`.toLowerCase();
+      let type = 'Other';
+      if (/(birthdate|date of birth|\bdob\b)/.test(text)) type = 'DOB';
+      else if (/(contact number|phone|contact)/.test(text)) type = 'Contact';
+      else if (/(profile picture|photo|avatar)/.test(text)) type = 'Photo';
+      else if (/(facebook|instagram|social|socials)/.test(text)) type = 'Socials';
+      if (keepTypes.has(type)) {
+        const prev = map.get(type);
+        if (!prev || new Date(n.created_at) > new Date(prev.created_at)) map.set(type, n);
+      } else {
+        const k = `id:${n.id}`;
+        map.set(k, n);
+      }
+    }
+    return Array.from(map.values());
+  }
+
   async function fetchNotifList() {
     const tryFetch = async () => {
       const appU = buildAppU();
@@ -208,8 +238,9 @@ const WorkerNavigation = () => {
         message: n.message ?? '',
         created_at: n.created_at ?? new Date().toISOString(),
         read: !!n.read
-      }));
-      setNotifItems(normalized);
+      })).filter(n => !stripRedundantFieldUpdateTitle(n.title));
+      const collapsed = collapseProfileChangeDuplicates(normalized).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setNotifItems(collapsed);
       return true;
     };
     try {
@@ -236,7 +267,7 @@ const WorkerNavigation = () => {
       await ensureSession();
       await refreshNotifs();
     })();
-    const onRefresh = () => refreshNotifs();
+    const onRefresh = () => fetchNotifList();
     const onSuppress = () => setSuppression(true);
     window.addEventListener('worker-notifications-refresh', onRefresh);
     window.addEventListener('worker-notifications-suppress', onSuppress);
@@ -261,9 +292,14 @@ const WorkerNavigation = () => {
         if (Number.isFinite(c)) setNotifCount(c);
       } catch {}
     };
-    const onNotification = () => {
-      setNotifCount((c) => c + 1);
+    const onNotification = (e) => {
+      try {
+        const j = JSON.parse(e.data || '{}');
+        const title = (j.title || '').trim();
+        if (stripRedundantFieldUpdateTitle(title)) return;
+      } catch {}
       setSuppression(false);
+      fetchNotifList();
     };
     src.addEventListener('count', onCount);
     src.addEventListener('notification', onNotification);
@@ -343,6 +379,8 @@ const WorkerNavigation = () => {
     } catch {}
     window.dispatchEvent(new Event('worker-notifications-refresh'));
   };
+
+  const hasUnreadInDropdown = useMemo(() => notifItems.some(n => !n.read), [notifItems]);
 
   return (
     <>
@@ -454,7 +492,7 @@ const WorkerNavigation = () => {
               }}
             >
               <img src="/Bellicon.png" alt="Bell" className="h-8 w-8" />
-              {notifCount > 0 && !notifSuppressed && (
+              {hasUnreadInDropdown && !notifSuppressed && (
                 <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 ring-2 ring-white" />
               )}
               {showBellDropdown && (

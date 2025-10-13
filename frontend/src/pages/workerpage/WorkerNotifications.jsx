@@ -51,9 +51,13 @@ async function ensureSession() {
 
 function deriveType(n) {
   if (n.type) return n.type;
-  const t = (n.title || "").toLowerCase();
-  if (/ticket/.test(t)) return "Ticket";
-  if (/team/.test(t)) return "Team";
+  const text = `${n.title || ""} ${n.message || ""}`.toLowerCase();
+  if (/(contact number|phone|contact)/.test(text)) return "Contact";
+  if (/(birthdate|date of birth|\bdob\b)/.test(text)) return "DOB";
+  if (/(profile picture|photo|avatar)/.test(text)) return "Photo";
+  if (/(facebook|instagram|social|socials)/.test(text)) return "Socials";
+  if (/ticket/.test(text)) return "Ticket";
+  if (/team/.test(text)) return "Team";
   return "Message";
 }
 
@@ -61,11 +65,45 @@ function typeBadgeClass(t) {
   const v = String(t || "Message").toLowerCase();
   if (v === "ticket") return "border-indigo-200 text-indigo-700 bg-indigo-50";
   if (v === "team") return "border-violet-200 text-violet-700 bg-violet-50";
+  if (v === "contact") return "border-sky-200 text-sky-700 bg-sky-50";
+  if (v === "dob") return "border-amber-200 text-amber-700 bg-amber-50";
+  if (v === "photo") return "border-fuchsia-200 text-fuchsia-700 bg-fuchsia-50";
+  if (v === "socials") return "border-rose-200 text-rose-700 bg-rose-50";
   return "border-blue-200 text-blue-700 bg-blue-50";
 }
 
 function statusBadgeClass(read) {
   return read ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-yellow-200 text-yellow-700 bg-yellow-50";
+}
+
+function stripRedundantFieldUpdateTitle(title) {
+  const t = (title || '').trim();
+  if (/^(birth\s*date|birthdate)\s*updated$/i.test(t)) return true;
+  if (/^(contact|contact\s*number|phone|mobile)(\s*(no\.|number))?\s*updated$/i.test(t)) return true;
+  if (/^(profile\s*)?picture\s*updated$/i.test(t)) return true;
+  if (/^(socials?|social\s*media(\s*links?)?)\s*updated$/i.test(t)) return true;
+  return false;
+}
+
+function collapseProfileChangeDuplicates(arr) {
+  const keepTypes = new Set(['DOB', 'Contact', 'Photo', 'Socials']);
+  const map = new Map();
+  for (const n of arr) {
+    const text = `${n.title || ''} ${n.message || ''}`.toLowerCase();
+    let type = 'Other';
+    if (/(birthdate|date of birth|\bdob\b)/.test(text)) type = 'DOB';
+    else if (/(contact number|phone|contact)/.test(text)) type = 'Contact';
+    else if (/(profile picture|photo|avatar)/.test(text)) type = 'Photo';
+    else if (/(facebook|instagram|social|socials)/.test(text)) type = 'Socials';
+    if (keepTypes.has(type)) {
+      const prev = map.get(type);
+      if (!prev || new Date(n.created_at) > new Date(prev.created_at)) map.set(type, n);
+    } else {
+      const k = `id:${n.id}`;
+      map.set(k, n);
+    }
+  }
+  return Array.from(map.values());
 }
 
 export default function NotificationsPage() {
@@ -102,8 +140,9 @@ export default function NotificationsPage() {
             created_at: n.created_at ?? new Date().toISOString(),
             read: !!n.read,
             type: n.type || deriveType(n)
-          }));
-          setNotifs(normalized.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+          })).filter(n => !stripRedundantFieldUpdateTitle(n.title));
+          const collapsed = collapseProfileChangeDuplicates(normalized).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          setNotifs(collapsed);
         }
       } catch {
         if (!cancelled) setNotifs([]);
@@ -125,8 +164,11 @@ export default function NotificationsPage() {
       try {
         const j = JSON.parse(e.data || "{}");
         if (j && j.id) {
+          const title = (j.title || '').trim();
+          if (stripRedundantFieldUpdateTitle(title)) return;
           setNotifs((prev) => {
-            const next = [{ id: j.id, title: j.title || "Notification", message: j.message || "", created_at: j.created_at || new Date().toISOString(), read: !!j.read, type: j.type || deriveType(j) }, ...prev];
+            const candidate = { id: j.id, title: j.title || "Notification", message: j.message || "", created_at: j.created_at || new Date().toISOString(), read: !!j.read, type: j.type || deriveType(j) };
+            const next = collapseProfileChangeDuplicates([candidate, ...prev]);
             return next.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
           });
         }

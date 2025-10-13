@@ -571,9 +571,16 @@ export default function ClientProfile() {
             <div className="mt-4 flex flex-col items-start gap-2">
               <button ref={btnRef} type="button" onClick={() => fileRef.current?.click()} className="flex-none rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition" style={{ width: btnFixedWidth }}>Choose Photo</button>
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setAvatarFile(f); setAvatarRemoved(false); setAvatarBroken(false); }} />
-              {(avatarFile || (!avatarFile && !avatarRemoved && (storedAvatar || !avatarBroken))) && (
-                <button type="button" onClick={() => { setAvatarFile(null); setAvatarRemoved(true); setAvatarBroken(true); }} className="flex-none rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition" style={{ width: btnFixedWidth }}>Remove</button>
-              )}
+             {(avatarFile || (!avatarFile && !avatarRemoved && (storedAvatar || !avatarBroken))) && (
+  <button
+    type="button"
+    onClick={() => { setAvatarFile(null); setAvatarRemoved(true); setAvatarBroken(true); }}
+    className="flex-none rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50 transition"
+    style={{ width: btnFixedWidth }}
+  >
+    Remove
+  </button>
+)}
             </div>
           </div>
 
