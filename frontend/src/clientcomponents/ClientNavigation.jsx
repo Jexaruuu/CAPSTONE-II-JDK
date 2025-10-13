@@ -267,6 +267,18 @@ const ClientNavigation = () => {
   }
 
   useEffect(() => {
+    if (initialAvatar) {
+      preloadAvatar(initialAvatar)
+        .then(() => { setAvatarUrl(initialAvatar); setAvatarReady(true); setAvatarBroken(false); })
+        .catch(() => { setAvatarReady(true); setAvatarBroken(true); });
+    } else {
+      setAvatarReady(true);
+      setAvatarBroken(true);
+    }
+
+    try { localStorage.removeItem('notifSuppressed'); } catch {}
+    setNotifSuppressed(false);
+
     const init = async () => {
       let hasSession = false;
       try { hasSession = await ensureSession(); } catch {}
@@ -318,17 +330,6 @@ const ClientNavigation = () => {
       await refreshNotifs();
     };
 
-    if (!avatarReady) {
-      if (initialAvatar) {
-        preloadAvatar(initialAvatar)
-          .then(() => { setAvatarUrl(initialAvatar); setAvatarReady(true); setAvatarBroken(false); })
-          .catch(() => { setAvatarReady(true); setAvatarBroken(true); });
-      } else {
-        setAvatarReady(true);
-        setAvatarBroken(true);
-      }
-    }
-
     init();
 
     const onAvatar = async (e) => {
@@ -354,14 +355,11 @@ const ClientNavigation = () => {
       }
     };
     const onRefresh = () => refreshNotifs();
-    const onSuppress = () => setSuppression(true);
     window.addEventListener('client-avatar-updated', onAvatar);
     window.addEventListener('client-notifications-refresh', onRefresh);
-    window.addEventListener('client-notifications-suppress', onSuppress);
     return () => {
       window.removeEventListener('client-avatar-updated', onAvatar);
       window.removeEventListener('client-notifications-refresh', onRefresh);
-      window.removeEventListener('client-notifications-suppress', onSuppress);
     };
   }, []);
 
@@ -448,25 +446,7 @@ const ClientNavigation = () => {
     };
   }, [navLoading]);
 
-  useEffect(() => {
-    if (location.pathname === '/client-notifications') {
-      setNotifCount(0);
-      setSuppression(true);
-      try { localStorage.setItem('notifSuppressed', '1'); } catch {}
-    }
-  }, [location.pathname]);
-
-  const markAllReadAndNavigate = async () => {
-    try {
-      const appU = buildAppU();
-      if (appU) {
-        await axios.post(`${API_BASE}/api/notifications/read-all`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
-      }
-    } catch {}
-    setNotifItems((prev) => prev.map((n) => ({ ...n, read: true })));
-    setNotifCount(0);
-    setSuppression(true);
-    window.dispatchEvent(new Event('client-notifications-refresh'));
+  const navigateToNotifications = async () => {
     setShowBellDropdown(false);
     goTop();
     navigate('/client-notifications');
@@ -481,7 +461,6 @@ const ClientNavigation = () => {
         await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
       }
     } catch {}
-    setSuppression(true);
     window.dispatchEvent(new Event('client-notifications-refresh'));
     setShowBellDropdown(false);
     goTop();
@@ -491,7 +470,6 @@ const ClientNavigation = () => {
   const markOneReadOnly = async (id) => {
     setNotifItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
     setNotifCount((c) => Math.max(0, c - 1));
-    setSuppression(true);
     try {
       const appU = buildAppU();
       if (appU) {
@@ -709,7 +687,7 @@ const ClientNavigation = () => {
                     className="px-4 py-2 text-blue-500 cursor-pointer hover:bg-gray-100 text-sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      markAllReadAndNavigate();
+                      navigateToNotifications();
                     }}
                   >
                     See all notifications

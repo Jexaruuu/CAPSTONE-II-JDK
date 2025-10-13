@@ -392,23 +392,38 @@ export default function ClientProfile() {
     } catch { return false; }
   }
 
-  async function createNotification(payload) {
+  async function postNotification(payload) {
     try {
-      localStorage.setItem("client_has_unread", "1");
+      const appU = buildAppU();
+      await axios.post(`${API_BASE}/api/notifications`, payload, { withCredentials: true, headers: appU ? { "x-app-u": appU } : {} });
+      try { localStorage.setItem("client_has_unread","1"); } catch {}
       window.dispatchEvent(new Event("client-notifications-refresh"));
-    } catch {}
+    } catch {
+      try { localStorage.setItem("client_has_unread","1"); } catch {}
+      window.dispatchEvent(new Event("client-notifications-refresh"));
+    }
+  }
+
+  async function createNotification(payload) {
+    await postNotification({ title: payload.title || "Notification", message: payload.message || "", type: payload.type || "Profile" });
   }
 
   const onSaveProfile = async () => {
     if (!canSaveProfile) return;
     setSavingProfile(true); setSaving(true); setSaved(false);
+    let didAvatarUpload = false;
+    let didAvatarRemove = false;
+    let didPhoneChange = false;
+    let didDobChange = false;
     try {
       if (avatarFile) {
         const u = await uploadAvatar(avatarFile);
         if (!u) setAvatarBroken(true);
         setAvatarFile(null); setAvatarRemoved(false);
+        didAvatarUpload = true;
       } else if (avatarRemoved) {
-        await removeAvatarServer(); setAvatarRemoved(false); setAvatarBroken(true);
+        const ok = await removeAvatarServer(); setAvatarRemoved(false); setAvatarBroken(true);
+        if (ok) didAvatarRemove = true;
       }
       if (phoneDirty || dobDirty) {
         const payload = {};
@@ -427,9 +442,25 @@ export default function ClientProfile() {
           date_of_birth: dobDirty ? (data?.date_of_birth ? String(data.date_of_birth).slice(0,10) : payload.date_of_birth || "") : (b?.date_of_birth ?? form.date_of_birth)
         }));
         setPhoneTaken(false);
+        didPhoneChange = phoneDirty;
+        didDobChange = dobDirty;
+      }
+      if (didAvatarUpload) {
+        await createNotification({ title: "Profile picture updated", message: "You changed your profile picture.", type: "Profile" });
+      }
+      if (didAvatarRemove) {
+        await createNotification({ title: "Profile picture removed", message: "Your profile picture was removed.", type: "Profile" });
+      }
+      if (didPhoneChange && form.phone) {
+        await createNotification({ title: "Contact number updated", message: "Your contact number has been updated.", type: "Profile" });
+      }
+      if (didPhoneChange && !form.phone) {
+        await createNotification({ title: "Contact number removed", message: "Your contact number has been removed.", type: "Profile" });
+      }
+      if (didDobChange) {
+        await createNotification({ title: "Birthdate updated", message: "Your birthdate has been updated.", type: "Profile" });
       }
       setSaved(true); setSavedProfile(true);
-      await createNotification({ kind: "profile_updated", title: "Profile updated", message: "Your profile has been updated successfully." });
       setTimeout(() => { setSaved(false); setSavedProfile(false); }, 1500);
     } catch (err) {
       const msg = (err?.response?.data?.message || err?.message || "").toLowerCase();
@@ -462,20 +493,36 @@ export default function ClientProfile() {
     try {
       const appU = buildAppU();
       const { data } = await axios.post(`${API_BASE}/api/account/profile`, payload, { withCredentials: true, headers: { "Content-Type": "application/json", Accept: "application/json", ...(appU ? { "x-app-u": appU } : {}) } });
+      const prevFb = base?.facebook || "";
+      const prevIg = base?.instagram || "";
+      const nextFb = data?.facebook ?? payload.facebook ?? form.facebook;
+      const nextIg = data?.instagram ?? payload.instagram ?? form.instagram;
+
       setBase((b) => ({
         ...(b || {}),
         first_name: data?.first_name || form.first_name,
         last_name: data?.last_name || form.last_name,
         email: data?.email_address || form.email,
         phone: b?.phone ?? form.phone,
-        facebook: data?.facebook ?? payload.facebook ?? form.facebook,
-        instagram: data?.instagram ?? payload.instagram ?? form.instagram,
+        facebook: nextFb,
+        instagram: nextIg,
         date_of_birth: b?.date_of_birth ?? form.date_of_birth
       }));
       setSaved(true); setSavedSocial(true);
       setFacebookTaken(false); setInstagramTaken(false);
       setEditSocial({ facebook: false, instagram: false });
-      await createNotification({ kind: "profile_updated", title: "Profile updated", message: "Your profile has been updated successfully." });
+
+      if (facebookDirty) {
+        if (prevFb && !nextFb) await createNotification({ title: "Facebook link removed", message: "Your Facebook link has been removed.", type: "Profile" });
+        else if (!prevFb && nextFb) await createNotification({ title: "Facebook link added", message: "Your Facebook link has been added.", type: "Profile" });
+        else await createNotification({ title: "Facebook link updated", message: "Your Facebook link has been updated.", type: "Profile" });
+      }
+      if (instagramDirty) {
+        if (prevIg && !nextIg) await createNotification({ title: "Instagram link removed", message: "Your Instagram link has been removed.", type: "Profile" });
+        else if (!prevIg && nextIg) await createNotification({ title: "Instagram link added", message: "Your Instagram link has been added.", type: "Profile" });
+        else await createNotification({ title: "Instagram link updated", message: "Your Instagram link has been updated.", type: "Profile" });
+      }
+
       setTimeout(() => { setSaved(false); setSavedSocial(false); }, 1500);
     } catch (err) {
       const msg = (err?.response?.data?.message || err?.message || "").toLowerCase();

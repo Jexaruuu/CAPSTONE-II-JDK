@@ -18,38 +18,6 @@ const formatDate = (iso) => {
 
 const BlueDot = () => <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#008cfc]" aria-hidden />;
 
-const Card = ({ notif, onMarkRead, onDelete }) => {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm hover:shadow-md transition">
-      <div className="flex items-start gap-4">
-        <div className="shrink-0 grid place-items-center h-11 w-11 rounded-xl bg-white">
-          <img src="/Bellicon.png" alt="Notification" className="h-5 w-5 object-contain opacity-90" draggable="false" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm md:text-base text-gray-900 font-semibold truncate">{notif.title}</p>
-              {notif.message && <p className="mt-1 text-sm text-gray-600 leading-relaxed">{notif.message}</p>}
-              <p className="mt-2 text-[11px] uppercase tracking-wide text-gray-500">{formatDate(notif.created_at)}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {!notif.read && <BlueDot />}
-              {!notif.read && (
-                <button onClick={() => onMarkRead(notif.id)} className="rounded-md border border-gray-200 px-2 py-1 text-xs md:text-sm text-[#008cfc] hover:bg-gray-50">
-                  Mark as read
-                </button>
-              )}
-              <button onClick={() => onDelete(notif.id)} className="rounded-md border border-gray-200 px-2 py-1 text-xs md:text-sm text-gray-700 hover:bg-gray-50" aria-label="Dismiss notification" title="Dismiss">
-                ✕
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 function buildAppU() {
   try {
     const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
@@ -81,6 +49,25 @@ async function ensureSession() {
   }
 }
 
+function deriveType(n) {
+  if (n.type) return n.type;
+  const t = (n.title || "").toLowerCase();
+  if (/ticket/.test(t)) return "Ticket";
+  if (/team/.test(t)) return "Team";
+  return "Message";
+}
+
+function typeBadgeClass(t) {
+  const v = String(t || "Message").toLowerCase();
+  if (v === "ticket") return "border-indigo-200 text-indigo-700 bg-indigo-50";
+  if (v === "team") return "border-violet-200 text-violet-700 bg-violet-50";
+  return "border-blue-200 text-blue-700 bg-blue-50";
+}
+
+function statusBadgeClass(read) {
+  return read ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-yellow-200 text-yellow-700 bg-yellow-50";
+}
+
 export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [notifs, setNotifs] = useState([]);
@@ -89,6 +76,10 @@ export default function NotificationsPage() {
 
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("All");
+
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   useEffect(() => {
     let cancelled = false;
@@ -109,7 +100,8 @@ export default function NotificationsPage() {
             title: n.title ?? "Notification",
             message: n.message ?? "",
             created_at: n.created_at ?? new Date().toISOString(),
-            read: !!n.read
+            read: !!n.read,
+            type: n.type || deriveType(n)
           }));
           setNotifs(normalized.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
         }
@@ -134,7 +126,7 @@ export default function NotificationsPage() {
         const j = JSON.parse(e.data || "{}");
         if (j && j.id) {
           setNotifs((prev) => {
-            const next = [{ id: j.id, title: j.title || "Notification", message: j.message || "", created_at: j.created_at || new Date().toISOString(), read: !!j.read }, ...prev];
+            const next = [{ id: j.id, title: j.title || "Notification", message: j.message || "", created_at: j.created_at || new Date().toISOString(), read: !!j.read, type: j.type || deriveType(j) }, ...prev];
             return next.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
           });
         }
@@ -148,29 +140,23 @@ export default function NotificationsPage() {
     };
   }, [sessionReady]);
 
-  useEffect(() => {
-    if (!sessionReady) return;
-    (async () => {
-      try {
-        const appU = buildAppU();
-        if (appU) await axios.post(`${API_BASE}/api/notifications/read-all`, {}, { withCredentials: true, headers: { "x-app-u": appU } });
-      } catch {}
-      setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
-      try { localStorage.setItem('workerNotifSuppressed', '1'); } catch {}
-      window.dispatchEvent(new Event("worker-notifications-suppress"));
-      window.dispatchEvent(new Event("worker-notifications-refresh"));
-    })();
-  }, [sessionReady]);
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base = showUnreadOnly ? notifs.filter(n => !n.read) : notifs;
+    let base = showUnreadOnly ? notifs.filter(n => !n.read) : notifs;
+    if (typeFilter !== "All") base = base.filter(n => (n.type || "Message") === typeFilter);
     if (!q) return base;
     return base.filter(n => (n.title || "").toLowerCase().includes(q) || (n.message || "").toLowerCase().includes(q));
-  }, [notifs, showUnreadOnly, query]);
+  }, [notifs, showUnreadOnly, query, typeFilter]);
 
-  const mostRecent = useMemo(() => filtered[0], [filtered]);
-  const earlier = useMemo(() => filtered.slice(1), [filtered]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIdx = (currentPage - 1) * pageSize;
+  const endIdx = startIdx + pageSize;
+  const pageItems = filtered.slice(startIdx, endIdx);
+
+  useEffect(() => {
+    setPage(1);
+  }, [showUnreadOnly, query, typeFilter, notifs.length]);
 
   const markRead = async (id) => {
     setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
@@ -203,49 +189,164 @@ export default function NotificationsPage() {
     } catch {}
   };
 
+  const unreadCount = useMemo(() => notifs.filter(n => !n.read).length, [notifs]);
+
+  const renderPageButton = (p) => (
+    <button
+      key={p}
+      onClick={() => setPage(p)}
+      className={["h-9 min-w-9 px-3 rounded-md border", p === currentPage ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 text-gray-700 hover:bg-gray-50"].join(" ")}
+      aria-current={p === currentPage ? "page" : undefined}
+    >
+      {p}
+    </button>
+  );
+
+  const pageNumbers = useMemo(() => {
+    const maxButtons = 5;
+    if (totalPages <= maxButtons) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const half = Math.floor(maxButtons / 2);
+    let start = Math.max(1, currentPage - half);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }, [currentPage, totalPages]);
+
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-[#ffffff]">
       <WorkerNavigation />
-      <div className="sticky top-0 z-10 bg-white">
-        <div className="mx-auto w-full max-w-[1525px] px-6 py-7 flex items-center gap-3">
+      <div className="mx-auto w-full max-w-[1525px] px-6 pt-7 pb-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Notifications</h1>
-            <div className="text-xs text-gray-500">Stay up to date with your account activity</div>
+            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900">Notifications</h1>
+            <p className="text-xs text-slate-500">Stay updated with your latest activities and messages</p>
+          </div>
+          <div className="hidden" />
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowUnreadOnly((v) => !v)}
+              className={`rounded-xl border px-3 py-2 text-sm ${showUnreadOnly ? "border-[#008cfc] text-[#008cfc]" : "border-slate-200 text-slate-700"}`}
+            >
+              Unread Notifications
+            </button>
+            <button
+              onClick={markAllRead}
+              className="rounded-xl border px-3 py-2 text-sm border-slate-200 text-slate-700 hover:bg-slate-50"
+            >
+              Mark all read
+            </button>
           </div>
         </div>
       </div>
-      <main className="flex-1 mx-auto w-full max-w-[1525px] px-6 mt-6 mb-12 grid grid-cols-1 gap-8">
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg md:text-xl font-semibold text-gray-900">Most Recent</h2>
+
+      <main className="flex-1 mx-auto w-full max-w-[1525px] px-6 pb-12">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="grid grid-cols-12 items-center px-4 py-3 text-xs font-medium text-slate-500 border-b border-slate-200">
+            <div className="col-span-6">Notification</div>
+            <div className="col-span-2">Type</div>
+            <div className="col-span-2">Time</div>
+            <div className="col-span-2 text-right">Status</div>
           </div>
-          {loading ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-5 animate-pulse">
-              <div className="h-4 w-40 bg-gray-200 rounded mb-3" />
-              <div className="h-3 w-3/4 bg-gray-200 rounded" />
-            </div>
-          ) : mostRecent ? (
-            <Card notif={mostRecent} onMarkRead={markRead} onDelete={dismiss} />
-          ) : (
-            <div className="rounded-2xl border border-dashed border-[#008cfc33] bg-white p-10 text-center">
-              <div className="mx-auto h-14 w-14 rounded-2xl bg-white grid place-items-center">
-                <img src="/Bellicon.png" alt="" className="h-6 w-6 opacity-70" />
+          <div className="divide-y divide-slate-200">
+            {loading ? (
+              <div className="p-6 animate-pulse">
+                <div className="h-4 w-48 bg-slate-200 rounded mb-2" />
+                <div className="h-3 w-2/3 bg-slate-200 rounded" />
               </div>
-              <div className="mt-4 text-base font-medium text-gray-900">You’re all caught up</div>
-              <div className="text-sm text-gray-600">No notifications for now</div>
-            </div>
-          )}
-          {earlier.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-lg md:text-xl font-semibold text-gray-900">Earlier</h2>
-              <div className="grid gap-3">
-                {earlier.map((n) => (
-                  <Card key={n.id} notif={n} onMarkRead={markRead} onDelete={dismiss} />
-                ))}
+            ) : pageItems.length === 0 ? (
+              <div className="p-10 text-center">
+                <div className="mx-auto h-14 w-14 rounded-2xl grid place-items-center border border-slate-200">
+                  <img src="/Bellicon.png" alt="" className="h-6 w-6 opacity-70" />
+                </div>
+                <div className="mt-4 text-base font-medium text-slate-900">No notifications</div>
+                <div className="text-sm text-slate-600">You’re all caught up</div>
               </div>
+            ) : (
+              pageItems.map((n) => (
+                <div key={n.id} className="grid grid-cols-12 items-center px-4 py-4 hover:bg-slate-50">
+                  <div className="col-span-6 flex items-start gap-3 pr-2">
+                    <div className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white border border-slate-200">
+                      <img src="/Bellicon.png" alt="" className="h-5 w-5 opacity-90" draggable="false" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-slate-900 font-medium">{n.title}</p>
+                        {!n.read && <BlueDot />}
+                      </div>
+                      {n.message && <p className="mt-1 text-sm text-slate-600 line-clamp-2">{n.message}</p>}
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${typeBadgeClass(n.type)}`}>
+                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                      {n.type || "Message"}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-sm text-slate-600">{formatDate(n.created_at)}</div>
+                  <div className="col-span-2">
+                    <div className="flex justify-end items-center gap-2">
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium ${statusBadgeClass(n.read)}`}>
+                        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                        {n.read ? "Read" : "Unread"}
+                      </span>
+                      {!n.read && (
+                        <button
+                          onClick={() => markRead(n.id)}
+                          className="whitespace-nowrap rounded-md border border-slate-200 px-2 py-1 text-xs text-[#008cfc] hover:bg-slate-50"
+                        >
+                          Mark as read
+                        </button>
+                      )}
+                      <button
+                        onClick={() => dismiss(n.id)}
+                        className="rounded-md border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                        aria-label="Dismiss"
+                        title="Dismiss"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {!loading && (
+          <div className="flex items-center justify-between pt-6">
+            <div className="text-sm text-gray-600">
+              {filtered.length} {filtered.length === 1 ? "notification" : "notifications"}
             </div>
-          )}
-        </section>
+            <nav className="flex items-center gap-2">
+              <button
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                aria-label="Previous page"
+              >
+                ‹
+              </button>
+              {pageNumbers.map(renderPageButton)}
+              <button
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                aria-label="Next page"
+              >
+                ›
+              </button>
+            </nav>
+          </div>
+        )}
+
+        <div className="mt-4 text-xs text-slate-500">
+          {unreadCount > 0 ? `${unreadCount} unread` : "All read"}
+        </div>
       </main>
       <WorkerFooter />
     </div>

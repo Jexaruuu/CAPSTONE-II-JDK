@@ -20,6 +20,10 @@ const WorkerNavigation = () => {
   const reportsDropdownRef = useRef(null);
   const bellDropdownRef = useRef(null);
 
+  const goTop = () => {
+    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+  };
+
   const handleClickOutside = (event) => {
     const t = event.target;
     const insideHire = !!hireWorkerDropdownRef.current?.contains(t);
@@ -38,6 +42,7 @@ const WorkerNavigation = () => {
   };
 
   const handleDropdownToggle = (dropdownName) => {
+    goTop();
     setShowHireWorkerDropdown(false);
     setShowManageRequestDropdown(false);
     setShowProfileDropdown(false);
@@ -66,6 +71,7 @@ const WorkerNavigation = () => {
   };
 
   const handleProfileDropdown = () => {
+    goTop();
     setShowProfileDropdown(!showProfileDropdown);
     setShowHireWorkerDropdown(false);
     setShowManageRequestDropdown(false);
@@ -75,6 +81,7 @@ const WorkerNavigation = () => {
   };
 
   const handleSearchBarDropdown = () => {
+    goTop();
     setShowHireWorkerDropdown(false);
     setShowManageRequestDropdown(false);
     setShowReportsDropdown(false);
@@ -84,6 +91,7 @@ const WorkerNavigation = () => {
   };
 
   const handleOptionClick = (option) => {
+    goTop();
     setSelectedOption(option);
     setShowSubDropdown(false);
   };
@@ -165,7 +173,6 @@ const WorkerNavigation = () => {
   }
 
   async function refreshNotifs() {
-    if (!sessionReady) return;
     const appU = buildAppU();
     if (!appU) {
       setNotifCount(0);
@@ -272,23 +279,13 @@ const WorkerNavigation = () => {
   const isFindClient = location.pathname === '/find-a-client';
   const isPostApplication = location.pathname === '/workerpostapplication';
 
-  useEffect(() => {
-    if (location.pathname === '/worker-notifications') {
-      setNotifCount(0);
-      setSuppression(true);
-      try { localStorage.setItem('workerNotifSuppressed', '1'); } catch {}
-    }
-  }, [location.pathname]);
-
   const handleLogout = async () => {
     try {
       await axios.post('http://localhost:5000/api/login/logout', {}, { withCredentials: true });
       localStorage.clear();
       navigate('/', { replace: true });
       window.location.reload();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    } catch {}
   };
 
   const role = localStorage.getItem('role');
@@ -308,21 +305,51 @@ const WorkerNavigation = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const goSearch = () => {
     const q = searchQuery.trim();
+    goTop();
     navigate(`/find-a-client${q ? `?search=${encodeURIComponent(q)}` : ''}`);
   };
-  const onSearchKeyDown = (e) => {
-    if (e.key === 'Enter') goSearch();
-  };
+  const onSearchKeyDown = (e) => { if (e.key === 'Enter') goSearch(); };
 
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+
+  const navigateToNotifications = async () => {
+    setShowBellDropdown(false);
+    goTop();
+    navigate('/worker-notifications');
+  };
+
+  const markOneReadAndNavigate = async (id) => {
+    setNotifItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setNotifCount((c) => Math.max(0, c - 1));
+    try {
+      const appU = buildAppU();
+      if (appU) await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
+    } catch {}
+    setSuppression(true);
+    window.dispatchEvent(new Event('worker-notifications-refresh'));
+    setShowBellDropdown(false);
+    goTop();
+    navigate('/worker-notifications');
+  };
+
+  const markOneReadOnly = async (id) => {
+    setNotifItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setNotifCount((c) => Math.max(0, c - 1));
+    setSuppression(true);
+    try {
+      const appU = buildAppU();
+      if (appU) await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
+    } catch {}
+    window.dispatchEvent(new Event('worker-notifications-refresh'));
+  };
 
   return (
     <>
       <div className="bg-white/95 backdrop-blur fixed top-0 left-0 right-0 z-50">
         <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
           <div className="flex items-center space-x-6">
-            <Link to={logoTo} replace onClick={clearWorkerApplicationDrafts}>
+            <Link to={logoTo} replace onClick={() => { clearWorkerApplicationDrafts(); goTop(); }}>
               <img src="/jdklogo.png" alt="Logo" className="h-48 w-48 object-contain" />
             </Link>
             <ul className="flex space-x-7 mt-4 text-md">
@@ -337,15 +364,15 @@ const WorkerNavigation = () => {
                 {showManageRequestDropdown && (
                   <div ref={manageRequestDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                     <ul className="space-y-2 py-2">
-                      <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/current-work-post">Current Application</Link></li>
-                      <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/completed-works">Completed Works</Link></li>
+                      <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/current-work-post" onClick={goTop}>Current Application</Link></li>
+                      <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/completed-works" onClick={goTop}>Completed Works</Link></li>
                     </ul>
                   </div>
                 )}
               </li>
 
               <li className="relative cursor-pointer group">
-                <Link to="/find-a-client" className="text-black font-medium relative inline-block">
+                <Link to="/find-a-client" className="text-black font-medium relative inline-block" onClick={goTop}>
                   Find a Client
                   <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
                 </Link>
@@ -373,7 +400,7 @@ const WorkerNavigation = () => {
                   to="/workerdashboard"
                   className="text-black font-medium relative inline-block"
                   replace
-                  onClick={clearWorkerApplicationDrafts}
+                  onClick={() => { clearWorkerApplicationDrafts(); goTop(); }}
                 >
                   Dashboard
                   <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
@@ -381,7 +408,7 @@ const WorkerNavigation = () => {
               </li>
 
               <li className="relative cursor-pointer group">
-                <Link to="/workermessages" className="text-black font-medium relative inline-block">
+                <Link to="/workermessages" className="text-black font-medium relative inline-block" onClick={goTop}>
                   Messages
                   <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
                 </Link>
@@ -478,7 +505,7 @@ const WorkerNavigation = () => {
                     className="px-4 py-2 text-blue-500 cursor-pointer hover:bg-gray-100 text-sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      markAllReadAndNavigate();
+                      navigateToNotifications();
                     }}
                   >
                     See all notifications
@@ -500,7 +527,7 @@ const WorkerNavigation = () => {
                   </div>
                   <ul className="py-2">
                     <li className="px-4 py-2 hover:bg-gray-300 transition cursor-pointer">
-                      <Link to="/worker-account-settings">Account Settings</Link>
+                      <Link to="/worker-account-settings" onClick={goTop}>Account Settings</Link>
                     </li>
                     <li className="px-4 py-2 hover:bg-gray-300 transition cursor-pointer">
                       <span onClick={handleLogout}>Log out</span>
@@ -563,49 +590,6 @@ const WorkerNavigation = () => {
       )}
     </>
   );
-
-  function markAllReadAndNavigate() {
-    (async () => {
-      try {
-        const appU = buildAppU();
-        if (appU) await axios.post(`${API_BASE}/api/notifications/read-all`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
-      } catch {}
-      setNotifItems((prev) => prev.map((n) => ({ ...n, read: true })));
-      setNotifCount(0);
-      setSuppression(true);
-      window.dispatchEvent(new Event('worker-notifications-refresh'));
-      setShowBellDropdown(false);
-      navigate('/worker-notifications');
-    })();
-  }
-
-  function markOneReadAndNavigate(id) {
-    (async () => {
-      setNotifItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-      setNotifCount((c) => Math.max(0, c - 1));
-      try {
-        const appU = buildAppU();
-        if (appU) await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
-      } catch {}
-      setSuppression(true);
-      window.dispatchEvent(new Event('worker-notifications-refresh'));
-      setShowBellDropdown(false);
-      navigate('/worker-notifications');
-    })();
-  }
-
-  function markOneReadOnly(id) {
-    (async () => {
-      setNotifItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-      setNotifCount((c) => Math.max(0, c - 1));
-      setSuppression(true);
-      try {
-        const appU = buildAppU();
-        if (appU) await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
-      } catch {}
-      window.dispatchEvent(new Event('worker-notifications-refresh'));
-    })();
-  }
 };
 
 export default WorkerNavigation;

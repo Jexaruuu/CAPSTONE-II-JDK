@@ -1,5 +1,5 @@
 const accountModel = require("../models/accountModel");
-const { supabase } = require("../supabaseClient");
+const { supabase, supabaseAdmin, ensureStorageBucket } = require("../supabaseClient");
 const notifModel = require("../models/notificationsModel");
 
 function parseCookie(str) {
@@ -56,6 +56,35 @@ function computeAge(iso) {
   return a >= 0 && a <= 120 ? a : null;
 }
 
+function parseDataUrl(dataUrl) {
+  const m = /^data:(.+);base64,(.*)$/.exec((dataUrl || "").trim());
+  if (!m) return null;
+  return { mime: m[1], b64: m[2] };
+}
+
+function extFromMime(mime) {
+  if (!mime) return "png";
+  if (/png/i.test(mime)) return "png";
+  if (/jpe?g/i.test(mime)) return "jpg";
+  if (/webp/i.test(mime)) return "webp";
+  return "png";
+}
+
+async function directUploadAvatar(role, uid, dataUrl) {
+  if (!uid || !dataUrl) return null;
+  const bucket = role === "worker" ? "worker-avatars" : "client-avatars";
+  try { await ensureStorageBucket(bucket, true); } catch {}
+  const parsed = parseDataUrl(dataUrl);
+  if (!parsed) return null;
+  const ext = extFromMime(parsed.mime);
+  const path = `${uid}/${Date.now()}.${ext}`;
+  const buffer = Buffer.from(parsed.b64, "base64");
+  const up = await supabaseAdmin.storage.from(bucket).upload(path, buffer, { contentType: parsed.mime, upsert: true });
+  if (up.error) return null;
+  const pub = supabaseAdmin.storage.from(bucket).getPublicUrl(up.data.path);
+  return pub?.data?.publicUrl || null;
+}
+
 exports.me = async (req, res) => {
   try {
     const s = sess(req);
@@ -86,26 +115,31 @@ exports.avatar = async (req, res) => {
     if (typeof data_url !== "string") return res.status(400).json({ message: "Invalid image" });
     const isImage = /^data:image\/[a-z0-9+.-]+;base64,/i.test(data_url.trim());
     if (!isImage) return res.status(400).json({ message: "Invalid image" });
+
     if (s.role === "client") {
       const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
       const uid = row?.auth_uid || s.auth_uid;
       if (!uid) return res.status(401).json({ message: "Unauthorized" });
-      const url = await accountModel.uploadClientAvatarDataUrl(uid, data_url);
+      let url = await accountModel.uploadClientAvatarDataUrl(uid, data_url);
+      if (!url) url = await directUploadAvatar("client", uid, data_url);
       if (!url) return res.status(400).json({ message: "Failed to save avatar" });
       try { await accountModel.updateClientAvatarUrl(uid, url); } catch {}
       try { await accountModel.updateAuthUserAvatarMeta(uid, url); } catch {}
       return res.status(200).json({ avatar_url: url });
     }
+
     if (s.role === "worker") {
       const row = await accountModel.getWorkerByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
       const uid = row?.auth_uid || s.auth_uid;
       if (!uid) return res.status(401).json({ message: "Unauthorized" });
-      const url = await accountModel.uploadWorkerAvatarDataUrl(uid, data_url);
+      let url = await accountModel.uploadWorkerAvatarDataUrl(uid, data_url);
+      if (!url) url = await directUploadAvatar("worker", uid, data_url);
       if (!url) return res.status(400).json({ message: "Failed to save avatar" });
       try { await accountModel.updateWorkerAvatarUrl(uid, url); } catch {}
       try { await accountModel.updateAuthUserAvatarMeta(uid, url); } catch {}
       return res.status(200).json({ avatar_url: url });
     }
+
     return res.status(401).json({ message: "Unauthorized" });
   } catch {
     return res.status(400).json({ message: "Failed to save avatar" });
