@@ -22,15 +22,7 @@ export default function ClientProfile() {
   const [editingPhone, setEditingPhone] = useState(false);
   const [avatarBroken, setAvatarBroken] = useState(false);
 
-  const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    facebook: "",
-    instagram: "",
-    date_of_birth: ""
-  });
+  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", phone: "", facebook: "", instagram: "", date_of_birth: "" });
 
   const [base, setBase] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -91,31 +83,14 @@ export default function ClientProfile() {
     return a >= 0 && a <= 120 ? a : null;
   }
 
-  const toYMD = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  };
-  const toMDY = (d) => {
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const y = d.getFullYear();
-    return `${m}/${day}/${y}`;
-  };
+  const toYMD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const toMDY = (d) => `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
 
   const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = useMemo(() => {
     const today = new Date();
     const max = new Date(today.getFullYear() - 21, today.getMonth(), today.getDate());
     const min = new Date(today.getFullYear() - 55, today.getMonth(), today.getDate());
-    return {
-      minDOB: toYMD(min),
-      maxDOB: toYMD(max),
-      minDOBDate: min,
-      maxDOBDate: max,
-      minDOBLabel: toMDY(min),
-      maxDOBLabel: toMDY(max)
-    };
+    return { minDOB: toYMD(min), maxDOB: toYMD(max), minDOBDate: min, maxDOBDate: max, minDOBLabel: toMDY(min), maxDOBLabel: toMDY(max) };
   }, []);
 
   useEffect(() => {
@@ -130,30 +105,10 @@ export default function ClientProfile() {
         return "";
       })();
       try {
-        const { data } = await axios.get(`${API_BASE}/api/account/me`, {
-          withCredentials: true,
-          headers: appU ? { "x-app-u": appU } : {}
-        });
+        const { data } = await axios.get(`${API_BASE}/api/account/me`, { withCredentials: true, headers: appU ? { "x-app-u": appU } : {} });
         const dob = data?.date_of_birth ? String(data.date_of_birth).slice(0, 10) : "";
-        setForm((f) => ({
-          ...f,
-          first_name: data?.first_name || "",
-          last_name: data?.last_name || "",
-          email: data?.email_address || "",
-          phone: data?.phone || "",
-          facebook: data?.facebook || "",
-          instagram: data?.instagram || "",
-          date_of_birth: dob
-        }));
-        setBase({
-          first_name: data?.first_name || "",
-          last_name: data?.last_name || "",
-          email: data?.email_address || "",
-          phone: data?.phone || "",
-          facebook: data?.facebook || "",
-          instagram: data?.instagram || "",
-          date_of_birth: dob
-        });
+        setForm((f) => ({ ...f, first_name: data?.first_name || "", last_name: data?.last_name || "", email: data?.email_address || "", phone: data?.phone || "", facebook: data?.facebook || "", instagram: data?.instagram || "", date_of_birth: dob }));
+        setBase({ first_name: data?.first_name || "", last_name: data?.last_name || "", email: data?.email_address || "", phone: data?.phone || "", facebook: data?.facebook || "", instagram: data?.instagram || "", date_of_birth: dob });
         localStorage.setItem("first_name", data?.first_name || "");
         localStorage.setItem("last_name", data?.last_name || "");
         if (data?.sex) localStorage.setItem("sex", data.sex);
@@ -179,25 +134,13 @@ export default function ClientProfile() {
   }, [confirmOpen]);
 
   useEffect(() => {
-    const handleOutside = (e) => {
-      if (dpRef.current && !dpRef.current.contains(e.target)) setDpOpen(false);
-    };
+    const handleOutside = (e) => { if (dpRef.current && !dpRef.current.contains(e.target)) setDpOpen(false); };
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
   }, []);
 
   const allowedPHPrefixes = useMemo(
-    () => new Set([
-      "905","906","907","908","909","910","912","913","914","915","916","917","918","919",
-      "920","921","922","923","925","926","927","928","929",
-      "930","931","932","933","934","935","936","937","938","939",
-      "940","941","942","943","944","945","946","947","948","949",
-      "950","951","952","953","954","955","956","957","958","959",
-      "960","961","962","963","964","965","966","967","968","969",
-      "970","971","972","973","974","975","976","977","978","979",
-      "980","981","982","983","984","985","986","987","988","989",
-      "990","991","992","993","994","995","996","997","998","999",
-    ]),
+    () => new Set(["905","906","907","908","909","910","912","913","914","915","916","917","918","919","920","921","922","923","925","926","927","928","929","930","931","932","933","934","935","936","937","938","939","940","941","942","943","944","945","946","947","948","949","950","951","952","953","954","955","956","957","958","959","960","961","962","963","964","965","966","967","968","969","970","971","972","973","974","975","976","977","978","979","980","981","982","983","984","985","986","987","988","989","990","991","992","993","994","995","996","997","998","999"]),
     []
   );
 
@@ -216,9 +159,7 @@ export default function ClientProfile() {
     return "/Clienticon.png";
   }, [avatarFile, avatarRemoved, avatarBroken, fullName, storedAvatar]);
 
-  function createImage(src) {
-    return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src; });
-  }
+  function createImage(src) { return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src; }); }
 
   async function fileToDataUrl(file) {
     try {
@@ -230,8 +171,7 @@ export default function ClientProfile() {
         const w = Math.max(1, Math.round(w0 * scale)), h = Math.max(1, Math.round(h0 * scale));
         const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext("2d"); ctx.drawImage(img, 0, 0, w, h);
-        const preferJpeg = file.type && /jpe?g/i.test(file.type);
-        return canvas.toDataURL(preferJpeg ? "image/jpeg" : "image/png", preferJpeg ? 0.9 : 0.92);
+        return canvas.toDataURL("image/png", 0.92);
       } finally { URL.revokeObjectURL(objectUrl); }
     } catch {
       return await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file); });
@@ -283,24 +223,11 @@ export default function ClientProfile() {
       if (url.pathname !== "/" && url.pathname.endsWith("/")) url.pathname = url.pathname.slice(0, -1);
       url.hash = "";
       return url.toString();
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 
-  function softValidFacebook(raw) {
-    if (!raw) return true;
-    const n = normalizeSocialUrl(raw);
-    if (!n) return false;
-    return isValidFacebookUrl(n);
-  }
-
-  function softValidInstagram(raw) {
-    if (!raw) return true;
-    const n = normalizeSocialUrl(raw);
-    if (!n) return false;
-    return isValidInstagramUrl(n);
-  }
+  function softValidFacebook(raw) { if (!raw) return true; const n = normalizeSocialUrl(raw); if (!n) return false; return isValidFacebookUrl(n); }
+  function softValidInstagram(raw) { if (!raw) return true; const n = normalizeSocialUrl(raw); if (!n) return false; return isValidInstagramUrl(n); }
 
   const facebookValid = softValidFacebook(form.facebook);
   const instagramValid = softValidInstagram(form.instagram);
@@ -342,44 +269,68 @@ export default function ClientProfile() {
   const canGoPrev = () => addMonths(startOfMonth(dpView), -1) >= startOfMonth(minDOBDate);
   const canGoNext = () => addMonths(startOfMonth(dpView), 1) <= startOfMonth(maxDOBDate);
   const inRange = (date) => date >= minDOBDate && date <= maxDOBDate;
-  const openCalendar = () => {
-    if (!editingDob) setEditingDob(true);
-    if (form.date_of_birth) setDpView(new Date(form.date_of_birth));
-    else setDpView(new Date(maxDOBDate));
-    setDobEditCommitted(false);
-    setDpOpen(true);
-  };
-  const isBirthdateValid = useMemo(() => {
-    if (!form.date_of_birth) return false;
-    const d = new Date(form.date_of_birth);
-    if (isNaN(d.getTime())) return false;
-    return form.date_of_birth >= minDOB && form.date_of_birth <= maxDOB;
-  }, [form.date_of_birth, minDOB, maxDOB]);
+  const openCalendar = () => { if (!editingDob) setEditingDob(true); if (form.date_of_birth) setDpView(new Date(form.date_of_birth)); else setDpView(new Date(maxDOBDate)); setDobEditCommitted(false); setDpOpen(true); };
+  const isBirthdateValid = useMemo(() => { if (!form.date_of_birth) return false; const d = new Date(form.date_of_birth); if (isNaN(d.getTime())) return false; return form.date_of_birth >= minDOB && form.date_of_birth <= maxDOB; }, [form.date_of_birth, minDOB, maxDOB]);
 
   const monthsList = useMemo(() => ["January","February","March","April","May","June","July","August","September","October","November","December"], []);
-  const yearsList = useMemo(() => {
-    const ys = [];
-    for (let y = minDOBDate.getFullYear(); y <= maxDOBDate.getFullYear(); y++) ys.push(y);
-    return ys;
-  }, [minDOBDate, maxDOBDate]);
+  const yearsList = useMemo(() => { const ys = []; for (let y = minDOBDate.getFullYear(); y <= maxDOBDate.getFullYear(); y++) ys.push(y); return ys; }, [minDOBDate, maxDOBDate]);
 
-  function setMonthYear(m, y) {
-    const next = new Date(y, m, 1);
-    const minStart = startOfMonth(minDOBDate);
-    const maxStart = startOfMonth(maxDOBDate);
-    const clamped = next < minStart ? minStart : next > maxStart ? maxStart : next;
-    setDpView(clamped);
+  function setMonthYear(m, y) { const next = new Date(y, m, 1); const minStart = startOfMonth(minDOBDate); const maxStart = startOfMonth(maxDOBDate); const clamped = next < minStart ? minStart : next > maxStart ? maxStart : next; setDpView(clamped); }
+
+  function dataUrlToBlob(du) {
+    const parts = du.split(",");
+    const header = parts[0];
+    const base64 = parts[1] || "";
+    const mime = /data:(.*?);base64/.exec(header)?.[1] || "application/octet-stream";
+    const bin = atob(base64);
+    const len = bin.length;
+    const arr = new Uint8Array(len);
+    for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
   }
 
+  const hasAvatar = useMemo(() => (!!storedAvatar && !avatarRemoved) || !!avatarFile, [storedAvatar, avatarRemoved, avatarFile]);
+
   async function uploadAvatar(file) {
+    const dataUrl = await fileToDataUrl(file);
+    const appU = buildAppU();
+    const common = { withCredentials: true, headers: { Accept: "application/json", "Content-Type": "application/json", ...(appU ? { "x-app-u": appU } : {}) }, maxBodyLength: Infinity };
+    const fileName = `avatar_${Date.now()}.png`;
+    const mime = "image/png";
     try {
-      const data_url = await fileToDataUrl(file);
-      const appU = buildAppU();
-      const { data } = await axios.post(`${API_BASE}/api/account/avatar`, { data_url }, { withCredentials: true, headers: { "Content-Type": "application/json", Accept: "application/json", ...(appU ? { "x-app-u": appU } : {}) } });
+      const { data } = await axios.post(`${API_BASE}/api/account/avatar`, { data_url: dataUrl, file_name: fileName, mime }, common);
       const url = data?.avatar_url || "";
       if (url) { localStorage.setItem("clientAvatarUrl", url); window.dispatchEvent(new CustomEvent("client-avatar-updated", { detail: { url } })); }
       return url;
-    } catch { return ""; }
+    } catch {
+      try {
+        const { data } = await axios.post(`${API_BASE}/api/account/avatar`, { dataUrl, fileName, mimeType: mime }, common);
+        const url = data?.avatar_url || "";
+        if (url) { localStorage.setItem("clientAvatarUrl", url); window.dispatchEvent(new CustomEvent("client-avatar-updated", { detail: { url } })); }
+        return url;
+      } catch {
+        try {
+          const fd1 = new FormData();
+          fd1.append("data_url", dataUrl);
+          fd1.append("file_name", fileName);
+          fd1.append("mime", mime);
+          const { data } = await axios.post(`${API_BASE}/api/account/avatar`, fd1, { withCredentials: true, headers: { ...(appU ? { "x-app-u": appU } : {}) } });
+          const url = data?.avatar_url || "";
+          if (url) { localStorage.setItem("clientAvatarUrl", url); window.dispatchEvent(new CustomEvent("client-avatar-updated", { detail: { url } })); }
+          return url;
+        } catch {
+          try {
+            const blob = dataUrlToBlob(dataUrl);
+            const fd2 = new FormData();
+            fd2.append("file", blob, fileName);
+            const { data } = await axios.post(`${API_BASE}/api/account/avatar`, fd2, { withCredentials: true, headers: { ...(appU ? { "x-app-u": appU } : {}) } });
+            const url = data?.avatar_url || "";
+            if (url) { localStorage.setItem("clientAvatarUrl", url); window.dispatchEvent(new CustomEvent("client-avatar-updated", { detail: { url } })); }
+            return url;
+          } catch { return ""; }
+        }
+      }
+    }
   }
 
   async function removeAvatarServer() {
@@ -404,23 +355,18 @@ export default function ClientProfile() {
     }
   }
 
-  async function createNotification(payload) {
-    await postNotification({ title: payload.title || "Notification", message: payload.message || "", type: payload.type || "Profile" });
-  }
+  async function createNotification(payload) { await postNotification({ title: payload.title || "Notification", message: payload.message || "", type: payload.type || "Profile" }); }
 
   const onSaveProfile = async () => {
     if (!canSaveProfile) return;
     setSavingProfile(true); setSaving(true); setSaved(false);
-    let didAvatarUpload = false;
-    let didAvatarRemove = false;
-    let didPhoneChange = false;
-    let didDobChange = false;
+    let didAvatarUpload = false, didAvatarRemove = false, didPhoneChange = false, didDobChange = false;
     try {
       if (avatarFile) {
         const u = await uploadAvatar(avatarFile);
         if (!u) setAvatarBroken(true);
         setAvatarFile(null); setAvatarRemoved(false);
-        didAvatarUpload = true;
+        didAvatarUpload = !!u;
       } else if (avatarRemoved) {
         const ok = await removeAvatarServer(); setAvatarRemoved(false); setAvatarBroken(true);
         if (ok) didAvatarRemove = true;
@@ -431,35 +377,16 @@ export default function ClientProfile() {
         if (dobDirty) payload.date_of_birth = form.date_of_birth || null;
         const appU = buildAppU();
         const { data } = await axios.post(`${API_BASE}/api/account/profile`, payload, { withCredentials: true, headers: { "Content-Type": "application/json", ...(appU ? { "x-app-u": appU } : {}) } });
-        setBase((b) => ({
-          ...(b || {}),
-          first_name: data?.first_name || form.first_name,
-          last_name: data?.last_name || form.last_name,
-          email: data?.email_address || form.email,
-          phone: phoneDirty ? (data?.phone ?? payload.phone ?? "") : (b?.phone ?? form.phone),
-          facebook: b?.facebook ?? form.facebook,
-          instagram: b?.instagram ?? form.instagram,
-          date_of_birth: dobDirty ? (data?.date_of_birth ? String(data.date_of_birth).slice(0,10) : payload.date_of_birth || "") : (b?.date_of_birth ?? form.date_of_birth)
-        }));
+        setBase((b) => ({ ...(b || {}), first_name: data?.first_name || form.first_name, last_name: data?.last_name || form.last_name, email: data?.email_address || form.email, phone: phoneDirty ? (data?.phone ?? payload.phone ?? "") : (b?.phone ?? form.phone), facebook: b?.facebook ?? form.facebook, instagram: b?.instagram ?? form.instagram, date_of_birth: dobDirty ? (data?.date_of_birth ? String(data.date_of_birth).slice(0,10) : payload.date_of_birth || "") : (b?.date_of_birth ?? form.date_of_birth) }));
         setPhoneTaken(false);
         didPhoneChange = phoneDirty;
         didDobChange = dobDirty;
       }
-      if (didAvatarUpload) {
-        await createNotification({ title: "Profile picture updated", message: "You changed your profile picture.", type: "Profile" });
-      }
-      if (didAvatarRemove) {
-        await createNotification({ title: "Profile picture removed", message: "Your profile picture was removed.", type: "Profile" });
-      }
-      if (didPhoneChange && form.phone) {
-        await createNotification({ title: "Contact number updated", message: "Your contact number has been updated.", type: "Profile" });
-      }
-      if (didPhoneChange && !form.phone) {
-        await createNotification({ title: "Contact number removed", message: "Your contact number has been removed.", type: "Profile" });
-      }
-      if (didDobChange) {
-        await createNotification({ title: "Birthdate updated", message: "Your birthdate has been updated.", type: "Profile" });
-      }
+      if (didAvatarUpload) await createNotification({ title: "Profile picture updated", message: "You changed your profile picture.", type: "Profile" });
+      if (didAvatarRemove) await createNotification({ title: "Profile picture removed", message: "Your profile picture was removed.", type: "Profile" });
+      if (didPhoneChange && form.phone) await createNotification({ title: "Contact number updated", message: "Your contact number has been updated.", type: "Profile" });
+      if (didPhoneChange && !form.phone) await createNotification({ title: "Contact number removed", message: "Your contact number has been removed.", type: "Profile" });
+      if (didDobChange) await createNotification({ title: "Birthdate updated", message: "Your birthdate has been updated.", type: "Profile" });
       setSaved(true); setSavedProfile(true);
       setTimeout(() => { setSaved(false); setSavedProfile(false); }, 1500);
     } catch (err) {
@@ -472,7 +399,6 @@ export default function ClientProfile() {
   const onSaveSocial = async () => {
     if (!socialDirty) return;
     setSocialTouched((t) => ({ facebook: t.facebook || facebookDirty, instagram: t.instagram || instagramDirty }));
-
     const payload = {};
     if (facebookDirty) {
       const nfb = normalizeSocialUrl(form.facebook);
@@ -484,34 +410,20 @@ export default function ClientProfile() {
       if (form.instagram && !nig) { setSocialTouched((t)=>({ ...t, instagram: true })); return; }
       payload.instagram = nig;
     }
-
     const fbReady = !("facebook" in payload) || payload.facebook == null || isValidFacebookUrl(payload.facebook);
     const igReady = !("instagram" in payload) || payload.instagram == null || isValidInstagramUrl(payload.instagram);
     if (!fbReady || !igReady || savingSocial || facebookTaken || instagramTaken) return;
-
     setSavingSocial(true); setSaving(true); setSaved(false);
     try {
       const appU = buildAppU();
       const { data } = await axios.post(`${API_BASE}/api/account/profile`, payload, { withCredentials: true, headers: { "Content-Type": "application/json", Accept: "application/json", ...(appU ? { "x-app-u": appU } : {}) } });
-      const prevFb = base?.facebook || "";
-      const prevIg = base?.instagram || "";
+      const prevFb = base?.facebook || "", prevIg = base?.instagram || "";
       const nextFb = data?.facebook ?? payload.facebook ?? form.facebook;
       const nextIg = data?.instagram ?? payload.instagram ?? form.instagram;
-
-      setBase((b) => ({
-        ...(b || {}),
-        first_name: data?.first_name || form.first_name,
-        last_name: data?.last_name || form.last_name,
-        email: data?.email_address || form.email,
-        phone: b?.phone ?? form.phone,
-        facebook: nextFb,
-        instagram: nextIg,
-        date_of_birth: b?.date_of_birth ?? form.date_of_birth
-      }));
+      setBase((b) => ({ ...(b || {}), first_name: data?.first_name || form.first_name, last_name: data?.last_name || form.last_name, email: data?.email_address || form.email, phone: b?.phone ?? form.phone, facebook: nextFb, instagram: nextIg, date_of_birth: b?.date_of_birth ?? form.date_of_birth }));
       setSaved(true); setSavedSocial(true);
       setFacebookTaken(false); setInstagramTaken(false);
       setEditSocial({ facebook: false, instagram: false });
-
       if (facebookDirty) {
         if (prevFb && !nextFb) await createNotification({ title: "Facebook link removed", message: "Your Facebook link has been removed.", type: "Profile" });
         else if (!prevFb && nextFb) await createNotification({ title: "Facebook link added", message: "Your Facebook link has been added.", type: "Profile" });
@@ -522,7 +434,6 @@ export default function ClientProfile() {
         else if (!prevIg && nextIg) await createNotification({ title: "Instagram link added", message: "Your Instagram link has been added.", type: "Profile" });
         else await createNotification({ title: "Instagram link updated", message: "Your Instagram link has been updated.", type: "Profile" });
       }
-
       setTimeout(() => { setSaved(false); setSavedSocial(false); }, 1500);
     } catch (err) {
       const msg = (err?.response?.data?.message || err?.message || "").toLowerCase();
@@ -569,18 +480,65 @@ export default function ClientProfile() {
             </div>
 
             <div className="mt-4 flex flex-col items-start gap-2">
-              <button ref={btnRef} type="button" onClick={() => fileRef.current?.click()} className="flex-none rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition" style={{ width: btnFixedWidth }}>Choose Photo</button>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setAvatarFile(f); setAvatarRemoved(false); setAvatarBroken(false); }} />
-             {(avatarFile || (!avatarFile && !avatarRemoved && (storedAvatar || !avatarBroken))) && (
-  <button
-    type="button"
-    onClick={() => { setAvatarFile(null); setAvatarRemoved(true); setAvatarBroken(true); }}
-    className="flex-none rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50 transition"
-    style={{ width: btnFixedWidth }}
-  >
-    Remove
-  </button>
-)}
+              {!hasAvatar ? (
+                <>
+                  <button
+                    ref={btnRef}
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50 transition"
+                    style={{ width: btnFixedWidth }}
+                  >
+                    Upload Photo
+                  </button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      if (!f || f.size === 0) return;
+                      setAvatarFile(f);
+                      setAvatarRemoved(false);
+                      setAvatarBroken(false);
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <button
+                    ref={btnRef}
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50 transition"
+                    style={{ width: btnFixedWidth }}
+                  >
+                    Change
+                  </button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      if (!f || f.size === 0) return;
+                      setAvatarFile(f);
+                      setAvatarRemoved(false);
+                      setAvatarBroken(false);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setAvatarFile(null); setAvatarRemoved(true); setAvatarBroken(true); }}
+                    className="flex-none rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50 transition"
+                    style={{ width: btnFixedWidth }}
+                  >
+                    Remove
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -589,219 +547,6 @@ export default function ClientProfile() {
               <div className="w-[280px] shrink-0">
                 <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">First Name</p>
                 <p className="mt-1 text-base text-gray-900">{form.first_name || "—"}</p>
-
-                <div className="mt-6" ref={dpRef}>
-                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Date of Birth</p>
-
-                  {!editingDob && (
-                    <>
-                      <div className="mt-1">
-                        <p className="text-base text-gray-900">{form.date_of_birth ? toMDY(new Date(form.date_of_birth)) : "—"}</p>
-                      </div>
-                      <div className="mt-3 flex items-center gap-3">
-                        {!form.date_of_birth ? (
-                          <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">+ Add date of birth</button>
-                        ) : (
-                          <>
-                            <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
-                            <button type="button" onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
-                          </>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {editingDob && (
-                    <>
-                      <div className="mt-1 flex items-center rounded-xl border border-gray-300">
-                        <input
-                          type="text"
-                          value={form.date_of_birth ? toMDY(new Date(form.date_of_birth)) : ""}
-                          onFocus={openCalendar}
-                          readOnly
-                          placeholder="mm/dd/yyyy"
-                          title={`Allowed: ${minDOBLabel} to ${maxDOBLabel} (21–55 years old)`}
-                          className="w-full px-4 py-3 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          inputMode="none"
-                        />
-                        <button
-                          type="button"
-                          onClick={openCalendar}
-                          className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                          aria-label="Open calendar"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" />
-                            <path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" />
-                          </svg>
-                        </button>
-                      </div>
-
-                      <p className="text-xs text-gray-500 mt-1">Must be between <span className="font-medium">{minDOBLabel}</span> and <span className="font-medium">{maxDOBLabel}</span> (21–55 yrs).</p>
-                      {form.date_of_birth && !isBirthdateValid && <p className="text-xs text-red-600 mt-1">Birthdate must make you between 21 and 55 years old.</p>}
-
-                      {dpOpen && (
-                        <div className="absolute z-50 mt-2 w-[280px] rounded-xl border border-gray-200 bg-white shadow-xl p-3">
-                          <div className="flex items-center justify-between px-2 pb-2">
-                            <button
-                              type="button"
-                              onClick={() => canGoPrev() && setDpView(addMonths(dpView, -1))}
-                              className={`p-2 rounded-lg hover:bg-gray-100 ${canGoPrev() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`}
-                              aria-label="Previous month"
-                            >
-                              ‹
-                            </button>
-                            <div className="flex items-center gap-2">
-                              <select
-                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-                                value={dpView.getMonth()}
-                                onChange={(e) => setMonthYear(parseInt(e.target.value, 10), dpView.getFullYear())}
-                              >
-                                {monthsList.map((m, i) => (
-                                  <option key={m} value={i}>{m}</option>
-                                ))}
-                              </select>
-                              <select
-                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-                                value={dpView.getFullYear()}
-                                onChange={(e) => setMonthYear(dpView.getMonth(), parseInt(e.target.value, 10))}
-                              >
-                                {yearsList.map((y) => (
-                                  <option key={y} value={y}>{y}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => canGoNext() && setDpView(addMonths(dpView, 1))}
-                              className={`p-2 rounded-lg hover:bg-gray-100 ${canGoNext() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`}
-                              aria-label="Next month"
-                            >
-                              ›
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
-                            {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d) => (
-                              <div key={d} className="py-1">{d}</div>
-                            ))}
-                          </div>
-
-                          {(() => {
-                            const first = startOfMonth(dpView);
-                            const last = endOfMonth(dpView);
-                            const offset = first.getDay();
-                            const total = offset + last.getDate();
-                            const rows = Math.ceil(total / 7);
-                            const selected = form.date_of_birth ? new Date(form.date_of_birth) : null;
-                            const cells = [];
-
-                            for (let r = 0; r < rows; r++) {
-                              const row = [];
-                              for (let c = 0; c < 7; c++) {
-                                const idx = r * 7 + c;
-                                const dayNum = idx - offset + 1;
-                                if (dayNum < 1 || dayNum > last.getDate()) {
-                                  row.push(<div key={`x-${r}-${c}`} className="py-2" />);
-                                } else {
-                                  const d = new Date(dpView.getFullYear(), dpView.getMonth(), dayNum);
-                                  const disabled = !inRange(d);
-                                  const isSelected = selected && isSameDay(selected, d);
-                                  row.push(
-                                    <button
-                                      key={`d-${dayNum}`}
-                                      type="button"
-                                      disabled={disabled}
-                                      onClick={() => {
-                                        const ymd = toYMD(d);
-                                        setForm((f) => ({ ...f, date_of_birth: ymd }));
-                                        setDobError(validateDob(ymd));
-                                        setDpOpen(false);
-                                      }}
-                                      className={[
-                                        "py-2 rounded-lg transition text-sm",
-                                        disabled ? "text-gray-300 cursor-not-allowed" : "hover:bg-blue-50 text-gray-700",
-                                        isSelected && !disabled ? "bg-blue-600 text-white hover:bg-blue-600" : ""
-                                      ].join(" ")}
-                                    >
-                                      {dayNum}
-                                    </button>
-                                  );
-                                }
-                              }
-                              cells.push(
-                                <div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">
-                                  {row}
-                                </div>
-                              );
-                            }
-                            return <div className="mt-1">{cells}</div>;
-                          })()}
-
-                          <div className="flex items-center justify-between mt-3 px-2">
-                            <button
-                              type="button"
-                              onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setDpOpen(false); }}
-                              className="text-xs text-gray-500 hover:text-gray-700"
-                            >
-                              Clear
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { setDpView(new Date(maxDOBDate)); }}
-                              className="text-xs text-blue-600 hover:text-blue-700"
-                            >
-                              Jump to latest allowed
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="mt-3 flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (form.date_of_birth && !isBirthdateValid) return;
-                            setEditingDob(false);
-                            setDobEditCommitted(true);
-                            setDpOpen(false);
-                          }}
-                          className={`rounded-md px-4 text-sm font-medium transition h-10 ${form.date_of_birth && !isBirthdateValid ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}
-                        >
-                          Done
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setForm((f)=>({ ...f, date_of_birth: base?.date_of_birth || "" }));
-                            setDobError("");
-                            setEditingDob(false);
-                            setDobEditCommitted(true);
-                            setDpOpen(false);
-                          }}
-                          className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="w-[220px] shrink-0">
-                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Last Name</p>
-                <p className="mt-1 text-base text-gray-900">{form.last_name || "—"}</p>
-
-                <div className="mt-6">
-                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Age</p>
-                  <p className="mt-1 text-base text-gray-900">{age != null ? `${age}` : "—"}</p>
-                </div>
-              </div>
-
-              <div className="w-[240px] shrink-0">
-                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Email</p>
-                <p className="mt-1 text-base text-gray-900">{form.email || "—"}</p>
 
                 <div className="mt-6 min-h-[170px]">
                   <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Contact Number</p>
@@ -843,6 +588,128 @@ export default function ClientProfile() {
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              <div className="w-[220px] shrink-0">
+                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Last Name</p>
+                <p className="mt-1 text-base text-gray-900">{form.last_name || "—"}</p>
+
+                <div className="mt-6" ref={dpRef}>
+                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Date of Birth</p>
+
+                  {!editingDob && (
+                    <>
+                      <div className="mt-1">
+                        <p className="text-base text-gray-900">{form.date_of_birth ? toMDY(new Date(form.date_of_birth)) : "—"}</p>
+                      </div>
+                      <div className="mt-3 flex items-center gap-3">
+                        {!form.date_of_birth ? (
+                          <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">+ Add date of birth</button>
+                        ) : (
+                          <>
+                            <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                            <button type="button" onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {editingDob && (
+                    <>
+                      <div className="mt-1 flex items-center rounded-xl border border-gray-300">
+                        <input
+                          type="text"
+                          value={form.date_of_birth ? toMDY(new Date(form.date_of_birth)) : ""}
+                          onFocus={openCalendar}
+                          readOnly
+                          placeholder="mm/dd/yyyy"
+                          title={`Allowed: ${minDOBLabel} to ${maxDOBLabel} (21–55 years old)`}
+                          className="w-full px-4 py-3 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          inputMode="none"
+                        />
+                        <button type="button" onClick={openCalendar} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open calendar">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" />
+                            <path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-gray-500 mt-1">Must be between <span className="font-medium">{minDOBLabel}</span> and <span className="font-medium">{maxDOBLabel}</span> (21–55 yrs).</p>
+                      {form.date_of_birth && !isBirthdateValid && <p className="text-xs text-red-600 mt-1">Birthdate must make you between 21 and 55 years old.</p>}
+
+                      {dpOpen && (
+                        <div className="absolute z-50 mt-2 w-[280px] rounded-xl border border-gray-200 bg-white shadow-xl p-3">
+                          <div className="flex items-center justify-between px-2 pb-2">
+                            <button type="button" onClick={() => canGoPrev() && setDpView(addMonths(dpView, -1))} className={`p-2 rounded-lg hover:bg-gray-100 ${canGoPrev() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`} aria-label="Previous month">‹</button>
+                            <div className="flex items-center gap-2">
+                              <select className="border border-gray-300 rounded-md px-2 py-1 text-sm" value={dpView.getMonth()} onChange={(e) => setMonthYear(parseInt(e.target.value, 10), dpView.getFullYear())}>
+                                {monthsList.map((m, i) => (<option key={m} value={i}>{m}</option>))}
+                              </select>
+                              <select className="border border-gray-300 rounded-md px-2 py-1 text-sm" value={dpView.getFullYear()} onChange={(e) => setMonthYear(dpView.getMonth(), parseInt(e.target.value, 10))}>
+                                {yearsList.map((y) => (<option key={y} value={y}>{y}</option>))}
+                              </select>
+                            </div>
+                            <button type="button" onClick={() => canGoNext() && setDpView(addMonths(dpView, 1))} className={`p-2 rounded-lg hover:bg-gray-100 ${canGoNext() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`} aria-label="Next month">›</button>
+                          </div>
+
+                          <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
+                            {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d) => (<div key={d} className="py-1">{d}</div>))}
+                          </div>
+
+                          {(() => {
+                            const first = startOfMonth(dpView), last = endOfMonth(dpView), offset = first.getDay(), total = offset + last.getDate(), rows = Math.ceil(total / 7);
+                            const selected = form.date_of_birth ? new Date(form.date_of_birth) : null, cells = [];
+                            for (let r = 0; r < rows; r++) {
+                              const row = [];
+                              for (let c = 0; c < 7; c++) {
+                                const idx = r * 7 + c, dayNum = idx - offset + 1;
+                                if (dayNum < 1 || dayNum > last.getDate()) row.push(<div key={`x-${r}-${c}`} className="py-2" />);
+                                else {
+                                  const d = new Date(dpView.getFullYear(), dpView.getMonth(), dayNum), disabled = !inRange(d), isSelected = selected && isSameDay(selected, d);
+                                  row.push(
+                                    <button
+                                      key={`d-${dayNum}`}
+                                      type="button"
+                                      disabled={disabled}
+                                      onClick={() => { const ymd = toYMD(d); setForm((f) => ({ ...f, date_of_birth: ymd })); setDobError(validateDob(ymd)); setDpOpen(false); }}
+                                      className={["py-2 rounded-lg transition text-sm", disabled ? "text-gray-300 cursor-not-allowed" : "hover:bg-blue-50 text-gray-700", isSelected && !disabled ? "bg-blue-600 text-white hover:bg-blue-600" : ""].join(" ")}
+                                    >
+                                      {dayNum}
+                                    </button>
+                                  );
+                                }
+                              }
+                              cells.push(<div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">{row}</div>);
+                            }
+                            return <div className="mt-1">{cells}</div>;
+                          })()}
+
+                          <div className="flex items-center justify-between mt-3 px-2">
+                            <button type="button" onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setDpOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+                            <button type="button" onClick={() => { setDpView(new Date(maxDOBDate)); }} className="text-xs text-blue-600 hover:text-blue-700">Jump to latest allowed</button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex items-center gap-3">
+                        <button type="button" onClick={() => { if (form.date_of_birth && !isBirthdateValid) return; setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className={`rounded-md px-4 text-sm font-medium transition h-10 ${form.date_of_birth && !isBirthdateValid ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}>Done</button>
+                        <button type="button" onClick={() => { setForm((f)=>({ ...f, date_of_birth: base?.date_of_birth || "" })); setDobError(""); setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="w-[240px] shrink-0">
+                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Email</p>
+                <p className="mt-1 text-base text-gray-900">{form.email || "—"}</p>
+
+                <div className="mt-6">
+                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Age</p>
+                  <p className="mt-1 text-base text-gray-900">{age != null ? `${age}` : "—"}</p>
                 </div>
               </div>
             </div>

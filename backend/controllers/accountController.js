@@ -57,7 +57,7 @@ function computeAge(iso) {
 }
 
 function parseDataUrl(dataUrl) {
-  const m = /^data:(.+);base64,(.*)$/.exec((dataUrl || "").trim());
+  const m = /^data:(.+);base64,(.*)$/i.exec((dataUrl || "").trim());
   if (!m) return null;
   return { mime: m[1], b64: m[2] };
 }
@@ -107,21 +107,32 @@ exports.avatar = async (req, res) => {
   try {
     const s = sess(req);
     if (!s.role || (!s.auth_uid && !s.email)) return res.status(401).json({ message: "Unauthorized" });
+
     let { data_url } = req.body || {};
-    if ((!data_url || typeof data_url !== "string") && req.file && req.file.buffer && req.file.mimetype) {
-      const b64 = req.file.buffer.toString("base64");
-      data_url = `data:${req.file.mimetype};base64,${b64}`;
+    if (!data_url && typeof req.body === "object") {
+      data_url = req.body.dataUrl || req.body.image || req.body.avatar || req.body.data || null;
     }
+
+    if ((!data_url || typeof data_url !== "string")) {
+      const f = req.file || (Array.isArray(req.files) ? req.files.find(x => x && (x.fieldname === "file" || x.fieldname === "avatar")) : null);
+      if (f && f.buffer && f.mimetype) {
+        const b64 = f.buffer.toString("base64");
+        data_url = `data:${f.mimetype};base64,${b64}`;
+      }
+    }
+
     if (typeof data_url !== "string") return res.status(400).json({ message: "Invalid image" });
-    const isImage = /^data:image\/[a-z0-9+.-]+;base64,/i.test(data_url.trim());
-    if (!isImage) return res.status(400).json({ message: "Invalid image" });
+    const trimmed = data_url.trim();
+    const hasHeader = /^data:[a-z0-9+.\-\/]+;base64,/i.test(trimmed);
+    if (!hasHeader) return res.status(400).json({ message: "Invalid image" });
 
     if (s.role === "client") {
       const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
       const uid = row?.auth_uid || s.auth_uid;
       if (!uid) return res.status(401).json({ message: "Unauthorized" });
-      let url = await accountModel.uploadClientAvatarDataUrl(uid, data_url);
-      if (!url) url = await directUploadAvatar("client", uid, data_url);
+      let url = null;
+      try { url = await accountModel.uploadClientAvatarDataUrl(uid, trimmed); } catch {}
+      if (!url) url = await directUploadAvatar("client", uid, trimmed);
       if (!url) return res.status(400).json({ message: "Failed to save avatar" });
       try { await accountModel.updateClientAvatarUrl(uid, url); } catch {}
       try { await accountModel.updateAuthUserAvatarMeta(uid, url); } catch {}
@@ -132,8 +143,9 @@ exports.avatar = async (req, res) => {
       const row = await accountModel.getWorkerByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
       const uid = row?.auth_uid || s.auth_uid;
       if (!uid) return res.status(401).json({ message: "Unauthorized" });
-      let url = await accountModel.uploadWorkerAvatarDataUrl(uid, data_url);
-      if (!url) url = await directUploadAvatar("worker", uid, data_url);
+      let url = null;
+      try { url = await accountModel.uploadWorkerAvatarDataUrl(uid, trimmed); } catch {}
+      if (!url) url = await directUploadAvatar("worker", uid, trimmed);
       if (!url) return res.status(400).json({ message: "Failed to save avatar" });
       try { await accountModel.updateWorkerAvatarUrl(uid, url); } catch {}
       try { await accountModel.updateAuthUserAvatarMeta(uid, url); } catch {}

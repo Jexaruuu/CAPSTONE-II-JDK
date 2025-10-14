@@ -1,4 +1,3 @@
-// WorkerProfile.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
@@ -219,6 +218,8 @@ export default function WorkerProfile() {
     if (!avatarBroken) return "/Clienticon.png";
     return "/Clienticon.png";
   }, [avatarFile, avatarRemoved, avatarBroken, fullName, storedWorkerAvatar]);
+
+  const hasAvatar = useMemo(() => (!!storedWorkerAvatar && !avatarRemoved) || !!avatarFile, [storedWorkerAvatar, avatarRemoved, avatarFile]);
 
   function createImage(src) {
     return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src; });
@@ -611,18 +612,65 @@ export default function WorkerProfile() {
             </div>
 
             <div className="mt-4 flex flex-col items-start gap-2">
-              <button ref={btnRef} type="button" onClick={() => fileRef.current?.click()} className="flex-none rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition" style={{ width: btnFixedWidth }}>Choose Photo</button>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setAvatarFile(f); setAvatarRemoved(false); setAvatarBroken(false); }} />
-             {(avatarFile || (!avatarFile && !avatarRemoved && storedWorkerAvatar)) && (
-  <button
-    type="button"
-    onClick={() => { setAvatarFile(null); setAvatarRemoved(true); setAvatarBroken(true); }}
-    className="flex-none rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50 transition"
-    style={{ width: btnFixedWidth }}
-  >
-    Remove
-  </button>
-)}
+              {!hasAvatar ? (
+                <>
+                  <button
+                    ref={btnRef}
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50 transition"
+                    style={{ width: btnFixedWidth }}
+                  >
+                    Upload Photo
+                  </button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      if (!f || f.size === 0) return;
+                      setAvatarFile(f);
+                      setAvatarRemoved(false);
+                      setAvatarBroken(false);
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <button
+                    ref={btnRef}
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50 transition"
+                    style={{ width: btnFixedWidth }}
+                  >
+                    Change
+                  </button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      if (!f || f.size === 0) return;
+                      setAvatarFile(f);
+                      setAvatarRemoved(false);
+                      setAvatarBroken(false);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setAvatarFile(null); setAvatarRemoved(true); setAvatarBroken(true); }}
+                    className="flex-none rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50 transition"
+                    style={{ width: btnFixedWidth }}
+                  >
+                    Remove
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -631,6 +679,53 @@ export default function WorkerProfile() {
               <div className="w-[280px] shrink-0">
                 <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">First Name</p>
                 <p className="mt-1 text-base text-gray-900">{form.first_name || "—"}</p>
+
+                <div className="mt-6 min-h-[170px]">
+                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Contact Number</p>
+                  {!editingPhone && (
+                    <div className="mt-1">
+                      {form.phone && !phoneTaken ? (
+                        <div className="inline-flex items-center gap-2">
+                          <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
+                          <span className="text-gray-700 text-sm">+63</span>
+                          <span className="text-base text-gray-900 tracking-wide">{form.phone}</span>
+                        </div>
+                      ) : <p className="text-base text-gray-900">—</p>}
+                    </div>
+                  )}
+                  {(!form.phone || phoneTaken) && !editingPhone && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <button type="button" onClick={() => { setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">+ Add contact number</button>
+                    </div>
+                  )}
+                  {form.phone && !phoneTaken && !editingPhone && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <button type="button" onClick={() => { setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                      <button type="button" onClick={() => { setForm({ ...form, phone: "" }); setPhoneTaken(false); setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
+                    </div>
+                  )}
+                  {(editingPhone || !!form.phone) && editingPhone && (
+                    <div className="mt-3 w-[240px]">
+                      <div className={`flex items-center rounded-md border ${showPhoneError || phoneTaken ? "border-red-500" : "border-gray-300"} overflow-hidden pl-3 pr-4 w-full h-10`}>
+                        <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm mr-2 object-cover" />
+                        <span className="text-gray-700 text-sm mr-3">+63</span>
+                        <span className="h-6 w-px bg-gray-200 mr-3" />
+                        <input type="tel" value={form.phone} onChange={(e) => { setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }); setPhoneTaken(false); }} placeholder="9XXXXXXXXX" className="w-full outline-none text-sm placeholder:text-gray-400 h-full" />
+                      </div>
+                      {showPhoneError && <div className="mt-2 text-xs text-red-600">Enter a valid PH mobile number with a real prefix (e.g., 9XXXXXXXXX).</div>}
+                      {phoneTaken && <div className="mt-2 text-xs text-red-600">Contact number already in use.</div>}
+                      <div className="mt-3 flex items-center gap-3">
+                        <button type="button" onClick={() => { if (!isPhoneValid || phoneTaken) { setPhoneErrorAfterDone(true); return; } setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); }} className={`rounded-md px-4 text-sm font-medium transition h-10 ${!isPhoneValid || phoneTaken ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}>Done</button>
+                        <button type="button" onClick={() => { setForm({ ...form, phone: base?.phone || "" }); setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); setPhoneTaken(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="w-[220px] shrink-0">
+                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Last Name</p>
+                <p className="mt-1 text-base text-gray-900">{form.last_name || "—"}</p>
 
                 <div className="mt-6" ref={dpRef}>
                   <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Date of Birth</p>
@@ -831,66 +926,13 @@ export default function WorkerProfile() {
                 </div>
               </div>
 
-              <div className="w-[220px] shrink-0">
-                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Last Name</p>
-                <p className="mt-1 text-base text-gray-900">{form.last_name || "—"}</p>
-
-                <div className="mt-6">
-                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Age</p>
-                  <p className="mt-1 text-base text-gray-900">{age != null ? `${age}` : "—"}</p>
-                </div>
-              </div>
-
               <div className="w-[240px] shrink-0">
                 <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Email</p>
                 <p className="mt-1 text-base text-gray-900">{form.email || "—"}</p>
 
-                <div className="mt-6 min-h-[170px]">
-                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Contact Number</p>
-
-                  {!editingPhone && (
-                    <div className="mt-1">
-                      {form.phone && !phoneTaken ? (
-                        <div className="inline-flex items-center gap-2">
-                          <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
-                          <span className="text-gray-700 text-sm">+63</span>
-                          <span className="text-base text-gray-900 tracking-wide">{form.phone}</span>
-                        </div>
-                      ) : <p className="text-base text-gray-900">—</p>}
-                    </div>
-                  )}
-
-                  {(!form.phone || phoneTaken) && !editingPhone && (
-                    <div className="mt-3 flex items-center gap-3">
-                      <button type="button" onClick={() => { setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">+ Add contact number</button>
-                    </div>
-                  )}
-
-                  {form.phone && !phoneTaken && !editingPhone && (
-                    <div className="mt-3 flex items-center gap-3">
-                      <button type="button" onClick={() => { setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
-                      <button type="button" onClick={() => { setForm({ ...form, phone: "" }); setPhoneTaken(false); setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
-                    </div>
-                  )}
-
-                  {(editingPhone || !!form.phone) && editingPhone && (
-                    <div className="mt-3 w-[280px]">
-                      <div className={`flex items-center rounded-md border ${showPhoneError || phoneTaken ? "border-red-500" : "border-gray-300"} overflow-hidden pl-3 pr-4 w-full h-10`}>
-                        <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm mr-2 object-cover" />
-                        <span className="text-gray-700 text-sm mr-3">+63</span>
-                        <span className="h-6 w-px bg-gray-200 mr-3" />
-                        <input type="tel" value={form.phone} onChange={(e) => { setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }); setPhoneTaken(false); }} placeholder="9XXXXXXXXX" className="w-full outline-none text-sm placeholder:text-gray-400 h-full" />
-                      </div>
-
-                      {showPhoneError && <div className="mt-2 text-xs text-red-600">Enter a valid PH mobile number with a real prefix (e.g., 9XXXXXXXXX).</div>}
-                      {phoneTaken && <div className="mt-2 text-xs text-red-600">Contact number already in use.</div>}
-
-                      <div className="mt-3 flex items-center gap-3">
-                        <button type="button" onClick={() => { if (!isPhoneValid || phoneTaken) { setPhoneErrorAfterDone(true); return; } setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); }} className={`rounded-md px-4 text-sm font-medium transition h-10 ${!isPhoneValid || phoneTaken ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}>Done</button>
-                        <button type="button" onClick={() => { setForm({ ...form, phone: base?.phone || "" }); setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); setPhoneTaken(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
-                      </div>
-                    </div>
-                  )}
+                <div className="mt-6">
+                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Age</p>
+                  <p className="mt-1 text-base text-gray-900">{age != null ? `${age}` : "—"}</p>
                 </div>
               </div>
             </div>

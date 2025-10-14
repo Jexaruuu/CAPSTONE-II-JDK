@@ -89,7 +89,7 @@ async function getClientAccountProfile({auth_uid,email}){
     age
   };
 }
-// accountModel.js - replace getWorkerAccountProfile with this version
+
 async function getWorkerAccountProfile({auth_uid,email}){
   const row=await getWorkerByAuthOrEmail({auth_uid,email});
   const user=await getAuthUserById(row?.auth_uid||auth_uid);
@@ -112,8 +112,27 @@ async function getWorkerAccountProfile({auth_uid,email}){
   };
 }
 
-async function uploadClientAvatarDataUrl(auth_uid,data_url){const parsed=parseDataUrl(data_url);if(!parsed)throw new Error("Invalid image");await ensureStorageBucket(CLIENT_BUCKET,true);const key=`clients/${auth_uid||"unknown"}/${Date.now()}.${extFrom(parsed.contentType)}`;const abuf=parsed.buf.buffer.slice(parsed.buf.byteOffset,parsed.buf.byteOffset+parsed.buf.byteLength);const{error:upErr}=await supabaseAdmin.storage.from(CLIENT_BUCKET).upload(key,abuf,{contentType:parsed.contentType,upsert:true});if(upErr)throw upErr;const{data:pub}=supabaseAdmin.storage.from(CLIENT_BUCKET).getPublicUrl(key);return pub?.publicUrl||"";}
-async function uploadWorkerAvatarDataUrl(auth_uid,data_url){const parsed=parseDataUrl(data_url);if(!parsed)throw new Error("Invalid image");await ensureStorageBucket(WORKER_BUCKET,true);const key=`workers/${auth_uid||"unknown"}/${Date.now()}.${extFrom(parsed.contentType)}`;const abuf=parsed.buf.buffer.slice(parsed.buf.byteOffset,parsed.buf.byteOffset+parsed.buf.byteLength);const{error:upErr}=await supabaseAdmin.storage.from(WORKER_BUCKET).upload(key,abuf,{contentType:parsed.contentType,upsert:true});if(upErr)throw upErr;const{data:pub}=supabaseAdmin.storage.from(WORKER_BUCKET).getPublicUrl(key);return pub?.publicUrl||"";}
+async function uploadClientAvatarDataUrl(auth_uid,data_url){
+  const parsed=parseDataUrl(data_url); if(!parsed) throw new Error("Invalid image");
+  await ensureStorageBucket(CLIENT_BUCKET,true);
+  const key=`clients/${auth_uid||"unknown"}/${Date.now()}.${extFrom(parsed.contentType)}`;
+  const abuf=parsed.buf.buffer.slice(parsed.buf.byteOffset,parsed.buf.byteOffset+parsed.buf.byteLength);
+  const{error:upErr}=await supabaseAdmin.storage.from(CLIENT_BUCKET).upload(key,abuf,{contentType:parsed.contentType,upsert:true});
+  if(upErr)throw upErr;
+  const { data:pub } = supabaseAdmin.storage.from(CLIENT_BUCKET).getPublicUrl(key);
+  return pub?.publicUrl||"";
+}
+
+async function uploadWorkerAvatarDataUrl(auth_uid,data_url){
+  const parsed=parseDataUrl(data_url); if(!parsed) throw new Error("Invalid image");
+  await ensureStorageBucket(WORKER_BUCKET,true);
+  const key=`workers/${auth_uid||"unknown"}/${Date.now()}.${extFrom(parsed.contentType)}`;
+  const abuf=parsed.buf.buffer.slice(parsed.buf.byteOffset,parsed.buf.byteOffset+parsed.buf.byteLength);
+  const{error:upErr}=await supabaseAdmin.storage.from(WORKER_BUCKET).upload(key,abuf,{contentType:parsed.contentType,upsert:true});
+  if(upErr)throw upErr;
+  const { data:pub } = supabaseAdmin.storage.from(WORKER_BUCKET).getPublicUrl(key);
+  return pub?.publicUrl||"";
+}
 
 async function updateClientAvatarUrl(auth_uid,avatar_url){const r1=await supabaseAdmin.from("user_client").update({client_avatar:avatar_url}).eq("auth_uid",auth_uid);if(r1.error)throw r1.error;try{await supabaseAdmin.from("user_client").update({avatar_url}).eq("auth_uid",auth_uid);}catch{}return true;}
 async function updateWorkerAvatarUrl(auth_uid,avatar_url){const r1=await supabaseAdmin.from("user_worker").update({worker_avatar:avatar_url}).eq("auth_uid",auth_uid);if(r1.error)throw r1.error;try{await supabaseAdmin.from("user_worker").update({avatar_url}).eq("auth_uid",auth_uid);}catch{}return true;}
