@@ -43,8 +43,7 @@ async function createSupabaseAuthUser(email, password, metadata = {}) {
         return { user: data.user, error: null, autoConfirmed: true, usedFallback: true };
       } catch (e2) {
         e2.originalError = err;
-        return { user: null, error: e2 };
-      }
+        return { user: null, error: e2 };      }
     }
     return { user: null, error: err };
   }

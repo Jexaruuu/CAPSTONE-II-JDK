@@ -70,6 +70,22 @@ function extFromMime(mime) {
   return "png";
 }
 
+function looksLikeHttpUrl(s) {
+  return typeof s === "string" && /^https?:\/\/.+/i.test(s.trim());
+}
+
+function looksLikeBase64(s) {
+  return typeof s === "string" && /^[A-Za-z0-9+/=\s]+$/.test(s.trim()) && s.replace(/\s+/g, "").length > 200;
+}
+
+function coerceToDataUrl(v, mime) {
+  const trimmed = String(v || "").trim();
+  if (!trimmed) return null;
+  if (/^data:[a-z0-9+.\-\/]+;base64,/i.test(trimmed)) return trimmed;
+  if (looksLikeBase64(trimmed)) return `data:${mime || "image/png"};base64,${trimmed.replace(/\s+/g, "")}`;
+  return null;
+}
+
 async function directUploadAvatar(role, uid, dataUrl) {
   if (!uid || !dataUrl) return null;
   const bucket = role === "worker" ? "worker-avatars" : "client-avatars";
@@ -108,33 +124,64 @@ exports.avatar = async (req, res) => {
     const s = sess(req);
     if (!s.role || (!s.auth_uid && !s.email)) return res.status(401).json({ message: "Unauthorized" });
 
-    let { data_url } = req.body || {};
-    if (!data_url && typeof req.body === "object") {
-      data_url = req.body.dataUrl || req.body.image || req.body.avatar || req.body.data || null;
+    let incoming = null;
+    let urlOverride = null;
+
+    if (req.body && typeof req.body === "object") {
+      incoming =
+        req.body.data_url ||
+        req.body.dataUrl ||
+        req.body.image ||
+        req.body.avatar ||
+        req.body.data ||
+        req.body.base64 ||
+        req.body.file_base64 ||
+        req.body.worker_avatar ||
+        req.body.client_avatar ||
+        null;
+      urlOverride = req.body.url || req.body.avatar_url || req.body.avatarUrl || null;
     }
 
-    if ((!data_url || typeof data_url !== "string")) {
-      const f = req.file || (Array.isArray(req.files) ? req.files.find(x => x && (x.fieldname === "file" || x.fieldname === "avatar")) : null);
-      if (f && f.buffer && f.mimetype) {
-        const b64 = f.buffer.toString("base64");
-        data_url = `data:${f.mimetype};base64,${b64}`;
+    if (!incoming) {
+      const f = req.file || (Array.isArray(req.files) ? req.files.find(x => x && (x.fieldname === "file" || x.fieldname === "avatar" || x.fieldname === "image" || x.fieldname === "worker_avatar" || x.fieldname === "client_avatar")) : null);
+      if (f && f.buffer && f.mimetype) incoming = `data:${f.mimetype};base64,${f.buffer.toString("base64")}`;
+    }
+
+    if (looksLikeHttpUrl(urlOverride)) {
+      if (s.role === "client") {
+        const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
+        const uid = row?.auth_uid || s.auth_uid;
+        if (!uid) return res.status(401).json({ message: "Unauthorized" });
+        await accountModel.updateClientAvatarUrl(uid, urlOverride);
+        try { await accountModel.updateAuthUserAvatarMeta(uid, urlOverride); } catch {}
+        return res.status(200).json({ avatar_url: urlOverride });
       }
+      if (s.role === "worker") {
+        const row = await accountModel.getWorkerByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
+        const uid = row?.auth_uid || s.auth_uid;
+        if (!uid) return res.status(401).json({ message: "Unauthorized" });
+        await accountModel.updateWorkerAvatarUrl(uid, urlOverride);
+        try { await accountModel.updateAuthUserAvatarMeta(uid, urlOverride); } catch {}
+        return res.status(200).json({ avatar_url: urlOverride });
+      }
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (typeof data_url !== "string") return res.status(400).json({ message: "Invalid image" });
-    const trimmed = data_url.trim();
-    const hasHeader = /^data:[a-z0-9+.\-\/]+;base64,/i.test(trimmed);
-    if (!hasHeader) return res.status(400).json({ message: "Invalid image" });
+    if (typeof incoming !== "string") return res.status(400).json({ message: "Invalid image" });
+
+    const trimmed = incoming.trim();
+    const normalized = /^data:[a-z0-9+.\-\/]+;base64,/i.test(trimmed) ? trimmed : coerceToDataUrl(trimmed, "image/png");
+    if (!normalized) return res.status(400).json({ message: "Invalid image" });
 
     if (s.role === "client") {
       const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
       const uid = row?.auth_uid || s.auth_uid;
       if (!uid) return res.status(401).json({ message: "Unauthorized" });
       let url = null;
-      try { url = await accountModel.uploadClientAvatarDataUrl(uid, trimmed); } catch {}
-      if (!url) url = await directUploadAvatar("client", uid, trimmed);
+      try { url = await accountModel.uploadClientAvatarDataUrl(uid, normalized); } catch {}
+      if (!url) url = await directUploadAvatar("client", uid, normalized);
       if (!url) return res.status(400).json({ message: "Failed to save avatar" });
-      try { await accountModel.updateClientAvatarUrl(uid, url); } catch {}
+      await accountModel.updateClientAvatarUrl(uid, url);
       try { await accountModel.updateAuthUserAvatarMeta(uid, url); } catch {}
       return res.status(200).json({ avatar_url: url });
     }
@@ -144,10 +191,10 @@ exports.avatar = async (req, res) => {
       const uid = row?.auth_uid || s.auth_uid;
       if (!uid) return res.status(401).json({ message: "Unauthorized" });
       let url = null;
-      try { url = await accountModel.uploadWorkerAvatarDataUrl(uid, trimmed); } catch {}
-      if (!url) url = await directUploadAvatar("worker", uid, trimmed);
+      try { url = await accountModel.uploadWorkerAvatarDataUrl(uid, normalized); } catch {}
+      if (!url) url = await directUploadAvatar("worker", uid, normalized);
       if (!url) return res.status(400).json({ message: "Failed to save avatar" });
-      try { await accountModel.updateWorkerAvatarUrl(uid, url); } catch {}
+      await accountModel.updateWorkerAvatarUrl(uid, url);
       try { await accountModel.updateAuthUserAvatarMeta(uid, url); } catch {}
       return res.status(200).json({ avatar_url: url });
     }

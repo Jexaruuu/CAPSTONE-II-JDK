@@ -11,7 +11,7 @@ function normalizeFacebook(url){
   try{
     const raw=String(url).trim();const src=/^https?:\/\//i.test(raw)?raw:"https://"+raw;
     const u=new URL(src);let host=u.hostname.toLowerCase();
-    if(host==="m.facebook.com"||host==="www.facebook.com"||host==="fb.com"||host==="www.fb.com")host="facebook.com";
+    if(host==="m.facebook.com"||host==="www.facebook.com"||host==="fb.com"||"www.fb.com"===host)host="facebook.com";
     const isId=u.pathname==="/profile.php"&&u.searchParams.has("id");
     if(isId)return`https://${host}/profile.php?id=${u.searchParams.get("id")}`;
     const seg=u.pathname.split("/").filter(Boolean)[0]||"";
@@ -134,11 +134,29 @@ async function uploadWorkerAvatarDataUrl(auth_uid,data_url){
   return pub?.publicUrl||"";
 }
 
-async function updateClientAvatarUrl(auth_uid,avatar_url){const r1=await supabaseAdmin.from("user_client").update({client_avatar:avatar_url}).eq("auth_uid",auth_uid);if(r1.error)throw r1.error;try{await supabaseAdmin.from("user_client").update({avatar_url}).eq("auth_uid",auth_uid);}catch{}return true;}
-async function updateWorkerAvatarUrl(auth_uid,avatar_url){const r1=await supabaseAdmin.from("user_worker").update({worker_avatar:avatar_url}).eq("auth_uid",auth_uid);if(r1.error)throw r1.error;try{await supabaseAdmin.from("user_worker").update({avatar_url}).eq("auth_uid",auth_uid);}catch{}return true;}
-async function clearClientAvatar(auth_uid){const r1=await supabaseAdmin.from("user_client").update({client_avatar:null}).eq("auth_uid",auth_uid);if(r1.error)throw r1.error;try{await supabaseAdmin.from("user_client").update({avatar_url:null}).eq("auth_uid",auth_uid);}catch{}return true;}
-async function clearWorkerAvatar(auth_uid){const r1=await supabaseAdmin.from("user_worker").update({worker_avatar:null}).eq("auth_uid",auth_uid);if(r1.error)throw r1.error;try{await supabaseAdmin.from("user_worker").update({avatar_url:null}).eq("auth_uid",auth_uid);}catch{}return true;}
-async function updateAuthUserAvatarMeta(auth_uid,avatar_url){const meta=avatar_url?{avatar_url}:{avatar_url:null};const{error}=await supabaseAdmin.auth.admin.updateUserById(auth_uid,{user_metadata:meta});if(error)throw error;return true;}
+async function updateClientAvatarUrl(auth_uid,avatar_url){
+  const { error } = await supabaseAdmin.from("user_client").update({client_avatar:avatar_url,avatar_url:avatar_url}).eq("auth_uid",auth_uid);
+  if(error)throw error;return true;
+}
+async function updateWorkerAvatarUrl(auth_uid,avatar_url){
+  const { error } = await supabaseAdmin.from("user_worker").update({worker_avatar:avatar_url,avatar_url:avatar_url}).eq("auth_uid",auth_uid);
+  if(error)throw error;return true;
+}
+async function clearClientAvatar(auth_uid){
+  const { error } = await supabaseAdmin.from("user_client").update({client_avatar:null,avatar_url:null}).eq("auth_uid",auth_uid);
+  if(error)throw error;return true;
+}
+async function clearWorkerAvatar(auth_uid){
+  const { error } = await supabaseAdmin.from("user_worker").update({worker_avatar:null,avatar_url:null}).eq("auth_uid",auth_uid);
+  if(error)throw error;return true;
+}
+async function updateAuthUserAvatarMeta(auth_uid,avatar_url){
+  const user=await getAuthUserById(auth_uid);
+  const currentMeta=user?.user_metadata||{};
+  const nextMeta={...currentMeta,avatar_url:avatar_url||null};
+  const{error}=await supabaseAdmin.auth.admin.updateUserById(auth_uid,{user_metadata:nextMeta});
+  if(error)throw error;return true;
+}
 
 async function verifyCurrentPassword(email,password){const{data,error}=await supabase.auth.signInWithPassword({email,password});return{ok:!error,data,error};}
 async function updateAuthPassword(auth_uid,new_password){const{error}=await supabaseAdmin.auth.admin.updateUserById(auth_uid,{password:new_password});if(error)throw error;return true;}
@@ -147,7 +165,13 @@ async function updateWorkerPassword(auth_uid,new_password){const{error}=await su
 
 async function updateClientProfile(auth_uid,patch){const{data,error}=await supabaseAdmin.from("user_client").update(patch).eq("auth_uid",auth_uid).select("*").limit(1);if(error)throw error;return data&&data[0]?data[0]:null;}
 async function updateWorkerProfile(auth_uid,patch){const{data,error}=await supabaseAdmin.from("user_worker").update(patch).eq("auth_uid",auth_uid).select("*").limit(1);if(error)throw error;return data&&data[0]?data[0]:null;}
-async function updateAuthUserMeta(auth_uid,patch){const{error}=await supabaseAdmin.auth.admin.updateUserById(auth_uid,{user_metadata:patch});if(error)throw error;return true;}
+async function updateAuthUserMeta(auth_uid,patch){
+  const user=await getAuthUserById(auth_uid);
+  const base=user?.user_metadata||{};
+  const next={...base,...patch};
+  const{error}=await supabaseAdmin.auth.admin.updateUserById(auth_uid,{user_metadata:next});
+  if(error)throw error;return true;
+}
 
 async function isContactNumberTakenAcrossAll(phone,excludeAuthUid){
   const p=String(phone||"").trim();
@@ -202,7 +226,7 @@ async function isSocialLinkTakenAcrossAll(kind,value,excludeAuthUid){
     const q1=supabaseAdmin.from("user_client").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);
     const q2=supabaseAdmin.from("user_worker").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);
     const[{data:c2},{data:w2}]=await Promise.all([q1,q2]);
-    const all=[...(c2||[]),...(w2||[])];
+    const all=[...(c2||[]),...(w2||[])]
     for(const r of all){
       const vals=[r[col1],r[legacy1]].filter(Boolean).map(String);
       if(vals.some(v=> (kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break;}

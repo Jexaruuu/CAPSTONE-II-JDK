@@ -15,21 +15,14 @@ export default function WorkerProfile() {
 
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarRemoved, setAvatarRemoved] = useState(false);
+
   const [avatarSize, setAvatarSize] = useState(80);
   const [alignOffset, setAlignOffset] = useState(0);
   const [btnFixedWidth, setBtnFixedWidth] = useState(140);
   const [editingPhone, setEditingPhone] = useState(false);
   const [avatarBroken, setAvatarBroken] = useState(false);
 
-  const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    facebook: "",
-    instagram: "",
-    date_of_birth: ""
-  });
+  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", phone: "", facebook: "", instagram: "", date_of_birth: "" });
 
   const [base, setBase] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -90,31 +83,14 @@ export default function WorkerProfile() {
     return a >= 0 && a <= 120 ? a : null;
   }
 
-  const toYMD = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  };
-  const toMDY = (d) => {
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const y = d.getFullYear();
-    return `${m}/${day}/${y}`;
-  };
+  const toYMD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const toMDY = (d) => `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
 
   const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = useMemo(() => {
     const today = new Date();
     const max = new Date(today.getFullYear() - 21, today.getMonth(), today.getDate());
     const min = new Date(today.getFullYear() - 55, today.getMonth(), today.getDate());
-    return {
-      minDOB: toYMD(min),
-      maxDOB: toYMD(max),
-      minDOBDate: min,
-      maxDOBDate: max,
-      minDOBLabel: toMDY(min),
-      maxDOBLabel: toMDY(max)
-    };
+    return { minDOB: toYMD(min), maxDOB: toYMD(max), minDOBDate: min, maxDOBDate: max, minDOBLabel: toMDY(min), maxDOBLabel: toMDY(max) };
   }, []);
 
   useEffect(() => {
@@ -122,68 +98,21 @@ export default function WorkerProfile() {
       const appU = (() => {
         try {
           const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
-          const au =
-            a.auth_uid ||
-            a.authUid ||
-            a.uid ||
-            a.id ||
-            localStorage.getItem("worker_auth_uid") ||
-            localStorage.getItem("auth_uid") ||
-            "";
-          const rawEmail =
-            a.email ||
-            localStorage.getItem("worker_email") ||
-            localStorage.getItem("email_address") ||
-            localStorage.getItem("email") ||
-            "";
-          const e = String(rawEmail || "").trim().toLowerCase();
-          if (!e && !au) return "";
+          const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem("auth_uid") || "";
+          const e = a.email || localStorage.getItem("worker_email") || localStorage.getItem("email_address") || localStorage.getItem("email") || "";
           return encodeURIComponent(JSON.stringify({ r: "worker", e, au }));
         } catch {}
         return "";
       })();
       try {
-        const { data } = await axios.get(`${API_BASE}/api/account/me`, {
-          withCredentials: true,
-          headers: appU ? { "x-app-u": appU } : {}
-        });
+        const { data } = await axios.get(`${API_BASE}/api/account/me`, { withCredentials: true, headers: appU ? { "x-app-u": appU } : {} });
         const dob = data?.date_of_birth ? String(data.date_of_birth).slice(0, 10) : "";
-        setForm((f) => ({
-          ...f,
-          first_name: data?.first_name || "",
-          last_name: data?.last_name || "",
-          email: data?.email_address || "",
-          phone: data?.phone || "",
-          facebook: data?.facebook || "",
-          instagram: data?.instagram || "",
-          date_of_birth: dob
-        }));
-        setBase({
-          first_name: data?.first_name || "",
-          last_name: data?.last_name || "",
-          email: data?.email_address || "",
-          phone: data?.phone || "",
-          facebook: data?.facebook || "",
-          instagram: data?.instagram || "",
-          date_of_birth: dob
-        });
-        localStorage.setItem("worker_first_name", data?.first_name || "");
-        localStorage.setItem("worker_last_name", data?.last_name || "");
-        if (data?.sex) localStorage.setItem("worker_sex", data.sex);
-        if (data?.avatar_url) localStorage.setItem("workerAvatarUrl", data.avatar_url);
+        setForm((f) => ({ ...f, first_name: data?.first_name || "", last_name: data?.last_name || "", email: data?.email_address || "", phone: data?.phone || "", facebook: data?.facebook || "", instagram: data?.instagram || "", date_of_birth: dob }));
+        setBase({ first_name: data?.first_name || "", last_name: data?.last_name || "", email: data?.email_address || "", phone: data?.phone || "", facebook: data?.facebook || "", instagram: data?.instagram || "", date_of_birth: dob });
         localStorage.setItem("first_name", data?.first_name || "");
         localStorage.setItem("last_name", data?.last_name || "");
         if (data?.sex) localStorage.setItem("sex", data.sex);
-        if (data?.email_address) {
-          const e = String(data.email_address).trim().toLowerCase();
-          localStorage.setItem("email_address", e);
-          localStorage.setItem("email", e);
-          localStorage.setItem("worker_email", e);
-        }
-        if (data?.auth_uid) {
-          localStorage.setItem("worker_auth_uid", data.auth_uid);
-          localStorage.setItem("auth_uid", data.auth_uid);
-        }
+        if (data?.avatar_url) localStorage.setItem("workerAvatarUrl", data.avatar_url);
         if (data?.created_at) {
           const t = new Date(data.created_at);
           setCreatedAt(t.toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "long", timeStyle: "short" }));
@@ -205,25 +134,13 @@ export default function WorkerProfile() {
   }, [confirmOpen]);
 
   useEffect(() => {
-    const handleOutside = (e) => {
-      if (dpRef.current && !dpRef.current.contains(e.target)) setDpOpen(false);
-    };
+    const handleOutside = (e) => { if (dpRef.current && !dpRef.current.contains(e.target)) setDpOpen(false); };
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
   }, []);
 
   const allowedPHPrefixes = useMemo(
-    () => new Set([
-      "905","906","907","908","909","910","912","913","914","915","916","917","918","919",
-      "920","921","922","923","925","926","927","928","929",
-      "930","931","932","933","934","935","936","937","938","939",
-      "940","941","942","943","944","945","946","947","948","949",
-      "950","951","952","953","954","955","956","957","958","959",
-      "960","961","962","963","964","965","966","967","968","969",
-      "970","971","972","973","974","975","976","977","978","979",
-      "980","981","982","983","984","985","986","987","988","989",
-      "990","991","992","993","994","995","996","997","998","999",
-    ]),
+    () => new Set(["905","906","907","908","909","910","912","913","914","915","916","917","918","919","920","921","922","923","925","926","927","928","929","930","931","932","933","934","935","936","937","938","939","940","941","942","943","944","945","946","947","948","949","950","951","952","953","954","955","956","957","958","959","960","961","962","963","964","965","966","967","968","969","970","971","972","973","974","975","976","977","978","979","980","981","982","983","984","985","986","987","988","989","990","991","992","993","994","995","996","997","998","999"]),
     []
   );
 
@@ -232,34 +149,29 @@ export default function WorkerProfile() {
   const isPhoneValid = !form.phone || isValidPHMobile(form.phone);
   const showPhoneError = editingPhone && phoneErrorAfterDone && !isPhoneValid && form.phone.length > 0;
 
-  const storedWorkerAvatar = typeof window !== "undefined" ? localStorage.getItem("workerAvatarUrl") : "";
+  const storedAvatar = typeof window !== "undefined" ? localStorage.getItem("workerAvatarUrl") : "";
   const fullName = `${form.first_name} ${form.last_name}`.trim();
   const avatarUrl = useMemo(() => {
     if (avatarFile) return URL.createObjectURL(avatarFile);
     if (avatarRemoved) return "/Clienticon.png";
-    if (storedWorkerAvatar) return storedWorkerAvatar;
+    if (storedAvatar) return storedAvatar;
     if (!avatarBroken) return "/Clienticon.png";
     return "/Clienticon.png";
-  }, [avatarFile, avatarRemoved, avatarBroken, fullName, storedWorkerAvatar]);
+  }, [avatarFile, avatarRemoved, avatarBroken, fullName, storedAvatar]);
 
-  const hasAvatar = useMemo(() => (!!storedWorkerAvatar && !avatarRemoved) || !!avatarFile, [storedWorkerAvatar, avatarRemoved, avatarFile]);
-
-  function createImage(src) {
-    return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src; });
-  }
+  function createImage(src) { return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src; }); }
 
   async function fileToDataUrl(file) {
     try {
       const objectUrl = URL.createObjectURL(file);
       try {
         const img = await createImage(objectUrl);
-        const maxSide = 1200, w0 = img.naturalWidth || img.width || 1, h0 = img.naturalHeight || img.height || 1;
+        const maxSide = 800, w0 = img.naturalWidth || img.width || 1, h0 = img.naturalHeight || img.height || 1;
         const scale = Math.min(1, maxSide / Math.max(w0, h0));
         const w = Math.max(1, Math.round(w0 * scale)), h = Math.max(1, Math.round(h0 * scale));
         const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext("2d"); ctx.drawImage(img, 0, 0, w, h);
-        const preferJpeg = file.type && /jpe?g/i.test(file.type);
-        return canvas.toDataURL(preferJpeg ? "image/jpeg" : "image/png", preferJpeg ? 0.9 : 0.92);
+        return canvas.toDataURL("image/png", 0.9);
       } finally { URL.revokeObjectURL(objectUrl); }
     } catch {
       return await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file); });
@@ -269,22 +181,8 @@ export default function WorkerProfile() {
   function buildAppU() {
     try {
       const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
-      const au =
-        a.auth_uid ||
-        a.authUid ||
-        a.uid ||
-        a.id ||
-        localStorage.getItem("worker_auth_uid") ||
-        localStorage.getItem("auth_uid") ||
-        "";
-      const rawEmail =
-        a.email ||
-        localStorage.getItem("worker_email") ||
-        localStorage.getItem("email_address") ||
-        localStorage.getItem("email") ||
-        "";
-      const e = String(rawEmail || "").trim().toLowerCase();
-      if (!e && !au) return "";
+      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem("auth_uid") || "";
+      const e = a.email || localStorage.getItem("worker_email") || localStorage.getItem("email_address") || localStorage.getItem("email") || "";
       return encodeURIComponent(JSON.stringify({ r: "worker", e, au }));
     } catch {}
     return "";
@@ -325,24 +223,11 @@ export default function WorkerProfile() {
       if (url.pathname !== "/" && url.pathname.endsWith("/")) url.pathname = url.pathname.slice(0, -1);
       url.hash = "";
       return url.toString();
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 
-  function softValidFacebook(raw) {
-    if (!raw) return true;
-    const n = normalizeSocialUrl(raw);
-    if (!n) return false;
-    return isValidFacebookUrl(n);
-  }
-
-  function softValidInstagram(raw) {
-    if (!raw) return true;
-    const n = normalizeSocialUrl(raw);
-    if (!n) return false;
-    return isValidInstagramUrl(n);
-  }
+  function softValidFacebook(raw) { if (!raw) return true; const n = normalizeSocialUrl(raw); if (!n) return false; return isValidFacebookUrl(n); }
+  function softValidInstagram(raw) { if (!raw) return true; const n = normalizeSocialUrl(raw); if (!n) return false; return isValidInstagramUrl(n); }
 
   const facebookValid = softValidFacebook(form.facebook);
   const instagramValid = softValidInstagram(form.instagram);
@@ -384,80 +269,89 @@ export default function WorkerProfile() {
   const canGoPrev = () => addMonths(startOfMonth(dpView), -1) >= startOfMonth(minDOBDate);
   const canGoNext = () => addMonths(startOfMonth(dpView), 1) <= startOfMonth(maxDOBDate);
   const inRange = (date) => date >= minDOBDate && date <= maxDOBDate;
-  const openCalendar = () => {
-    if (!editingDob) setEditingDob(true);
-    if (form.date_of_birth) setDpView(new Date(form.date_of_birth));
-    else setDpView(new Date(maxDOBDate));
-    setDobEditCommitted(false);
-    setDpOpen(true);
-  };
-  const isBirthdateValid = useMemo(() => {
-    if (!form.date_of_birth) return false;
-    const d = new Date(form.date_of_birth);
-    if (isNaN(d.getTime())) return false;
-    return form.date_of_birth >= minDOB && form.date_of_birth <= maxDOB;
-  }, [form.date_of_birth, minDOB, maxDOB]);
+  const openCalendar = () => { if (!editingDob) setEditingDob(true); if (form.date_of_birth) setDpView(new Date(form.date_of_birth)); else setDpView(new Date(maxDOBDate)); setDobEditCommitted(false); setDpOpen(true); };
+  const isBirthdateValid = useMemo(() => { if (!form.date_of_birth) return false; const d = new Date(form.date_of_birth); if (isNaN(d.getTime())) return false; return form.date_of_birth >= minDOB && form.date_of_birth <= maxDOB; }, [form.date_of_birth, minDOB, maxDOB]);
 
   const monthsList = useMemo(() => ["January","February","March","April","May","June","July","August","September","October","November","December"], []);
-  const yearsList = useMemo(() => {
-    const ys = [];
-    for (let y = minDOBDate.getFullYear(); y <= maxDOBDate.getFullYear(); y++) ys.push(y);
-    return ys;
-  }, [minDOBDate, maxDOBDate]);
+  const yearsList = useMemo(() => { const ys = []; for (let y = minDOBDate.getFullYear(); y <= maxDOBDate.getFullYear(); y++) ys.push(y); return ys; }, [minDOBDate, maxDOBDate]);
 
-  function setMonthYear(m, y) {
-    const next = new Date(y, m, 1);
-    const minStart = startOfMonth(minDOBDate);
-    const maxStart = startOfMonth(maxDOBDate);
-    const clamped = next < minStart ? minStart : next > maxStart ? maxStart : next;
-    setDpView(clamped);
+  function setMonthYear(m, y) { const next = new Date(y, m, 1); const minStart = startOfMonth(minDOBDate); const maxStart = startOfMonth(maxDOBDate); const clamped = next < minStart ? minStart : next > maxStart ? maxStart : next; setDpView(clamped); }
+
+  function dataUrlToBlob(du) {
+    const parts = du.split(",");
+    const header = parts[0];
+    const base64 = parts[1] || "";
+    const mime = /data:(.*?);base64/.exec(header)?.[1] || "application/octet-stream";
+    const bin = atob(base64);
+    const len = bin.length;
+    const arr = new Uint8Array(len);
+    for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
   }
 
+  const hasAvatar = useMemo(() => (!!storedAvatar && !avatarRemoved) || !!avatarFile, [storedAvatar, avatarRemoved, avatarFile]);
+
   async function uploadAvatar(file) {
+    const appU = buildAppU();
+    if (!file || file.size === 0) return "";
+    const fileName = `avatar_${Date.now()}.png`;
+    const dataUrl = await fileToDataUrl(file);
+    const blob = dataUrlToBlob(dataUrl);
+    const fd = new FormData();
+    fd.append("avatar", blob, fileName);
     try {
-      const data_url = await fileToDataUrl(file);
-      const appU = buildAppU();
-      const { data } = await axios.post(
-        `${API_BASE}/api/account/avatar`,
-        { data_url },
-        {
-          withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            ...(appU ? { "x-app-u": appU } : {})
-          }
-        }
-      );
-      const url = data?.avatar_url || "";
+      const { data } = await axios.post(`${API_BASE}/api/account/avatar`, fd, { withCredentials: true, headers: { Accept: "application/json", ...(appU ? { "x-app-u": appU } : {}) }, maxBodyLength: Infinity });
+      const url = data?.avatar_url ?? data?.url ?? "";
       if (url || url === "") {
         if (url) localStorage.setItem("workerAvatarUrl", url);
         else localStorage.removeItem("workerAvatarUrl");
         window.dispatchEvent(new CustomEvent("worker-avatar-updated", { detail: { url } }));
       }
+      if (fileRef.current) fileRef.current.value = "";
       return url;
     } catch {
       try {
-        const appU = buildAppU();
-        const fd = new FormData();
-        fd.append("file", file, file.name || "avatar.png");
-        fd.append("avatar", file, file.name || "avatar.png");
-        const { data } = await axios.post(`${API_BASE}/api/account/avatar`, fd, {
-          withCredentials: true,
-          headers: {
-            Accept: "application/json",
-            ...(appU ? { "x-app-u": appU } : {})
-          }
-        });
-        const url = data?.avatar_url || "";
+        const fd2 = new FormData();
+        fd2.append("file", blob, fileName);
+        const { data } = await axios.post(`${API_BASE}/api/account/avatar`, fd2, { withCredentials: true, headers: { Accept: "application/json", ...(appU ? { "x-app-u": appU } : {}) }, maxBodyLength: Infinity });
+        const url = data?.avatar_url ?? data?.url ?? "";
         if (url || url === "") {
           if (url) localStorage.setItem("workerAvatarUrl", url);
           else localStorage.removeItem("workerAvatarUrl");
           window.dispatchEvent(new CustomEvent("worker-avatar-updated", { detail: { url } }));
         }
+        if (fileRef.current) fileRef.current.value = "";
         return url;
       } catch {
-        return "";
+        try {
+          const fd3 = new FormData();
+          fd3.append("image", blob, fileName);
+          const { data } = await axios.post(`${API_BASE}/api/account/avatar`, fd3, { withCredentials: true, headers: { Accept: "application/json", ...(appU ? { "x-app-u": appU } : {}) }, maxBodyLength: Infinity });
+          const url = data?.avatar_url ?? data?.url ?? "";
+          if (url || url === "") {
+            if (url) localStorage.setItem("workerAvatarUrl", url);
+            else localStorage.removeItem("workerAvatarUrl");
+            window.dispatchEvent(new CustomEvent("worker-avatar-updated", { detail: { url } }));
+          }
+          if (fileRef.current) fileRef.current.value = "";
+          return url;
+        } catch {
+          try {
+            const jsonHeaders = { "Content-Type": "application/json", Accept: "application/json", ...(appU ? { "x-app-u": appU } : {}) };
+            const { data } = await axios.post(`${API_BASE}/api/account/avatar`, { data_url: dataUrl, file_name: fileName, mime: "image/png" }, { withCredentials: true, headers: jsonHeaders, maxBodyLength: Infinity });
+            const url = data?.avatar_url ?? data?.url ?? "";
+            if (url || url === "") {
+              if (url) localStorage.setItem("workerAvatarUrl", url);
+              else localStorage.removeItem("workerAvatarUrl");
+              window.dispatchEvent(new CustomEvent("worker-avatar-updated", { detail: { url } }));
+            }
+            if (fileRef.current) fileRef.current.value = "";
+            return url;
+          } catch {
+            if (fileRef.current) fileRef.current.value = "";
+            return "";
+          }
+        }
       }
     }
   }
@@ -484,23 +378,18 @@ export default function WorkerProfile() {
     }
   }
 
-  async function createNotification(payload) {
-    await postNotification({ title: payload.title || "Notification", message: payload.message || "", type: payload.type || "Profile" });
-  }
+  async function createNotification(payload) { await postNotification({ title: payload.title || "Notification", message: payload.message || "", type: "Profile" }); }
 
   const onSaveProfile = async () => {
     if (!canSaveProfile) return;
     setSavingProfile(true); setSaving(true); setSaved(false);
-    let didAvatarUpload = false;
-    let didAvatarRemove = false;
-    let didPhoneChange = false;
-    let didDobChange = false;
+    let didAvatarUpload = false, didAvatarRemove = false, didPhoneChange = false, didDobChange = false;
     try {
       if (avatarFile) {
         const u = await uploadAvatar(avatarFile);
         if (!u) setAvatarBroken(true);
         setAvatarFile(null); setAvatarRemoved(false);
-        didAvatarUpload = true;
+        didAvatarUpload = !!u;
       } else if (avatarRemoved) {
         const ok = await removeAvatarServer(); setAvatarRemoved(false); setAvatarBroken(true);
         if (ok) didAvatarRemove = true;
@@ -511,35 +400,16 @@ export default function WorkerProfile() {
         if (dobDirty) payload.date_of_birth = form.date_of_birth || null;
         const appU = buildAppU();
         const { data } = await axios.post(`${API_BASE}/api/account/profile`, payload, { withCredentials: true, headers: { "Content-Type": "application/json", ...(appU ? { "x-app-u": appU } : {}) } });
-        setBase((b) => ({
-          ...(b || {}),
-          first_name: data?.first_name || form.first_name,
-          last_name: data?.last_name || form.last_name,
-          email: data?.email_address || form.email,
-          phone: phoneDirty ? (data?.phone ?? payload.phone ?? "") : (b?.phone ?? form.phone),
-          facebook: b?.facebook ?? form.facebook,
-          instagram: b?.instagram ?? form.instagram,
-          date_of_birth: dobDirty ? (data?.date_of_birth ? String(data.date_of_birth).slice(0,10) : payload.date_of_birth || "") : (b?.date_of_birth ?? form.date_of_birth)
-        }));
+        setBase((b) => ({ ...(b || {}), first_name: data?.first_name || form.first_name, last_name: data?.last_name || form.last_name, email: data?.email_address || form.email, phone: phoneDirty ? (data?.phone ?? payload.phone ?? "") : (b?.phone ?? form.phone), facebook: b?.facebook ?? form.facebook, instagram: b?.instagram ?? form.instagram, date_of_birth: dobDirty ? (data?.date_of_birth ? String(data.date_of_birth).slice(0,10) : payload.date_of_birth || "") : (b?.date_of_birth ?? form.date_of_birth) }));
         setPhoneTaken(false);
         didPhoneChange = phoneDirty;
         didDobChange = dobDirty;
       }
-      if (didAvatarUpload) {
-        await createNotification({ title: "Profile picture updated", message: "You changed your profile picture.", type: "Profile" });
-      }
-      if (didAvatarRemove) {
-        await createNotification({ title: "Profile picture removed", message: "Your profile picture was removed.", type: "Profile" });
-      }
-      if (didPhoneChange && form.phone) {
-        await createNotification({ title: "Contact number updated", message: "Your contact number has been updated.", type: "Profile" });
-      }
-      if (didPhoneChange && !form.phone) {
-        await createNotification({ title: "Contact number removed", message: "Your contact number has been removed.", type: "Profile" });
-      }
-      if (didDobChange) {
-        await createNotification({ title: "Birthdate updated", message: "Your birthdate has been updated.", type: "Profile" });
-      }
+      if (didAvatarUpload) await createNotification({ title: "Profile picture updated", message: "You changed your profile picture." });
+      if (didAvatarRemove) await createNotification({ title: "Profile picture removed", message: "Your profile picture was removed." });
+      if (didPhoneChange && form.phone) await createNotification({ title: "Contact number updated", message: "Your contact number has been updated." });
+      if (didPhoneChange && !form.phone) await createNotification({ title: "Contact number removed", message: "Your contact number has been removed." });
+      if (didDobChange) await createNotification({ title: "Birthdate updated", message: "Your birthdate has been updated." });
       setSaved(true); setSavedProfile(true);
       setTimeout(() => { setSaved(false); setSavedProfile(false); }, 1500);
     } catch (err) {
@@ -552,7 +422,6 @@ export default function WorkerProfile() {
   const onSaveSocial = async () => {
     if (!socialDirty) return;
     setSocialTouched((t) => ({ facebook: t.facebook || facebookDirty, instagram: t.instagram || instagramDirty }));
-
     const payload = {};
     if (facebookDirty) {
       const nfb = normalizeSocialUrl(form.facebook);
@@ -564,45 +433,30 @@ export default function WorkerProfile() {
       if (form.instagram && !nig) { setSocialTouched((t)=>({ ...t, instagram: true })); return; }
       payload.instagram = nig;
     }
-
     const fbReady = !("facebook" in payload) || payload.facebook == null || isValidFacebookUrl(payload.facebook);
     const igReady = !("instagram" in payload) || payload.instagram == null || isValidInstagramUrl(payload.instagram);
     if (!fbReady || !igReady || savingSocial || facebookTaken || instagramTaken) return;
-
     setSavingSocial(true); setSaving(true); setSaved(false);
     try {
       const appU = buildAppU();
       const { data } = await axios.post(`${API_BASE}/api/account/profile`, payload, { withCredentials: true, headers: { "Content-Type": "application/json", Accept: "application/json", ...(appU ? { "x-app-u": appU } : {}) } });
-      const prevFb = base?.facebook || "";
-      const prevIg = base?.instagram || "";
+      const prevFb = base?.facebook || "", prevIg = base?.instagram || "";
       const nextFb = data?.facebook ?? payload.facebook ?? form.facebook;
       const nextIg = data?.instagram ?? payload.instagram ?? form.instagram;
-
-      setBase((b) => ({
-        ...(b || {}),
-        first_name: data?.first_name || form.first_name,
-        last_name: data?.last_name || form.last_name,
-        email: data?.email_address || form.email,
-        phone: b?.phone ?? form.phone,
-        facebook: nextFb,
-        instagram: nextIg,
-        date_of_birth: b?.date_of_birth ?? form.date_of_birth
-      }));
+      setBase((b) => ({ ...(b || {}), first_name: data?.first_name || form.first_name, last_name: data?.last_name || form.last_name, email: data?.email_address || form.email, phone: b?.phone ?? form.phone, facebook: nextFb, instagram: nextIg, date_of_birth: b?.date_of_birth ?? form.date_of_birth }));
       setSaved(true); setSavedSocial(true);
       setFacebookTaken(false); setInstagramTaken(false);
       setEditSocial({ facebook: false, instagram: false });
-
       if (facebookDirty) {
-        if (prevFb && !nextFb) await createNotification({ title: "Facebook link removed", message: "Your Facebook link has been removed.", type: "Profile" });
-        else if (!prevFb && nextFb) await createNotification({ title: "Facebook link added", message: "Your Facebook link has been added.", type: "Profile" });
-        else await createNotification({ title: "Facebook link updated", message: "Your Facebook link has been updated.", type: "Profile" });
+        if (prevFb && !nextFb) await createNotification({ title: "Facebook link removed", message: "Your Facebook link has been removed." });
+        else if (!prevFb && nextFb) await createNotification({ title: "Facebook link added", message: "Your Facebook link has been added." });
+        else await createNotification({ title: "Facebook link updated", message: "Your Facebook link has been updated." });
       }
       if (instagramDirty) {
-        if (prevIg && !nextIg) await createNotification({ title: "Instagram link removed", message: "Your Instagram link has been removed.", type: "Profile" });
-        else if (!prevIg && nextIg) await createNotification({ title: "Instagram link added", message: "Your Instagram link has been added.", type: "Profile" });
-        else await createNotification({ title: "Instagram link updated", message: "Your Instagram link has been updated.", type: "Profile" });
+        if (prevIg && !nextIg) await createNotification({ title: "Instagram link removed", message: "Your Instagram link has been removed." });
+        else if (!prevIg && nextIg) await createNotification({ title: "Instagram link added", message: "Your Instagram link has been added." });
+        else await createNotification({ title: "Instagram link updated", message: "Your Instagram link has been updated." });
       }
-
       setTimeout(() => { setSaved(false); setSavedSocial(false); }, 1500);
     } catch (err) {
       const msg = (err?.response?.data?.message || err?.message || "").toLowerCase();
@@ -621,41 +475,45 @@ export default function WorkerProfile() {
   const igErr = (!instagramValid || instagramTaken) && (socialTouched.instagram);
 
   return (
-    <main className="min-h-[65vh] pb-24 md:pb-2">
-      <div className="mb-3 flex items-start justify-between">
-        <div>
-          <h2 className="text-xl md:text-2xl font-semibold text-gray-900">Personal Information</h2>
-          <p className="text-sm text-gray-600">This is a worker account</p>
-        </div>
-        <div className="text-right">
-          <div className="text-sm text-gray-600">Account Created:</div>
-          <div ref={jdkRowRef} className="mt-1 flex items-center justify-end gap-2">
-            <p className="text-sm text-gray-500">{createdAt || "—"}</p>
-            <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Active</span>
+    <main className="min-h-[65vh] pb-24 md:pb-10">
+      <div className="mb-6 rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-blue-50 p-6 md:p-8 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 tracking-tight">Profile</h2>
+            <p className="mt-1 text-sm text-gray-600">Manage your personal details and social links</p>
+          </div>
+          <div className="text-right">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Account Created</div>
+            <div ref={jdkRowRef} className="mt-1 flex items-center justify-end gap-2">
+              <p className="text-sm text-gray-700">{createdAt || "—"}</p>
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Active</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <section className="w-full rounded-2xl border border-gray-200 bg-white p-6 mb-5 relative">
-        <div ref={gridRef} className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-[220px_1fr]">
+      <section className="w-full rounded-2xl border border-gray-200 bg-white/90 backdrop-blur p-6 md:p-8 mb-6 shadow-sm">
+        <div ref={gridRef} className="grid grid-cols-1 gap-6 md:grid-cols-[260px_1fr]">
           <div className="md:col-span-1">
-            <div className="flex items-start md:items-center gap-4">
-              <div className="flex flex-col items-center" style={{ width: avatarSize }}>
-                <p className="text-sm md:text-base font-semibold text-gray-900 text-center mb-2">Profile Picture</p>
-                <div className="rounded-full ring-2 ring-gray-300 bg-gray-100 overflow-hidden" style={{ width: avatarSize, height: avatarSize }}>
+            <div className="flex flex-col items-center gap-4">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-900">Profile Picture</p>
+              </div>
+              <div className="relative">
+                <div className="rounded-full ring-2 ring-gray-200 bg-gray-100 overflow-hidden shadow-sm" style={{ width: avatarSize, height: avatarSize }}>
                   <img src={avatarUrl} alt="Avatar" onError={() => setAvatarBroken(true)} className="h-full w-full object-cover" />
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col items-start gap-2">
+            <div className="mt-5 flex flex-col items-center gap-2">
               {!hasAvatar ? (
                 <>
                   <button
                     ref={btnRef}
                     type="button"
                     onClick={() => fileRef.current?.click()}
-                    className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50 transition"
+                    className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-4 py-2.5 text-sm font-medium hover:bg-blue-50 active:bg-blue-100 transition shadow-sm"
                     style={{ width: btnFixedWidth }}
                   >
                     Upload Photo
@@ -680,7 +538,7 @@ export default function WorkerProfile() {
                     ref={btnRef}
                     type="button"
                     onClick={() => fileRef.current?.click()}
-                    className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50 transition"
+                    className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-4 py-2.5 text-sm font-medium hover:bg-blue-50 active:bg-blue-100 transition shadow-sm"
                     style={{ width: btnFixedWidth }}
                   >
                     Change
@@ -701,7 +559,7 @@ export default function WorkerProfile() {
                   <button
                     type="button"
                     onClick={() => { setAvatarFile(null); setAvatarRemoved(true); setAvatarBroken(true); }}
-                    className="flex-none rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50 transition"
+                    className="inline-flex items-center justify-center rounded-xl border border-red-500 text-red-600 px-4 py-2.5 text-sm font-medium hover:bg-red-50 active:bg-red-100 transition shadow-sm"
                     style={{ width: btnFixedWidth }}
                   >
                     Remove
@@ -711,74 +569,90 @@ export default function WorkerProfile() {
             </div>
           </div>
 
-          <div className="md:col-span-1 flex items-start" style={{ marginTop: alignOffset }}>
-            <div className="grid grid-cols-[280px_220px_240px] gap-8 lg:gap-10 xl:gap-12 md:ml-0 items-start">
-              <div className="w-[280px] shrink-0">
-                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">First Name</p>
-                <p className="mt-1 text-base text-gray-900">{form.first_name || "—"}</p>
+          <div className="md:col-span-1" style={{ marginTop: alignOffset }}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="w-full">
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <p className="text-xs uppercase tracking-wide font-semibold text-gray-600">First Name</p>
+                  <p className="mt-1 text-base text-gray-900">{form.first_name || "—"}</p>
+                </div>
 
-                <div className="mt-6 min-h-[170px]">
-                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Contact Number</p>
+                <div className="mt-4 rounded-xl border border-gray-200 p-4 min-h-[170px]">
+                  <p className="text-xs uppercase tracking-wide font-semibold text-gray-600">Contact Number</p>
                   {!editingPhone && (
-                    <div className="mt-1">
+                    <div className="mt-2">
                       {form.phone && !phoneTaken ? (
-                        <div className="inline-flex items-center gap-2">
+                        <div className="inline-flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 border border-gray-200">
                           <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
                           <span className="text-gray-700 text-sm">+63</span>
                           <span className="text-base text-gray-900 tracking-wide">{form.phone}</span>
                         </div>
-                      ) : <p className="text-base text-gray-900">—</p>}
+                      ) : (
+                        <div className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-300 text-gray-400">
+                          <span className="text-sm">+63</span>
+                          <span className="text-sm">mm/dd/yyyy</span>
+                        </div>
+                      )}
                     </div>
                   )}
                   {(!form.phone || phoneTaken) && !editingPhone && (
                     <div className="mt-3 flex items-center gap-3">
-                      <button type="button" onClick={() => { setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">+ Add contact number</button>
+                      <button type="button" onClick={() => { setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-lg border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">+ Add contact number</button>
                     </div>
                   )}
                   {form.phone && !phoneTaken && !editingPhone && (
                     <div className="mt-3 flex items-center gap-3">
-                      <button type="button" onClick={() => { setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
-                      <button type="button" onClick={() => { setForm({ ...form, phone: "" }); setPhoneTaken(false); setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
+                      <button type="button" onClick={() => { setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-lg border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                      <button type="button" onClick={() => { setForm({ ...form, phone: "" }); setPhoneTaken(false); setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-lg border border-red-500 text-red-600 px-3.5 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
                     </div>
                   )}
                   {(editingPhone || !!form.phone) && editingPhone && (
-                    <div className="mt-3 w-[240px]">
-                      <div className={`flex items-center rounded-md border ${showPhoneError || phoneTaken ? "border-red-500" : "border-gray-300"} overflow-hidden pl-3 pr-4 w-full h-10`}>
+                    <div className="mt-3 w-full max-w-[280px]">
+                      <div className={`flex items-center rounded-lg border ${showPhoneError || phoneTaken ? "border-red-500" : "border-gray-300"} overflow-hidden pl-3 pr-3 h-11 focus-within:ring-2 ${showPhoneError || phoneTaken ? "focus-within:ring-red-500" : "focus-within:ring-blue-500"}`}>
                         <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm mr-2 object-cover" />
                         <span className="text-gray-700 text-sm mr-3">+63</span>
                         <span className="h-6 w-px bg-gray-200 mr-3" />
-                        <input type="tel" value={form.phone} onChange={(e) => { setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }); setPhoneTaken(false); }} placeholder="9XXXXXXXXX" className="w-full outline-none text-sm placeholder:text-gray-400 h-full" />
+                        <input type="tel" value={form.phone} onChange={(e) => { setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }); setPhoneTaken(false); }} placeholder="9XXXXXXXXX" className="w-full outline-none text-sm placeholder:text-gray-400 h-full bg-transparent" />
                       </div>
-                      {showPhoneError && <div className="mt-2 text-xs text-red-600">Enter a valid PH mobile number with a real prefix (e.g., 9XXXXXXXXX).</div>}
+                      {showPhoneError && <div className="mt-2 text-xs text-red-600">Enter a valid PH mobile number with a real prefix.</div>}
                       {phoneTaken && <div className="mt-2 text-xs text-red-600">Contact number already in use.</div>}
-                      <div className="mt-3 flex items-center gap-3">
-                        <button type="button" onClick={() => { if (!isPhoneValid || phoneTaken) { setPhoneErrorAfterDone(true); return; } setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); }} className={`rounded-md px-4 text-sm font-medium transition h-10 ${!isPhoneValid || phoneTaken ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}>Done</button>
-                        <button type="button" onClick={() => { setForm({ ...form, phone: base?.phone || "" }); setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); setPhoneTaken(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
+                      <div className="mt-3 flex items-center gap-2">
+                        <button type="button" onClick={() => { if (!isPhoneValid || phoneTaken) { setPhoneErrorAfterDone(true); return; } setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); }} className={`rounded-lg px-4 text-sm font-medium transition h-10 ${!isPhoneValid || phoneTaken ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}>Done</button>
+                        <button type="button" onClick={() => { setForm({ ...form, phone: base?.phone || "" }); setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); setPhoneTaken(false); }} className="inline-flex items-center justify-center rounded-lg border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="w-[220px] shrink-0">
-                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Last Name</p>
-                <p className="mt-1 text-base text-gray-900">{form.last_name || "—"}</p>
+              <div className="w-full">
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <p className="text-xs uppercase tracking-wide font-semibold text-gray-600">Last Name</p>
+                  <p className="mt-1 text-base text-gray-900">{form.last_name || "—"}</p>
+                </div>
 
-                <div className="mt-6" ref={dpRef}>
-                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Date of Birth</p>
-
+                <div className="mt-4 rounded-xl border border-gray-200 p-4 relative min-h-[170px]" ref={dpRef}>
+                  <p className="text-xs uppercase tracking-wide font-semibold text-gray-600">Date of Birth</p>
                   {!editingDob && (
                     <>
-                      <div className="mt-1">
-                        <p className="text-base text-gray-900">{form.date_of_birth ? toMDY(new Date(form.date_of_birth)) : "—"}</p>
+                      <div className="mt-2">
+                        {form.date_of_birth ? (
+                          <div className="inline-flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 border border-gray-200">
+                            <span className="text-base text-gray-900 tracking-wide">{toMDY(new Date(form.date_of_birth))}</span>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-300 text-gray-400">
+                            <span className="text-sm">mm/dd/yyyy</span>
+                          </div>
+                        )}
                       </div>
                       <div className="mt-3 flex items-center gap-3">
                         {!form.date_of_birth ? (
-                          <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">+ Add date of birth</button>
+                          <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-lg border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">+ Add date of birth</button>
                         ) : (
                           <>
-                            <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
-                            <button type="button" onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
+                            <button type="button" onClick={() => { setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-lg border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                            <button type="button" onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className="inline-flex items-center justify-center rounded-lg border border-red-500 text-red-600 px-3.5 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
                           </>
                         )}
                       </div>
@@ -787,7 +661,7 @@ export default function WorkerProfile() {
 
                   {editingDob && (
                     <>
-                      <div className="mt-1 flex items-center rounded-xl border border-gray-300">
+                      <div className="mt-2 flex items-center rounded-lg border border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 h-11">
                         <input
                           type="text"
                           value={form.date_of_birth ? toMDY(new Date(form.date_of_birth)) : ""}
@@ -795,15 +669,10 @@ export default function WorkerProfile() {
                           readOnly
                           placeholder="mm/dd/yyyy"
                           title={`Allowed: ${minDOBLabel} to ${maxDOBLabel} (21–55 years old)`}
-                          className="w-full px-4 py-3 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-4 rounded-l-lg focus:outline-none bg-white"
                           inputMode="none"
                         />
-                        <button
-                          type="button"
-                          onClick={openCalendar}
-                          className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                          aria-label="Open calendar"
-                        >
+                        <button type="button" onClick={openCalendar} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open calendar">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" />
                             <path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" />
@@ -815,160 +684,76 @@ export default function WorkerProfile() {
                       {form.date_of_birth && !isBirthdateValid && <p className="text-xs text-red-600 mt-1">Birthdate must make you between 21 and 55 years old.</p>}
 
                       {dpOpen && (
-                        <div className="absolute z-50 mt-2 w-[280px] rounded-xl border border-gray-200 bg-white shadow-xl p-3">
+                        <div className="absolute z-50 mt-2 w-[300px] rounded-xl border border-gray-200 bg-white shadow-2xl p-3">
                           <div className="flex items-center justify-between px-2 pb-2">
-                            <button
-                              type="button"
-                              onClick={() => canGoPrev() && setDpView(addMonths(dpView, -1))}
-                              className={`p-2 rounded-lg hover:bg-gray-100 ${canGoPrev() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`}
-                              aria-label="Previous month"
-                            >
-                              ‹
-                            </button>
+                            <button type="button" onClick={() => canGoPrev() && setDpView(addMonths(dpView, -1))} className={`p-2 rounded-lg hover:bg-gray-100 ${canGoPrev() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`} aria-label="Previous month">‹</button>
                             <div className="flex items-center gap-2">
-                              <select
-                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-                                value={dpView.getMonth()}
-                                onChange={(e) => setMonthYear(parseInt(e.target.value, 10), dpView.getFullYear())}
-                              >
-                                {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m, i) => (
-                                  <option key={m} value={i}>{m}</option>
-                                ))}
+                              <select className="border border-gray-300 rounded-md px-2 py-1 text-sm" value={dpView.getMonth()} onChange={(e) => setMonthYear(parseInt(e.target.value, 10), dpView.getFullYear())}>
+                                {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m, i) => (<option key={m} value={i}>{m}</option>))}
                               </select>
-                              <select
-                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-                                value={dpView.getFullYear()}
-                                onChange={(e) => setMonthYear(dpView.getMonth(), parseInt(e.target.value, 10))}
-                              >
-                                {(() => { const ys=[]; for (let y=minDOBDate.getFullYear(); y<=maxDOBDate.getFullYear(); y++) ys.push(y); return ys; })().map((y) => (
-                                  <option key={y} value={y}>{y}</option>
-                                ))}
+                              <select className="border border-gray-300 rounded-md px-2 py-1 text-sm" value={dpView.getFullYear()} onChange={(e) => setMonthYear(dpView.getMonth(), parseInt(e.target.value, 10))}>
+                                {(() => { const ys=[]; for(let y=minDOBDate.getFullYear(); y<=maxDOBDate.getFullYear(); y++) ys.push(y); return ys; })().map((y) => (<option key={y} value={y}>{y}</option>))}
                               </select>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => canGoNext() && setDpView(addMonths(dpView, 1))}
-                              className={`p-2 rounded-lg hover:bg-gray-100 ${canGoNext() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`}
-                              aria-label="Next month"
-                            >
-                              ›
-                            </button>
+                            <button type="button" onClick={() => canGoNext() && setDpView(addMonths(dpView, 1))} className={`p-2 rounded-lg hover:bg-gray-100 ${canGoNext() ? "text-gray-700" : "text-gray-300 cursor-not-allowed"}`} aria-label="Next month">›</button>
                           </div>
 
                           <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
-                            {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d) => (
-                              <div key={d} className="py-1">{d}</div>
-                            ))}
+                            {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d) => (<div key={d} className="py-1">{d}</div>))}
                           </div>
 
                           {(() => {
-                            const first = new Date(dpView.getFullYear(), dpView.getMonth(), 1);
-                            const last = new Date(dpView.getFullYear(), dpView.getMonth() + 1, 0);
-                            const offset = first.getDay();
-                            const total = offset + last.getDate();
-                            const rows = Math.ceil(total / 7);
-                            const selected = form.date_of_birth ? new Date(form.date_of_birth) : null;
-                            const cells = [];
-
+                            const first = startOfMonth(dpView), last = endOfMonth(dpView), offset = first.getDay(), total = offset + last.getDate(), rows = Math.ceil(total / 7);
+                            const selected = form.date_of_birth ? new Date(form.date_of_birth) : null, cells = [];
                             for (let r = 0; r < rows; r++) {
                               const row = [];
                               for (let c = 0; c < 7; c++) {
-                                const idx = r * 7 + c;
-                                const dayNum = idx - offset + 1;
-                                if (dayNum < 1 || dayNum > last.getDate()) {
-                                  row.push(<div key={`x-${r}-${c}`} className="py-2" />);
-                                } else {
-                                  const d = new Date(dpView.getFullYear(), dpView.getMonth(), dayNum);
-                                  const disabled = d < minDOBDate || d > maxDOBDate;
-                                  const isSelected = selected && d.getFullYear()===selected.getFullYear() && d.getMonth()===selected.getMonth() && d.getDate()===selected.getDate();
+                                const idx = r * 7 + c, dayNum = idx - offset + 1;
+                                if (dayNum < 1 || dayNum > last.getDate()) row.push(<div key={`x-${r}-${c}`} className="py-2" />);
+                                else {
+                                  const d = new Date(dpView.getFullYear(), dpView.getMonth(), dayNum), disabled = !inRange(d), isSelected = selected && isSameDay(selected, d);
                                   row.push(
                                     <button
                                       key={`d-${dayNum}`}
                                       type="button"
                                       disabled={disabled}
-                                      onClick={() => {
-                                        const ymd = toYMD(d);
-                                        setForm((f) => ({ ...f, date_of_birth: ymd }));
-                                        setDobError(validateDob(ymd));
-                                        setDpOpen(false);
-                                      }}
-                                      className={[
-                                        "py-2 rounded-lg transition text-sm",
-                                        disabled ? "text-gray-300 cursor-not-allowed" : "hover:bg-blue-50 text-gray-700",
-                                        isSelected && !disabled ? "bg-blue-600 text-white hover:bg-blue-600" : ""
-                                      ].join(" ")}
+                                      onClick={() => { const ymd = toYMD(d); setForm((f) => ({ ...f, date_of_birth: ymd })); setDobError(validateDob(ymd)); setDpOpen(false); }}
+                                      className={["py-2 rounded-lg transition text-sm w-9 h-9 mx-auto", disabled ? "text-gray-300 cursor-not-allowed" : "hover:bg-blue-50 text-gray-700", isSelected && !disabled ? "bg-blue-600 text-white hover:bg-blue-600" : ""].join(" ")}
                                     >
                                       {dayNum}
                                     </button>
                                   );
                                 }
                               }
-                              cells.push(
-                                <div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">
-                                  {row}
-                                </div>
-                              );
+                              cells.push(<div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">{row}</div>);
                             }
                             return <div className="mt-1">{cells}</div>;
                           })()}
 
                           <div className="flex items-center justify-between mt-3 px-2">
-                            <button
-                              type="button"
-                              onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setDpOpen(false); }}
-                              className="text-xs text-gray-500 hover:text-gray-700"
-                            >
-                              Clear
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { setDpView(new Date(maxDOBDate)); }}
-                              className="text-xs text-blue-600 hover:text-blue-700"
-                            >
-                              Jump to latest allowed
-                            </button>
+                            <button type="button" onClick={() => { setForm((f)=>({ ...f, date_of_birth: "" })); setDobError(""); setDpOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+                            <button type="button" onClick={() => { setDpView(new Date(maxDOBDate)); }} className="text-xs text-blue-600 hover:text-blue-700">Jump to latest allowed</button>
                           </div>
                         </div>
                       )}
 
-                      <div className="mt-3 flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (form.date_of_birth && !isBirthdateValid) return;
-                            setEditingDob(false);
-                            setDobEditCommitted(true);
-                            setDpOpen(false);
-                          }}
-                          className={`rounded-md px-4 text-sm font-medium transition h-10 ${form.date_of_birth && !isBirthdateValid ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}
-                        >
-                          Done
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setForm((f)=>({ ...f, date_of_birth: base?.date_of_birth || "" }));
-                            setDobError("");
-                            setEditingDob(false);
-                            setDobEditCommitted(true);
-                            setDpOpen(false);
-                          }}
-                          className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50"
-                        >
-                          Cancel
-                        </button>
+                      <div className="mt-3 flex items-center gap-2">
+                        <button type="button" onClick={() => { if (form.date_of_birth && !isBirthdateValid) return; setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className={`rounded-lg px-4 text-sm font-medium transition h-10 ${form.date_of_birth && !isBirthdateValid ? "bg-[#008cfc] text-white opacity-50 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}>Done</button>
+                        <button type="button" onClick={() => { setForm((f)=>({ ...f, date_of_birth: base?.date_of_birth || "" })); setDobError(""); setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className="inline-flex items-center justify-center rounded-lg border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
                       </div>
                     </>
                   )}
                 </div>
               </div>
 
-              <div className="w-[240px] shrink-0">
-                <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Email</p>
-                <p className="mt-1 text-base text-gray-900">{form.email || "—"}</p>
+              <div className="w-full">
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <p className="text-xs uppercase tracking-wide font-semibold text-gray-600">Email</p>
+                  <p className="mt-1 text-base text-gray-900 break-all">{form.email || "—"}</p>
+                </div>
 
-                <div className="mt-6">
-                  <p className="text-sm uppercase tracking-wide font-semibold text-gray-900">Age</p>
+                <div className="mt-4 rounded-xl border border-gray-200 p-4">
+                  <p className="text-xs uppercase tracking-wide font-semibold text-gray-600">Age</p>
                   <p className="mt-1 text-base text-gray-900">{age != null ? `${age}` : "—"}</p>
                 </div>
               </div>
@@ -978,20 +763,21 @@ export default function WorkerProfile() {
 
         <div className="mt-6 flex items-center justify-end gap-3">
           {savedProfile ? <span className="text-sm text-blue-700">Saved</span> : null}
-          <button type="button" disabled={!canSaveProfile} onClick={() => openConfirm("profile")} className={`rounded-md px-5 py-2.5 text-sm font-medium transition ${canSaveProfile ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}>{savingProfile ? "Saving..." : "Confirm"}</button>
+          <button type="button" disabled={!canSaveProfile} onClick={() => openConfirm("profile")} className={`rounded-lg px-5 py-2.5 text-sm font-medium transition shadow-sm ${canSaveProfile ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}>{savingProfile ? "Saving..." : "Confirm"}</button>
         </div>
       </section>
 
-      <section className="w-full rounded-2xl border border-gray-200 bg-white p-6">
-        <div className="mb-10">
-          <h3 className="text-lg font-semibold text-gray-900">Social Media</h3>
+      <section className="w-full rounded-2xl border border-gray-200 bg-white/90 backdrop-blur p-6 md:p-8 shadow-sm">
+        <div className="mb-6 flex items-center justify-between">
+          <h3 className="text-xl font-semibold text-gray-900 tracking-tight">Social Media</h3>
+          {savedSocial ? <span className="text-sm text-blue-700">Saved</span> : null}
         </div>
 
         <div className="grid grid-cols-[220px_1fr_220px] gap-6">
           <div className="col-span-3 grid grid-cols-subgrid items-start">
             <div className="flex items-center gap-2">
               <FaFacebookF className="text-blue-600" />
-              <span className="text-sm uppercase tracking-wide font-semibold text-gray-900">Facebook</span>
+              <span className="text-xs uppercase tracking-wide font-semibold text-gray-600">Facebook</span>
             </div>
             <div>
               {!base?.facebook || editSocial.facebook ? (
@@ -1002,9 +788,9 @@ export default function WorkerProfile() {
                     value={form.facebook}
                     onChange={(e) => { setForm({ ...form, facebook: e.target.value }); setFacebookTaken(false); }}
                     onBlur={() => setSocialTouched((s) => ({ ...s, facebook: true }))}
-                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!softValidFacebook(form.facebook) || facebookTaken) && socialTouched.facebook ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
+                    className={`w-full px-4 py-2.5 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!facebookValid || facebookTaken) && socialTouched.facebook ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
                   />
-                  {(!softValidFacebook(form.facebook) || facebookTaken) && socialTouched.facebook ? <div className="mt-1 text-xs text-red-600">Enter a valid Facebook profile URL.</div> : null}
+                  {(!facebookValid || facebookTaken) && socialTouched.facebook && <div className="mt-1 text-xs text-red-600">Enter a valid Facebook profile URL.</div>}
                 </>
               ) : (
                 <a href={base.facebook} target="_blank" rel="noreferrer" className="text-md text-blue-700 break-all hover:underline">{base.facebook}</a>
@@ -1013,12 +799,12 @@ export default function WorkerProfile() {
             <div className="flex items-center gap-3 justify-end">
               {!base?.facebook || editSocial.facebook ? (
                 base?.facebook ? (
-                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, facebook: false })); setForm((f)=>({ ...f, facebook: base.facebook })); setFacebookTaken(false); setSocialTouched((t)=>({ ...t, facebook: false })); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
+                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, facebook: false })); setForm((f)=>({ ...f, facebook: base.facebook })); setFacebookTaken(false); setSocialTouched((t)=>({ ...t, facebook: false })); }} className="inline-flex items-center justify-center rounded-lg border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
                 ) : null
               ) : (
                 <>
-                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, facebook: true })); setSocialTouched((t)=>({ ...t, facebook: false })); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
-                  <button type="button" onClick={() => { setForm((f)=>({ ...f, facebook: "" })); setEditSocial((s)=>({ ...s, facebook: true })); setSocialTouched((t)=>({ ...t, facebook: true })); setFacebookTaken(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
+                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, facebook: true })); setSocialTouched((t)=>({ ...t, facebook: false })); }} className="inline-flex items-center justify-center rounded-lg border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                  <button type="button" onClick={() => { setForm((f)=>({ ...f, facebook: "" })); setEditSocial((s)=>({ ...s, facebook: true })); setSocialTouched((t)=>({ ...t, facebook: true })); setFacebookTaken(false); }} className="inline-flex items-center justify-center rounded-lg border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
                 </>
               )}
             </div>
@@ -1029,7 +815,7 @@ export default function WorkerProfile() {
           <div className="col-span-3 grid grid-cols-subgrid items-start">
             <div className="flex items-center gap-2">
               <FaInstagram className="text-pink-500" />
-              <span className="text-sm uppercase tracking-wide font-semibold text-gray-900">Instagram</span>
+              <span className="text-xs uppercase tracking-wide font-semibold text-gray-600">Instagram</span>
             </div>
             <div>
               {!base?.instagram || editSocial.instagram ? (
@@ -1040,9 +826,9 @@ export default function WorkerProfile() {
                     value={form.instagram}
                     onChange={(e) => { setForm({ ...form, instagram: e.target.value }); setInstagramTaken(false); }}
                     onBlur={() => setSocialTouched((s) => ({ ...s, instagram: true }))}
-                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!softValidInstagram(form.instagram) || instagramTaken) && socialTouched.instagram ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
+                    className={`w-full px-4 py-2.5 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!instagramValid || instagramTaken) && socialTouched.instagram ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
                   />
-                  {(!softValidInstagram(form.instagram) || instagramTaken) && socialTouched.instagram ? <div className="mt-1 text-xs text-red-600">Enter a valid Instagram profile URL.</div> : null}
+                  {(!instagramValid || instagramTaken) && socialTouched.instagram && <div className="mt-1 text-xs text-red-600">Enter a valid Instagram profile URL.</div>}
                 </>
               ) : (
                 <a href={base.instagram} target="_blank" rel="noreferrer" className="text-md text-blue-700 break-all hover:underline">{base.instagram}</a>
@@ -1051,12 +837,12 @@ export default function WorkerProfile() {
             <div className="flex items-center gap-3 justify-end">
               {!base?.instagram || editSocial.instagram ? (
                 base?.instagram ? (
-                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, instagram: false })); setForm((f)=>({ ...f, instagram: base.instagram })); setInstagramTaken(false); setSocialTouched((t)=>({ ...t, instagram: false })); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
+                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, instagram: false })); setForm((f)=>({ ...f, instagram: base.instagram })); setInstagramTaken(false); setSocialTouched((t)=>({ ...t, instagram: false })); }} className="inline-flex items-center justify-center rounded-lg border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
                 ) : null
               ) : (
                 <>
-                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, instagram: true })); setSocialTouched((t)=>({ ...t, instagram: false })); }} className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
-                  <button type="button" onClick={() => { setForm((f)=>({ ...f, instagram: "" })); setEditSocial((s)=>({ ...s, instagram: true })); setSocialTouched((t)=>({ ...t, instagram: true })); setInstagramTaken(false); }} className="inline-flex items-center justify-center rounded-md border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
+                  <button type="button" onClick={() => { setEditSocial((s)=>({ ...s, instagram: true })); setSocialTouched((t)=>({ ...t, instagram: false })); }} className="inline-flex items-center justify-center rounded-lg border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                  <button type="button" onClick={() => { setForm((f)=>({ ...f, instagram: "" })); setEditSocial((s)=>({ ...s, instagram: true })); setSocialTouched((t)=>({ ...t, instagram: true })); setInstagramTaken(false); }} className="inline-flex items-center justify-center rounded-lg border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
                 </>
               )}
             </div>
@@ -1064,20 +850,19 @@ export default function WorkerProfile() {
         </div>
 
         <div className="mt-6 flex items-center justify-end gap-3">
-          {savedSocial ? <span className="text-sm text-blue-700">Saved</span> : null}
-          <button type="button" disabled={!canSaveSocial} onClick={() => openConfirm("social")} className={`rounded-md px-5 py-2.5 text-sm font-medium transition ${canSaveSocial ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}>{savingSocial ? "Saving..." : "Confirm"}</button>
+          <button type="button" disabled={!canSaveSocial} onClick={() => openConfirm("social")} className={`rounded-lg px-5 py-2.5 text-sm font-medium transition shadow-sm ${canSaveSocial ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}>{savingSocial ? "Saving..." : "Confirm"}</button>
         </div>
       </section>
 
       {confirmOpen ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmOpen(false)} />
-          <div className="relative z-[101] w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <div className="relative z-[101] w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-200">
             <h4 className="text-lg font-semibold text-gray-900">Save changes?</h4>
             <p className="mt-1 text-sm text-gray-600">Are you sure saving these changes?</p>
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setConfirmOpen(false)} className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
-              <button type="button" disabled={!canModalSave} onClick={() => { if (canModalSave) confirmSave(); }} className={`rounded-md px-5 py-2 text-sm font-medium transition ${canModalSave ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}>
+              <button type="button" onClick={() => setConfirmOpen(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button type="button" disabled={!canModalSave} onClick={() => { if (canModalSave) confirmSave(); }} className={`rounded-lg px-5 py-2 text-sm font-medium transition ${canModalSave ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}>
                 {confirmScope === "profile" ? (savingProfile ? "Saving..." : "Save") : (savingSocial ? "Saving..." : "Save")}
               </button>
             </div>
