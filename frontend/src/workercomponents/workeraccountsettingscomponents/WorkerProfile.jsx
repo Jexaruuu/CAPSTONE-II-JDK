@@ -122,8 +122,22 @@ export default function WorkerProfile() {
       const appU = (() => {
         try {
           const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
-          const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem("worker_auth_uid") || "";
-          const e = a.email || localStorage.getItem("worker_email") || localStorage.getItem("email_address") || localStorage.getItem("email") || "";
+          const au =
+            a.auth_uid ||
+            a.authUid ||
+            a.uid ||
+            a.id ||
+            localStorage.getItem("worker_auth_uid") ||
+            localStorage.getItem("auth_uid") ||
+            "";
+          const rawEmail =
+            a.email ||
+            localStorage.getItem("worker_email") ||
+            localStorage.getItem("email_address") ||
+            localStorage.getItem("email") ||
+            "";
+          const e = String(rawEmail || "").trim().toLowerCase();
+          if (!e && !au) return "";
           return encodeURIComponent(JSON.stringify({ r: "worker", e, au }));
         } catch {}
         return "";
@@ -160,7 +174,16 @@ export default function WorkerProfile() {
         localStorage.setItem("first_name", data?.first_name || "");
         localStorage.setItem("last_name", data?.last_name || "");
         if (data?.sex) localStorage.setItem("sex", data.sex);
-        if (data?.email_address) localStorage.setItem("email_address", data.email_address);
+        if (data?.email_address) {
+          const e = String(data.email_address).trim().toLowerCase();
+          localStorage.setItem("email_address", e);
+          localStorage.setItem("email", e);
+          localStorage.setItem("worker_email", e);
+        }
+        if (data?.auth_uid) {
+          localStorage.setItem("worker_auth_uid", data.auth_uid);
+          localStorage.setItem("auth_uid", data.auth_uid);
+        }
         if (data?.created_at) {
           const t = new Date(data.created_at);
           setCreatedAt(t.toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "long", timeStyle: "short" }));
@@ -246,8 +269,22 @@ export default function WorkerProfile() {
   function buildAppU() {
     try {
       const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
-      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem("worker_auth_uid") || "";
-      const e = a.email || localStorage.getItem("worker_email") || localStorage.getItem("email_address") || localStorage.getItem("email") || "";
+      const au =
+        a.auth_uid ||
+        a.authUid ||
+        a.uid ||
+        a.id ||
+        localStorage.getItem("worker_auth_uid") ||
+        localStorage.getItem("auth_uid") ||
+        "";
+      const rawEmail =
+        a.email ||
+        localStorage.getItem("worker_email") ||
+        localStorage.getItem("email_address") ||
+        localStorage.getItem("email") ||
+        "";
+      const e = String(rawEmail || "").trim().toLowerCase();
+      if (!e && !au) return "";
       return encodeURIComponent(JSON.stringify({ r: "worker", e, au }));
     } catch {}
     return "";
@@ -794,7 +831,7 @@ export default function WorkerProfile() {
                                 value={dpView.getMonth()}
                                 onChange={(e) => setMonthYear(parseInt(e.target.value, 10), dpView.getFullYear())}
                               >
-                                {monthsList.map((m, i) => (
+                                {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m, i) => (
                                   <option key={m} value={i}>{m}</option>
                                 ))}
                               </select>
@@ -803,7 +840,7 @@ export default function WorkerProfile() {
                                 value={dpView.getFullYear()}
                                 onChange={(e) => setMonthYear(dpView.getMonth(), parseInt(e.target.value, 10))}
                               >
-                                {yearsList.map((y) => (
+                                {(() => { const ys=[]; for (let y=minDOBDate.getFullYear(); y<=maxDOBDate.getFullYear(); y++) ys.push(y); return ys; })().map((y) => (
                                   <option key={y} value={y}>{y}</option>
                                 ))}
                               </select>
@@ -825,8 +862,8 @@ export default function WorkerProfile() {
                           </div>
 
                           {(() => {
-                            const first = startOfMonth(dpView);
-                            const last = endOfMonth(dpView);
+                            const first = new Date(dpView.getFullYear(), dpView.getMonth(), 1);
+                            const last = new Date(dpView.getFullYear(), dpView.getMonth() + 1, 0);
                             const offset = first.getDay();
                             const total = offset + last.getDate();
                             const rows = Math.ceil(total / 7);
@@ -842,8 +879,8 @@ export default function WorkerProfile() {
                                   row.push(<div key={`x-${r}-${c}`} className="py-2" />);
                                 } else {
                                   const d = new Date(dpView.getFullYear(), dpView.getMonth(), dayNum);
-                                  const disabled = !inRange(d);
-                                  const isSelected = selected && isSameDay(selected, d);
+                                  const disabled = d < minDOBDate || d > maxDOBDate;
+                                  const isSelected = selected && d.getFullYear()===selected.getFullYear() && d.getMonth()===selected.getMonth() && d.getDate()===selected.getDate();
                                   row.push(
                                     <button
                                       key={`d-${dayNum}`}
@@ -965,9 +1002,9 @@ export default function WorkerProfile() {
                     value={form.facebook}
                     onChange={(e) => { setForm({ ...form, facebook: e.target.value }); setFacebookTaken(false); }}
                     onBlur={() => setSocialTouched((s) => ({ ...s, facebook: true }))}
-                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${fbErr ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
+                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!softValidFacebook(form.facebook) || facebookTaken) && socialTouched.facebook ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
                   />
-                  {fbErr && <div className="mt-1 text-xs text-red-600">Enter a valid Facebook profile URL.</div>}
+                  {(!softValidFacebook(form.facebook) || facebookTaken) && socialTouched.facebook ? <div className="mt-1 text-xs text-red-600">Enter a valid Facebook profile URL.</div> : null}
                 </>
               ) : (
                 <a href={base.facebook} target="_blank" rel="noreferrer" className="text-md text-blue-700 break-all hover:underline">{base.facebook}</a>
@@ -1003,9 +1040,9 @@ export default function WorkerProfile() {
                     value={form.instagram}
                     onChange={(e) => { setForm({ ...form, instagram: e.target.value }); setInstagramTaken(false); }}
                     onBlur={() => setSocialTouched((s) => ({ ...s, instagram: true }))}
-                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${igErr ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
+                    className={`w-full px-4 py-2 h-11 border rounded-xl focus:outline-none focus:ring-2 ${(!softValidInstagram(form.instagram) || instagramTaken) && socialTouched.instagram ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
                   />
-                  {igErr && <div className="mt-1 text-xs text-red-600">Enter a valid Instagram profile URL.</div>}
+                  {(!softValidInstagram(form.instagram) || instagramTaken) && socialTouched.instagram ? <div className="mt-1 text-xs text-red-600">Enter a valid Instagram profile URL.</div> : null}
                 </>
               ) : (
                 <a href={base.instagram} target="_blank" rel="noreferrer" className="text-md text-blue-700 break-all hover:underline">{base.instagram}</a>

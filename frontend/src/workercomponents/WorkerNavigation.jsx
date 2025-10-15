@@ -126,9 +126,24 @@ const WorkerNavigation = () => {
   function buildAppU() {
     try {
       const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
-      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('worker_auth_uid') || '';
-      const e = a.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
-      return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
+      const au =
+        a.auth_uid ||
+        a.authUid ||
+        a.uid ||
+        a.id ||
+        localStorage.getItem('worker_auth_uid') ||
+        localStorage.getItem('auth_uid') ||
+        '';
+      const rawEmail =
+        a.email ||
+        localStorage.getItem('worker_email') ||
+        localStorage.getItem('email_address') ||
+        localStorage.getItem('email') ||
+        '';
+      const e = String(rawEmail || '').trim().toLowerCase();
+      const r = localStorage.getItem('role') || 'worker';
+      if (!e && !au) return '';
+      return encodeURIComponent(JSON.stringify({ r: 'worker' || r, e, au }));
     } catch {}
     return '';
   }
@@ -158,11 +173,15 @@ const WorkerNavigation = () => {
       });
       const uid = data?.auth_uid || '';
       const email = data?.email_address || '';
-      if (uid) localStorage.setItem('worker_auth_uid', uid);
+      if (uid) {
+        localStorage.setItem('worker_auth_uid', uid);
+        localStorage.setItem('auth_uid', uid);
+      }
       if (email) {
-        localStorage.setItem('email_address', email);
-        localStorage.setItem('email', email);
-        localStorage.setItem('worker_email', email);
+        const e = String(email).trim().toLowerCase();
+        localStorage.setItem('email_address', e);
+        localStorage.setItem('email', e);
+        localStorage.setItem('worker_email', e);
       }
       setSessionReady(true);
       return true;
@@ -605,18 +624,12 @@ const WorkerNavigation = () => {
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
-                {!logoBroken ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
-                    <span className="font-bold text-[#008cfc]">JDK</span>
-                  </div>
-                )}
+                <img
+                  src="/jdklogo.png"
+                  alt="JDK Homecare Logo"
+                  className="w-20 h-20 object-contain"
+                  onError={() => setLogoBroken(true)}
+                />
               </div>
             </div>
             <div className="mt-6 text-center">
