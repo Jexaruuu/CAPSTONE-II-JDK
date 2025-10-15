@@ -8,7 +8,7 @@ const createWorker = async (auth_uid, firstName, lastName, sex, email, password,
       first_name: firstName,
       last_name: lastName,
       sex,
-      email_address: email,
+      email_address: String(email || '').trim().toLowerCase(),
       password,
       is_agreed_to_terms: isAgreedToTerms,
       agreed_at: agreedAt,
@@ -23,17 +23,33 @@ const createWorker = async (auth_uid, firstName, lastName, sex, email, password,
 };
 
 const checkEmailExistence = async (email) => {
-  const { data, error } = await supabaseAdmin.from('user_worker').select('*').eq('email_address', email);
+  const e = String(email || '').trim().toLowerCase();
+  const { data, error } = await supabaseAdmin
+    .from('user_worker')
+    .select('*')
+    .ilike('email_address', e);
   if (error) throw error;
   return data;
 };
 
 const checkEmailExistenceAcrossAllUsers = async (email) => {
-  const { data: clientData, error: clientError } = await supabaseAdmin.from('user_client').select('*').eq('email_address', email);
+  const e = String(email || '').trim().toLowerCase();
+  const { data: clientData, error: clientError } = await supabaseAdmin
+    .from('user_client')
+    .select('*')
+    .ilike('email_address', e);
   if (clientError) throw clientError;
-  const { data: workerData, error: workerError } = await supabaseAdmin.from('user_worker').select('*').eq('email_address', email);
+  const { data: workerData, error: workerError } = await supabaseAdmin
+    .from('user_worker')
+    .select('*')
+    .ilike('email_address', e);
   if (workerError) throw workerError;
-  return [...clientData, ...workerData];
+  const { data: adminData, error: adminError } = await supabaseAdmin
+    .from('user_admin')
+    .select('*')
+    .ilike('email_address', e);
+  if (adminError) throw adminError;
+  return [...clientData, ...workerData, ...adminData];
 };
 
 module.exports = { createWorker, checkEmailExistence, checkEmailExistenceAcrossAllUsers };

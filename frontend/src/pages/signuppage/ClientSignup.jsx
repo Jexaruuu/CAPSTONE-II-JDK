@@ -15,16 +15,13 @@ const ClientSignUpPage = () => {
   const [is_agreed_to_terms, setIsAgreedToTerms] = useState(false);
   const [error_message, setErrorMessage] = useState('');
 
-  // Show/Hide states (kept)
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // ✅ NEW
   const [loading, setLoading] = useState(false);
   const [info_message, setInfoMessage] = useState('');
   const [canResend, setCanResend] = useState(false);
 
-  // ✅ NEW: OTP modal & flow
   const [otpOpen, setOtpOpen] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpInfo, setOtpInfo] = useState('');
@@ -49,19 +46,19 @@ const ClientSignUpPage = () => {
     is_agreed_to_terms
   );
 
-  // ✅ NEW: request OTP (uses session via withCredentials)
   const requestOtp = async () => {
     try {
       setOtpError('');
       setOtpInfo('Sending code…');
       setOtpSending(true);
+      const email = String(email_address || '').trim().toLowerCase();
       await axios.post(
         'http://localhost:5000/api/auth/request-otp',
-        { email: email_address },
+        { email },
         { withCredentials: true }
       );
       setOtpInfo('We sent a 6-digit code to your email. Enter it below.');
-      setCanResendAt(now() + 60000); // 60s cooldown
+      setCanResendAt(now() + 60000);
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to send OTP.';
       setOtpError(msg);
@@ -71,15 +68,15 @@ const ClientSignUpPage = () => {
     }
   };
 
-  // ✅ NEW: verify OTP then proceed to registration
   const verifyOtp = async () => {
     try {
       setOtpError('');
       setOtpInfo('Verifying…');
       setOtpVerifying(true);
+      const email = String(email_address || '').trim().toLowerCase();
       await axios.post(
         'http://localhost:5000/api/auth/verify-otp',
-        { email: email_address, code: otpCode },
+        { email, code: otpCode },
         { withCredentials: true }
       );
       setOtpInfo('Verified! Creating your account…');
@@ -94,48 +91,35 @@ const ClientSignUpPage = () => {
     }
   };
 
-  // ✅ NEW: actual registration AFTER OTP verification
   const completeRegistration = async () => {
     try {
       setLoading(true);
-
+      const email = String(email_address || '').trim().toLowerCase();
       const response = await axios.post(
         'http://localhost:5000/api/clients/register',
         {
           first_name,
           last_name,
           sex,
-          email_address,
+          email_address: email,
           password,
-          // ✅ send the agreement flag to backend
           is_agreed_to_terms,
         },
         { withCredentials: true }
       );
-
       if (response.status === 201) {
-        // Store user info + auth_uid from backend
         localStorage.setItem('first_name', first_name);
         localStorage.setItem('last_name', last_name);
         localStorage.setItem('sex', sex);
-        // ✅ NEW: set role for route guards & nav behavior
         localStorage.setItem('role', 'client');
-
         const uid = response?.data?.data?.auth_uid || response?.data?.auth_uid;
-        if (uid) {
-          localStorage.setItem('auth_uid', uid);
-        }
-
-        // Let the user know success
+        if (uid) localStorage.setItem('auth_uid', uid);
         setInfoMessage('Account created. You’re all set!');
-        // ✅ Use replace so Success → Welcome doesn’t create a back step to Success
         navigate('/clientsuccess', { replace: true });
       }
     } catch (error) {
-      console.error('Error registering client:', error);
       const status = error?.response?.status;
       const msg = error?.response?.data?.message;
-
       if (status === 429) {
         setErrorMessage('Too many verification emails were sent. Please wait a minute and try again.');
         setCanResend(true);
@@ -152,19 +136,19 @@ const ClientSignUpPage = () => {
     }
   };
 
-  /* ✅ NEW: pre-check if email exists; return true if available */
   const checkEmailAvailable = async () => {
     try {
+      const email = String(email_address || '').trim().toLowerCase();
       const resp = await axios.post(
         'http://localhost:5000/api/auth/check-email',
-        { email: email_address },
+        { email },
         { withCredentials: true }
       );
-      return resp?.data?.exists === true ? false : true;
+      return resp?.data?.available === true;
     } catch (e) {
       const msg = e?.response?.data?.message || 'Failed to check email.';
       setErrorMessage(msg);
-      return false; // be conservative
+      return false;
     }
   };
 
@@ -184,14 +168,12 @@ const ClientSignUpPage = () => {
       return;
     }
 
-    // ✅ NEW: email pre-check (don’t open OTP if taken)
     const available = await checkEmailAvailable();
     if (!available) {
       setErrorMessage('Email already in use');
       return;
     }
 
-    // ✅ NEW: open OTP modal instead of immediate registration
     setOtpOpen(true);
     setOtpCode('');
     setOtpInfo('');
@@ -199,12 +181,12 @@ const ClientSignUpPage = () => {
     await requestOtp();
   };
 
-  // ✅ NEW: existing resend email kept (no removal)
   const handleResend = async () => {
     try {
       setErrorMessage('');
       setInfoMessage('Resending verification email…');
-      await axios.post('http://localhost:5000/api/auth/resend', { email: email_address });
+      const email = String(email_address || '').trim().toLowerCase();
+      await axios.post('http://localhost:5000/api/auth/resend', { email });
       setInfoMessage('Verification email resent. Please check your inbox.');
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to resend verification.';
@@ -309,7 +291,6 @@ const ClientSignUpPage = () => {
               />
             </div>
 
-            {/* Password field with conditional Show/Hide */}
             <div>
               <label htmlFor="password" className="block text-sm font-semibold mb-1">
                 Password (12 or more characters)
@@ -337,7 +318,6 @@ const ClientSignUpPage = () => {
               </div>
             </div>
 
-            {/* Confirm Password field with conditional Show/Hide */}
             <div>
               <label htmlFor="confirm_password" className="block text-sm font-semibold mb-1">Confirm Password</label>
               <div className="relative">
@@ -405,7 +385,6 @@ const ClientSignUpPage = () => {
             </div>
           )}
 
-          {/* ✅ NEW: Resend UI (kept) */}
           {canResend && (
             <div className="text-center mt-2">
               <button
@@ -425,7 +404,6 @@ const ClientSignUpPage = () => {
         </div>
       </div>
 
-      {/* ✅ NEW: OTP Modal */}
       {otpOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white w-full max-w-sm rounded-lg p-6 shadow-lg">

@@ -7,6 +7,7 @@ const clientRoutes = require("./routes/clientRoutes");
 const workerRoutes = require("./routes/workerRoutes");
 const loginRoutes = require("./routes/loginRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const authRoutes = require("./routes/authRoutes");
 const { resendSignupEmail, setDefaultRedirectBase, ensureStorageBucket } = require("./supabaseClient");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
@@ -32,7 +33,9 @@ const PORT = process.env.PORT || 5000;
 const rawAllowed = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
 const wcToReg = pat => new RegExp("^" + pat.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
 const allowedRegexes = rawAllowed.map(wcToReg);
-const isLocal = origin => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) || /^https?:\/\/(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
+const isLocal = origin =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+  /^https?:\/\/(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
 const isAllowed = origin => !origin || isLocal(origin) || allowedRegexes.some(rx => rx.test(origin));
 const corsOrigin = (origin, cb) => isAllowed(origin) ? cb(null, true) : cb(new Error("Not allowed by CORS"));
 
@@ -93,7 +96,7 @@ app.get("/healthz", (req, res) => res.status(200).send("ok"));
 
 app.post("/api/auth/resend", async (req, res) => {
   try {
-    const { email } = req.body || {};
+    const email = String((req.body || {}).email || "").trim().toLowerCase();
     if (!email) return res.status(400).json({ message: "Email is required" });
     await resendSignupEmail(email);
     return res.status(200).json({ message: "Verification email resent." });
@@ -125,7 +128,7 @@ function generateCode() {
 
 app.post("/api/auth/request-otp", async (req, res) => {
   try {
-    const { email } = req.body || {};
+    const email = String((req.body || {}).email || "").trim().toLowerCase();
     if (!email) return res.status(400).json({ message: "Email is required" });
     const existing = otpStore.get(email);
     const now = Date.now();
@@ -137,7 +140,13 @@ app.post("/api/auth/request-otp", async (req, res) => {
     const hash = hashOtp(email, code);
     otpStore.set(email, { hash, expiresAt: now + OTP_TTL_MS, attempts: 0, lastSentAt: now });
     const from = process.env.SMTP_FROM || process.env.SMTP_USER || "no-reply@localhost";
-    await nodemailerTransport.sendMail({ from: `"JDK HOMECARE" <${from}>`, to: email, subject: "Your JDK HOMECARE verification code", text: `Your verification code is ${code}. It expires in 10 minutes.`, html: `<div style="font-family:Arial,sans-serif;font-size:16px;color:#333;"><p>Hi,</p><p>Your JDK HOMECARE verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${code}</p><p>This code will expire in <b>10 minutes</b>.</p><p>If you didn't request this, you can ignore this email.</p></div>` });
+    await nodemailerTransport.sendMail({
+      from: `"JDK HOMECARE" <${from}>`,
+      to: email,
+      subject: "Your JDK HOMECARE verification code",
+      text: `Your verification code is ${code}. It expires in 10 minutes.`,
+      html: `<div style="font-family:Arial,sans-serif;font-size:16px;color:#333;"><p>Hi,</p><p>Your JDK HOMECARE verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${code}</p><p>This code will expire in <b>10 minutes</b>.</p><p>If you didn't request this, you can ignore this email.</p></div>`
+    });
     return res.status(200).json({ message: "OTP sent" });
   } catch {
     return res.status(502).json({ message: "Failed to send OTP email. Check SMTP settings." });
@@ -146,7 +155,8 @@ app.post("/api/auth/request-otp", async (req, res) => {
 
 app.post("/api/auth/verify-otp", async (req, res) => {
   try {
-    const { email, code } = req.body || {};
+    const email = String((req.body || {}).email || "").trim().toLowerCase();
+    const code = String((req.body || {}).code || "").trim();
     if (!email || !code) return res.status(400).json({ message: "Email and code are required" });
     const rec = otpStore.get(email);
     if (!rec) return res.status(400).json({ message: "No OTP requested for this email." });
@@ -174,6 +184,7 @@ app.post("/api/auth/verify-otp", async (req, res) => {
   }
 });
 
+app.use("/api", authRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/workers", workerRoutes);
 app.use("/api/login", loginRoutes);

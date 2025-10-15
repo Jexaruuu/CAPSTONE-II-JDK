@@ -9,7 +9,7 @@ const createClient = async (auth_uid, firstName, lastName, sex, email, password,
         first_name: firstName,
         last_name: lastName,
         sex,
-        email_address: email,
+        email_address: String(email || '').trim().toLowerCase(),
         password,
         is_agreed_to_terms: isAgreedToTerms,
         agreed_at: agreedAt,
@@ -26,24 +26,26 @@ const createClient = async (auth_uid, firstName, lastName, sex, email, password,
 };
 
 const checkEmailExistence = async (email) => {
+  const e = String(email || '').trim().toLowerCase();
   const { data, error } = await supabaseAdmin
     .from('user_client')
     .select('*')
-    .eq('email_address', email);
+    .ilike('email_address', e);
   if (error) throw error;
   return data;
 };
 
 const checkEmailExistenceAcrossAllUsers = async (email) => {
+  const e = String(email || '').trim().toLowerCase();
   const { data: clientData, error: clientError } = await supabaseAdmin
     .from('user_client')
     .select('*')
-    .eq('email_address', email);
+    .ilike('email_address', e);
   if (clientError) throw clientError;
   const { data: workerData, error: workerError } = await supabaseAdmin
     .from('user_worker')
     .select('*')
-    .eq('email_address', email);
+    .ilike('email_address', e);
   if (workerError) throw workerError;
   return [...clientData, ...workerData];
 };

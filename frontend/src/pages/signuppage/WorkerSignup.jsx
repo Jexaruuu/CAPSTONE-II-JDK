@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom'; // ✅ Added useLocation like Client page
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 const WorkerSignUpPage = () => {
-  const location = useLocation(); // ✅ Same as Client page
+  const location = useLocation();
   const navigate = useNavigate();
 
   const [first_name, setFirstName] = useState('');
@@ -16,16 +16,13 @@ const WorkerSignUpPage = () => {
   const [is_agreed_to_terms, setIsAgreedToTerms] = useState(false);
   const [error_message, setErrorMessage] = useState('');
 
-  // ✅ Added: show/hide states
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // ✅ NEW: same UX as client
   const [loading, setLoading] = useState(false);
   const [info_message, setInfoMessage] = useState('');
   const [canResend, setCanResend] = useState(false);
 
-  // ✅ NEW: OTP modal & flow (added)
   const [otpOpen, setOtpOpen] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpInfo, setOtpInfo] = useState('');
@@ -37,7 +34,6 @@ const WorkerSignUpPage = () => {
   const now = () => Date.now();
   const canResendOtp = now() >= canResendAt;
 
-  // ✅ Same password validation as Client page
   const isFormValid = (
     first_name.trim() !== '' &&
     last_name.trim() !== '' &&
@@ -49,15 +45,15 @@ const WorkerSignUpPage = () => {
     is_agreed_to_terms
   );
 
-  /* ✅ NEW: pre-check email */
   const checkEmailAvailable = async () => {
     try {
+      const email = String(email_address || '').trim().toLowerCase();
       const resp = await axios.post(
         'http://localhost:5000/api/auth/check-email',
-        { email: email_address },
+        { email },
         { withCredentials: true }
       );
-      return resp?.data?.exists === true ? false : true;
+      return resp?.data?.available === true;
     } catch (e) {
       const msg = e?.response?.data?.message || 'Failed to check email.';
       setErrorMessage(msg);
@@ -65,15 +61,15 @@ const WorkerSignUpPage = () => {
     }
   };
 
-  // ✅ NEW: request OTP
   const requestOtp = async () => {
     try {
       setOtpError('');
       setOtpInfo('Sending code…');
       setOtpSending(true);
+      const email = String(email_address || '').trim().toLowerCase();
       await axios.post(
         'http://localhost:5000/api/auth/request-otp',
-        { email: email_address },
+        { email },
         { withCredentials: true }
       );
       setOtpInfo('We sent a 6-digit code to your email. Enter it below.');
@@ -87,15 +83,15 @@ const WorkerSignUpPage = () => {
     }
   };
 
-  // ✅ NEW: verify OTP then register
   const verifyOtp = async () => {
     try {
       setOtpError('');
       setOtpInfo('Verifying…');
       setOtpVerifying(true);
+      const email = String(email_address || '').trim().toLowerCase();
       await axios.post(
         'http://localhost:5000/api/auth/verify-otp',
-        { email: email_address, code: otpCode },
+        { email, code: otpCode },
         { withCredentials: true }
       );
       setOtpInfo('Verified! Creating your account…');
@@ -110,43 +106,35 @@ const WorkerSignUpPage = () => {
     }
   };
 
-  // ✅ NEW: registration after OTP
   const completeRegistration = async () => {
     try {
       setLoading(true);
+      const email = String(email_address || '').trim().toLowerCase();
       const response = await axios.post(
         'http://localhost:5000/api/workers/register',
         {
           first_name,
           last_name,
           sex,
-          email_address,
+          email_address: email,
           password,
           is_agreed_to_terms,
         },
         { withCredentials: true }
       );
-
       if (response.status === 201) {
         const { auth_uid } = response.data.data || {};
         localStorage.setItem('first_name', first_name);
         localStorage.setItem('last_name', last_name);
         localStorage.setItem('sex', sex);
-        if (auth_uid) {
-          localStorage.setItem('auth_uid', auth_uid);
-        }
-        // ✅ NEW: set role for guards
+        if (auth_uid) localStorage.setItem('auth_uid', auth_uid);
         localStorage.setItem('role', 'worker');
-
         setInfoMessage('Account created. You’re all set!');
-        // ✅ replace to avoid back to success
         navigate('/workersuccess', { replace: true });
       }
     } catch (error) {
-      console.error('❌ Registration error:', error);
       const status = error?.response?.status;
       const msg = error?.response?.data?.message;
-
       if (status === 429) {
         setErrorMessage('Too many verification emails were sent. Please wait a minute and try again.');
         setCanResend(true);
@@ -198,7 +186,8 @@ const WorkerSignUpPage = () => {
     try {
       setErrorMessage('');
       setInfoMessage('Resending verification email…');
-      await axios.post('http://localhost:5000/api/auth/resend', { email: email_address });
+      const email = String(email_address || '').trim().toLowerCase();
+      await axios.post('http://localhost:5000/api/auth/resend', { email });
       setInfoMessage('Verification email resent. Please check your inbox.');
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to resend verification.';
@@ -300,7 +289,6 @@ const WorkerSignUpPage = () => {
               />
             </div>
 
-            {/* Password with conditional Show/Hide */}
             <div>
               <label htmlFor="password" className="block text-sm font-semibold mb-1">
                 Password (12 or more characters)
@@ -328,7 +316,6 @@ const WorkerSignUpPage = () => {
               </div>
             </div>
 
-            {/* Confirm Password with conditional Show/Hide */}
             <div>
               <label htmlFor="confirm_password" className="block text-sm font-semibold mb-1">Confirm Password</label>
               <div className="relative">
@@ -396,7 +383,6 @@ const WorkerSignUpPage = () => {
             </div>
           )}
 
-          {/* Resend UI */}
           {canResend && (
             <div className="text-center mt-2">
               <button
@@ -416,7 +402,6 @@ const WorkerSignUpPage = () => {
         </div>
       </div>
 
-      {/* OTP Modal */}
       {otpOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white w-full max-w-sm rounded-lg p-6 shadow-lg">
