@@ -1,7 +1,24 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaAndroid, FaCalendarAlt } from 'react-icons/fa';
 
 const HeroSection = () => {
+  const [typed, setTyped] = useState('');
+  const [showCursor, setShowCursor] = useState(true);
+  const full = 'Home help, fast and easy.';
+
+  useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setTyped(full.slice(0, i));
+      if (i === full.length) {
+        clearInterval(id);
+        setShowCursor(false);
+      }
+    }, 100);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <section className="bg-white min-h-screen relative">
       <div className="max-w-[1535px] mx-auto px-8 py-11 grid grid-cols-1 md:grid-cols-2 gap-14 items-center">
@@ -11,7 +28,8 @@ const HeroSection = () => {
             <span>Now on mobile</span>
           </div>
           <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 leading-tight tracking-tight">
-            Home help, fast and easy.
+            {typed}
+            {showCursor && <span className="ml-1 border-r-2 border-gray-900 animate-pulse">&nbsp;</span>}
           </h1>
           <p className="text-gray-600 text-lg leading-relaxed">
             Clients get trusted help fast. Workers get jobs. With <span className="text-[#008cfc]">JDK Homecare</span>, you can book, chat, share photos, and follow every step until the job is done.
