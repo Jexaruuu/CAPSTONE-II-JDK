@@ -1,65 +1,60 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { FaAndroid, FaCalendarAlt } from 'react-icons/fa';
 
 const HeroSection = () => {
   return (
-    <section className="bg-white py-12 min-h-screen">
-      <div className="max-w-[1525px] mx-auto px-8 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-
-        <div className="space-y-6">
-          <h1 className="text-5xl font-bold text-gray-900 leading-tight">
-            Reliable home services for a safer, better home.<br />
-             <br/>
-           <span className="text-[#008cfc] font-semibold">JDK HOMECARE: Home Service and Maintenance</span>
+    <section className="bg-white min-h-screen relative">
+      <div className="max-w-[1535px] mx-auto px-8 py-11 grid grid-cols-1 md:grid-cols-2 gap-14 items-center">
+        <div className="space-y-7">
+          <div className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm border bg-[#008cfc] text-white border-[#008cfc]">
+            <span className="h-2.5 w-2.5 rounded-full bg-white/80" />
+            <span>Now on mobile</span>
+          </div>
+          <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 leading-tight tracking-tight">
+            Home help, fast and easy.
           </h1>
-
-          <p className="text-gray-600 text-lg">
-            Connects clients with skilled workers to get their home services done. Whether you’re looking for a plumber, electrician, cleaner, or handyman, our platform makes it easy to find trusted workers. For workers, it’s a great opportunity to offer your skills and connect with clients in need of your expertise. Everyone’s home deserves the best care, and we’re here to make it happen.
+          <p className="text-gray-600 text-lg leading-relaxed">
+            Clients get trusted help fast. Workers get jobs. With <span className="text-[#008cfc]">JDK Homecare</span>, you can book, chat, share photos, and follow every step until the job is done.
           </p>
-          
-          <Link to ="/login">
-          <button className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition mt-5">
-            Book a Service Now <span>↗</span>
-          </button>
-          </Link>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 pt-6">
-            <div>
-              <p className="text-xl font-bold text-gray-900 mt-2">No cost to book</p>
-              <p className="text-sm text-gray-500">Browse a wide variety of home services, from repairs to cleaning. Booking is free, with an option for urgent services at an additional charge.</p>
+
+          <div className="flex flex-col sm:flex-row gap-4 pt-2">
+            <a
+              href="#"
+              className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition"
+            >
+              <FaAndroid className="h-5 w-5 shrink-0" />
+              Download the app
+            </a>
+            <a
+              href="#book"
+              className="bg-white text-[#008cfc] font-medium py-3 px-6 rounded-md flex items-center gap-2 border border-[#008cfc]"
+            >
+              <FaCalendarAlt className="h-5 w-5 shrink-0" />
+              Book a service now
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-8">
+            <div className="space-y-2">
+              <p className="text-xl font-bold text-gray-900">Fast booking</p>
+              <p className="text-sm text-gray-500">Request a service in minutes and let the app match you with verified workers.</p>
             </div>
-            <div>
-              <p className="text-xl font-bold text-gray-900 mt-2">Book a service</p>
-              <p className="text-sm text-gray-500">Quickly find the right worker for your home service. Simply request a service, or let us match you with the best tasker available.</p>
+            <div className="space-y-2">
+              <p className="text-xl font-bold text-gray-900">Track in real time</p>
+              <p className="text-sm text-gray-500">Get status updates, chat, and manage schedules on the go.</p>
             </div>
-            <div>
-              <p className="text-xl font-bold text-gray-900 mt-2">Affordable</p>
-              <p className="text-sm text-gray-500">Get top-quality home services at budget-friendly prices, with transparent pricing and no hidden fees.</p>
+            <div className="space-y-2">
+              <p className="text-xl font-bold text-gray-900">Transparent pricing</p>
+              <p className="text-sm text-gray-500">Clear rates with no hidden fees, tailored to your budget.</p>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <img
-            src="/Carpenter.jpg"
-            alt="Carpenter"
-            className="rounded-md object-cover w-full h-96 mt-5 ml-3"
-          />
-          <img
-            src="/Carwash.jpg"
-            alt="Carwash"
-            className="rounded-md object-cover w-full h-80 mt-5 ml-3.5"
-          />
-          <img
-            src="/Plumber2.jpg"
-            alt="Plumbing"
-            className="rounded-md object-cover w-full h-80 ml-3"
-          />
-          <img
-            src="/Electrician.jpg"
-            alt="Electrician"
-            className="rounded-md object-cover w-full h-96 -mt-16 ml-3.5"
-          />
+          <img src="/Carpenter.jpg" alt="Carpenter" className="rounded-2xl object-cover w-full h-96 mt-5 ml-3 shadow-sm" />
+          <img src="/Carwash.jpg" alt="Carwash" className="rounded-2xl object-cover w-full h-80 mt-5 ml-3.5 shadow-sm" />
+          <img src="/Plumber2.jpg" alt="Plumbing" className="rounded-2xl object-cover w-full h-80 ml-3 shadow-sm" />
+          <img src="/Electrician.jpg" alt="Electrician" className="rounded-2xl object-cover w-full h-96 -mt-16 ml-3.5 shadow-sm" />
         </div>
       </div>
     </section>
