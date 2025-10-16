@@ -77,11 +77,15 @@ const Navigation = () => {
               </a>
               <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
             </li>
+            <li className="relative cursor-pointer">
+              <a href="#download" className="text-[#008cfc] font-bold">
+                Download JDK
+              </a>
+            </li>
           </ul>
         </div>
 
         <div className="flex items-center space-x-4 mt-4 text-md">
-          {/* Search removed from UI; kept as hidden stub to avoid breaking existing code */}
           <div ref={searchBarRef} className="hidden" aria-hidden="true" />
 
           <a
