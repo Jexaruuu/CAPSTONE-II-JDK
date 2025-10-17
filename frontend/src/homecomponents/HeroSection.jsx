@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FaAndroid, FaCalendarAlt } from 'react-icons/fa';
+import { FaAndroid } from 'react-icons/fa';
 
 const HeroSection = () => {
   const [typed, setTyped] = useState('');
@@ -38,16 +38,15 @@ const HeroSection = () => {
           <div className="flex flex-col sm:flex-row gap-4 pt-2">
             <a
               href="#"
-              className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition"
+              className="inline-flex items-center justify-center h-12 px-6 rounded-md gap-2 bg-[#008cfc] text-white font-medium hover:bg-blue-700 transition"
             >
               <FaAndroid className="h-5 w-5 shrink-0" />
               Download the app
             </a>
             <a
-              href="#book"
-              className="bg-white text-[#008cfc] font-medium py-3 px-6 rounded-md flex items-center gap-2 border border-[#008cfc]"
+              href="/login"
+              className="inline-flex items-center justify-center h-12 px-6 rounded-md border border-[#008cfc] text-[#008cfc] font-medium hover:bg-blue-50 transition"
             >
-              <FaCalendarAlt className="h-5 w-5 shrink-0" />
               Book a service now
             </a>
           </div>
