@@ -426,6 +426,31 @@ const ClientNavigation = () => {
     };
   }, [sessionReady]);
 
+  useEffect(() => {
+    const onFocus = async () => {
+      try {
+        await ensureSession();
+        const appU = buildAppU();
+        if (!appU) return;
+        const { data } = await axios.get(`${API_BASE}/api/account/me`, { withCredentials:true, headers:{ 'x-app-u': appU } });
+        const av = data?.avatar_url || '';
+        if (av) {
+          try { await preloadAvatar(av); localStorage.setItem('clientAvatarUrl', av); setAvatarUrl(av); setAvatarReady(true); setAvatarBroken(false); } catch { setAvatarReady(true); setAvatarBroken(true); setAvatarUrl(''); localStorage.removeItem('clientAvatarUrl'); }
+        }
+      } catch {}
+    };
+    const onStorage = (e) => {
+      if (e.key === 'clientAvatarUrl') {
+        const u = e.newValue || '';
+        if (u) preloadAvatar(u).then(()=>{ setAvatarUrl(u); setAvatarReady(true); setAvatarBroken(false); }).catch(()=>{ setAvatarBroken(true); setAvatarReady(true); setAvatarUrl('');});
+        else { setAvatarBroken(true); setAvatarReady(true); setAvatarUrl(''); }
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('storage', onStorage);
+    return () => { window.removeEventListener('focus', onFocus); window.removeEventListener('storage', onStorage); };
+  }, []);
+
   const navigate = useNavigate();
   const location = useLocation();
   const isFindWorker = location.pathname === '/find-a-worker';

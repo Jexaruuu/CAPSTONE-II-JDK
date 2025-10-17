@@ -6,7 +6,7 @@ const { supabase, supabaseAdmin, ensureStorageBucket, createConfirmedUser } = re
 function parseCookie(str){const out={};if(!str)return out;str.split(";").forEach(p=>{const i=p.indexOf("=");if(i>-1)out[p.slice(0,i).trim()]=p.slice(i+1).trim()});return out}
 function readAppUHeader(req){const h=req.headers["x-app-u"];if(!h)return{};try{return JSON.parse(decodeURIComponent(h))}catch{return{}}}
 function readAppUQuery(req){const q=req.query?.app_u;if(!q)return{};try{return JSON.parse(decodeURIComponent(q))}catch{return{}}}
-function sess(req){const s=req.session?.user||{};let role=s.role;let email=s.email_address||null;let auth_uid=s.auth_uid||null;if(!role||(!email&&!auth_uid)){const c=parseCookie(req.headers.cookie||"");if(c.app_u){try{const j=JSON.parse(decodeURIComponent(c.app_u));role=role||j.r;email=email||j.e||null;auth_uid=auth_uid||j.au||null}catch{}}}if(!role||(!email&&!auth_uid)){const h=readAppUHeader(req);if(h&&(h.e||h.au)){role=role||h.r;email=email||h.e||null;auth_uid=auth_uid||h.au||null}}if(!role||(!email&&!auth_uid)){const q=readAppUQuery(req);if(q&&(q.e||q.au)){role=role||q.r;email=email||q.e||null;auth_uid=auth_uid||q.au||null}}return{role,email,auth_uid,id:s.id||null}}
+function sess(req){const s=req.session?.user||{};let role=s.role;let email=s.email_address||null;let auth_uid=s.auth_uid||null;if(!role||(!email&&!auth_uid)){const c=parseCookie(req.headers.cookie||"");if(c.app_u){try{const j=JSON.parse(decodeURIComponent(c.app_u));role=role||j.r;email=email||j.e||null;auth_uid=auth_uid||j.au||null}catch{}}}if(!role||(!email&&!auth_uid)){const h=readAppUHeader(req);if(h&&(h.e||h.au)){role=role||h.r;email=email||h.e||null;auth_uid=auth_uid||h.au||null}}if(!role||(!email&&!auth_uid)){const q=readAppUQuery(req);if(q&&(q.e||q.au)){role=role||q.r;email=role==="client"?(q.e||email):email;auth_uid=role==="client"?(q.au||auth_uid):auth_uid}}return{role,email,auth_uid,id:s.id||null}}
 function computeAge(iso){if(!iso)return null;const d=new Date(String(iso));if(isNaN(d.getTime()))return null;const t=new Date();let a=t.getFullYear()-d.getFullYear();const m=t.getMonth()-d.getMonth();if(m<0||(m===0&&t.getDate()<d.getDate()))a--;return a>=0&&a<=120?a:null}
 function parseDataUrl(u){const m=/^data:(.+);base64,(.*)$/i.exec((u||"").trim());if(!m)return null;return{mime:m[1],b64:m[2]}}
 function extFromMime(m){if(!m)return"png";if(/png/i.test(m))return"png";if(/jpe?g/i.test(m))return"jpg";if(/webp/i.test(m))return"webp";return"png"}
@@ -19,63 +19,7 @@ const registerClient = async (req,res)=>{const{first_name,last_name,sex,email_ad
 
 const me = async (req,res)=>{try{const s=sess(req);if(s.role!=="client"||(!s.auth_uid&&!s.email))return res.status(401).json({message:"Unauthorized"});const payload=await clientModel.getClientAccountProfile({auth_uid:s.auth_uid,email:s.email});return res.status(200).json(payload)}catch{return res.status(400).json({message:"Failed to load profile"})}};
 
-const avatar = async (req,res)=>{
-  try{
-    const s=sess(req);
-    if(s.role!=="client"||(!s.auth_uid&&!s.email))return res.status(401).json({message:"Unauthorized"});
-
-    let incoming=null, urlOverride=null;
-
-    if(typeof req.body==="string"){
-      const t=req.body.trim();
-      if(t) incoming=t;
-    }else if(req.body&&typeof req.body==="object"){
-      incoming=req.body.data_url||req.body.dataUrl||req.body.image||req.body.avatar||req.body.data||req.body.base64||req.body.client_avatar||null;
-      urlOverride=req.body.url||req.body.avatar_url||req.body.avatarUrl||null;
-      if(!incoming&&typeof req.body.body==="string"&&req.body.body.startsWith("data:")) incoming=req.body.body;
-    }
-
-    let row=null;
-    try{row=await clientModel.getByAuthUid(s.auth_uid||null)}catch{}
-    if(!row&&s.email){try{row=await clientModel.getByEmail(s.email)}catch{}}
-    const uid=row?.auth_uid||s.auth_uid;
-    if(!uid) return res.status(401).json({message:"Unauthorized"});
-
-    if(looksLikeHttpUrl(urlOverride)){
-      const prev=row?.client_avatar||"";
-      await clientModel.updateAvatarUrl(uid,urlOverride);
-      try{await clientModel.updateAuthUserAvatarMeta(uid,urlOverride)}catch{}
-      const added=!prev;
-      const title=added?"Profile picture added":"Profile picture updated";
-      const message=added?"Uploaded a new profile picture.":"Changed profile picture.";
-      await notifModel.create({auth_uid:uid,role:"client",title,message});
-      const prof=await clientModel.getClientAccountProfile({auth_uid:uid});
-      return res.status(200).json({avatar_url:prof.avatar_url});
-    }
-
-    if(typeof incoming!=="string") return res.status(400).json({message:"Invalid image"});
-
-    const normalized=/^data:[a-z0-9+.\-\/]+;base64,/i.test(incoming.trim())?incoming.trim():coerceToDataUrl(incoming,"image/png");
-    if(!normalized) return res.status(400).json({message:"Invalid image"});
-
-    const prev=row?.client_avatar||"";
-    let url=null;
-    try{url=await clientModel.uploadClientAvatarDataUrl(uid,normalized)}catch{}
-    if(!url){try{url=await directUploadAvatar(uid,normalized)}catch{}}
-    if(!url) return res.status(400).json({message:"Failed to save avatar"});
-
-    await clientModel.updateAvatarUrl(uid,url);
-    try{await clientModel.updateAuthUserAvatarMeta(uid,url)}catch{}
-    const added=!prev;
-    const title=added?"Profile picture added":"Profile picture updated";
-    const message=added?"Uploaded a new profile picture.":"Changed profile picture.";
-    await notifModel.create({auth_uid:uid,role:"client",title,message});
-    const prof=await clientModel.getClientAccountProfile({auth_uid:uid});
-    return res.status(200).json({avatar_url:prof.avatar_url});
-  }catch{
-    return res.status(400).json({message:"Failed to save avatar"});
-  }
-};
+const avatar = async (req,res)=>{try{const s=sess(req);if(s.role!=="client"||(!s.auth_uid&&!s.email))return res.status(401).json({message:"Unauthorized"});let incoming=null,urlOverride=null;if(typeof req.body==="string"){const t=req.body.trim();if(t)incoming=t}else if(req.body&&typeof req.body==="object"){incoming=req.body.data_url||req.body.dataUrl||req.body.image||req.body.avatar||req.body.data||req.body.base64||req.body.client_avatar||null;urlOverride=req.body.url||req.body.avatar_url||req.body.avatarUrl||null;if(!incoming&&typeof req.body.body==="string"&&req.body.body.startsWith("data:"))incoming=req.body.body}let row=null;try{row=await clientModel.getByAuthUid(s.auth_uid||null)}catch{}if(!row&&s.email){try{row=await clientModel.getByEmail(s.email)}catch{}}const uid=row?.auth_uid||s.auth_uid;if(!uid)return res.status(401).json({message:"Unauthorized"});if(looksLikeHttpUrl(urlOverride)){const prev=row?.client_avatar||"";await clientModel.updateAvatarUrl(uid,urlOverride);try{await clientModel.updateAuthUserAvatarMeta(uid,urlOverride)}catch{}const added=!prev;const title=added?"Profile picture added":"Profile picture updated";const message=added?"Uploaded a new profile picture.":"Changed profile picture.";await notifModel.create({auth_uid:uid,role:"client",title,message});const prof=await clientModel.getClientAccountProfile({auth_uid:uid});return res.status(200).json({avatar_url:prof.avatar_url})}if(typeof incoming!=="string")return res.status(400).json({message:"Invalid image"});const normalized=/^data:[a-z0-9+.\-\/]+;base64,/i.test(incoming.trim())?incoming.trim():coerceToDataUrl(incoming,"image/png");if(!normalized)return res.status(400).json({message:"Invalid image"});const prev=row?.client_avatar||"";let url=null;try{url=await clientModel.uploadClientAvatarDataUrl(uid,normalized)}catch{}if(!url){try{url=await directUploadAvatar(uid,normalized)}catch{}}if(!url)return res.status(400).json({message:"Failed to save avatar"});await clientModel.updateAvatarUrl(uid,url);try{await clientModel.updateAuthUserAvatarMeta(uid,url)}catch{}const added=!prev;const title=added?"Profile picture added":"Profile picture updated";const message=added?"Uploaded a new profile picture.":"Changed profile picture.";await notifModel.create({auth_uid:uid,role:"client",title,message});const prof=await clientModel.getClientAccountProfile({auth_uid:uid});return res.status(200).json({avatar_url:prof.avatar_url})}catch{return res.status(400).json({message:"Failed to save avatar"})}};
 
 const removeAvatar = async (req,res)=>{try{const s=sess(req);if(s.role!=="client"||(!s.auth_uid&&!s.email))return res.status(401).json({message:"Unauthorized"});let row=null;try{row=await clientModel.getByAuthUid(s.auth_uid||null)}catch{}if(!row&&s.email){try{row=await clientModel.getByEmail(s.email)}catch{}}const uid=row?.auth_uid||s.auth_uid;if(!uid)return res.status(401).json({message:"Unauthorized"});const had=!!row?.client_avatar;await clientModel.clearClientAvatar(uid);try{await clientModel.updateAuthUserAvatarMeta(uid,null)}catch{}if(had)await notifModel.create({auth_uid:uid,role:"client",title:"Profile picture removed",message:"Removed profile picture."});return res.status(200).json({avatar_url:""})}catch{return res.status(400).json({message:"Failed to remove avatar"})}};
 

@@ -34,25 +34,6 @@ const updateAuthUserMeta=async(auth_uid,patch)=>{const user=await getAuthUserByI
 
 async function isContactNumberTakenAcrossAll(phone,excludeAuthUid){const p=String(phone||"").trim();if(!p)return false;const q1=supabaseAdmin.from("user_client").select("auth_uid,contact_number");const q2=supabaseAdmin.from("user_worker").select("auth_uid,contact_number");const[{data:c,error:ec},{data:w,error:ew}]=await Promise.all([q1,q2]);if(ec)throw ec;if(ew)throw ew;const hits=[...(c||[]),...(w||[])].filter(r=>String(r.contact_number||"")===p).map(r=>r.auth_uid).filter(Boolean);if(!hits.length)return false;if(!excludeAuthUid)return true;return hits.some(uid=>uid!==excludeAuthUid)}
 function buildVariants(kind,canon){try{const u=new URL(canon);const path=u.pathname+(u.search||"");if(kind==="facebook"){const hosts=["facebook.com","www.facebook.com","m.facebook.com","fb.com","www.fb.com"];return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x,x.endsWith("/")?x:x+"/"])}else{const hosts=["instagram.com","www.instagram.com","m.instagram.com"];return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x,x.endsWith("/")?x:x+"/"])}}catch{return[canon,canon.endsWith("/")?canon:canon+"/"]}}
-async function isSocialLinkTakenAcrossAll(kind,value,excludeAuthUid){const raw=String(value||"").trim();if(!raw)return false;const canon=kind==="facebook"?normalizeFacebook(raw):normalizeInstagram(raw);const col1=kind==="facebook"?"social_facebook":"social_instagram";const legacy1=kind==="facebook"?"facebook":"instagram";const variants=buildVariants(kind,canon);function buildOr(cols,pats){const segs=[];for(const col of cols)for(const p of pats)segs.push(`${col}.ilike.*${p}*`);return segs.join(",")}let hitAuthUid=null;try{const orStr=buildOr([col1,legacy1],variants)||`${col1}.is.null`;const q1=supabaseAdmin.from("user_client").select(`auth_uid, ${col1}, ${legacy1}`).or(orStr);const q2=supabaseAdmin.from("user_worker").select(`auth_uid, ${col1}, ${legacy1}`).or(orStr);const[{data:c,error:ec},{data:w,error:ew}]=await Promise.all([q1,q2]);if(ec||ew)throw ec||ew;const all=[...(c||[]),...(w||[])];for(const r of all){const vals=[r[col1],r[legacy1]].filter(Boolean).map(String);if(vals.some(v=>(kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break}}}catch{const q1=supabaseAdmin.from("user_client").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);const q2=supabaseAdmin.from("user_worker").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);const[{data:c2},{data:w2}]=await Promise.all([q1,q2]);const all=[...(c2||[]),...(w2||[])];for(const r of all){const vals=[r[col1],r[legacy1]].filter(Boolean).map(String);if(vals.some(v=>(kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break}}}if(!hitAuthUid)return false;if(!excludeAuthUid)return true;return hitAuthUid!==excludeAuthUid}
+async function isSocialLinkTakenAcrossAll(kind,value,excludeAuthUid){const raw=String(value||"").trim();if(!raw)return false;const canon=kind==="facebook"?normalizeFacebook(raw):normalizeInstagram(raw);const col1=kind==="facebook"?"social_facebook":"social_instagram";const legacy1=kind==="facebook"?"facebook":"instagram";function buildOr(cols,pats){const segs=[];for(const col of cols)for(const p of pats)segs.push(`${col}.ilike.*${p}*`);return segs.join(",")}let hitAuthUid=null;try{const variants=buildVariants(kind,canon);const orStr=buildOr([col1,legacy1],variants)||`${col1}.is.null`;const q1=supabaseAdmin.from("user_client").select(`auth_uid, ${col1}, ${legacy1}`).or(orStr);const q2=supabaseAdmin.from("user_worker").select(`auth_uid, ${col1}, ${legacy1}`).or(orStr);const[{data:c,error:ec},{data:w,error:ew}]=await Promise.all([q1,q2]);if(ec||ew)throw ec||ew;const all=[...(c||[]),...(w||[])];for(const r of all){const vals=[r[col1],r[legacy1]].filter(Boolean).map(String);if(vals.some(v=>(kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break}}}catch{const q1=supabaseAdmin.from("user_client").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);const q2=supabaseAdmin.from("user_worker").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);const[{data:c2},{data:w2}]=await Promise.all([q1,q2]);const all=[...(c2||[]),...(w2||[])];for(const r of all){const vals=[r[col1],r[legacy1]].filter(Boolean).map(String);if(vals.some(v=>(kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break}}}if(!hitAuthUid)return false;if(!excludeAuthUid)return true;return hitAuthUid!==excludeAuthUid}
 
-module.exports={
-  createClient,
-  checkEmailExistence,
-  checkEmailExistenceAcrossAllUsers,
-  getByAuthUid,
-  getByEmail,
-  getClientAccountProfile,
-  uploadClientAvatarDataUrl,
-  updateAvatarUrl,
-  clearClientAvatar,
-  updateAuthUserAvatarMeta,
-  updatePassword,
-  updateAuthPassword,
-  updateClientProfile,
-  updateAuthUserMeta,
-  isContactNumberTakenAcrossAll,
-  isSocialLinkTakenAcrossAll,
-  normalizeFacebook,
-  normalizeInstagram
-};
+module.exports={createClient,checkEmailExistence,checkEmailExistenceAcrossAllUsers,getByAuthUid,getByEmail,getClientAccountProfile,uploadClientAvatarDataUrl,updateAvatarUrl,clearClientAvatar,updateAuthUserAvatarMeta,updatePassword,updateAuthPassword,updateClientProfile,updateAuthUserMeta,isContactNumberTakenAcrossAll,isSocialLinkTakenAcrossAll,normalizeFacebook,normalizeInstagram};
