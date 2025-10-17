@@ -24,23 +24,16 @@ export default function WorkerSecurity() {
     return { len, upper, num, special, match, score };
   }, [form.new_password, form.confirm_password]);
 
-  function buildAppU() {
-    try {
-      const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
-      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem("worker_auth_uid") || "";
-      const e = a.email || localStorage.getItem("worker_email") || localStorage.getItem("email_address") || localStorage.getItem("email") || "";
-      return encodeURIComponent(JSON.stringify({ r: "worker", e, au }));
-    } catch {}
-    return "";
-  }
+  const disabled = saving || !rules.len || !rules.upper || !rules.num || !rules.match;
 
-  const disabled = saving || !rules.len || !rules.upper || !rules.num || !rules.special || !rules.match;
+  const appU = useMemo(() => { try{ const a=JSON.parse(localStorage.getItem("workerAuth")||"{}"); const au=a.auth_uid||a.authUid||a.uid||a.id||localStorage.getItem("auth_uid")||""; const e=a.email||localStorage.getItem("worker_email")||localStorage.getItem("email_address")||localStorage.getItem("email")||""; return encodeURIComponent(JSON.stringify({ r:"worker", e, au })); }catch{return"";} }, []);
+  const headersWithU = useMemo(()=> appU?{ "x-app-u":appU }:{},[appU]);
 
   const clearWorkerStorage = () => {
     localStorage.removeItem("workerAuth");
     localStorage.removeItem("worker_email");
     localStorage.removeItem("workerAvatarUrl");
-    localStorage.removeItem("worker_auth_uid");
+    localStorage.removeItem("auth_uid");
     localStorage.removeItem("email_address");
     localStorage.removeItem("email");
     localStorage.removeItem("first_name");
@@ -52,8 +45,7 @@ export default function WorkerSecurity() {
     if (!form.new_password || form.new_password !== form.confirm_password) return;
     setSaving(true); setSaved(false);
     try {
-      const appU = buildAppU();
-      await axios.post(`${API_BASE}/api/account/password`, form, { withCredentials: true, headers: appU ? { "x-app-u": appU } : {} });
+      await axios.post(`${API_BASE}/api/workers/password`, form, { withCredentials: true, headers: headersWithU });
       setForm({ current_password: "", new_password: "", confirm_password: "" });
       setConfirmOpen(false);
       setSaved(true);
@@ -83,7 +75,7 @@ export default function WorkerSecurity() {
         <p className="text-gray-500 text-sm">Change your password.</p>
       </div>
 
-      <section className="w-full rounded-2xl border border-gray-200 bg-white p-6">
+      <section className="w-full rounded-2xl border border-gray-200 bg-white p-6 mb-8">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <form onSubmit={onSubmit} className="grid grid-cols-1 gap-6">
             <div className="space-y-1.5">
@@ -130,18 +122,18 @@ export default function WorkerSecurity() {
                   <div
                     className={[
                       "h-full transition-all",
-                      rules.score <= 1 ? "bg-red-500 w-1/4" :
-                      rules.score === 2 ? "bg-amber-500 w-2/4" :
-                      rules.score === 3 ? "bg-yellow-500 w-3/4" :
+                      ((!form.new_password ? 0 : [/[A-Z]/.test(form.new_password), /\d/.test(form.new_password), /[^A-Za-z0-9]/.test(form.new_password), (form.new_password || "").length >= 12].filter(Boolean).length) <= 1) ? "bg-red-500 w-1/4" :
+                      ([/[A-Z]/.test(form.new_password), /\d/.test(form.new_password), /[^A-Za-z0-9]/.test(form.new_password), (form.new_password || "").length >= 12].filter(Boolean).length === 2) ? "bg-amber-500 w-2/4" :
+                      ([/[A-Z]/.test(form.new_password), /\d/.test(form.new_password), /[^A-Za-z0-9]/.test(form.new_password), (form.new_password || "").length >= 12].filter(Boolean).length === 3) ? "bg-yellow-500 w-3/4" :
                       "bg-emerald-500 w-full",
                     ].join(" ")}
                   />
                 </div>
                 <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <li className={rules.len ? "text-emerald-600" : "text-gray-500"}>At least 12 characters</li>
-                  <li className={rules.upper ? "text-emerald-600" : "text-gray-500"}>One uppercase letter</li>
-                  <li className={rules.num ? "text-emerald-600" : "text-gray-500"}>One number</li>
-                  <li className={rules.special ? "text-emerald-600" : "text-gray-500"}>One special character</li>
+                  <li className={(form.new_password || "").length >= 12 ? "text-emerald-600" : "text-gray-500"}>At least 12 characters</li>
+                  <li className={/[A-Z]/.test(form.new_password || "") ? "text-emerald-600" : "text-gray-500"}>One uppercase letter</li>
+                  <li className={/\d/.test(form.new_password || "") ? "text-emerald-600" : "text-gray-500"}>One number</li>
+                  <li className={/[^A-Za-z0-9]/.test(form.new_password || "") ? "text-emerald-600" : "text-gray-500"}>One special character</li>
                 </ul>
               </div>
             </div>
@@ -155,7 +147,7 @@ export default function WorkerSecurity() {
                   onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
                   className={[
                     "w-full rounded-md border bg-white px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2",
-                    rules.match || !form.confirm_password ? "border-gray-300 focus:ring-[#008cfc]" : "border-red-300 focus:ring-red-400",
+                    (form.new_password && form.new_password === form.confirm_password) || !form.confirm_password ? "border-gray-300 focus:ring-[#008cfc]" : "border-red-300 focus:ring-red-400",
                   ].join(" ")}
                   placeholder="••••••••"
                 />
@@ -167,7 +159,7 @@ export default function WorkerSecurity() {
                   {show.confirm ? "Hide" : "Show"}
                 </button>
               </div>
-              {!rules.match && form.confirm_password ? <p className="text-xs text-red-600">Passwords do not match</p> : null}
+              {!(form.new_password && form.new_password === form.confirm_password) && form.confirm_password ? <p className="text-xs text-red-600">Passwords do not match</p> : null}
             </div>
 
             <div className="flex items-center gap-3">
@@ -192,11 +184,11 @@ export default function WorkerSecurity() {
               <div className="rounded-lg border border-gray-200 p-4">
                 <div className="text-sm font-medium text-gray-800 mb-2">Password checklist</div>
                 <ul className="space-y-1 text-sm">
-                  <li className={rules.len ? "text-emerald-600" : "text-gray-600"}>12+ characters</li>
-                  <li className={rules.upper ? "text-emerald-600" : "text-gray-600"}>Uppercase letter</li>
-                  <li className={rules.num ? "text-emerald-600" : "text-gray-600"}>Number</li>
-                  <li className={rules.special ? "text-emerald-600" : "text-gray-600"}>Special character</li>
-                  <li className={rules.match ? "text-emerald-600" : "text-gray-600"}>Passwords match</li>
+                  <li className={(form.new_password || "").length >= 12 ? "text-emerald-600" : "text-gray-600"}>12+ characters</li>
+                  <li className={/[A-Z]/.test(form.new_password || "") ? "text-emerald-600" : "text-gray-600"}>Uppercase letter</li>
+                  <li className={/\d/.test(form.new_password || "") ? "text-emerald-600" : "text-gray-600"}>Number</li>
+                  <li className={/[^A-Za-z0-9]/.test(form.new_password || "") ? "text-emerald-600" : "text-gray-600"}>Special character</li>
+                  <li className={(form.new_password && form.new_password === form.confirm_password) ? "text-emerald-600" : "text-gray-600"}>Passwords match</li>
                 </ul>
               </div>
 

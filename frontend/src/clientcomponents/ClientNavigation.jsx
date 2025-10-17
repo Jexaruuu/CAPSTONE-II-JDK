@@ -810,7 +810,6 @@ const ClientNavigation = () => {
                   src="/jdklogo.png"
                   alt="JDK Homecare Logo"
                   className="w-20 h-20 object-contain"
-                  onError={() => {}}
                 />
               </div>
             </div>

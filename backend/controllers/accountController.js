@@ -152,8 +152,13 @@ exports.avatar = async (req, res) => {
         const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
         const uid = row?.auth_uid || s.auth_uid;
         if (!uid) return res.status(401).json({ message: "Unauthorized" });
+        const prev = row?.client_avatar || "";
         await accountModel.updateClientAvatarUrl(uid, urlOverride);
         try { await accountModel.updateAuthUserAvatarMeta(uid, urlOverride); } catch {}
+        const added = !prev;
+        const title = added ? "Profile picture added" : "Profile picture updated";
+        const message = added ? "Uploaded a new profile picture." : "Changed profile picture.";
+        await notifModel.create({ auth_uid: uid, role: "client", title, message });
         return res.status(200).json({ avatar_url: urlOverride });
       }
       if (s.role === "worker") {
@@ -177,12 +182,17 @@ exports.avatar = async (req, res) => {
       const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
       const uid = row?.auth_uid || s.auth_uid;
       if (!uid) return res.status(401).json({ message: "Unauthorized" });
+      const prev = row?.client_avatar || "";
       let url = null;
       try { url = await accountModel.uploadClientAvatarDataUrl(uid, normalized); } catch {}
       if (!url) url = await directUploadAvatar("client", uid, normalized);
       if (!url) return res.status(400).json({ message: "Failed to save avatar" });
       await accountModel.updateClientAvatarUrl(uid, url);
       try { await accountModel.updateAuthUserAvatarMeta(uid, url); } catch {}
+      const added = !prev;
+      const title = added ? "Profile picture added" : "Profile picture updated";
+      const message = added ? "Uploaded a new profile picture." : "Changed profile picture.";
+      await notifModel.create({ auth_uid: uid, role: "client", title, message });
       return res.status(200).json({ avatar_url: url });
     }
 
@@ -213,8 +223,10 @@ exports.removeAvatar = async (req, res) => {
       const row = await accountModel.getClientByAuthOrEmail({ auth_uid: s.auth_uid, email: s.email });
       const uid = row?.auth_uid || s.auth_uid;
       if (!uid) return res.status(401).json({ message: "Unauthorized" });
+      const had = !!row?.client_avatar;
       await accountModel.clearClientAvatar(uid);
       try { await accountModel.updateAuthUserAvatarMeta(uid, null); } catch {}
+      if (had) await notifModel.create({ auth_uid: uid, role: "client", title: "Profile picture removed", message: "Removed profile picture." });
       return res.status(200).json({ avatar_url: "" });
     }
     if (s.role === "worker") {
@@ -354,7 +366,7 @@ exports.updateProfile = async (req, res) => {
     }
 
     return res.status(401).json({ message: "Unauthorized" });
-  } catch (e) {
+  } catch {
     return res.status(400).json({ message: "Failed to update profile" });
   }
 };

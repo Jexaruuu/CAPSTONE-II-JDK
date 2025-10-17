@@ -17,7 +17,7 @@ const workerModel = require("./models/workerModel");
 const adminModel = require("./models/adminModel");
 
 const clientservicerequestsRoutes = require("./routes/clientservicerequestsRoutes");
-const adminservicerequestsRoutes  = require("./routes/adminservicerequestsRoutes");
+const adminservicerequestsRoutes = require("./routes/adminservicerequestsRoutes");
 const workerapplicationRoutes = require("./routes/workerapplicationRoutes");
 const adminworkerapplicationRoutes = require("./routes/adminworkerapplicationRoutes");
 const pendingservicerequestsRoutes = require("./routes/pendingservicerequestsRoutes");
@@ -31,13 +31,13 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 const rawAllowed = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
-const wcToReg = pat => new RegExp("^" + pat.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
+const wcToReg = pat => new RegExp("^" + pat.trim().replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
 const allowedRegexes = rawAllowed.map(wcToReg);
 const isLocal = origin =>
   /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
   /^https?:\/\/(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
 const isAllowed = origin => !origin || isLocal(origin) || allowedRegexes.some(rx => rx.test(origin));
-const corsOrigin = (origin, cb) => isAllowed(origin) ? cb(null, true) : cb(new Error("Not allowed by CORS"));
+const corsOrigin = (origin, cb) => (isAllowed(origin) ? cb(null, true) : cb(new Error("Not allowed by CORS")));
 
 app.use(cors({ origin: corsOrigin, credentials: true }));
 
@@ -57,18 +57,20 @@ if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
 const useSecure = process.env.COOKIE_SECURE === "true" || process.env.NODE_ENV === "production";
 const cookieSameSite = useSecure ? "none" : "lax";
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || "change-me",
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: useSecure,
-    httpOnly: true,
-    sameSite: cookieSameSite,
-    domain: process.env.COOKIE_DOMAIN || undefined,
-    maxAge: 1000 * 60 * 60 * 2
-  }
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "change-me",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: useSecure,
+      httpOnly: true,
+      sameSite: cookieSameSite,
+      domain: process.env.COOKIEDOMAIN || process.env.COOKIE_DOMAIN || undefined,
+      maxAge: 1000 * 60 * 60 * 2
+    }
+  })
+);
 
 app.use((req, res, next) => {
   try {
@@ -80,8 +82,7 @@ app.use((req, res, next) => {
       }
     }
     if (!req.session.user) {
-      const raw = req.headers.cookie || "";
-      const m = /(?:^|;\s*)app_u=([^;]+)/.exec(raw);
+      const m = /(?:^|;\s*)app_u=([^;]+)/.exec(req.headers.cookie || "");
       if (m) {
         const j = JSON.parse(decodeURIComponent(m[1]));
         if (j && j.r && (j.e || j.au)) req.session.user = { role: j.r, email_address: j.e || null, auth_uid: j.au || null };
@@ -119,12 +120,8 @@ const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 const OTP_PEPPER = process.env.OTP_SECRET || "otp_pepper_dev";
 
-function hashOtp(email, code) {
-  return crypto.createHash("sha256").update(`${email}:${code}:${OTP_PEPPER}`).digest("hex");
-}
-function generateCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
+const hashOtp = (email, code) => crypto.createHash("sha256").update(`${email}:${code}:${OTP_PEPPER}`).digest("hex");
+const generateCode = () => String(Math.floor(100000 + Math.random() * 900000));
 
 app.post("/api/auth/request-otp", async (req, res) => {
   try {

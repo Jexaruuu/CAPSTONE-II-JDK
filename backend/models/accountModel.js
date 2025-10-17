@@ -79,7 +79,7 @@ async function getClientAccountProfile({auth_uid,email}){
     last_name:row?.last_name||user?.user_metadata?.last_name||"",
     email_address:row?.email_address||user?.email||email||"",
     sex:row?.sex||user?.user_metadata?.sex||"",
-    avatar_url:row?.client_avatar||row?.avatar_url||user?.user_metadata?.avatar_url||"",
+    avatar_url:row?.client_avatar||user?.user_metadata?.avatar_url||"",
     phone:row?.contact_number??row?.phone??"",
     facebook:row?.social_facebook??row?.facebook??"",
     instagram:row?.social_instagram??row?.instagram??"",
@@ -101,7 +101,7 @@ async function getWorkerAccountProfile({auth_uid,email}){
     last_name:row?.last_name||user?.user_metadata?.last_name||"",
     email_address:row?.email_address||user?.email||email||"",
     sex:row?.sex||user?.user_metadata?.sex||"",
-    avatar_url:row?.worker_avatar||row?.avatar_url||user?.user_metadata?.avatar_url||"",
+    avatar_url:row?.worker_avatar||user?.user_metadata?.avatar_url||"",
     phone:row?.contact_number??row?.phone??"",
     facebook:row?.social_facebook??row?.facebook??"",
     instagram:row?.social_instagram??row?.instagram??"",
@@ -135,19 +135,19 @@ async function uploadWorkerAvatarDataUrl(auth_uid,data_url){
 }
 
 async function updateClientAvatarUrl(auth_uid,avatar_url){
-  const { error } = await supabaseAdmin.from("user_client").update({client_avatar:avatar_url,avatar_url:avatar_url}).eq("auth_uid",auth_uid);
+  const { error } = await supabaseAdmin.from("user_client").update({client_avatar:avatar_url}).eq("auth_uid",auth_uid);
   if(error)throw error;return true;
 }
 async function updateWorkerAvatarUrl(auth_uid,avatar_url){
-  const { error } = await supabaseAdmin.from("user_worker").update({worker_avatar:avatar_url,avatar_url:avatar_url}).eq("auth_uid",auth_uid);
+  const { error } = await supabaseAdmin.from("user_worker").update({worker_avatar:avatar_url}).eq("auth_uid",auth_uid);
   if(error)throw error;return true;
 }
 async function clearClientAvatar(auth_uid){
-  const { error } = await supabaseAdmin.from("user_client").update({client_avatar:null,avatar_url:null}).eq("auth_uid",auth_uid);
+  const { error } = await supabaseAdmin.from("user_client").update({client_avatar:null}).eq("auth_uid",auth_uid);
   if(error)throw error;return true;
 }
 async function clearWorkerAvatar(auth_uid){
-  const { error } = await supabaseAdmin.from("user_worker").update({worker_avatar:null,avatar_url:null}).eq("auth_uid",auth_uid);
+  const { error } = await supabaseAdmin.from("user_worker").update({worker_avatar:null}).eq("auth_uid",auth_uid);
   if(error)throw error;return true;
 }
 async function updateAuthUserAvatarMeta(auth_uid,avatar_url){
@@ -189,16 +189,16 @@ async function isContactNumberTakenAcrossAll(phone,excludeAuthUid){
 function buildVariants(kind, canon){
   try{
     const u=new URL(canon);
-    const path=u.pathname+ (u.search||"");
+    const path=u.pathname+(u.search||"");
     if(kind==="facebook"){
       const hosts=["facebook.com","www.facebook.com","m.facebook.com","fb.com","www.fb.com"];
-      return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x, x.endsWith("/")?x:x+"/"]);
+      return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x,x.endsWith("/")?x:x+"/"]);
     }else{
       const hosts=["instagram.com","www.instagram.com","m.instagram.com"];
-      return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x, x.endsWith("/")?x:x+"/"]);
+      return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x,x.endsWith("/")?x:x+"/"]);
     }
   }catch{
-    return [canon, canon.endsWith("/")?canon:canon+"/"];
+    return[canon,canon.endsWith("/")?canon:canon+"/"];
   }
 }
 
@@ -220,16 +220,16 @@ async function isSocialLinkTakenAcrossAll(kind,value,excludeAuthUid){
     const all=[...(c||[]),...(w||[])];
     for(const r of all){
       const vals=[r[col1],r[legacy1]].filter(Boolean).map(String);
-      if(vals.some(v=> (kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break;}
+      if(vals.some(v=>(kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break;}
     }
   }catch{
     const q1=supabaseAdmin.from("user_client").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);
     const q2=supabaseAdmin.from("user_worker").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);
     const[{data:c2},{data:w2}]=await Promise.all([q1,q2]);
-    const all=[...(c2||[]),...(w2||[])]
+    const all=[...(c2||[]),...(w2||[])];
     for(const r of all){
       const vals=[r[col1],r[legacy1]].filter(Boolean).map(String);
-      if(vals.some(v=> (kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break;}
+      if(vals.some(v=>(kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break;}
     }
   }
   if(!hitAuthUid)return false;
