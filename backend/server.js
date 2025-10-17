@@ -22,7 +22,6 @@ const workerapplicationRoutes = require("./routes/workerapplicationRoutes");
 const adminworkerapplicationRoutes = require("./routes/adminworkerapplicationRoutes");
 const pendingservicerequestsRoutes = require("./routes/pendingservicerequestsRoutes");
 const pendingworkerapplicationRoutes = require("./routes/pendingworkerapplicationRoutes");
-const accountRoutes = require("./routes/accountRoutes");
 const notificationsRoutes = require("./routes/notificationsRoutes");
 
 dotenv.config();
@@ -91,6 +90,19 @@ app.use((req, res, next) => {
   } catch {}
   next();
 });
+
+function parseCookie(str){const out={};if(!str)return out;str.split(";").forEach(p=>{const i=p.indexOf("=");if(i>-1)out[p.slice(0,i).trim()]=p.slice(i+1).trim()});return out}
+function readAppUHeader(req){const h=req.headers["x-app-u"];if(!h)return{};try{return JSON.parse(decodeURIComponent(h))}catch{return{}}}
+function sess(req){const s=req.session?.user||{};let role=s.role;let email=s.email_address||null;let auth_uid=s.auth_uid||null;if(!role||(!email&&!auth_uid)){const c=parseCookie(req.headers.cookie||"");if(c.app_u){try{const j=JSON.parse(decodeURIComponent(c.app_u));role=role||j.r;email=email||j.e||null;auth_uid=auth_uid||j.au||null}catch{}}}if(!role||(!email&&!auth_uid)){const h=readAppUHeader(req);if(h&&(h.e||h.au)){role=role||h.r;email=email||h.e||null;auth_uid=auth_uid||h.au||null}}return{role,email,auth_uid,id:s.id||null}}
+
+app.get("/api/account/me", async (req,res)=>{try{
+  const s=sess(req);
+  if(!s.role||(!s.auth_uid&&!s.email))return res.status(401).json({message:"Unauthorized"});
+  if(s.role==="client"){const payload=await clientModel.getClientAccountProfile({auth_uid:s.auth_uid,email:s.email});return res.status(200).json(payload)}
+  if(s.role==="worker"){const payload=await workerModel.getWorkerAccountProfile({auth_uid:s.auth_uid,email:s.email});return res.status(200).json(payload)}
+  if(s.role==="admin"){if(typeof adminModel.getAdminAccountProfile==="function"){const payload=await adminModel.getAdminAccountProfile({auth_uid:s.auth_uid,email:s.email});return res.status(200).json(payload)}return res.status(200).json({auth_uid:s.auth_uid||"",email_address:s.email||"",role:"admin"})}
+  return res.status(400).json({message:"Unknown role"})
+}catch{return res.status(400).json({message:"Failed to load account"})}});
 
 app.get("/test", (req, res) => res.json({ message: "Server is up and running" }));
 app.get("/healthz", (req, res) => res.status(200).send("ok"));
@@ -187,7 +199,6 @@ app.use("/api/workers", workerRoutes);
 app.use("/api/login", loginRoutes);
 app.use("/api/admins", adminRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/account", accountRoutes);
 app.use("/api/notifications", notificationsRoutes);
 
 app.use("/api/clientservicerequests", clientservicerequestsRoutes);
