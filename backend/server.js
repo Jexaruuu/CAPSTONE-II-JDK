@@ -48,8 +48,16 @@ app.use((req, res, next) => {
 });
 
 const BODY_LIMIT = process.env.MAX_BODY_SIZE || "25mb";
-app.use(express.json({ limit: BODY_LIMIT }));
-app.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
+
+app.use(express.json({
+  limit: BODY_LIMIT,
+  type: ["application/json", "application/*+json", "text/plain"]
+}));
+
+app.use(express.urlencoded({
+  extended: true,
+  limit: BODY_LIMIT
+}));
 
 if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
 

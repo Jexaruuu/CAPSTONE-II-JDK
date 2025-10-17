@@ -36,6 +36,7 @@ export default function ClientProfile() {
 
   const appU = useMemo(() => { try{ const a=JSON.parse(localStorage.getItem("clientAuth")||"{}"); const au=a.auth_uid||a.authUid||a.uid||a.id||localStorage.getItem("auth_uid")||""; const e=a.email||localStorage.getItem("client_email")||localStorage.getItem("email_address")||localStorage.getItem("email")||""; return encodeURIComponent(JSON.stringify({ r:"client", e, au })); }catch{return"";} }, []);
   const headersWithU = useMemo(()=> appU?{ "x-app-u":appU }:{},[appU]);
+  const urlQS = useMemo(()=> appU?`?app_u=${appU}`:"",[appU]);
 
   useEffect(() => {
     const init=async()=>{ try{ const {data}=await axios.get(`${API_BASE}/api/clients/me`,{withCredentials:true,headers:headersWithU});
@@ -96,9 +97,21 @@ export default function ClientProfile() {
 
   const hasAvatar=useMemo(()=>((!!storedAvatar&&!avatarRemoved)||!!avatarFile),[storedAvatar,avatarRemoved,avatarFile]);
 
-  const uploadAvatar=async(file)=>{ try{ const fd=new FormData(); fd.append("file",file,file.name||`avatar_${Date.now()}.png`); const {data}=await axios.post(`${API_BASE}/api/clients/avatar`,fd,{withCredentials:true,headers:{...headersWithU}}); const url=data?.avatar_url??data?.url??""; if(url||url===""){ if(url) localStorage.setItem("clientAvatarUrl",url); else localStorage.removeItem("clientAvatarUrl"); window.dispatchEvent(new CustomEvent("client-avatar-updated",{detail:{url}})); } return url; }catch{ try{ const dataUrl=await fileToDataUrl(file); const {data}=await axios.post(`${API_BASE}/api/clients/avatar`,{data_url:dataUrl,file_name:`avatar_${Date.now()}.png`,mime:"image/png"},{withCredentials:true,headers:{ "Content-Type":"application/json",Accept:"application/json",...headersWithU },maxBodyLength:Infinity}); const url=data?.avatar_url??data?.url??""; if(url||url===""){ if(url) localStorage.setItem("clientAvatarUrl",url); else localStorage.removeItem("clientAvatarUrl"); window.dispatchEvent(new CustomEvent("client-avatar-updated",{detail:{url}})); } return url; }catch{ return ""; } } };
+  const uploadAvatar=async(file)=>{
+    try{
+      const dataUrl=await fileToDataUrl(file);
+      const {data}=await axios.post(
+        `${API_BASE}/api/clients/avatar${urlQS}`,
+        { data_url: dataUrl, file_name:`avatar_${Date.now()}.png`, mime:"image/png" },
+        { withCredentials:true, headers:{ "Content-Type":"application/json", Accept:"application/json", ...headersWithU } }
+      );
+      const url=data?.avatar_url??data?.url??"";
+      if(url||url===""){ if(url) localStorage.setItem("clientAvatarUrl",url); else localStorage.removeItem("clientAvatarUrl"); window.dispatchEvent(new CustomEvent("client-avatar-updated",{detail:{url}})); }
+      return url;
+    }catch{ return ""; }
+  };
 
-  const removeAvatarServer=async()=>{ try{ const {data}=await axios.delete(`${API_BASE}/api/clients/avatar`,{withCredentials:true,headers:headersWithU}); const url=data?.avatar_url||""; if(url===""||url==null){ localStorage.removeItem("clientAvatarUrl"); window.dispatchEvent(new CustomEvent("client-avatar-updated",{detail:{url:""}})); } return true; }catch{ return false; } };
+  const removeAvatarServer=async()=>{ try{ const {data}=await axios.delete(`${API_BASE}/api/clients/avatar${urlQS}`,{withCredentials:true,headers:headersWithU}); const url=data?.avatar_url||""; if(url===""||url==null){ localStorage.removeItem("clientAvatarUrl"); window.dispatchEvent(new CustomEvent("client-avatar-updated",{detail:{url:""}})); } return true; }catch{ return false; } };
 
   const postNotification=async(payload)=>{ try{ await axios.post(`${API_BASE}/api/notifications`,payload,{withCredentials:true,headers:headersWithU}); localStorage.setItem("client_has_unread","1"); window.dispatchEvent(new Event("client-notifications-refresh")); }catch{ localStorage.setItem("client_has_unread","1"); window.dispatchEvent(new Event("client-notifications-refresh")); } };
   const createNotification=async(p)=>postNotification({ title:p.title||"Notification", message:p.message||"", type:"Profile" });
@@ -198,7 +211,7 @@ export default function ClientProfile() {
                   <p className="text-xs uppercase tracking-wide font-semibold text-gray-600">Contact Number</p>
                   {!editingPhone && (<div className="mt-2">{form.phone&&!phoneTaken?
                     <div className="inline-flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 border border-gray-200"><img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover"/><span className="text-gray-700 text-sm">+63</span><span className="text-base text-gray-900 tracking-wide">{form.phone}</span></div>:
-                    <div className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-300 text-gray-400"><span className="text-sm">+63</span><span className="text-sm">mm/dd/yyyy</span></div>}</div>)}
+                    <div className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-300 text-gray-400"><img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover"/><span className="text-sm">+63</span><span className="text-sm">9XXXXXXXXX</span></div>}</div>)}
                   {(!form.phone||phoneTaken)&&!editingPhone && (<div className="mt-3 flex items-center gap-3">
                     <button type="button" onClick={()=>{ setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-lg border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">+ Add contact number</button>
                   </div>)}
@@ -252,7 +265,7 @@ export default function ClientProfile() {
                     {dpOpen && (<div className="absolute z-50 mt-2 w=[300px] w-[300px] rounded-xl border border-gray-200 bg-white shadow-2xl p-3">
                       <div className="flex items-center justify-between px-2 pb-2">
                         <button type="button" onClick={()=>canGoPrev()&&setDpView(addMonths(dpView,-1))} className={`p-2 rounded-lg hover:bg-gray-100 ${canGoPrev()?"text-gray-700":"text-gray-300 cursor-not-allowed"}`} aria-label="Previous month">‹</button>
-                        <div className="flex items中心 gap-2">
+                        <div className="flex items-center gap-2">
                           <select className="border border-gray-300 rounded-md px-2 py-1 text-sm" value={dpView.getMonth()} onChange={(e)=>setMonthYear(parseInt(e.target.value,10),dpView.getFullYear())}>{monthsList.map((m,i)=>(<option key={m} value={i}>{m}</option>))}</select>
                           <select className="border border-gray-300 rounded-md px-2 py-1 text-sm" value={dpView.getFullYear()} onChange={(e)=>setMonthYear(dpView.getMonth(),parseInt(e.target.value,10))}>{yearsList.map((y)=>(<option key={y} value={y}>{y}</option>))}</select>
                         </div>

@@ -64,7 +64,7 @@ export default function WorkerProfile() {
   const createImage=(src)=>new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>res(img); img.onerror=rej; img.src=src; });
   const fileToDataUrl=async(file)=>{ try{ const url=URL.createObjectURL(file); try{ const img=await createImage(url), max=800, w0=img.naturalWidth||img.width||1, h0=img.naturalHeight||img.height||1, sc=Math.min(1,max/Math.max(w0,h0)), w=Math.max(1,Math.round(w0*sc)), h=Math.max(1,Math.round(h0*sc)); const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(img,0,0,w,h); return c.toDataURL("image/png",0.9); } finally{ URL.revokeObjectURL(url); } }catch{ return await new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(file); }); } };
 
-  const isValidFacebookUrl=(url)=>{ if(!url)return true; try{ const u=new URL(url), host=u.hostname.toLowerCase(), ok=host==="facebook.com"||host==="www.facebook.com"||host==="m.facebook.com"||host==="fb.com"||host==="www.fb.com"; if(!ok) return false; if(!u.pathname||u.pathname==="/") return false; if(u.pathname==="/profile.php") return u.searchParams.has("id")&&/^\d+$/.test(u.searchParams.get("id")); return /^\/[A-Za-z0-9.]+\/?$/.test(u.pathname); }catch{return false;} };
+  const isValidFacebookUrl=(url)=>{ if(!url)return true; try{ const u=new URL(url), host=u.hostname.toLowerCase(), ok=host==="facebook.com"||host==="www.facebook.com"||host==="m.facebook.com"||"fb.com"||"www.fb.com"; if(!ok) return false; if(!u.pathname||u.pathname==="/") return false; if(u.pathname==="/profile.php") return u.searchParams.has("id")&&/^\d+$/.test(u.searchParams.get("id")); return /^\/[A-Za-z0-9.]+\/?$/.test(u.pathname); }catch{return false;} };
   const isValidInstagramUrl=(url)=>{ if(!url)return true; try{ const u=new URL(url), host=u.hostname.toLowerCase(), ok=host==="instagram.com"||host==="www.instagram.com"||host==="m.instagram.com"; if(!ok) return false; if(!u.pathname||u.pathname==="/") return false; return /^\/[A-Za-z0-9._]+\/?$/.test(u.pathname); }catch{return false;} };
   const normalizeSocialUrl=(u)=>{ if(!u)return null; const s=String(u).trim(); if(!s)return null; const w=/^https?:\/\//i.test(s)?s:`https://${s}`; try{ const url=new URL(w); url.hostname=url.hostname.toLowerCase(); if(url.pathname!=="/"&&url.pathname.endsWith("/")) url.pathname=url.pathname.slice(0, -1); url.hash=""; return url.toString(); }catch{return null;} };
   const softValidFacebook=(x)=>{ if(!x)return true; const n=normalizeSocialUrl(x); return !!n&&isValidFacebookUrl(n); };
@@ -198,11 +198,11 @@ export default function WorkerProfile() {
                   <p className="text-xs uppercase tracking-wide font-semibold text-gray-600">Contact Number</p>
                   {!editingPhone && (<div className="mt-2">{form.phone&&!phoneTaken?
                     <div className="inline-flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 border border-gray-200"><img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover"/><span className="text-gray-700 text-sm">+63</span><span className="text-base text-gray-900 tracking-wide">{form.phone}</span></div>:
-                    <div className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-300 text-gray-400"><span className="text-sm">+63</span><span className="text-sm">mm/dd/yyyy</span></div>}</div>)}
+                    <div className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-300 text-gray-400"><img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover"/><span className="text-sm">+63</span><span className="text-sm">9XXXXXXXXX</span></div>}</div>)}
                   {(!form.phone||phoneTaken)&&!editingPhone && (<div className="mt-3 flex items-center gap-3">
                     <button type="button" onClick={()=>{ setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-lg border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">+ Add contact number</button>
                   </div>)}
-                  {form.phone&&!phoneTaken&&!editingPhone && (<div className="mt-3 flex items-center gap-3">
+                  {form.phone&&!phoneTaken&&!editingPhone && (<div className="mt-3 flex items_center gap-3">
                     <button type="button" onClick={()=>{ setEditingPhone(true); setPhoneEditCommitted(false); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-lg border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
                     <button type="button" onClick={()=>{ setForm({...form,phone:""}); setPhoneTaken(false); setEditingPhone(false); setPhoneEditCommitted(true); setPhoneErrorAfterDone(false); }} className="inline-flex items-center justify-center rounded-lg border border-red-500 text-red-600 px-3.5 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
                   </div>)}
@@ -268,7 +268,7 @@ export default function WorkerProfile() {
                           cells.push(<div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">{row}</div>); }
                         return <div className="mt-1">{cells}</div>; })()}
 
-                      <div className="flex items-center justify-between mt-3 px-2">
+                      <div className="flex items-center justify_between mt-3 px-2">
                         <button type="button" onClick={()=>{ setForm((f)=>({ ...f, date_of_birth:"" })); setDobError(""); setDpOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
                         <button type="button" onClick={()=>{ setDpView(new Date(maxDOBDate)); }} className="text-xs text-blue-600 hover:text-blue-700">Jump to latest allowed</button>
                       </div>
@@ -276,7 +276,7 @@ export default function WorkerProfile() {
 
                     <div className="mt-3 flex items-center gap-2">
                       <button type="button" onClick={()=>{ if(form.date_of_birth&&!isBirthdateValid) return; setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className={`rounded-lg px-4 text-sm font-medium transition h-10 ${form.date_of_birth&&!isBirthdateValid?"bg-[#008cfc] text-white opacity-50 cursor-not-allowed":"bg-[#008cfc] text-white hover:bg-blue-700"}`}>Done</button>
-                      <button type="button" onClick={()=>{ setForm((f)=>({ ...f, date_of_birth:base?.date_of_birth||"" })); setDobError(""); setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className="inline-flex items-center justify-center rounded-lg border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>
+                      <button type="button" onClick={()=>{ setForm((f)=>({ ...f, date_of_birth:base?.date_of_birth||"" })); setDobError(""); setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className="inline-flex items-center justify-center rounded-lg border border-red-500 text-red-600 px-4 py-2 text-sm font_medium hover:bg-red-50">Cancel</button>
                     </div>
                   </>)}
                 </div>
