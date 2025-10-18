@@ -75,7 +75,7 @@ export default function ClientProfile() {
 
   const fileToDataUrl=async(file)=>{ return await new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(file); }); };
 
-  const isValidFacebookUrl=(url)=>{ if(!url)return true; try{ const u=new URL(url), host=u.hostname.toLowerCase(), ok=host==="facebook.com"||host==="www.facebook.com"||host==="m.facebook.com"||"fb.com"===host||"www.fb.com"===host; if(!ok) return false; if(!u.pathname||u.pathname==="/") return false; if(u.pathname==="/profile.php") return u.searchParams.has("id")&&/^\d+$/.test(u.searchParams.get("id")); return /^\/[A-Za-z0-9.]+\/?$/.test(u.pathname); }catch{return false;} };
+  const isValidFacebookUrl=(url)=>{ if(!url)return true; try{ const u=new URL(url), host=u.hostname.toLowerCase(), ok=host==="facebook.com"||host==="www.facebook.com"||"m.facebook.com"||"fb.com"===host||"www.fb.com"===host; if(!ok) return false; if(!u.pathname||u.pathname==="/") return false; if(u.pathname==="/profile.php") return u.searchParams.has("id")&&/^\d+$/.test(u.searchParams.get("id")); return /^\/[A-Za-z0-9.]+\/?$/.test(u.pathname); }catch{return false;} };
   const isValidInstagramUrl=(url)=>{ if(!url)return true; try{ const u=new URL(url), host=u.hostname.toLowerCase(), ok=host==="instagram.com"||host==="www.instagram.com"||"m.instagram.com"; if(!ok) return false; if(!u.pathname||u.pathname==="/") return false; return /^\/[A-Za-z0-9._]+\/?$/.test(u.pathname); }catch{return false;} };
   const normalizeSocialUrl=(u)=>{ if(!u)return null; const s=String(u).trim(); if(!s)return null; const w=/^https?:\/\//i.test(s)?s:`https://${s}`; try{ const url=new URL(w); url.hostname=url.hostname.toLowerCase(); if(url.pathname!=="/"&&url.pathname.endsWith("/")) url.pathname=url.pathname.slice(0, -1); url.hash=""; return url.toString(); }catch{return null;} };
   const softValidFacebook=(x)=>{ if(!x)return true; const n=normalizeSocialUrl(x); return !!n&&isValidFacebookUrl(n); };
@@ -244,25 +244,27 @@ export default function ClientProfile() {
       </div>
 
       <section className="w-full rounded-2xl border border-gray-200 bg-white/90 backdrop-blur p-6 md:p-8 mb-6 shadow-sm">
-        <div ref={gridRef} className="grid grid-cols-1 gap-6 md:grid-cols-[260px_1fr]">
+        <div ref={gridRef} className="grid grid-cols-1 gap-6 md:grid-cols-[220px_1fr]">
           <div className="md:col-span-1">
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-center"><p className="text-sm font-semibold text-gray-900">Profile Picture</p></div>
-              <div className="relative">
-                <div className="rounded-full ring-2 ring-gray-200 bg-gray-100 overflow-hidden shadow-sm" style={{ width:avatarSize, height:avatarSize }}>
-                  <img src={avatarUrl} alt="Avatar" onError={()=>setAvatarBroken(true)} className="h-full w-full object-cover" />
+            <div className="flex flex-col items-start gap-4">
+              <div className="text-left"><p className="text-sm font-semibold text-gray-900">Profile Picture</p></div>
+              <div style={{ width: btnFixedWidth }} className="flex flex-col items-center">
+                <div className="relative">
+                  <div className="rounded-full ring-2 ring-gray-200 bg-gray-100 overflow-hidden shadow-sm" style={{ width:avatarSize, height:avatarSize }}>
+                    <img src={avatarUrl} alt="Avatar" onError={()=>setAvatarBroken(true)} className="h-full w-full object-cover" />
+                  </div>
+                </div>
+                <div className="mt-5 flex flex-col items-center gap-2">
+                  {!hasAvatar ? <>
+                    <button ref={btnRef} type="button" onClick={()=>fileRef.current?.click()} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-4 py-2.5 text-sm font-medium hover:bg-blue-50 active:bg-blue-100 transition shadow-sm" style={{width:btnFixedWidth}}>Upload Photo</button>
+                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e)=>{ const f=e.target.files?.[0]||null; if(!f||f.size===0) return; setAvatarFile(f); setAvatarRemoved(false); setAvatarBroken(false); }} />
+                  </> : <>
+                    <button ref={btnRef} type="button" onClick={()=>fileRef.current?.click()} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-4 py-2.5 text-sm font-medium hover:bg-blue-50 active:bg-blue-100 transition shadow-sm" style={{width:btnFixedWidth}}>Change</button>
+                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e)=>{ const f=e.target.files?.[0]||null; if(!f||f.size===0) return; setAvatarFile(f); setAvatarRemoved(false); setAvatarBroken(false); }} />
+                    <button type="button" onClick={()=>{ setAvatarFile(null); setAvatarRemoved(true); setAvatarBroken(true); }} className="inline-flex items-center justify-center rounded-xl border border-red-500 text-red-600 px-4 py-2.5 text-sm font-medium hover:bg-red-50 active:bg-red-100 transition shadow-sm" style={{width:btnFixedWidth}}>Remove</button>
+                  </>}
                 </div>
               </div>
-            </div>
-            <div className="mt-5 flex flex-col items-center gap-2">
-              {!hasAvatar ? <>
-                <button ref={btnRef} type="button" onClick={()=>fileRef.current?.click()} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-4 py-2.5 text-sm font-medium hover:bg-blue-50 active:bg-blue-100 transition shadow-sm" style={{width:btnFixedWidth}}>Upload Photo</button>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e)=>{ const f=e.target.files?.[0]||null; if(!f||f.size===0) return; setAvatarFile(f); setAvatarRemoved(false); setAvatarBroken(false); }} />
-              </> : <>
-                <button ref={btnRef} type="button" onClick={()=>fileRef.current?.click()} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-4 py-2.5 text-sm font-medium hover:bg-blue-50 active:bg-blue-100 transition shadow-sm" style={{width:btnFixedWidth}}>Change</button>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e)=>{ const f=e.target.files?.[0]||null; if(!f||f.size===0) return; setAvatarFile(f); setAvatarRemoved(false); setAvatarBroken(false); }} />
-                <button type="button" onClick={()=>{ setAvatarFile(null); setAvatarRemoved(true); setAvatarBroken(true); }} className="inline-flex items-center justify-center rounded-xl border border-red-500 text-red-600 px-4 py-2.5 text-sm font-medium hover:bg-red-50 active:bg-red-100 transition shadow-sm" style={{width:btnFixedWidth}}>Remove</button>
-              </>}
             </div>
           </div>
 
