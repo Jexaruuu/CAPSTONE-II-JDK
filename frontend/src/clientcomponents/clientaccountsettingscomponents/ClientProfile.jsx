@@ -9,6 +9,7 @@ export default function ClientProfile() {
   const dpRef = useRef(null);
   const dobInputRef = useRef(null);
   const dpPortalRef = useRef(null);
+  const fileRef = useRef(null);
   const [editingPhone, setEditingPhone] = useState(false), [phoneTaken, setPhoneTaken] = useState(false), [phoneEditCommitted, setPhoneEditCommitted] = useState(true), [phoneErrorAfterDone, setPhoneErrorAfterDone] = useState(false);
   const [form, setForm] = useState({ first_name:"", last_name:"", email:"", phone:"", facebook:"", instagram:"", date_of_birth:"" });
   const [base, setBase] = useState(null), [createdAt, setCreatedAt] = useState(""), [saving, setSaving] = useState(false), [saved, setSaved] = useState(false);
@@ -20,6 +21,7 @@ export default function ClientProfile() {
   const [dpOpen, setDpOpen] = useState(false), [dpView, setDpView] = useState(new Date());
   const [dpCoords, setDpCoords] = useState({ top: 0, left: 0, width: 300 });
   const [monthOpen, setMonthOpen] = useState(false), [yearOpen, setYearOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(null), [avatarUploading, setAvatarUploading] = useState(false);
 
   const toYMD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   const toMDY = (d) => `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`;
@@ -38,7 +40,7 @@ export default function ClientProfile() {
   useEffect(() => {
     const init=async()=>{ try{ const {data}=await axios.get(`${API_BASE}/api/clients/me`,{withCredentials:true,headers:headersWithU});
         const dob=data?.date_of_birth?String(data.date_of_birth).slice(0,10):"", f={ first_name:data?.first_name||"", last_name:data?.last_name||"", email:data?.email_address||"", phone:data?.phone||"", facebook:data?.facebook||"", instagram:data?.instagram||"", date_of_birth:dob };
-        setForm(f); setBase(f);
+        setForm(f); setBase(f); setAvatarUrl(data?.profile_picture||null);
         localStorage.setItem("first_name",f.first_name); localStorage.setItem("last_name",f.last_name); if(data?.sex) localStorage.setItem("sex",data.sex);
         if(data?.created_at){ const t=new Date(data.created_at); setCreatedAt(t.toLocaleString("en-PH",{timeZone:"Asia/Manila",dateStyle:"long",timeStyle:"short"})); }
         setDpView(dob?new Date(dob):new Date(maxDOBDate));
@@ -57,7 +59,7 @@ export default function ClientProfile() {
   const isValidPHMobile=(d)=>d.length===10&&d[0]==="9"&&!isTriviallyFake(d)&&allowedPHPrefixes.has(d.slice(0,3));
   const isPhoneValid=!form.phone||isValidPHMobile(form.phone), showPhoneError=editingPhone&&phoneErrorAfterDone&&!isPhoneValid&&form.phone.length>0;
 
-  const facebookValid=useMemo(()=>{ if(!form.facebook)return true; try{ const u=new URL(/^https?:\/\//i.test(form.facebook)?form.facebook:`https://${form.facebook}`); const h=u.hostname.toLowerCase(); const ok=h==="facebook.com"||h==="www.facebook.com"||h==="m.facebook.com"||h==="fb.com"||h==="www.fb.com"; if(!ok)return false; if(u.pathname==="/")return false; if(u.pathname==="/profile.php")return u.searchParams.has("id")&&/^\d+$/.test(u.searchParams.get("id")); return /^\/[A-Za-z0-9.]+\/?$/.test(u.pathname); }catch{return false;} },[form.facebook]);
+  const facebookValid=useMemo(()=>{ if(!form.facebook)return true; try{ const u=new URL(/^https?:\/\//i.test(form.facebook)?form.facebook:`https://${form.facebook}`); const h=u.hostname.toLowerCase(); const ok=h==="facebook.com"||h==="www.facebook.com"||h==="m.facebook.com"||h==="fb.com"||"www.fb.com"===h; if(!ok)return false; if(u.pathname==="/")return false; if(u.pathname==="/profile.php")return u.searchParams.has("id")&&/^\d+$/.test(u.searchParams.get("id")); return /^\/[A-Za-z0-9.]+\/?$/.test(u.pathname); }catch{return false;} },[form.facebook]);
   const instagramValid=useMemo(()=>{ if(!form.instagram)return true; try{ const u=new URL(/^https?:\/\//i.test(form.instagram)?form.instagram:`https://${form.instagram}`); const h=u.hostname.toLowerCase(); const ok=h==="instagram.com"||h==="www.instagram.com"||h==="m.instagram.com"; if(!ok)return false; if(u.pathname==="/")return false; return /^\/[A-Za-z0-9._]+\/?$/.test(u.pathname); }catch{return false;} },[form.instagram]);
 
   const phoneDirty=useMemo(()=>!!base&&String(base.phone||"")!==String(form.phone||""),[base,form.phone]);
@@ -120,6 +122,12 @@ export default function ClientProfile() {
   const openCalendar=()=>{ if(!editingDob) setEditingDob(true); setDpView(form.date_of_birth?new Date(form.date_of_birth):new Date(maxDOBDate)); setDobEditCommitted(false); if(dobInputRef.current){ const r=dobInputRef.current.getBoundingClientRect(); setDpCoords({ top:r.bottom+8, left:Math.max(8, r.left), width:300 }); } setDpOpen(true); setMonthOpen(false); setYearOpen(false); };
   const setMonthYear=(m,y)=>{ const next=new Date(y,m,1), minStart=new Date(minDOBDate.getFullYear(),minDOBDate.getMonth(),1), maxStart=new Date(maxDOBDate.getFullYear(),maxDOBDate.getMonth(),1); setDpView(next<minStart?minStart:next>maxStart?maxStart:next); };
 
+  const onPickAvatar=()=>{ if(fileRef.current) fileRef.current.click(); };
+  const onFileChange=async(e)=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const fd=new FormData(); fd.append("file",f); setAvatarUploading(true); try{ const {data}=await axios.post(`${API_BASE}/api/clients/profile/avatar${urlQS}`,fd,{withCredentials:true,headers:{...headersWithU}}); setAvatarUrl(data?.profile_picture||null); }catch{} setAvatarUploading(false); e.target.value=""; };
+  const onRemoveAvatar=async()=>{ setAvatarUploading(true); try{ const {data}=await axios.delete(`${API_BASE}/api/clients/profile/avatar${urlQS}`,{withCredentials:true,headers:headersWithU}); setAvatarUrl(data?.profile_picture||null); }catch{} setAvatarUploading(false); };
+
+  const initials = useMemo(()=>{ const a=(form.first_name||"").trim().slice(0,1).toUpperCase(); const b=(form.last_name||"").trim().slice(0,1).toUpperCase(); return (a||b)?`${a}${b}`:""; },[form.first_name,form.last_name]);
+
   const CalendarPopover = dpOpen ? createPortal(
     <div ref={dpPortalRef} className="fixed z-[1000]" style={{ top: dpCoords.top, left: dpCoords.left, width: dpCoords.width }}>
       <div className="rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
@@ -156,9 +164,17 @@ export default function ClientProfile() {
           <button type="button" onClick={()=>{const d=new Date(dpView);d.setMonth(d.getMonth()+1);setDpView(d)}} className="p-2 rounded-lg hover:bg-gray-100">›</button>
           </div>
         <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">{["Su","Mo","Tu","We","Th","Fr","Sa"].map((d)=>(<div key={d} className="py-1">{d}</div>))}</div>
-        {(()=>{ const start=new Date(dpView.getFullYear(),dpView.getMonth(),1); const end=new Date(dpView.getFullYear(),dpView.getMonth()+1,0); const offset=start.getDay(); const total=offset+end.getDate(); const rows=Math.ceil(total/7); const selected=form.date_of_birth?new Date(form.date_of_birth):null; const cells=[]; for(let r=0;r<rows;r++){ const row=[]; for(let c=0;c<7;c++){ const idx=r*7+c, day=idx-offset+1; if(day<1||day>end.getDate()) row.push(<div key={`x-${r}-${c}`} className="py-2" />); else { const d=new Date(dpView.getFullYear(),dpView.getMonth(),day); const dis=d<minDOBDate||d>maxDOBDate; const sel=selected&&d.getFullYear()===selected.getFullYear()&&d.getMonth()===selected.getMonth()&&d.getDate()===selected.getDate(); row.push(<button key={`d-${day}`} type="button" disabled={dis} onClick={()=>{ const ymd=toYMD(d); setForm((f)=>({ ...f, date_of_birth:ymd })); setDobError(validateDob(ymd)); setDpOpen(false); setMonthOpen(false); setYearOpen(false); }} className={["py-2 rounded-lg transition text-sm w-9 h-9 mx-auto", dis?"text-gray-300 cursor-not-allowed":"hover:bg-blue-50 text-gray-700", sel&&!dis?"bg-blue-600 text-white hover:bg-blue-600":""].join(" ")}>{day}</button>); } } cells.push(<div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">{row}</div>);} return <div className="mt-1">{cells}</div>; })()}
+        {(()=>{ const start=new Date(dpView.getFullYear(),dpView.getMonth(),1); const end=new Date(dpView.getFullYear(),dpView.getMonth()+1,0); const offset=start.getDay(); const total=offset+end.getDate(); const rows=Math.ceil(total/7); const selected=form.date_of_birth?new Date(form.date_of_birth):null; const cells=[]; for(let r=0;r<rows;r++){ const row=[]; for(let c=0;c<7;c++){ const idx=r*7+c, day=idx-offset+1; if(day<1||day>end.getDate()) row.push(<div key={`x-${r}-${c}`} className="py-2" />); else { const d=new Date(dpView.getFullYear(),dpView.getMonth(),day); const dis=d<minDOBDate||d>maxDOBDate; const sel=selected&&d.getFullYear()===selected.getFullYear()&&d.getMonth()===selected.getMonth()&&d.getDate()===selected.getDate(); row.push(<button key={`d-${day}`} type="button" disabled={dis} onClick={() => {
+  const ymd = toYMD(d);
+  setForm((f) => ({ ...f, date_of_birth: ymd }));
+  setDobError(validateDob(ymd));
+  setDpOpen(false);       // <-- call the setter
+  setMonthOpen(false);
+  setYearOpen(false);
+}} className={["py-2 rounded-lg transition text-sm w-9 h-9 mx-auto", dis?"text-gray-300 cursor-not-allowed":"hover:bg-blue-50 text-gray-700", sel&&!dis?"bg-blue-600 text-white hover:bg-blue-600":""].join(" ")}>{day}</button>); } } cells.push(<div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">{row}</div>);} return <div className="mt-1">{cells}</div>; })()}
         <div className="flex items-center justify-between mt-3 px-2">
           <button type="button" onClick={()=>{ setForm((f)=>({ ...f, date_of_birth:"" })); setDobError(""); setDpOpen(false); setMonthOpen(false); setYearOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+          
           <button type="button" onClick={()=>{ setDpView(new Date(maxDOBDate)); }} className="text-xs text-blue-600 hover:text-blue-700">Jump to latest allowed</button>
         </div>
       </div>
@@ -176,10 +192,51 @@ export default function ClientProfile() {
         </div>
 
         <section className="w-full rounded-2xl border border-gray-100 bg-white p-6 md:p-7 mb-6 shadow-sm">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <div className="w-full">
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">First Name</p><p className="mt-1 text-base text-gray-900">{form.first_name||"—"}</p></div>
-              <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm min-h-[150px]">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold tracking-tight text-gray-900">Personal Information</h3>
+            {savedProfile ? <span className="text-sm text-blue-700">Saved</span> : null}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600 flex justify-center">Personal Photo</p>
+              <div className="mt-3 flex flex-col items-center gap-3">
+                <div className="h-24 w-24 rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                  {avatarUrl?(<img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover"/>):(<div className="h-full w-full flex items-center justify-center text-xl font-semibold text-gray-600">{initials||"?"}</div>)}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFileChange}/>
+                  {!avatarUrl?
+                    <button type="button" onClick={onPickAvatar} disabled={avatarUploading} className={`rounded-xl px-3.5 py-2 text-sm font-medium ${avatarUploading?"bg-[#008cfc] text-white opacity-60":"bg-[#008cfc] text-white hover:bg-blue-700"}`}>{avatarUploading?"Uploading...":"+ Add photo"}</button>:
+                    <>
+                      <button type="button" onClick={onPickAvatar} disabled={avatarUploading} className={`rounded-xl px-3.5 py-2 text-sm font-medium border border-[#008cfc] text-[#008cfc] hover:bg-blue-50 ${avatarUploading?"opacity-60 cursor-not-allowed":""}`}>Change</button>
+                      <button type="button" onClick={onRemoveAvatar} disabled={avatarUploading} className={`rounded-xl px-3.5 py-2 text-sm font-medium border border-red-500 text-red-600 hover:bg-red-50 ${avatarUploading?"opacity-60 cursor-not-allowed":""}`}>Remove</button>
+                    </>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">First Name</p>
+                <p className="mt-1 text-base text-gray-900">{form.first_name||"—"}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">Last Name</p>
+                <p className="mt-1 text-base text-gray-900">{form.last_name||"—"}</p>
+              </div>
+
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">Email</p>
+                <p className="mt-1 text-base text-gray-900 break-all">{form.email||"—"}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">Age</p>
+                <p className="mt-1 text-base text-gray-900">{age!=null?`${age}`:"—"}</p>
+              </div>
+
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm min-h-[150px]">
                 <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">Contact Number</p>
                 {!editingPhone && (<div className="mt-2">{form.phone&&!phoneTaken?
                   <div className="inline-flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 border border-gray-100"><img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover"/><span className="text-gray-700 text-sm">+63</span><span className="text-base text-gray-900 tracking-wide">{form.phone}</span></div>:
@@ -203,11 +260,8 @@ export default function ClientProfile() {
                   </div>
                 </div>)}
               </div>
-            </div>
 
-            <div className="w-full">
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">Last Name</p><p className="mt-1 text-base text-gray-900">{form.last_name||"—"}</p></div>
-              <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-4 relative min-h-[150px]" ref={dpRef}>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 relative min-h-[150px]" ref={dpRef}>
                 <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">Date of Birth</p>
                 {!editingDob && (<>
                   <div className="mt-2">{form.date_of_birth?
@@ -240,11 +294,6 @@ export default function ClientProfile() {
                   </div>
                 </>)}
               </div>
-            </div>
-
-            <div className="w-full">
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">Email</p><p className="mt-1 text-base text-gray-900 break-all">{form.email||"—"}</p></div>
-              <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">Age</p><p className="mt-1 text-base text-gray-900">{age!=null?`${age}`:"—"}</p></div>
             </div>
           </div>
 

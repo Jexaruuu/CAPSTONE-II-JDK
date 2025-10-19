@@ -12,7 +12,27 @@ const checkEmailExistenceAcrossAllUsers=async(email)=>{const e=String(email||"")
 const getByAuthUid=async(auth_uid)=>{const{data,error}=await supabaseAdmin.from("user_client").select("*").eq("auth_uid",auth_uid).limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
 const getByEmail=async(email)=>{const e=String(email||"").trim().toLowerCase();if(!e)return null;const{data,error}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e).limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
 
-const getClientAccountProfile=async({auth_uid,email})=>{const row=auth_uid?await getByAuthUid(auth_uid):await getByEmail(email);const user=await getAuthUserById(row?.auth_uid||auth_uid);const created_at=row?.created_at||user?.created_at||null;const dob=row?.date_of_birth||user?.user_metadata?.date_of_birth||null;const age=row?.age!=null?row.age:computeAge(dob);return{first_name:row?.first_name||user?.user_metadata?.first_name||"",last_name:row?.last_name||user?.user_metadata?.last_name||"",email_address:row?.email_address||user?.email||email||"",sex:row?.sex||user?.user_metadata?.sex||"",phone:row?.contact_number??row?.phone??"",facebook:row?.social_facebook??row?.facebook??"",instagram:row?.social_instagram??row?.instagram??"",auth_uid:row?.auth_uid||(user?.id??""),created_at,date_of_birth:dob,age}};
+const getClientAccountProfile=async({auth_uid,email})=>{
+  const row=auth_uid?await getByAuthUid(auth_uid):await getByEmail(email);
+  const user=await getAuthUserById(row?.auth_uid||auth_uid);
+  const created_at=row?.created_at||user?.created_at||null;
+  const dob=row?.date_of_birth||user?.user_metadata?.date_of_birth||null;
+  const age=row?.age!=null?row.age:computeAge(dob);
+  return{
+    first_name:row?.first_name||user?.user_metadata?.first_name||"",
+    last_name:row?.last_name||user?.user_metadata?.last_name||"",
+    email_address:row?.email_address||user?.email||email||"",
+    sex:row?.sex||user?.user_metadata?.sex||"",
+    phone:row?.contact_number??row?.phone??"",
+    facebook:row?.social_facebook??row?.facebook??"",
+    instagram:row?.social_instagram??row?.instagram??"",
+    auth_uid:row?.auth_uid||(user?.id??""),
+    created_at,
+    date_of_birth:dob,
+    age,
+    profile_picture:row?.profile_picture||null
+  }
+};
 
 const updatePassword=async(auth_uid,password)=>{const{error}=await supabaseAdmin.from("user_client").update({password}).eq("auth_uid",auth_uid);if(error)throw error;return true};
 const updateAuthPassword=async(auth_uid,new_password)=>{const{error}=await supabaseAdmin.auth.admin.updateUserById(auth_uid,{password:new_password});if(error)throw error;return true};
@@ -23,4 +43,6 @@ async function isContactNumberTakenAcrossAll(phone,excludeAuthUid){const p=Strin
 function buildVariants(kind,canon){try{const u=new URL(canon);const path=u.pathname+(u.search||"");if(kind==="facebook"){const hosts=["facebook.com","www.facebook.com","m.facebook.com","fb.com","www.fb.com"];return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x,x.endsWith("/")?x:x+"/"])}else{const hosts=["instagram.com","www.instagram.com","m.instagram.com"];return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x,x.endsWith("/")?x:x+"/"])}}catch{return[canon,canon.endsWith("/")?canon:canon+"/"]}}
 async function isSocialLinkTakenAcrossAll(kind,value,excludeAuthUid){const raw=String(value||"").trim();if(!raw)return false;const canon=kind==="facebook"?normalizeFacebook(raw):normalizeInstagram(raw);const col1=kind==="facebook"?"social_facebook":"social_instagram";const legacy1=kind==="facebook"?"facebook":"instagram";function buildOr(cols,pats){const segs=[];for(const col of cols)for(const p of pats)segs.push(`${col}.ilike.*${p}*`);return segs.join(",")}let hitAuthUid=null;try{const variants=buildVariants(kind,canon);const orStr=buildOr([col1,legacy1],variants)||`${col1}.is.null`;const q1=supabaseAdmin.from("user_client").select(`auth_uid, ${col1}, ${legacy1}`).or(orStr);const q2=supabaseAdmin.from("user_worker").select(`auth_uid, ${col1}, ${legacy1}`).or(orStr);const[{data:c,error:ec},{data:w,error:ew}]=await Promise.all([q1,q2]);if(ec||ew)throw ec||ew;const all=[...(c||[]),...(w||[])];for(const r of all){const vals=[r[col1],r[legacy1]].filter(Boolean).map(String);if(vals.some(v=>(kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break}}}catch{const q1=supabaseAdmin.from("user_client").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);const q2=supabaseAdmin.from("user_worker").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);const[{data:c2},{data:w2}]=await Promise.all([q1,q2]);const all=[...(c2||[]),...(w2||[])];for(const r of all){const vals=[r[col1],r[legacy1]].filter(Boolean).map(String);if(vals.some(v=>(kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break}}}if(!hitAuthUid)return false;if(!excludeAuthUid)return true;return hitAuthUid!==excludeAuthUid}
 
-module.exports={createClient,checkEmailExistence,checkEmailExistenceAcrossAllUsers,getByAuthUid,getByEmail,getClientAccountProfile,updatePassword,updateAuthPassword,updateClientProfile,updateAuthUserMeta,isContactNumberTakenAcrossAll,isSocialLinkTakenAcrossAll,normalizeFacebook,normalizeInstagram};
+const updateClientAvatarUrl=async(auth_uid,url)=>{const{data,error}=await supabaseAdmin.from("user_client").update({profile_picture:url||null}).eq("auth_uid",auth_uid).select("profile_picture").limit(1);if(error)throw error;return data&&data[0]?data[0].profile_picture:null};
+
+module.exports={createClient,checkEmailExistence,checkEmailExistenceAcrossAllUsers,getByAuthUid,getByEmail,getClientAccountProfile,updatePassword,updateAuthPassword,updateClientProfile,updateAuthUserMeta,isContactNumberTakenAcrossAll,isSocialLinkTakenAcrossAll,normalizeFacebook,normalizeInstagram,updateClientAvatarUrl};

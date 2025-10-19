@@ -29,12 +29,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const rawAllowed=(process.env.ALLOWED_ORIGINS||"").split(",").map(s=>s.trim()).filter(Boolean);
-const wcToReg=pat=>new RegExp("^"+pat.trim().replace(/[.+?^${}()|[\]\\]/g,"\\$&").replace(/\*/g,".*")+"$");
-const allowedRegexes=rawAllowed.map(wcToReg);
-const isLocal=origin=>/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)||/^https?:\/\/(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
-const isAllowed=origin=>!origin||isLocal(origin)||allowedRegexes.some(rx=>rx.test(origin));
-const corsOrigin=(origin,cb)=>(isAllowed(origin)?cb(null,true):cb(new Error("Not allowed by CORS")));
+const rawAllowed = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
+const wcToReg = pat => new RegExp("^" + pat.trim().replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
+const allowedRegexes = rawAllowed.map(wcToReg);
+const isLocal = origin =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+  /^https?:\/\/(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
+const isAllowed = origin => !origin || isLocal(origin) || allowedRegexes.some(rx => rx.test(origin));
+const corsOrigin = (origin, cb) => (isAllowed(origin) ? cb(null, true) : cb(new Error("Not allowed by CORS")));
 
 app.use(cors({origin:corsOrigin,credentials:true}));
 
@@ -52,7 +54,8 @@ const cookieSameSite=useSecure?"none":"lax";
 
 app.use(session({secret:process.env.SESSION_SECRET||"change-me",resave:false,saveUninitialized:false,cookie:{secure:useSecure,httpOnly:true,sameSite:cookieSameSite,domain:process.env.COOKIEDOMAIN||process.env.COOKIE_DOMAIN||undefined,maxAge:1000*60*60*2}}));
 
-app.use((req,res,next)=>{try{if(!req.session.user){const h=req.headers["x-app-u"];if(h){const j=JSON.parse(decodeURIComponent(h));if(j&&j.r&&(j.e||j.au))req.session.user={role:j.r,email_address:j.e||null,auth_uid:j.au||null}}}if(!req.session.user){const m=/(?:^|;\s*)app_u=([^;]+)/.exec(req.headers.cookie||"");if(m){const j=JSON.parse(decodeURIComponent(m[1]));if(j&&j.r&&(j.e||j.au))req.session.user={role:j.r,email_address:j.e||null,auth_uid:j.au||null}}}}catch{}next()});
+app.use((req,res,next)=>{try{if(!req.session.user){const h=req.headers["x-app-u"];if(h){const j=JSON.parse(decodeURIComponent(h));if(j&&j.r&&(j.e||j.au))req.session.user={role:j.r,email_address:j.e||null,auth_uid:j.au||null}}}if(!req.session.user){const m = /(?:^|;\s*)app_u=([^;]+)/.exec(req.headers.cookie || "");
+if(m){const j=JSON.parse(decodeURIComponent(m[1]));if(j&&j.r&&(j.e||j.au))req.session.user={role:j.r,email_address:j.e||null,auth_uid:j.au||null}}}}catch{}next()});
 
 function parseCookie(str){const out={};if(!str)return out;str.split(";").forEach(p=>{const i=p.indexOf("=");if(i>-1)out[p.slice(0,i).trim()]=p.slice(i+1).trim()});return out}
 function readAppUHeader(req){const h=req.headers["x-app-u"];if(!h)return{};try{return JSON.parse(decodeURIComponent(h))}catch{return{}}
@@ -97,6 +100,7 @@ app.use("/api/admin/workerapplications",adminworkerapplicationRoutes);
 app.use("/api/pendingservicerequests",pendingservicerequestsRoutes);
 app.use("/api/pendingworkerapplication",pendingworkerapplicationRoutes);
 
+ensureStorageBucket(process.env.SUPABASE_BUCKET_CLIENT_PROFILE||"client-profile-pics",true).catch(()=>{});
 ensureStorageBucket("user-notifications",true).catch(()=>{});
 
 app.listen(PORT,()=>{console.log(`Server running on port ${PORT}`)});
