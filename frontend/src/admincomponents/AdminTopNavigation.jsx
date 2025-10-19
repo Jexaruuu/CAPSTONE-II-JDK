@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, Bell } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 const SHOW_SEARCH = false;
 
@@ -69,15 +69,6 @@ const AdminTopNavigation = () => {
             </span>
             {adminNo ? <></> : null}
           </div>
-
-          <button
-            type="button"
-            className="relative inline-flex items-center justify-center rounded-xl h-10 w-10 border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition"
-            aria-label="Notifications"
-            title="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-          </button>
 
           <div className="h-10 w-10 rounded-full overflow-hidden border border-gray-200">
             <img

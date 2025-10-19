@@ -241,7 +241,6 @@ exports.listAllUsers = async (_req, res) => {
       sex: c.sex || '',
       email: c.email_address,
       date: getDate(c),
-      avatar: c.client_avatar || c.avatar_url || '',
       phone: c.contact_number || '',
       facebook: c.social_facebook || '',
       instagram: c.social_instagram || ''
@@ -255,7 +254,6 @@ exports.listAllUsers = async (_req, res) => {
       sex: w.sex || '',
       email: w.email_address,
       date: getDate(w),
-      avatar: w.worker_avatar || w.avatar_url || '',
       phone: w.contact_number || '',
       facebook: w.social_facebook || '',
       instagram: w.social_instagram || ''

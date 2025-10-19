@@ -60,7 +60,6 @@ export default function AdminManageUser() {
         (u.jobTitle === "Worker" ? "worker" : "client");
       const sex = u.sex || "-";
       const date = u.date || u.created_at || null;
-      const avatar = u.avatar || "";
       const facebook = u.facebook || u.social_facebook || "";
       const instagram = u.instagram || u.social_instagram || "";
       const phone = u.phone || u.contact_number || "";
@@ -73,7 +72,6 @@ export default function AdminManageUser() {
         email,
         role,
         date,
-        avatar,
         facebook,
         instagram,
         phone
@@ -216,7 +214,7 @@ export default function AdminManageUser() {
       <div className="mb-4">
         <h1 className="text-xl font-semibold text-gray-900">Manage Users</h1>
         <p className="text-gray-600 mt-2">
-          Employees can be enrolled in one sick policy. Make sure that your policy is compliant with your state rules.
+          Browse Clients or Workers, search by name or email, see when they were created, and open details.
         </p>
       </div>
 
@@ -404,7 +402,7 @@ export default function AdminManageUser() {
                           <td className="hidden px-4 py-4 border border-gray-200">
                             <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 ring-1 ring-gray-300">
                               <img
-                                src={u.avatar || "/Clienticon.png"}
+                                src={"/Clienticon.png"}
                                 alt={`${u.first_name} ${u.last_name}`}
                                 className="h-full w-full object-cover"
                                 onError={({ currentTarget }) => {
@@ -507,7 +505,7 @@ export default function AdminManageUser() {
                   <div className="flex flex-col items-start">
                     <div className="h-24 w-24 rounded-full ring-4 ring-white overflow-hidden bg-gray-100">
                       <img
-                        src={viewUser.avatar || "/Clienticon.png"}
+                        src={"/Clienticon.png"}
                         alt={`${viewUser.first_name} ${viewUser.last_name}`}
                         className="w-full h-full object-cover"
                         onError={({ currentTarget }) => {

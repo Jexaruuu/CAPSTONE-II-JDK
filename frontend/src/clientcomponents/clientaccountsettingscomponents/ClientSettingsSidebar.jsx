@@ -1,3 +1,4 @@
+// ClientSettingsSidebar.jsx
 import React from "react";
 import { User2, ShieldCheck, Bell } from "lucide-react";
 
@@ -32,8 +33,8 @@ export default function ClientSettingsSidebar({ active, onChange }) {
 
   return (
     <aside className="w-full">
-      <div className="rounded-2xl border border-gray-200 bg-white p-3">
-        <div className="mb-2 px-2 text-1xl text-lg md:text-xl font-semibold text-gray-900 tracking-wide">
+      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="mb-3 px-1 text-lg md:text-xl font-semibold text-gray-900 tracking-tight">
           Settings
         </div>
         <div className="space-y-2">

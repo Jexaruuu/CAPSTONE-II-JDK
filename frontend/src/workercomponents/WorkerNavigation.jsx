@@ -87,7 +87,7 @@ const WorkerNavigation = () => {
     setShowReportsDropdown(false);
     setShowProfileDropdown(false);
     setShowBellDropdown(false);
-    setShowSubDropdown(false);
+    setShowSubDropdown(!showSubDropdown);
   };
 
   const handleOptionClick = (option) => {
@@ -98,19 +98,55 @@ const WorkerNavigation = () => {
 
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
-    return () => { document.removeEventListener('mousedown', handleClickOutside); };
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
-  const initialFirst = typeof window !== 'undefined' ? (localStorage.getItem('first_name') || '') : '';
-  const initialLast = typeof window !== 'undefined' ? (localStorage.getItem('last_name') || '') : '';
-  const initialSex = typeof window !== 'undefined' ? (localStorage.getItem('sex') || '') : '';
-  const initialAvatar = typeof window !== 'undefined' ? (localStorage.getItem('workerAvatarUrl') || '') : '';
+  const [fullName, setFullName] = useState('');
+  const [prefix, setPrefix] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem('workerAvatarUrl') || '/Clienticon.png');
 
-  const [fullName, setFullName] = useState(`${initialFirst} ${initialLast}`.trim());
-  const [prefix, setPrefix] = useState(initialSex === 'Male' ? 'Mr.' : initialSex === 'Female' ? 'Ms.' : '');
-  const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
-  const [avatarReady, setAvatarReady] = useState(Boolean(initialAvatar));
-  const [avatarBroken, setAvatarBroken] = useState(false);
+  useEffect(() => {
+    const fName = localStorage.getItem('first_name') || '';
+    const lName = localStorage.getItem('last_name') || '';
+    const sex = localStorage.getItem('sex') || '';
+    if (sex === 'Male') setPrefix('Mr.');
+    else if (sex === 'Female') setPrefix('Ms.');
+    else setPrefix('');
+    setFullName(`${fName} ${lName}`);
+    const onAvatar = (e) => {
+      const url = e?.detail?.url || '';
+      setAvatarUrl(url || '/Clienticon.png');
+    };
+    window.addEventListener('worker-avatar-updated', onAvatar);
+    return () => window.removeEventListener('worker-avatar-updated', onAvatar);
+  }, []);
+
+  function buildAppU() {
+    try {
+      const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+      const au =
+        a.auth_uid ||
+        a.authUid ||
+        a.uid ||
+        a.id ||
+        localStorage.getItem('worker_auth_uid') ||
+        localStorage.getItem('auth_uid') ||
+        '';
+      const rawEmail =
+        a.email ||
+        localStorage.getItem('worker_email') ||
+        localStorage.getItem('email_address') ||
+        localStorage.getItem('email') ||
+        '';
+      const e = String(rawEmail || '').trim().toLowerCase();
+      const r = localStorage.getItem('role') || 'worker';
+      if (!e && !au) return '';
+      return encodeURIComponent(JSON.stringify({ r: 'worker' || r, e, au }));
+    } catch {}
+    return '';
+  }
 
   const [notifCount, setNotifCount] = useState(0);
   const [notifItems, setNotifItems] = useState([]);
@@ -128,50 +164,27 @@ const WorkerNavigation = () => {
     } catch {}
   }
 
-  function preloadAvatar(src) {
-    return new Promise((resolve, reject) => {
-      if (!src) return reject(new Error('empty'));
-      const img = new Image();
-      img.onload = () => resolve(true);
-      img.onerror = reject;
-      img.src = src;
-    });
-  }
-
-  function buildAppU() {
-    try {
-      const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
-      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
-      const e = a.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
-      return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
-    } catch {}
-    return '';
-  }
-
-  function setAppUCookie(val) {
-    try { document.cookie = `app_u=${val}; Path=/; SameSite=Lax`; } catch {}
-  }
-
   async function ensureSession() {
     try {
       const appU = buildAppU();
-      if (!appU) return false;
       const { data } = await axios.get(`${API_BASE}/api/account/me`, {
         withCredentials: true,
-        headers: { 'x-app-u': appU }
+        headers: appU ? { 'x-app-u': appU } : {}
       });
       const uid = data?.auth_uid || '';
       const email = data?.email_address || '';
-      if (uid) localStorage.setItem('auth_uid', uid);
-      if (email) {
-        localStorage.setItem('email_address', email);
-        localStorage.setItem('email', email);
-        localStorage.setItem('worker_email', email);
+      if (uid) {
+        localStorage.setItem('worker_auth_uid', uid);
+        localStorage.setItem('auth_uid', uid);
       }
-      const appU2 = encodeURIComponent(JSON.stringify({ r: 'worker', e: email || '', au: uid || '' }));
-      setAppUCookie(appU2);
+      if (email) {
+        const e = String(email).trim().toLowerCase();
+        localStorage.setItem('email_address', e);
+        localStorage.setItem('email', e);
+        localStorage.setItem('worker_email', e);
+      }
       setSessionReady(true);
-      return Boolean(data);
+      return true;
     } catch {
       setSessionReady(false);
       return false;
@@ -192,21 +205,7 @@ const WorkerNavigation = () => {
       const c = typeof data === 'number' ? data : Number(data?.count || 0);
       setNotifCount(Number.isFinite(c) ? c : 0);
     } catch {
-      const ok = await ensureSession();
-      if (!ok) {
-        setNotifCount(0);
-        return;
-      }
-      try {
-        const { data } = await axios.get(`${API_BASE}/api/notifications/count`, {
-          withCredentials: true,
-          headers: { 'x-app-u': buildAppU() }
-        });
-        const c = typeof data === 'number' ? data : Number(data?.count || 0);
-        setNotifCount(Number.isFinite(c) ? c : 0);
-      } catch {
-        setNotifCount(0);
-      }
+      setNotifCount(0);
     }
   }
 
@@ -220,7 +219,7 @@ const WorkerNavigation = () => {
   }
 
   function collapseProfileChangeDuplicates(arr) {
-    const keepTypes = new Set(['DOB','Contact','Photo','Socials']);
+    const keepTypes = new Set(['DOB', 'Contact', 'Photo', 'Socials']);
     const map = new Map();
     for (const n of arr) {
       const text = `${n.title || ''} ${n.message || ''}`.toLowerCase();
@@ -259,26 +258,15 @@ const WorkerNavigation = () => {
         created_at: n.created_at ?? new Date().toISOString(),
         read: !!n.read
       })).filter(n => !stripRedundantFieldUpdateTitle(n.title));
-      const collapsed = collapseProfileChangeDuplicates(normalized).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+      const collapsed = collapseProfileChangeDuplicates(normalized).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setNotifItems(collapsed);
       return true;
     };
-
     try {
       setNotifLoading(true);
-      const ok = await tryFetch();
-      if (ok) return;
-    } catch (err) {
-      if (err?.response?.status === 401) {
-        const s = await ensureSession();
-        if (s) {
-          try { await tryFetch(); } catch { setNotifItems([]); }
-        } else {
-          setNotifItems([]);
-        }
-      } else {
-        setNotifItems([]);
-      }
+      await tryFetch();
+    } catch {
+      setNotifItems([]);
     } finally {
       setNotifLoading(false);
     }
@@ -294,101 +282,19 @@ const WorkerNavigation = () => {
   }
 
   useEffect(() => {
-    if (initialAvatar) {
-      preloadAvatar(initialAvatar)
-        .then(() => { setAvatarUrl(initialAvatar); setAvatarReady(true); setAvatarBroken(false); })
-        .catch(() => { setAvatarReady(true); setAvatarBroken(true); });
-    } else {
-      setAvatarReady(true);
-      setAvatarBroken(true);
-    }
-
-    try { localStorage.removeItem('workerNotifSuppressed'); } catch {}
-    setNotifSuppressed(false);
-
-    const init = async () => {
-      let hasSession = false;
-      try { hasSession = await ensureSession(); } catch {}
-      const appU = buildAppU();
-      if (!appU && !hasSession) {
-        setNotifCount(0);
-        setAvatarReady(true);
-        if (!initialAvatar) setAvatarBroken(true);
-        return;
-      }
-      try {
-        const { data } = await axios.get(`${API_BASE}/api/account/me`, {
-          withCredentials: true,
-          headers: appU ? { 'x-app-u': appU } : {}
-        });
-        const f = data?.first_name || localStorage.getItem('first_name') || '';
-        const l = data?.last_name || localStorage.getItem('last_name') || '';
-        const sx = data?.sex || localStorage.getItem('sex') || '';
-        const av = data?.avatar_url || localStorage.getItem('workerAvatarUrl') || '';
-        const uid = data?.auth_uid || '';
-        if (uid) localStorage.setItem('auth_uid', uid);
-        if (sx === 'Male') setPrefix('Mr.');
-        else if (sx === 'Female') setPrefix('Ms.');
-        else setPrefix('');
-        setFullName(`${f} ${l}`.trim());
-        if (av) {
-          try {
-            await preloadAvatar(av);
-            setAvatarUrl(av);
-            setAvatarReady(true);
-            setAvatarBroken(false);
-          } catch {
-            setAvatarReady(true);
-            setAvatarBroken(true);
-          }
-        } else {
-          setAvatarReady(true);
-          setAvatarBroken(true);
-        }
-        localStorage.setItem('first_name', f);
-        localStorage.setItem('last_name', l);
-        if (sx) localStorage.setItem('sex', sx);
-        if (av) localStorage.setItem('workerAvatarUrl', av);
-        setSessionReady(true);
-      } catch {
-        setAvatarReady(true);
-        if (!initialAvatar) setAvatarBroken(true);
-      }
+    (async () => {
+      await ensureSession();
       await refreshNotifs();
-    };
-
-    init();
-
-    const onAvatar = async (e) => {
-      const u = e?.detail?.url ?? '';
-      if (u) {
-        try {
-          await preloadAvatar(u);
-          localStorage.setItem('workerAvatarUrl', u);
-          setAvatarUrl(u);
-          setAvatarReady(true);
-          setAvatarBroken(false);
-        } catch {
-          setAvatarReady(true);
-          setAvatarBroken(true);
-          setAvatarUrl('');
-          localStorage.removeItem('workerAvatarUrl');
-        }
-      } else {
-        setAvatarBroken(true);
-        setAvatarUrl('');
-        setAvatarReady(true);
-        localStorage.removeItem('workerAvatarUrl');
-      }
-    };
+    })();
     const onRefresh = () => fetchNotifList();
-    window.addEventListener('worker-avatar-updated', onAvatar);
+    const onSuppress = () => setSuppression(true);
     window.addEventListener('worker-notifications-refresh', onRefresh);
+    window.addEventListener('worker-notifications-suppress', onSuppress);
     return () => {
-      window.removeEventListener('worker-avatar-updated', onAvatar);
       window.removeEventListener('worker-notifications-refresh', onRefresh);
+      window.removeEventListener('worker-notifications-suppress', onSuppress);
     };
-  }, []);
+  }, [sessionReady]);
 
   const esRef = useRef(null);
   useEffect(() => {
@@ -425,58 +331,42 @@ const WorkerNavigation = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const isFindJob = location.pathname === '/find-a-job';
+  const isFindClient = location.pathname === '/find-a-client';
+  const isPostApplication = location.pathname === '/workerpostapplication';
 
   const handleLogout = async () => {
     try {
-      await axios.post(`${API_BASE}/api/login/logout`, {}, { withCredentials: true });
+      await axios.post('http://localhost:5000/api/login/logout', {}, { withCredentials: true });
       localStorage.clear();
-      goTop();
       navigate('/', { replace: true });
       window.location.reload();
-    } catch {}
-  };
-
-  const clearPostDrafts = () => {
-    try {
-      localStorage.removeItem('workerInformationForm');
-      localStorage.removeItem('workerServiceRequestDetails');
-      localStorage.removeItem('workerServiceRate');
     } catch {}
   };
 
   const role = localStorage.getItem('role');
   const logoTo = role === 'worker' ? '/workerdashboard' : '/workerwelcome';
 
+  const clearWorkerApplicationDrafts = () => {
+    try {
+      localStorage.removeItem('workerInformationForm');
+      localStorage.removeItem('workerWorkInformation');
+      localStorage.removeItem('workerDocuments');
+      localStorage.removeItem('workerDocumentsData');
+      localStorage.removeItem('workerRate');
+      localStorage.removeItem('workerAgreements');
+    } catch {}
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const goSearch = () => {
     const q = searchQuery.trim();
     goTop();
-    navigate(`/find-a-job${q ? `?search=${encodeURIComponent(q)}` : ''}`);
+    navigate(`/find-a-client${q ? `?search=${encodeURIComponent(q)}` : ''}`);
   };
-  const onSearchKey = (e) => { if (e.key === 'Enter') goSearch(); };
+  const onSearchKeyDown = (e) => { if (e.key === 'Enter') goSearch(); };
 
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
-
-  const displayAvatar = avatarUrl ? avatarUrl : "/Clienticon.png";
-
-  useEffect(() => {
-    if (!navLoading) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', onPopState, true);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
-    window.addEventListener('keydown', blockKeys, true);
-    return () => {
-      window.removeEventListener('popstate', onPopState, true);
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', blockKeys, true);
-    };
-  }, [navLoading]);
 
   const navigateToNotifications = async () => {
     setShowBellDropdown(false);
@@ -486,12 +376,12 @@ const WorkerNavigation = () => {
 
   const markOneReadAndNavigate = async (id) => {
     setNotifItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setNotifCount((c) => Math.max(0, c - 1));
     try {
       const appU = buildAppU();
-      if (appU) {
-        await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
-      }
+      if (appU) await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
     } catch {}
+    setSuppression(true);
     window.dispatchEvent(new Event('worker-notifications-refresh'));
     setShowBellDropdown(false);
     goTop();
@@ -500,11 +390,11 @@ const WorkerNavigation = () => {
 
   const markOneReadOnly = async (id) => {
     setNotifItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setNotifCount((c) => Math.max(0, c - 1));
+    setSuppression(true);
     try {
       const appU = buildAppU();
-      if (appU) {
-        await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
-      }
+      if (appU) await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: { 'x-app-u': appU } });
     } catch {}
     window.dispatchEvent(new Event('worker-notifications-refresh'));
   };
@@ -515,90 +405,48 @@ const WorkerNavigation = () => {
     <>
       <div className="bg-white/95 backdrop-blur fixed top-0 left-0 right-0 z-50">
         <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
-          <div className="flex items-center space-x-6 -ml-2.5">
-            <Link
-              to={logoTo}
-              replace
-              onClick={() => {
-                clearPostDrafts();
-                goTop();
-              }}
-            >
-              <img
-                src="/jdklogo.png"
-                alt="Logo"
-                className="h-48 w-48 object-contain"
-                style={{ margin: '0 10px' }}
-                onError={() => setLogoBroken(true)}
-              />
+          <div className="flex items-center space-x-6">
+            <Link to={logoTo} replace onClick={() => { clearWorkerApplicationDrafts(); goTop(); }}>
+              <img src="/jdklogo.png" alt="Logo" className="h-48 w-48 object-contain" />
             </Link>
-
             <ul className="flex space-x-7 mt-4 text-md">
               <li className="relative cursor-pointer group">
-                <span
-                  onClick={() => handleDropdownToggle('ManageRequest')}
-                  className="text-black font-medium flex items-center relative"
-                >
-                  <span className="relative -ml-2.5">
-                    Manage Request
+                <span onClick={() => handleDropdownToggle('ManageRequest')} className="text-black font-medium flex items-center relative">
+                  <span className="relative">
+                    Manage Post
                     <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
                   </span>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1 inline-block">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
+                  <svg className="w-4 h-4 ml-1 inline-block" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                 </span>
                 {showManageRequestDropdown && (
                   <div ref={manageRequestDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                     <ul className="space-y-2 py-2">
-                      <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                        <Link to="/current-service-request" onClick={goTop}>Current Service Request</Link>
-                      </li>
-                      <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
-                        <Link to="/completed-service-request" onClick={goTop}>Completed Requests</Link>
-                      </li>
+                      <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/current-work-post" onClick={goTop}>Current Application</Link></li>
+                      <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/completed-works" onClick={goTop}>Completed Works</Link></li>
                     </ul>
                   </div>
                 )}
               </li>
 
               <li className="relative cursor-pointer group">
-                <Link
-                  to="/find-a-job"
-                  className="text-black font-medium relative inline-block"
-                  onClick={() => {
-                    handleSearchBarDropdown();
-                    goTop();
-                  }}
-                >
-                  <span className="relative">
-                    Find a Job
-                    <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
-                  </span>
+                <Link to="/find-a-client" className="text-black font-medium relative inline-block" onClick={goTop}>
+                  Find a Client
+                  <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
                 </Link>
               </li>
 
               <li className="relative cursor-pointer group hidden">
-                <span
-                  onClick={() => handleDropdownToggle('Reports')}
-                  className="text-black font-medium flex items-center relative"
-                >
+                <span onClick={() => handleDropdownToggle('Reports')} className="text-black font-medium flex items-center relative">
                   <span className="relative">
                     Reports
                     <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
                   </span>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1 inline-block">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
+                  <svg className="w-4 h-4 ml-1 inline-block" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                 </span>
                 {showReportsDropdown && (
                   <div ref={reportsDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                     <ul className="space-y-2 py-2">
-                      <li
-                        className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200"
-                        onClick={() => handleDropdownToggle('TransactionHistory')}
-                      >
-                        Transaction History
-                      </li>
+                      <li className="px-4 py-2 hover:bg-gray-300 transition">Transaction History</li>
                     </ul>
                   </div>
                 )}
@@ -609,27 +457,24 @@ const WorkerNavigation = () => {
                   to="/workerdashboard"
                   className="text-black font-medium relative inline-block"
                   replace
-                  onClick={() => {
-                    clearPostDrafts();
-                    goTop();
-                  }}
+                  onClick={() => { clearWorkerApplicationDrafts(); goTop(); }}
                 >
                   Dashboard
-                  <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
+                  <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
                 </Link>
               </li>
 
               <li className="relative cursor-pointer group">
-                <Link to="/worker-messages" className="text-black font-medium relative inline-block" onClick={goTop}>
+                <Link to="/workermessages" className="text-black font-medium relative inline-block" onClick={goTop}>
                   Messages
-                  <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
+                  <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
                 </Link>
               </li>
             </ul>
           </div>
 
           <div className="flex items-center space-x-3 mt-4 text-md">
-            {!isFindJob && (
+            {!isFindClient && (
               <>
                 <div
                   ref={searchBarRef}
@@ -639,19 +484,17 @@ const WorkerNavigation = () => {
                   <input
                     type="text"
                     className="border-none outline-none text-black w-56 sm:w-64 md:w-72 h-full"
-                    placeholder="Search jobs"
+                    placeholder="Search clients"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={onSearchKey}
+                    onKeyDown={onSearchKeyDown}
+                    aria-label="Search clients"
                   />
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    handleSearchBarDropdown();
-                    goSearch();
-                  }}
+                  onClick={goSearch}
                   className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
                 >
                   Search
@@ -667,7 +510,7 @@ const WorkerNavigation = () => {
                 await fetchNotifList();
               }}
             >
-              <img src="/Bellicon.png" alt="Notification Bell" className="h-8 w-8" />
+              <img src="/Bellicon.png" alt="Bell" className="h-8 w-8" />
               {hasUnreadInDropdown && !notifSuppressed && (
                 <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 ring-2 ring-white" />
               )}
@@ -729,43 +572,21 @@ const WorkerNavigation = () => {
             </div>
 
             <div className="cursor-pointer relative" onClick={handleProfileDropdown}>
-              {avatarReady ? (
-                <img
-                  src={displayAvatar}
-                  alt="User Profile"
-                  className="h-8 w-8 rounded-full object-cover"
-                  loading="eager"
-                  decoding="sync"
-                  onError={() => { setAvatarBroken(true); setAvatarUrl(''); }}
-                />
-              ) : (
-                <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
-              )}
+              <img src={avatarUrl || '/Clienticon.png'} alt="User Profile" className="h-8 w-8 rounded-full object-cover" />
               {showProfileDropdown && (
                 <div ref={profileDropdownRef} className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
                   <div className="px-4 py-3 border-b flex items-center space-x-3">
-                    {avatarReady ? (
-                      <img
-                        src={displayAvatar}
-                        alt="Profile Icon"
-                        className="h-8 w-8 rounded-full object-cover"
-                        loading="eager"
-                        decoding="sync"
-                        onError={() => { setAvatarBroken(true); setAvatarUrl(''); }}
-                      />
-                    ) : (
-                      <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
-                    )}
+                    <img src={avatarUrl || '/Clienticon.png'} alt="Profile Icon" className="h-8 w-8 rounded-full object-cover" />
                     <div>
                       <p className="font-semibold text-sm">{prefix} {fullName}</p>
                       <p className="text-xs text-gray-600">Worker</p>
                     </div>
                   </div>
                   <ul className="py-2">
-                    <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
+                    <li className="px-4 py-2 hover:bg-gray-300 transition cursor-pointer">
                       <Link to="/worker-account-settings" onClick={goTop}>Account Settings</Link>
                     </li>
-                    <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200">
+                    <li className="px-4 py-2 hover:bg-gray-300 transition cursor-pointer">
                       <span onClick={handleLogout}>Log out</span>
                     </li>
                   </ul>
@@ -789,7 +610,7 @@ const WorkerNavigation = () => {
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
         >
-          <div className="relative w-[320px] max-w={[90, 'vw']} rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
@@ -807,6 +628,7 @@ const WorkerNavigation = () => {
                   src="/jdklogo.png"
                   alt="JDK Homecare Logo"
                   className="w-20 h-20 object-contain"
+                  onError={() => setLogoBroken(true)}
                 />
               </div>
             </div>

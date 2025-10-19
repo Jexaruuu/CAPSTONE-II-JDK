@@ -97,7 +97,7 @@ exports.adminNoExists = async (adminNo) => {
 exports.listClients = async () => {
   const { data, error } = await supabaseAdmin
     .from(CLIENT_TABLE)
-    .select('auth_uid, first_name, last_name, sex, email_address, created_at, client_avatar, avatar_url, contact_number, social_facebook, social_instagram');
+    .select('auth_uid, first_name, last_name, sex, email_address, created_at, contact_number, social_facebook, social_instagram');
   if (error) {
     console.error('listClients error:', error);
     return [];
@@ -108,7 +108,7 @@ exports.listClients = async () => {
 exports.listWorkers = async () => {
   const { data, error } = await supabaseAdmin
     .from(WORKER_TABLE)
-    .select('auth_uid, first_name, last_name, sex, email_address, created_at, worker_avatar, avatar_url, contact_number, social_facebook, social_instagram');
+    .select('auth_uid, first_name, last_name, sex, email_address, created_at, contact_number, social_facebook, social_instagram');
   if (error) {
     console.error('listWorkers error:', error);
     return [];
