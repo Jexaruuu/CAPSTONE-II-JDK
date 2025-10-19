@@ -66,11 +66,36 @@ async function resendSignupEmail(email) {
 }
 
 async function ensureStorageBucket(name, isPublic = true) {
+  const parseBytes = (v) => {
+    if (!v) return null;
+    const s = String(v).trim().toLowerCase();
+    if (/^\d+$/.test(s)) return Number(s);
+    const m = /^(\d+(?:\.\d+)?)\s*(kb|mb|gb)$/.exec(s);
+    if (!m) return null;
+    const n = parseFloat(m[1]);
+    if (m[2] === "kb") return Math.round(n * 1024);
+    if (m[2] === "mb") return Math.round(n * 1024 * 1024);
+    if (m[2] === "gb") return Math.round(n * 1024 * 1024 * 1024);
+    return null;
+  };
+
+  const envLimit =
+    parseBytes(process.env.SUPABASE_BUCKET_FILE_LIMIT_BYTES) ||
+    parseBytes(process.env.MAX_BODY_SIZE) ||
+    25 * 1024 * 1024;
+
   try {
-    const { data: exists, error: getErr } = await supabaseAdmin.storage.getBucket(name);
-    if (exists && !getErr) return exists;
+    const { data: existing, error: getErr } = await supabaseAdmin.storage.getBucket(name);
+    if (existing && !getErr) {
+      await supabaseAdmin.storage.updateBucket(name, { public: isPublic, fileSizeLimit: envLimit });
+      return existing;
+    }
   } catch {}
-  const { data: created, error: createErr } = await supabaseAdmin.storage.createBucket(name, { public: isPublic, fileSizeLimit: 10 * 1024 * 1024 });
+
+  const { data: created, error: createErr } = await supabaseAdmin.storage.createBucket(name, {
+    public: isPublic,
+    fileSizeLimit: envLimit
+  });
   if (createErr) throw createErr;
   return created;
 }

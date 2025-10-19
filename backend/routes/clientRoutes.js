@@ -4,8 +4,6 @@ const clientController = require("../controllers/clientController");
 
 router.post("/register", clientController.registerClient);
 router.get("/me", clientController.me);
-router.post("/avatar", clientController.avatar);
-router.delete("/avatar", clientController.removeAvatar);
 router.post("/password", clientController.password);
 router.post("/profile", clientController.updateProfile);
 
