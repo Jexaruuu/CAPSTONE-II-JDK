@@ -9,7 +9,6 @@ export default function WorkerProfile() {
   const dpRef = useRef(null);
   const dobInputRef = useRef(null);
   const dpPortalRef = useRef(null);
-  const fileRef = useRef(null);
   const [editingPhone, setEditingPhone] = useState(false), [phoneTaken, setPhoneTaken] = useState(false), [phoneEditCommitted, setPhoneEditCommitted] = useState(true), [phoneErrorAfterDone, setPhoneErrorAfterDone] = useState(false);
   const [form, setForm] = useState({ first_name:"", last_name:"", email:"", phone:"", facebook:"", instagram:"", date_of_birth:"" });
   const [base, setBase] = useState(null), [createdAt, setCreatedAt] = useState(""), [saving, setSaving] = useState(false), [saved, setSaved] = useState(false);
@@ -21,7 +20,7 @@ export default function WorkerProfile() {
   const [dpOpen, setDpOpen] = useState(false), [dpView, setDpView] = useState(new Date());
   const [dpCoords, setDpCoords] = useState({ top: 0, left: 0, width: 300 });
   const [monthOpen, setMonthOpen] = useState(false), [yearOpen, setYearOpen] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState(null), [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(null);
 
   const toYMD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   const toMDY = (d) => `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`;
@@ -73,57 +72,11 @@ export default function WorkerProfile() {
   const age=useMemo(()=>computeAge(form.date_of_birth),[form.date_of_birth]);
   const validateDob=(iso)=>{ if(!iso)return ""; const d=new Date(iso); if(isNaN(d)) return "Invalid date"; if(d>new Date()) return "Date cannot be in the future"; const a=computeAge(iso); return a==null?"Invalid age":""; };
 
-  const monthsList=useMemo(()=>["January","February","March","April","May","June","July","August","September","October","November","December"],[]);
-  const yearsList=useMemo(()=>{ const ys=[]; for(let y=minDOBDate.getFullYear(); y<=maxDOBDate.getFullYear(); y++) ys.push(y); return ys; },[minDOBDate,maxDOBDate]);
-
   const setMonthYear=(m,y)=>{ const next=new Date(y,m,1), minStart=new Date(minDOBDate.getFullYear(),minDOBDate.getMonth(),1), maxStart=new Date(maxDOBDate.getFullYear(),maxDOBDate.getMonth(),1); setDpView(next<minStart?minStart:next>maxStart?maxStart:next); };
 
-  const onSaveProfile=async()=>{ if(!canSaveProfile) return; setSavingProfile(true); setSaving(true); setSaved(false);
-    try{
-      if(phoneDirty||dobDirty){
-        const payload={}; if(phoneDirty) payload.phone=form.phone||""; if(dobDirty) payload.date_of_birth=form.date_of_birth||null;
-        const {data}=await axios.post(`${API_BASE}/api/workers/profile${urlQS}`,payload,{withCredentials:true,headers:{ "Content-Type":"application/json",...headersWithU }});
-        setBase((b)=>({ ...(b||{}), first_name:data?.first_name||form.first_name, last_name:data?.last_name||form.last_name, email:data?.email_address||form.email, phone:phoneDirty?(data?.phone??payload.phone??""):(b?.phone??form.phone), facebook:b?.facebook??form.facebook, instagram:b?.instagram??form.instagram, date_of_birth:dobDirty?(data?.date_of_birth?String(data.date_of_birth).slice(0,10):payload.date_of_birth||""):(b?.date_of_birth??form.date_of_birth) }));
-        setPhoneTaken(false);
-        if(phoneDirty&&form.phone) await axios.post(`${API_BASE}/api/notifications`,{title:"Contact number updated",message:"Your contact number has been updated.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
-        if(phoneDirty&&!form.phone) await axios.post(`${API_BASE}/api/notifications`,{title:"Contact number removed",message:"Your contact number has been removed.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
-        if(dobDirty) await axios.post(`${API_BASE}/api/notifications`,{title:"Birthdate updated",message:"Your birthdate has been updated.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
-      }
-      setSaved(true); setSavedProfile(true); setTimeout(()=>{ setSaved(false); setSavedProfile(false); },1500);
-    }catch(e){ const msg=(e?.response?.data?.message||e?.message||"").toLowerCase(); if(msg.includes("contact number already in use")){ setPhoneTaken(true); setEditingPhone(true); setPhoneEditCommitted(false); } }
-    setSavingProfile(false); setSaving(false);
-  };
-
-  const onSaveSocial=async()=>{ if(!socialDirty) return;
-    setSocialTouched((t)=>({ facebook:t.facebook||facebookDirty, instagram:t.instagram||instagramDirty }));
-    const payload={};
-    if(facebookDirty){ const v=form.facebook?(/^https?:\/\//i.test(form.facebook)?form.facebook:`https://${form.facebook}`):null; payload.facebook=v; }
-    if(instagramDirty){ const v=form.instagram?(/^https?:\/\//i.test(form.instagram)?form.instagram:`https://${form.instagram}`):null; payload.instagram=v; }
-    const fbReady=!("facebook" in payload)||payload.facebook==null||facebookValid, igReady=!("instagram" in payload)||payload.instagram==null||instagramValid;
-    if(!fbReady||!igReady||savingSocial||facebookTaken||instagramTaken) return;
-    setSavingSocial(true); setSaving(true); setSaved(false);
-    try{
-      const {data}=await axios.post(`${API_BASE}/api/workers/profile${urlQS}`,payload,{withCredentials:true,headers:{ "Content-Type":"application/json",Accept:"application/json",...headersWithU }});
-      const prevFb=base?.facebook||"", prevIg=base?.instagram||"", nextFb=data?.facebook??payload.facebook??form.facebook, nextIg=data?.instagram??payload.instagram??form.instagram;
-      setBase((b)=>({ ...(b||{}), first_name:data?.first_name||form.first_name, last_name:data?.last_name||form.last_name, email: data?.email_address || form.email, phone:b?.phone??form.phone, facebook:nextFb, instagram:nextIg, date_of_birth:b?.date_of_birth??form.date_of_birth }));
-      setFacebookTaken(false); setInstagramTaken(false); setEditSocial({ facebook:false, instagram:false });
-      setSaved(true); setSavedSocial(true); setTimeout(()=>{ setSaved(false); setSavedSocial(false); },1500);
-      if(facebookDirty){ if(prevFb&&!nextFb) await axios.post(`${API_BASE}/api/notifications`,{title:"Facebook link removed",message:"Your Facebook link has been removed.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
-        else if(!prevFb&&nextFb) await axios.post(`${API_BASE}/api/notifications`,{title:"Facebook link added",message:"Your Facebook link has been added.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
-        else await axios.post(`${API_BASE}/api/notifications`,{title:"Facebook link updated",message:"Your Facebook link has been updated.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{}); }
-      if(instagramDirty){ if(prevIg&&!nextIg) await axios.post(`${API_BASE}/api/notifications`,{title:"Instagram link removed",message:"Your Instagram link has been removed.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
-        else if(!prevIg&&nextIg) await axios.post(`${API_BASE}/api/notifications`,{title:"Instagram link added",message:"Your Instagram link has been added.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
-        else await axios.post(`${API_BASE}/api/notifications`,{title:"Instagram link updated",message:"Your Instagram link has been updated.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{}); }
-    }catch(e){ const msg=(e?.response?.data?.message||e?.message||"").toLowerCase(); if(msg.includes("facebook")) setFacebookTaken(true); if(msg.includes("instagram")) setInstagramTaken(true);
-      setSocialTouched((t)=>({ facebook:t.facebook||!!payload.facebook, instagram:t.instagram||!!payload.instagram })); }
-    setSavingSocial(false); setSaving(false);
-  };
-
-  const openCalendar=()=>{ if(!editingDob) setEditingDob(true); setDpView(form.date_of_birth?new Date(form.date_of_birth):new Date(maxDOBDate)); setDobEditCommitted(false); if(dobInputRef.current){ const r=dobInputRef.current.getBoundingClientRect(); setDpCoords({ top:r.bottom+8, left:Math.max(8, r.left), width:300 }); } setDpOpen(true); setMonthOpen(false); setYearOpen(false); };
-
-  const onPickAvatar=()=>{ if(fileRef.current) fileRef.current.click(); };
-  const onFileChange=async(e)=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const fd=new FormData(); fd.append("file",f); setAvatarUploading(true); try{ const {data}=await axios.post(`${API_BASE}/api/workers/profile/avatar${urlQS}`,fd,{withCredentials:true,headers:{...headersWithU}}); setAvatarUrl(data?.profile_picture||null); }catch{} setAvatarUploading(false); e.target.value=""; };
-  const onRemoveAvatar=async()=>{ setAvatarUploading(true); try{ const {data}=await axios.delete(`${API_BASE}/api/workers/profile/avatar${urlQS}`,{withCredentials:true,headers:headersWithU}); setAvatarUrl(data?.profile_picture||null); }catch{} setAvatarUploading(false); };
+  const onPickAvatar=()=>{};
+  const onFileChange=()=>{};
+  const onRemoveAvatar=()=>{};
 
   const initials = useMemo(()=>{ const a=(form.first_name||"").trim().slice(0,1).toUpperCase(); const b=(form.last_name||"").trim().slice(0,1).toUpperCase(); return (a||b)?`${a}${b}`:""; },[form.first_name,form.last_name]);
 
@@ -201,14 +154,9 @@ export default function WorkerProfile() {
                   {avatarUrl?(<img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover"/>):(<div className="h-full w-full flex items-center justify-center text-xl font-semibold text-gray-600">{initials||"?"}</div>)}
                 </div>
                 <div className="flex items-center gap-2">
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFileChange}/>
-                  {!avatarUrl?
-                    <button type="button" onClick={onPickAvatar} disabled={avatarUploading} className={`rounded-xl px-3.5 py-2 text-sm font-medium ${avatarUploading?"bg-[#008cfc] text-white opacity-60":"bg-[#008cfc] text-white hover:bg-blue-700"}`}>{avatarUploading?"Uploading...":"+ Add photo"}</button>:
-                    <>
-                      <button type="button" onClick={onPickAvatar} disabled={avatarUploading} className={`rounded-xl px-3.5 py-2 text-sm font-medium border border-[#008cfc] text-[#008cfc] hover:bg-blue-50 ${avatarUploading?"opacity-60 cursor-not-allowed":""}`}>Change</button>
-                      <button type="button" onClick={onRemoveAvatar} disabled={avatarUploading} className={`rounded-xl px-3.5 py-2 text-sm font-medium border border-red-500 text-red-600 hover:bg-red-50 ${avatarUploading?"opacity-60 cursor-not-allowed":""}`}>Remove</button>
-                    </>
-                  }
+                  <button type="button" onClick={onPickAvatar} className="rounded-xl px-3.5 py-2 text-sm font-medium bg-[#008cfc] text-white">{"+ Add photo"}</button>
+                  <button type="button" onClick={onPickAvatar} className="rounded-xl px-3.5 py-2 text-sm font-medium border border-[#008cfc] text-[#008cfc] hover:bg-blue-50">Change</button>
+                  <button type="button" onClick={onRemoveAvatar} className="rounded-xl px-3.5 py-2 text-sm font-medium border border-red-500 text-red-600 hover:bg-red-50">Remove</button>
                 </div>
               </div>
             </div>
@@ -266,9 +214,9 @@ export default function WorkerProfile() {
                   </div>
                   <div className="mt-3 flex items-center gap-3">
                     {!form.date_of_birth?
-                      <button type="button" onClick={()=>{ setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">+ Add date of birth</button>:
+                      <button type="button" onClick={()=>{ setEditingDob(true); if(!editingDob) setEditingDob(true); setDpView(form.date_of_birth?new Date(form.date_of_birth):new Date(maxDOBDate)); setDobEditCommitted(false); if(dobInputRef.current){ const r=dobInputRef.current.getBoundingClientRect(); setDpCoords({ top:r.bottom+8, left:Math.max(8, r.left), width:300 }); } setDpOpen(true); setMonthOpen(false); setYearOpen(false); }} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">+ Add date of birth</button>:
                       <>
-                        <button type="button" onClick={()=>{ setEditingDob(true); openCalendar(); }} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                        <button type="button" onClick={()=>{ if(!editingDob) setEditingDob(true); setDpView(form.date_of_birth?new Date(form.date_of_birth):new Date(maxDOBDate)); setDobEditCommitted(false); if(dobInputRef.current){ const r=dobInputRef.current.getBoundingClientRect(); setDpCoords({ top:r.bottom+8, left:Math.max(8, r.left), width:300 }); } setDpOpen(true); setMonthOpen(false); setYearOpen(false); }} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
                         <button type="button" onClick={()=>{ setForm((f)=>({ ...f, date_of_birth:"" })); setDobError(""); setEditingDob(false); setDobEditCommitted(true); setDpOpen(false); }} className="inline-flex items-center justify-center rounded-xl border border-red-500 text-red-600 px-3.5 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
                       </>}
                   </div>
@@ -276,8 +224,8 @@ export default function WorkerProfile() {
 
                 {editingDob && (<>
                   <div ref={dobInputRef} className="mt-2 flex items-center rounded-xl border border-gray-200 focus-within:ring-2 focus-within:ring-blue-500 h-11">
-                    <input type="text" value={form.date_of_birth?toMDY(new Date(form.date_of_birth)):""} onFocus={openCalendar} readOnly placeholder="mm/dd/yyyy" className="w-full px-4 rounded-l-xl focus:outline-none bg-white" inputMode="none"/>
-                    <button type="button" onClick={openCalendar} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open calendar">
+                    <input type="text" value={form.date_of_birth?toMDY(new Date(form.date_of_birth)):""} onFocus={()=>{ if(!editingDob) setEditingDob(true); setDpView(form.date_of_birth?new Date(form.date_of_birth):new Date(maxDOBDate)); setDobEditCommitted(false); if(dobInputRef.current){ const r=dobInputRef.current.getBoundingClientRect(); setDpCoords({ top:r.bottom+8, left:Math.max(8, r.left), width:300 }); } setDpOpen(true); setMonthOpen(false); setYearOpen(false); }} readOnly placeholder="mm/dd/yyyy" className="w-full px-4 rounded-l-xl focus:outline-none bg-white" inputMode="none"/>
+                    <button type="button" onClick={()=>{ if(!editingDob) setEditingDob(true); setDpView(form.date_of_birth?new Date(form.date_of_birth):new Date(maxDOBDate)); setDobEditCommitted(false); if(dobInputRef.current){ const r=dobInputRef.current.getBoundingClientRect(); setDpCoords({ top:r.bottom+8, left:Math.max(8, r.left), width:300 }); } setDpOpen(true); setMonthOpen(false); setYearOpen(false); }} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open calendar">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" /><path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" /></svg>
                     </button>
                   </div>

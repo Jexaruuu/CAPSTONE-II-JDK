@@ -21,7 +21,7 @@ export default function ClientProfile() {
   const [dpOpen, setDpOpen] = useState(false), [dpView, setDpView] = useState(new Date());
   const [dpCoords, setDpCoords] = useState({ top: 0, left: 0, width: 300 });
   const [monthOpen, setMonthOpen] = useState(false), [yearOpen, setYearOpen] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState(null), [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(null);
 
   const toYMD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   const toMDY = (d) => `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`;
@@ -75,7 +75,7 @@ export default function ClientProfile() {
   const validateDob=(iso)=>{ if(!iso)return ""; const d=new Date(iso); if(isNaN(d)) return "Invalid date"; if(d>new Date()) return "Date cannot be in the future"; const a=computeAge(iso); return a==null?"Invalid age":""; };
 
   const monthsList=useMemo(()=>["January","February","March","April","May","June","July","August","September","October","November","December"],[]);
-  const yearsList=useMemo(()=>{ const ys=[]; for(let y=minDOBDate.getFullYear(); y<=maxDOBDate.getFullYear(); y++) ys.push(y); return ys; },[minDOBDate,maxDOBDate]);
+  const yearsList=useMemo(()=>{ const ys=[]; for(let y=minDOBDate.getFullYear();y<=maxDOBDate.getFullYear();y++) ys.push(y); return ys; },[minDOBDate,maxDOBDate]);
 
   const onSaveProfile=async()=>{ if(!canSaveProfile) return; setSavingProfile(true); setSaving(true); setSaved(false);
     try{
@@ -122,9 +122,9 @@ export default function ClientProfile() {
   const openCalendar=()=>{ if(!editingDob) setEditingDob(true); setDpView(form.date_of_birth?new Date(form.date_of_birth):new Date(maxDOBDate)); setDobEditCommitted(false); if(dobInputRef.current){ const r=dobInputRef.current.getBoundingClientRect(); setDpCoords({ top:r.bottom+8, left:Math.max(8, r.left), width:300 }); } setDpOpen(true); setMonthOpen(false); setYearOpen(false); };
   const setMonthYear=(m,y)=>{ const next=new Date(y,m,1), minStart=new Date(minDOBDate.getFullYear(),minDOBDate.getMonth(),1), maxStart=new Date(maxDOBDate.getFullYear(),maxDOBDate.getMonth(),1); setDpView(next<minStart?minStart:next>maxStart?maxStart:next); };
 
-  const onPickAvatar=()=>{ if(fileRef.current) fileRef.current.click(); };
-  const onFileChange=async(e)=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const fd=new FormData(); fd.append("file",f); setAvatarUploading(true); try{ const {data}=await axios.post(`${API_BASE}/api/clients/profile/avatar${urlQS}`,fd,{withCredentials:true,headers:{...headersWithU}}); setAvatarUrl(data?.profile_picture||null); }catch{} setAvatarUploading(false); e.target.value=""; };
-  const onRemoveAvatar=async()=>{ setAvatarUploading(true); try{ const {data}=await axios.delete(`${API_BASE}/api/clients/profile/avatar${urlQS}`,{withCredentials:true,headers:headersWithU}); setAvatarUrl(data?.profile_picture||null); }catch{} setAvatarUploading(false); };
+  const onPickAvatar=()=>{};
+  const onFileChange=()=>{};
+  const onRemoveAvatar=()=>{};
 
   const initials = useMemo(()=>{ const a=(form.first_name||"").trim().slice(0,1).toUpperCase(); const b=(form.last_name||"").trim().slice(0,1).toUpperCase(); return (a||b)?`${a}${b}`:""; },[form.first_name,form.last_name]);
 
@@ -168,7 +168,7 @@ export default function ClientProfile() {
   const ymd = toYMD(d);
   setForm((f) => ({ ...f, date_of_birth: ymd }));
   setDobError(validateDob(ymd));
-  setDpOpen(false);       // <-- call the setter
+  setDpOpen(false);
   setMonthOpen(false);
   setYearOpen(false);
 }} className={["py-2 rounded-lg transition text-sm w-9 h-9 mx-auto", dis?"text-gray-300 cursor-not-allowed":"hover:bg-blue-50 text-gray-700", sel&&!dis?"bg-blue-600 text-white hover:bg-blue-600":""].join(" ")}>{day}</button>); } } cells.push(<div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">{row}</div>);} return <div className="mt-1">{cells}</div>; })()}
@@ -205,12 +205,12 @@ export default function ClientProfile() {
                   {avatarUrl?(<img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover"/>):(<div className="h-full w-full flex items-center justify-center text-xl font-semibold text-gray-600">{initials||"?"}</div>)}
                 </div>
                 <div className="flex items-center gap-2">
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFileChange}/>
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden"/>
                   {!avatarUrl?
-                    <button type="button" onClick={onPickAvatar} disabled={avatarUploading} className={`rounded-xl px-3.5 py-2 text-sm font-medium ${avatarUploading?"bg-[#008cfc] text-white opacity-60":"bg-[#008cfc] text-white hover:bg-blue-700"}`}>{avatarUploading?"Uploading...":"+ Add photo"}</button>:
+                    <button type="button" onClick={onPickAvatar} disabled className="rounded-xl px-3.5 py-2 text-sm font-medium bg-[#008cfc] text-white opacity-60 cursor-not-allowed">+ Add photo</button>:
                     <>
-                      <button type="button" onClick={onPickAvatar} disabled={avatarUploading} className={`rounded-xl px-3.5 py-2 text-sm font-medium border border-[#008cfc] text-[#008cfc] hover:bg-blue-50 ${avatarUploading?"opacity-60 cursor-not-allowed":""}`}>Change</button>
-                      <button type="button" onClick={onRemoveAvatar} disabled={avatarUploading} className={`rounded-xl px-3.5 py-2 text-sm font-medium border border-red-500 text-red-600 hover:bg-red-50 ${avatarUploading?"opacity-60 cursor-not-allowed":""}`}>Remove</button>
+                      <button type="button" onClick={onPickAvatar} disabled className="rounded-xl px-3.5 py-2 text-sm font-medium border border-[#008cfc] text-[#008cfc] opacity-60 cursor-not-allowed">Change</button>
+                      <button type="button" onClick={onRemoveAvatar} disabled className="rounded-xl px-3.5 py-2 text-sm font-medium border border-red-500 text-red-600 opacity-60 cursor-not-allowed">Remove</button>
                     </>
                   }
                 </div>
@@ -236,7 +236,7 @@ export default function ClientProfile() {
                 <p className="mt-1 text-base text-gray-900">{age!=null?`${age}`:"—"}</p>
               </div>
 
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm min-h-[150px]">
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 min-h-[150px]">
                 <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">Contact Number</p>
                 {!editingPhone && (<div className="mt-2">{form.phone&&!phoneTaken?
                   <div className="inline-flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 border border-gray-100"><img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover"/><span className="text-gray-700 text-sm">+63</span><span className="text-base text-gray-900 tracking-wide">{form.phone}</span></div>:
@@ -319,7 +319,7 @@ export default function ClientProfile() {
                 {!base?.facebook||editSocial.facebook ? (base?.facebook?
                   <button type="button" onClick={()=>{ setEditSocial((s)=>({ ...s, facebook:false })); setForm((f)=>({ ...f, facebook:base.facebook })); setFacebookTaken(false); setSocialTouched((t)=>({ ...t, facebook:false })); }} className="inline-flex items-center justify-center rounded-xl border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>:null)
                   : <>
-                      <button type="button" onClick={()=>{ setEditSocial((s)=>({ ...s, facebook:true })); setSocialTouched((t)=>({ ...t, facebook:false })); }} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                      <button type="button" onClick={()=>{ setEditSocial((s)=>({ ...s, facebook,true: true })); setEditSocial((s)=>({ ...s, facebook:true })); setSocialTouched((t)=>({ ...t, facebook:false })); }} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
                       <button type="button" onClick={()=>{ setForm((f)=>({ ...f, facebook:"" })); setEditSocial((s)=>({ ...s, facebook:true })); setSocialTouched((t)=>({ ...t, facebook:true })); setFacebookTaken(false); }} className="inline-flex items-center justify-center rounded-xl border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
                     </>}
               </div>

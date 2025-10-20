@@ -100,7 +100,6 @@ app.use("/api/admin/workerapplications",adminworkerapplicationRoutes);
 app.use("/api/pendingservicerequests",pendingservicerequestsRoutes);
 app.use("/api/pendingworkerapplication",pendingworkerapplicationRoutes);
 
-ensureStorageBucket(process.env.SUPABASE_BUCKET_CLIENT_PROFILE||"client-profile-pics",true).catch(()=>{});
 ensureStorageBucket("user-notifications",true).catch(()=>{});
 
 app.listen(PORT,()=>{console.log(`Server running on port ${PORT}`)});
