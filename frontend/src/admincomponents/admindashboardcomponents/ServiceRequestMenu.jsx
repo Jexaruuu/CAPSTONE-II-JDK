@@ -57,6 +57,15 @@ function isExpired(val) {
   today.setHours(0, 0, 0, 0);
   return d < today;
 }
+function parseDateTime(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  return isNaN(d) ? null : d;
+}
+function fmtDateTime(val) {
+  const d = parseDateTime(val);
+  return d ? d.toLocaleString() : "";
+}
 
 export default function AdminServiceRequests() {
   const [rows, setRows] = useState([]);
@@ -147,6 +156,9 @@ export default function AdminServiceRequests() {
         const d = r.details || {};
         const rate = r.rate || {};
         const expired = isExpired(d.preferred_date);
+        const createdRaw =
+          r.created_at || r.createdAt || d.created_at || d.createdAt || r.created || d.created || null;
+        const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
         return {
           id: r.id,
           request_group_id: r.request_group_id,
@@ -170,6 +182,9 @@ export default function AdminServiceRequests() {
           details: d,
           rate,
           _expired: expired,
+          created_at_raw: createdRaw,
+          created_at_ts: createdTs,
+          created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
         };
       });
 
@@ -226,6 +241,10 @@ export default function AdminServiceRequests() {
 
   const sortedRows = useMemo(() => {
     if (!sort.key) return rows;
+    if (sort.key === "created_at_ts") {
+      const dir = sort.dir === "asc" ? 1 : -1;
+      return [...rows].sort((a, b) => (a.created_at_ts - b.created_at_ts) * dir);
+    }
     const dir = sort.dir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
       const av = String(a[sort.key] ?? "").toLowerCase();
@@ -283,7 +302,7 @@ export default function AdminServiceRequests() {
     { key: "expired", label: "Expired", count: expiredCount },
   ];
 
-  const COLSPAN = ENABLE_SELECTION ? 7 : 6;
+  const COLSPAN = ENABLE_SELECTION ? 8 : 7;
 
   return (
     <main className="p-6">
@@ -409,6 +428,15 @@ export default function AdminServiceRequests() {
                         <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 border border-gray-200">
                           Service
                         </th>
+                        <th
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none border border-gray-200"
+                          onClick={() => toggleSort("created_at_ts")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Created At
+                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                          </span>
+                        </th>
                         <th className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 border border-gray-200">
                           Status
                         </th>
@@ -458,6 +486,9 @@ export default function AdminServiceRequests() {
                                 {u.service_type || "-"}
                                 {u.service_task ? ` • ${u.service_task}` : ""}
                               </div>
+                            </td>
+                            <td className="px-4 py-4 border border-gray-200">
+                              {u.created_at_display || "-"}
                             </td>
                             <td className="px-4 py-4 border border-gray-200">
                               <StatusPill value={u.ui_status} />

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import { compressImageFileToDataURL } from '../../utils/imageCompression';
 import ClientNavigation from '../../clientcomponents/ClientNavigation';
 
 const STORAGE_KEY = 'clientInformationForm';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const ClientInformation = ({ title, setTitle, handleNext }) => {
   const [firstName, setFirstName]   = useState('');
@@ -21,6 +23,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   const dropdownRef = useRef(null);
   const [nameLocked, setNameLocked]   = useState(false);
   const [emailLocked, setEmailLocked] = useState(false);
+  const [contactLocked, setContactLocked] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const fileRef = useRef(null);
@@ -185,6 +188,44 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
     }
   }, [hydrated]);
 
+  const buildAppU = () => {
+    try {
+      const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
+      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
+      const e = a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+      return encodeURIComponent(JSON.stringify({ r: 'client', e, au }));
+    } catch { return ''; }
+  };
+  const appU = useMemo(() => buildAppU(), []);
+  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const load = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/clients/me`, { withCredentials: true, headers: headersWithU });
+        const fn = String(data?.first_name || '').trim();
+        const ln = String(data?.last_name || '').trim();
+        const em = String(data?.email_address || '').trim();
+        const ph = String(data?.phone || '').trim();
+        const cid = data?.id || null;
+        const au = data?.auth_uid || null;
+        if (fn) setFirstName(fn);
+        if (ln) setLastName(ln);
+        if (fn && ln) setNameLocked(true);
+        if (em) { setEmail(em); setEmailLocked(true); }
+        if (ph) { setContactNumber(ph); setContactLocked(true); }
+        if (em) { localStorage.setItem('email_address', em); localStorage.setItem('client_email', em); localStorage.setItem('email', em); }
+        if (fn) localStorage.setItem('first_name', fn);
+        if (ln) localStorage.setItem('last_name', ln);
+        if (ph) localStorage.setItem('client_phone', ph);
+        if (cid) localStorage.setItem('client_id', String(cid));
+        if (au) localStorage.setItem('auth_uid', String(au));
+      } catch {}
+    };
+    load();
+  }, [hydrated, headersWithU]);
+
   useEffect(() => {
     if (!hydrated) return;
     const payload = {
@@ -324,7 +365,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number</label>
-                    <div className={`flex items-center border rounded-xl ${attempted && !isContactValid ? 'border-red-500' : 'border-gray-300'}`}>
+                    <div className={`flex items-center border rounded-xl ${attempted && !isContactValid ? 'border-red-500' : 'border-gray-300'} ${contactLocked ? 'bg-gray-100' : ''}`}>
                       <div className="w-8 h-5 mr-2 rounded-md">
                         <img
                           src="philippines.png"
@@ -337,11 +378,15 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                         type="text"
                         value={contactNumber}
                         onChange={(e) => {
+                          if (contactLocked) return;
                           const v = e.target.value.replace(/\D/g, '').slice(0, 10);
                           setContactNumber(v);
                         }}
                         placeholder="9XXXXXXXXX"
-                        className="w-full px-4 py-3 border-l border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-r-xl"
+                        readOnly={contactLocked}
+                        aria-readonly={contactLocked}
+                        title={contactLocked ? 'This number comes from your account' : undefined}
+                        className={`w-full px-4 py-3 border-l border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-r-xl ${contactLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                         required
                         aria-invalid={attempted && !isContactValid}
                       />

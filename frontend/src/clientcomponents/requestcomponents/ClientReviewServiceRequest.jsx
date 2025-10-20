@@ -1,5 +1,5 @@
-// ClientReviewServiceRequest.jsx
-import React, { useState, useEffect } from 'react';
+// frontend/src/pages/client/ClientReviewServiceRequest.jsx
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -12,9 +12,9 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [submitError, setSubmitError] = useState('');
-
   const [showSuccess, setShowSuccess] = useState(false);
   const [requestGroupId, setRequestGroupId] = useState(null);
+  const [clientIdState, setClientIdState] = useState(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -25,6 +25,34 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); 
     } catch {}
   };
+
+  const buildAppU = () => {
+    try {
+      const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
+      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
+      const e = a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+      return encodeURIComponent(JSON.stringify({ r: 'client', e, au }));
+    } catch { return ''; }
+  };
+  const appU = useMemo(() => buildAppU(), []);
+  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/clients/me`, { withCredentials: true, headers: headersWithU });
+        const cid = data?.id || null;
+        const au = data?.auth_uid || null;
+        if (cid) localStorage.setItem('client_id', String(cid));
+        if (au) localStorage.setItem('auth_uid', String(au));
+        setClientIdState(cid || null);
+      } catch {
+        const cidLS = localStorage.getItem('client_id');
+        setClientIdState(cidLS ? Number(cidLS) : null);
+      }
+    };
+    fetchMe();
+  }, [headersWithU]);
 
   useEffect(() => {
     const lock = isSubmitting || showSuccess;
@@ -82,6 +110,8 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     rate_value = savedRate.rateValue
   } = s;
 
+  const review_image = savedDetails.image || (Array.isArray(savedDetails.attachments) && savedDetails.attachments[0]) || '';
+
   const formatTime12h = (t) => {
     if (!t || typeof t !== 'string' || !t.includes(':')) return t || '-';
     const [hh, mm] = t.split(':');
@@ -117,9 +147,9 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     if (typeof v === 'boolean') return v;
     if (v === 1 || v === '1') return true;
     if (v === 0 || v === '0') return false;
-    const s = String(v ?? '').trim().toLowerCase();
-    if (['yes', 'y', 'true', 't'].includes(s)) return true;
-    if (['no', 'n', 'false', 'f'].includes(s)) return false;
+    const s2 = String(v ?? '').trim().toLowerCase();
+    if (['yes', 'y', 'true', 't'].includes(s2)) return true;
+    if (['no', 'n', 'false', 'f'].includes(s2)) return false;
     return false;
   };
 
@@ -142,6 +172,35 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
 
   const isEmbeddedInStepper = location.pathname.includes('/clientpostrequest');
 
+  const dataURLtoBlob = (dataurl) => {
+    try {
+      const arr = dataurl.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1] || 'image/jpeg';
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) u8arr[n] = bstr.charCodeAt(n);
+      return new Blob([u8arr], { type: mime });
+    } catch {
+      return null;
+    }
+  };
+
+  const cleanNumber = (v) => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(String(v).toString().replace(/[^\d.]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const requireFields = (obj, keys) => {
+    const missing = [];
+    keys.forEach(k => {
+      const val = obj[k];
+      if (val === null || val === undefined || (typeof val === 'string' && val.trim() === '')) missing.push(k);
+    });
+    return missing;
+  };
+
   const handleConfirm = async () => {
     try {
       setSubmitError('');
@@ -153,83 +212,231 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
 
       const payload = {
         info: {
-          firstName: infoDraft.firstName,
-          lastName: infoDraft.lastName,
-          contactNumber: infoDraft.contactNumber,
-          email: infoDraft.email,
-          street: infoDraft.street,
-          barangay: infoDraft.barangay,
-          additionalAddress: infoDraft.additionalAddress,
-          profilePicture: infoDraft.profilePicture,
-          profilePictureName: infoDraft.profilePictureName
+          firstName: infoDraft.firstName || '',
+          lastName: infoDraft.lastName || '',
+          contactNumber: infoDraft.contactNumber || '',
+          email: (infoDraft.email || '').trim(),
+          street: infoDraft.street || '',
+          barangay: infoDraft.barangay || '',
+          additionalAddress: infoDraft.additionalAddress || '',
+          profilePicture: infoDraft.profilePicture || '',
+          profilePictureName: infoDraft.profilePictureName || ''
         },
         details: {
-          serviceType: detailsDraft.serviceType,
-          serviceTask: detailsDraft.serviceTask,
-          preferredDate: detailsDraft.preferredDate,
-          preferredTime: detailsDraft.preferredTime,
-          isUrgent: detailsDraft.isUrgent,
-          toolsProvided: detailsDraft.toolsProvided,
-          serviceDescription: detailsDraft.serviceDescription,
-          image: detailsDraft.image,
-          imageName: detailsDraft.imageName
+          serviceType: detailsDraft.serviceType || '',
+          serviceTask: detailsDraft.serviceTask || '',
+          preferredDate: detailsDraft.preferredDate || '',
+          preferredTime: detailsDraft.preferredTime || '',
+          isUrgent: detailsDraft.isUrgent || '',
+          toolsProvided: detailsDraft.toolsProvided || '',
+          serviceDescription: detailsDraft.serviceDescription || '',
+          image: detailsDraft.image || '',
+          imageName: detailsDraft.imageName || '',
+          attachments: Array.isArray(detailsDraft.attachments) ? detailsDraft.attachments : (detailsDraft.image ? [detailsDraft.image] : []),
+          request_image_url: detailsDraft.request_image_url || detailsDraft.image || ''
         },
         rate: {
-          rateType: rateDraft.rateType,
-          rateFrom: rateDraft.rateFrom,
-          rateTo: rateDraft.rateTo,
-          rateValue: rateDraft.rateValue
+          rateType: rateDraft.rateType || '',
+          rateFrom: rateDraft.rateFrom || '',
+          rateTo: rateDraft.rateTo || '',
+          rateValue: rateDraft.rateValue || ''
         }
       };
 
       const clientId =
+        clientIdState ||
         infoDraft.client_id ||
         infoDraft.clientId ||
-        localStorage.getItem('client_id') ||
-        localStorage.getItem('auth_uid') ||
+        Number(localStorage.getItem('client_id')) ||
         null;
 
-      const addressCombined = payload.info?.street
+      const addressCombined = payload.info.street
         ? (payload.info.additionalAddress
             ? `${payload.info.street}, ${payload.info.additionalAddress}`
             : payload.info.street)
-        : payload.info?.additionalAddress || null;
+        : payload.info.additionalAddress || '';
 
-      const apiPayload = {
-        client_id: clientId,
-        first_name: payload.info.firstName,
-        last_name: payload.info.lastName,
-        email_address: payload.info.email,
-        barangay: payload.info.barangay,
+      const streetVal = (payload.info.street || '').trim() || 'N/A';
+      const addlVal = (payload.info.additionalAddress || '').trim() || 'N/A';
+      const emailVal = (payload.info.email || '').trim();
+      const contactVal = (payload.info.contactNumber || '').trim();
+      const barangayVal = (payload.info.barangay || '').trim() || 'N/A';
+
+      const svcType = (payload.details.serviceType || '').trim();
+      const svcTask = (payload.details.serviceTask || '').trim();
+      const descRaw = (payload.details.serviceDescription || '').trim();
+      const desc = descRaw || 'N/A';
+      const pDate = (payload.details.preferredDate || '').trim();
+      const pTime = (payload.details.preferredTime || '').trim();
+      const reqImg = review_image || '';
+
+      const normalized = {
+        client_id: clientId || '',
+        first_name: (payload.info.firstName || '').trim(),
+        last_name: (payload.info.lastName || '').trim(),
+        email_address: emailVal,
+        contact_number: contactVal,
+        barangay: barangayVal,
         address: addressCombined,
-        service_type: payload.details.serviceType,
-        service_task: payload.details.serviceTask,
-        description: payload.details.serviceDescription || 'No description provided',
-        preferred_date: payload.details.preferredDate,
-        preferred_time: payload.details.preferredTime,
+        street: streetVal,
+        additional_address: addlVal,
+        service_type: svcType,
+        category: svcType,
+        service_task: svcTask,
+        description: desc,
+        preferred_date: pDate,
+        preferred_time: pTime,
         is_urgent: toBoolStrict(payload.details.isUrgent),
         tools_provided: toBoolStrict(payload.details.toolsProvided),
-        rate_type: payload.rate.rateType,
-        rate_from: payload.rate.rateFrom,
-        rate_to: payload.rate.rateTo,
-        rate_value: payload.rate.rateValue,
-        attachments: payload.details.image ? [payload.details.image] : [],
+        rate_type: (payload.rate.rateType || '').trim(),
+        rate_from: null,
+        rate_to: null,
+        rate_value: null,
+        attachments: payload.details.attachments,
+        attachment: (payload.details.attachments && payload.details.attachments[0]) || payload.details.image || '',
+        attachment_name: payload.details.imageName || '',
+        request_image_url: reqImg,
         metadata: {
-          contact_number: payload.info.contactNumber,
-          profile_picture: payload.info.profilePicture,
-          profile_picture_name: payload.info.profilePictureName,
-          image_name: payload.details.imageName
+          profile_picture: payload.info.profilePicture || '',
+          profile_picture_name: payload.info.profilePictureName || '',
+          street: streetVal,
+          additional_address: addlVal,
+          barangay: barangayVal,
+          contact_number: contactVal,
+          first_name: (payload.info.firstName || '').trim(),
+          last_name: (payload.info.lastName || '').trim(),
+          email: emailVal,
+          auth_uid: localStorage.getItem('auth_uid') || '',
+          image_name: payload.details.imageName || '',
+          request_image_url: reqImg
+        },
+        details: {
+          service_type: svcType,
+          serviceTask: svcTask,
+          preferred_date: pDate,
+          preferred_time: pTime,
+          is_urgent: toBoolStrict(payload.details.isUrgent),
+          tools_provided: toBoolStrict(payload.details.toolsProvided),
+          service_description: desc,
+          request_image_url: reqImg
         }
       };
 
-      const res = await axios.post(
-        `${API_BASE}/api/clientservicerequests/submit`,
-        apiPayload,
-        { withCredentials: true }
-      );
+      if (normalized.rate_type === 'Hourly Rate') {
+        normalized.rate_from = cleanNumber(payload.rate.rateFrom);
+        normalized.rate_to = cleanNumber(payload.rate.rateTo);
+      } else if (normalized.rate_type === 'By the Job Rate') {
+        normalized.rate_value = cleanNumber(payload.rate.rateValue);
+      }
 
-      setRequestGroupId(res?.data?.request?.request_group_id || null);
-      setShowSuccess(true);
+      const missing = requireFields(normalized, [
+        'first_name',
+        'last_name',
+        'email_address',
+        'contact_number',
+        'street',
+        'barangay',
+        'additional_address',
+        'service_type',
+        'service_task',
+        'description',
+        'preferred_date',
+        'preferred_time',
+        'rate_type'
+      ]);
+      if (missing.length) {
+        setIsSubmitting(false);
+        setSubmitError(`Missing fields: ${missing.join(', ')}`);
+        return;
+      }
+
+      const jsonBody = {
+        client_id: normalized.client_id,
+        first_name: normalized.first_name,
+        last_name: normalized.last_name,
+        email_address: normalized.email_address,
+        contact_number: normalized.contact_number,
+        barangay: normalized.barangay,
+        address: normalized.address,
+        street: normalized.street,
+        additional_address: normalized.additional_address,
+        service_type: normalized.service_type,
+        category: normalized.category,
+        service_task: normalized.service_task,
+        description: normalized.description,
+        preferred_date: normalized.preferred_date,
+        preferred_time: normalized.preferred_time,
+        is_urgent: normalized.is_urgent,
+        tools_provided: normalized.tools_provided,
+        rate_type: normalized.rate_type,
+        rate_from: normalized.rate_from,
+        rate_to: normalized.rate_to,
+        rate_value: normalized.rate_value,
+        attachments: Array.isArray(normalized.attachments) && normalized.attachments.length ? normalized.attachments : (normalized.attachment ? [normalized.attachment] : []),
+        request_image_url: normalized.request_image_url,
+        metadata: normalized.metadata,
+        details: normalized.details
+      };
+
+      try {
+        const jsonRes = await axios.post(
+          `${API_BASE}/api/clientservicerequests/submit`,
+          jsonBody,
+          { withCredentials: true, headers: { 'Content-Type': 'application/json', ...headersWithU } }
+        );
+        setRequestGroupId(jsonRes?.data?.request?.request_group_id || null);
+        setShowSuccess(true);
+      } catch (jsonErr) {
+        const status = jsonErr?.response?.status;
+        if (status !== 400) throw jsonErr;
+
+        const form = new FormData();
+        form.append('client_id', normalized.client_id);
+        form.append('first_name', normalized.first_name);
+        form.append('last_name', normalized.last_name);
+        form.append('email_address', normalized.email_address);
+        form.append('contact_number', normalized.contact_number);
+        form.append('street', normalized.street);
+        form.append('barangay', normalized.barangay);
+        form.append('additional_address', normalized.additional_address);
+        form.append('address', normalized.address);
+        form.append('service_type', normalized.service_type);
+        form.append('category', normalized.category);
+        form.append('service_task', normalized.service_task);
+        form.append('description', normalized.description);
+        form.append('preferred_date', normalized.preferred_date);
+        form.append('preferred_time', normalized.preferred_time);
+        form.append('is_urgent', normalized.is_urgent ? '1' : '0');
+        form.append('tools_provided', normalized.tools_provided ? '1' : '0');
+        form.append('rate_type', normalized.rate_type || '');
+        form.append('rate_from', normalized.rate_from ?? '');
+        form.append('rate_to', normalized.rate_to ?? '');
+        form.append('rate_value', normalized.rate_value ?? '');
+        form.append('request_image_url', normalized.request_image_url || '');
+        form.append('metadata', JSON.stringify(normalized.metadata || {}));
+        form.append('details', JSON.stringify(normalized.details || {}));
+        if (normalized.attachment) {
+          const blob = dataURLtoBlob(normalized.attachment);
+          if (blob) {
+            form.append('attachment', blob, normalized.attachment_name || 'attachment.jpg');
+          } else {
+            form.append('attachments[]', normalized.attachment);
+          }
+        }
+        if (Array.isArray(normalized.attachments)) {
+          normalized.attachments.forEach((a) => {
+            if (typeof a === 'string' && a.startsWith('data:')) form.append('attachments[]', a);
+          });
+        }
+
+        const formRes = await axios.post(
+          `${API_BASE}/api/clientservicerequests/submit`,
+          form,
+          { withCredentials: true, headers: { ...headersWithU } }
+        );
+        setRequestGroupId(formRes?.data?.request?.request_group_id || null);
+        setShowSuccess(true);
+      }
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Submission failed';
       setSubmitError(msg);
@@ -271,7 +478,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       </div>
 
       <div className="mx-auto w-full max-w-[1520px] px-6">
-        {!isEmbeddedInStepper && (
+        {!location.pathname.includes('/clientpostrequest') && (
           <div className="mt-6 mb-6">
             <div className="text-sm text-gray-500">4 of 4 | Post a Service Request</div>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mt-2">Step 4: Review and Submit</h2>
@@ -343,6 +550,18 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                         <span className="text-[#0A66FF]">{service_description || '-'}</span>
                       </div>
                     </div>
+                    {review_image ? (
+                      <div className="md:col-span-2">
+                        <div className="flex items-start gap-3">
+                          <span className="min-w-36 text-sm font-semibold text-gray-700">Request Image</span>
+                          <div className="w-full">
+                            <div className="w-full h-64 rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50">
+                              <img src={review_image} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -435,39 +654,39 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       </div>
 
       {isSubmitting && (
-  <div
-    role="dialog"
-    aria-modal="true"
-    aria-label="Submitting service request"
-    tabIndex={-1}
-    autoFocus
-    onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-    className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
-  >
-    <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-      <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-        {!logoBroken ? (
-          <img
-            src="/jdklogo.png"
-            alt="JDK Homecare Logo"
-            className="w-16 h-16 object-contain animate-pulse"
-            onError={() => setLogoBroken(true)}
-          />
-        ) : (
-          <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
-            <span className="font-bold text-[#008cfc]">JDK</span>
-          </div>
-        )}
-      </div>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Submitting service request"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
+        >
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img
+                  src="/jdklogo.png"
+                  alt="JDK Homecare Logo"
+                  className="w-16 h-16 object-contain animate-pulse"
+                  onError={() => setLogoBroken(true)}
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
 
-      <div className="mt-6 text-center space-y-2">
-        <div className="text-lg font-semibold text-gray-900">Submitting Request</div>
-        <div className="text-sm text-gray-600">Please wait a moment</div>
-      </div>
-    </div>
-  </div>
-)}
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Submitting Request</div>
+              <div className="text-sm text-gray-600">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSuccess && !isSubmitting && (
         <div
@@ -480,7 +699,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
         >
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="relative w=[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBroken ? (
                 <img

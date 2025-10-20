@@ -21,7 +21,7 @@ const formatPrettyDate = (iso) => {
   h = h % 12;
   if (h === 0) h = 12;
   const mmins = String(mins).padStart(2, "0");
-  return `${mm}/${dd}/${yyyy} ${h}:${mmins} ${ampm}`;
+  return `${mm}/${dd}/${yyyy}, ${h}:${mmins} ${ampm}`;
 };
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;

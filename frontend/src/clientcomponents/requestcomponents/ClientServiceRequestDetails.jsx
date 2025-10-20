@@ -1,3 +1,4 @@
+// frontend/src/pages/client/ClientServiceRequestDetails.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { compressImageFileToDataURL } from '../../utils/imageCompression';
@@ -14,6 +15,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const [toolsProvided, setToolsProvided] = useState('');
   const [image, setImage] = useState(null);
   const [imageName, setImageName] = useState('');
+  const [attachments, setAttachments] = useState([]);
+  const [requestImageUrl, setRequestImageUrl] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -28,6 +31,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const m = String(now.getMonth() + 1).padStart(2, '0');
     const d = String(now.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
+  };
+  const fromYMDLocal = (s) => {
+    if (!s) return new Date();
+    const [y, m, d] = s.split('-').map((n) => parseInt(n, 10));
+    return new Date(y, m - 1, d);
   };
   const [todayStr, setTodayStr] = useState(getTodayLocalDateString());
   useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); }, []);
@@ -45,7 +53,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
   const toggleDropdown = () => setShowDropdown(!showDropdown);
 
-  // unified outside-click handling for all popovers
   const stRef = useRef(null);
   const taskRef = useRef(null);
   const toolsRef = useRef(null);
@@ -59,6 +66,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const [urgentOpen, setUrgentOpen] = useState(false);
   const [pdOpen, setPdOpen] = useState(false);
   const [ptOpen, setPtOpen] = useState(false);
+  const [pdMonthOpen, setPdMonthOpen] = useState(false);
+  const [pdYearOpen, setPdYearOpen] = useState(false);
 
   const handleClickOutside = (event) => {
     const t = event.target;
@@ -67,7 +76,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     if (taskRef.current && !taskRef.current.contains(t)) setTaskOpen(false);
     if (toolsRef.current && !toolsRef.current.contains(t)) setToolsOpen(false);
     if (urgentRef.current && !urgentRef.current.contains(t)) setUrgentOpen(false);
-    if (pdRef.current && !pdRef.current.contains(t)) setPdOpen(false);
+    if (pdRef.current && !pdRef.current.contains(t)) { setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }
     if (ptRef.current && !ptRef.current.contains(t)) setPtOpen(false);
   };
   useEffect(() => {
@@ -96,9 +105,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         setPreferredTime(data.preferredTime || '');
         setIsUrgent(data.isUrgent || '');
         setToolsProvided(data.toolsProvided || '');
-        setServiceDescription(data.serviceDescription || '');
-        setImage(data.image || null);
+        const img = data.image || (Array.isArray(data.attachments) && data.attachments[0]) || null;
+        setImage(img || null);
         setImageName(data.imageName || '');
+        setAttachments(img ? [img] : []);
+        setRequestImageUrl(data.request_image_url || img || '');
       } catch {}
     }
     setHydrated(true);
@@ -106,9 +117,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
   useEffect(() => {
     if (!hydrated) return;
-    const payload = { serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, serviceDescription, image, imageName };
+    const payload = { serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, serviceDescription, image, imageName, attachments: image ? [image] : [], request_image_url: requestImageUrl };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [hydrated, serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, serviceDescription, image, imageName]);
+  }, [hydrated, serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, serviceDescription, image, imageName, requestImageUrl]);
 
   const handleServiceTypeChange = (val) => { setServiceType(val); setServiceTask(''); };
   const handleUrgentChange = (value) => { setIsUrgent(value); };
@@ -120,9 +131,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     try {
       const compressed = await compressImageFileToDataURL(file, 1600, 1600, 0.85, 2 * 1024 * 1024);
       setImage(compressed);
+      setAttachments([compressed]);
+      setRequestImageUrl(compressed);
     } catch {
       const reader = new FileReader();
-      reader.onload = () => setImage(reader.result);
+      reader.onload = () => { setImage(reader.result); setAttachments([reader.result]); setRequestImageUrl(reader.result); };
       reader.readAsDataURL(file);
     }
   };
@@ -188,20 +201,33 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     return `${m}/${da}/${y}`;
   };
 
-  const monthName = (d) => d.toLocaleString('default', { month: 'long' }) + ' ' + d.getFullYear();
   const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
   const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
   const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, 1);
   const isSameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
   const [pdView, setPdView] = useState(new Date());
-  const inRangePD = (date) => date >= new Date(todayStr);
-  const canPrevPD = () => addMonths(startOfMonth(pdView), -1) >= startOfMonth(new Date(todayStr));
+  const monthsList = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const yearsList = (() => {
+    const ys = [];
+    const start = fromYMDLocal(todayStr).getFullYear();
+    for (let y = start; y <= start + 5; y++) ys.push(y);
+    return ys;
+  })();
+  const inRangePD = (date) => date >= fromYMDLocal(todayStr);
+  const canPrevPD = () => addMonths(startOfMonth(pdView), -1) >= startOfMonth(fromYMDLocal(todayStr));
   const canNextPD = () => true;
   const openPD = () => {
-    if (preferredDate) setPdView(new Date(preferredDate));
-    else setPdView(new Date(todayStr));
+    if (preferredDate) setPdView(fromYMDLocal(preferredDate));
+    else setPdView(fromYMDLocal(todayStr));
     setPdOpen((s) => !s);
+    setPdMonthOpen(false);
+    setPdYearOpen(false);
+  };
+  const setPDMonthYear = (m, y) => {
+    const next = new Date(y, m, 1);
+    const minStart = startOfMonth(fromYMDLocal(todayStr));
+    setPdView(next < minStart ? minStart : next);
   };
 
   const openPT = () => setPtOpen((s) => !s);
@@ -222,7 +248,18 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     return slots;
   })();
 
-  // 🔧 Enhanced to support a Clear footer without removing anything you already have
+  const getNowHHMM = () => {
+    const n = new Date();
+    const hh = String(n.getHours()).padStart(2, '0');
+    const mm = String(n.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+  useEffect(() => {
+    if (preferredDate === todayStr && preferredTime && preferredTime < getNowHHMM()) {
+      setPreferredTime('');
+    }
+  }, [preferredDate, todayStr]);
+
   const PopList = ({ items, value, onSelect, disabledLabel, emptyLabel='No options', fullWidth=false, title='Select', clearable=false, onClear, clearText='Clear' }) => (
     <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
       <div className="text-sm font-semibold text-gray-800 px-2 pb-2">{title}</div>
@@ -249,16 +286,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
         )}
       </div>
-
       {clearable && (
         <div className="flex items-center justify-end mt-3 px-2">
-          <button
-            type="button"
-            onClick={onClear}
-            className="text-xs text-gray-500 hover:text-gray-700"
-          >
-            {clearText}
-          </button>
+          <button type="button" onClick={onClear} className="text-xs text-gray-500 hover:text-gray-700">{clearText}</button>
         </div>
       )}
     </div>
@@ -294,7 +324,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                 <p className="text-sm text-gray-600 mb-6">Please fill in the service request details to proceed.</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Service Type */}
                   <div className="relative" ref={stRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Service Type</label>
                     <select
@@ -342,7 +371,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     )}
                   </div>
 
-                  {/* Service Task */}
                   <div className="relative" ref={taskRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Service Task</label>
                     <select
@@ -394,13 +422,12 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     )}
                   </div>
 
-                  {/* Preferred Date (custom calendar) */}
                   <div className="relative" ref={pdRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Date</label>
                     <div className={`flex items-center rounded-xl border ${attempted && (!preferredDate || isPastDate) ? 'border-red-500' : 'border-gray-300'}`}>
                       <input
                         type="text"
-                        value={preferredDate ? toMDY(new Date(preferredDate)) : ''}
+                        value={preferredDate ? toMDY(fromYMDLocal(preferredDate)) : ''}
                         onFocus={openPD}
                         readOnly
                         placeholder="mm/dd/yyyy"
@@ -420,12 +447,12 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         </svg>
                       </button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Earliest: <span className="font-medium">{toMDY(new Date(todayStr))}</span></p>
+                    <p className="text-xs text-gray-500 mt-1">Earliest: <span className="font-medium">{toMDY(fromYMDLocal(todayStr))}</span></p>
                     {attempted && !preferredDate && <p className="text-xs text-red-600 mt-1">Please choose a date.</p>}
                     {attempted && isPastDate && <p className="text-xs text-red-600 mt-1">Date cannot be in the past.</p>}
 
                     {pdOpen && (
-                      <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-3">
+                      <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
                         <div className="flex items-center justify-between px-2 pb-2">
                           <button
                             type="button"
@@ -433,7 +460,52 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                             className={`p-2 rounded-lg hover:bg-gray-100 ${canPrevPD() ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
                             aria-label="Previous month"
                           >‹</button>
-                          <div className="text-sm font-semibold text-gray-800">{monthName(pdView)}</div>
+                          <div className="relative flex items-center gap-2">
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => { setPdMonthOpen((v)=>!v); setPdYearOpen(false); }}
+                                className="min-w-[120px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
+                              >
+                                {monthsList[pdView.getMonth()]}
+                                <span className="ml-2">▾</span>
+                              </button>
+                              {pdMonthOpen ? (
+                                <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                  {monthsList.map((m,i)=>(
+                                    <button
+                                      key={m}
+                                      type="button"
+                                      onClick={()=>{ setPDMonthYear(i,pdView.getFullYear()); setPdMonthOpen(false); }}
+                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${i===pdView.getMonth()?"bg-blue-100":""}`}
+                                    >{m}</button>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => { setPdYearOpen((v)=>!v); setPdMonthOpen(false); }}
+                                className="min-w-[90px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
+                              >
+                                {pdView.getFullYear()}
+                                <span className="ml-2">▾</span>
+                              </button>
+                              {pdYearOpen ? (
+                                <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                  {yearsList.map((y)=>(
+                                    <button
+                                      key={y}
+                                      type="button"
+                                      onClick={()=>{ setPDMonthYear(pdView.getMonth(),y); setPdYearOpen(false); }}
+                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${y===pdView.getFullYear()?"bg-blue-100":""}`}
+                                    >{y}</button>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
                           <button
                             type="button"
                             onClick={() => canNextPD() && setPdView(addMonths(pdView, 1))}
@@ -452,7 +524,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                           const offset = first.getDay();
                           const total = offset + last.getDate();
                           const rows = Math.ceil(total / 7);
-                          const selected = preferredDate ? new Date(preferredDate) : null;
+                          const selected = preferredDate ? fromYMDLocal(preferredDate) : null;
                           const cells = [];
                           for (let r = 0; r < rows; r++) {
                             const row = [];
@@ -470,9 +542,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                                     key={`d-${dayNum}`}
                                     type="button"
                                     disabled={disabled}
-                                    onClick={() => { handlePreferredDateChange(toYMD(d)); setPdOpen(false); }}
+                                    onClick={() => { handlePreferredDateChange(toYMD(d)); setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }}
                                     className={[
-                                      'py-2 rounded-lg transition text-sm',
+                                      'py-2 rounded-lg transition text-sm w-9 h-9 mx-auto',
                                       disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700',
                                       isSelected && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
                                     ].join(' ')}
@@ -488,14 +560,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         })()}
 
                         <div className="flex items-center justify-between mt-3 px-2">
-                          <button type="button" onClick={() => { setPreferredDate(''); setPdOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
-                          <button type="button" onClick={() => { setPdView(new Date(todayStr)); }} className="text-xs text-blue-600 hover:text-blue-700">Jump to today</button>
+                          <button type="button" onClick={() => { setPreferredDate(''); setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+                          <button type="button" onClick={() => { setPdView(fromYMDLocal(todayStr)); }} className="text-xs text-blue-600 hover:text-blue-700">Jump to today</button>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Preferred Time (custom popover) */}
                   <div className="relative" ref={ptRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Time</label>
                     <div className={`flex items-center rounded-xl border ${attempted && !preferredTime ? 'border-red-500' : 'border-gray-300'}`}>
@@ -523,31 +594,59 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     {attempted && !preferredTime && <p className="text-xs text-red-600 mt-1">Please choose a time.</p>}
 
                     {ptOpen && (
-                      <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-3">
+                      <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
                         <div className="text-sm font-semibold text-gray-800 px-2 pb-2">Select Time</div>
                         <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto px-2">
-                          {timeSlots.map((t) => (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => { setPreferredTime(t); setPtOpen(false); }}
-                              className={`py-2 rounded-lg text-sm hover:bg-blue-50 ${
-                                preferredTime === t ? 'bg-blue-600 text-white hover:bg-blue-600' : 'text-gray-700'
-                              }`}
-                            >
-                              {to12h(t)}
-                            </button>
-                          ))}
+                          {timeSlots.map((t) => {
+                            const nowHHMM = getNowHHMM();
+                            const isToday = preferredDate === todayStr;
+                            const disabled = isToday && t < nowHHMM;
+                            return (
+                              <button
+                                key={t}
+                                type="button"
+                                disabled={disabled}
+                                onClick={() => {
+                                  if (disabled) return;
+                                  setPreferredTime(t);
+                                  setPtOpen(false);
+                                }}
+                                className={`py-2 rounded-lg text-sm ${disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700'} ${preferredTime === t && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''}`}
+                              >
+                                {to12h(t)}
+                              </button>
+                            );
+                          })}
                         </div>
                         <div className="flex items-center justify-between mt-3 px-2">
                           <button type="button" onClick={() => { setPreferredTime(''); setPtOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
-                          <button type="button" onClick={() => { const now=new Date(); const hh=String(now.getHours()).padStart(2,'0'); const mm=String(Math.floor(now.getMinutes()/30)*30).padStart(2,'0'); setPreferredTime(`${hh}:${mm}`); setPtOpen(false); }} className="text-xs text-blue-600 hover:text-blue-700">Now (rounded)</button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const n = new Date();
+                              const mins = n.getMinutes();
+                              let up = mins % 30 === 0 ? mins : mins + (30 - (mins % 30));
+                              let h = n.getHours();
+                              if (up === 60) { h = h + 1; up = 0; }
+                              const cand = `${String(h).padStart(2,'0')}:${String(up).padStart(2,'0')}`;
+                              if (preferredDate === todayStr) {
+                                const next = timeSlots.find(tt => tt >= cand);
+                                if (next) setPreferredTime(next);
+                                else setPreferredTime('');
+                              } else {
+                                setPreferredTime(cand);
+                              }
+                              setPtOpen(false);
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-700"
+                          >
+                            Now (rounded)
+                          </button>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Tools Provided? */}
                   <div className="relative" ref={toolsRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Tools Provided?</label>
                     <select
@@ -597,7 +696,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     )}
                   </div>
 
-                  {/* Urgent? */}
                   <div className="relative" ref={urgentRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Is The Request Urgent?</label>
                     <select
@@ -647,7 +745,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     )}
                   </div>
 
-                  {/* Description */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Service Description</label>
                     <textarea
@@ -679,7 +776,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     {image && (
                       <button
                         type="button"
-                        onClick={() => { setImage(null); setImageName(''); }}
+                        onClick={() => { setImage(null); setImageName(''); setAttachments([]); setRequestImageUrl(''); }}
                         className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
                       >
                         Remove
@@ -702,6 +799,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       </div>
                     )}
                   </div>
+
+                  {requestImageUrl && <input type="hidden" name="request_image_url" value={requestImageUrl} readOnly />}
                 </div>
               </div>
 

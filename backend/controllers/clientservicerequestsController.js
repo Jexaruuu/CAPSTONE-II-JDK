@@ -1,4 +1,3 @@
-// controllers/clientservicerequestsController.js
 const {
   uploadDataUrlToBucket,
   insertClientInformation,
@@ -47,37 +46,60 @@ function toBoolStrict(v) {
 }
 const yesNo = (b) => (b ? 'Yes' : 'No');
 
+function pick(obj, keys, alt = null) {
+  for (const k of keys) {
+    const v = k.split('.').reduce((a, p) => (a && a[p] !== undefined ? a[p] : undefined), obj);
+    if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+  }
+  return alt;
+}
+function normalizeAttachments(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map(x => {
+      if (typeof x === 'string') return x;
+      if (x && typeof x === 'object') return x.dataUrl || x.dataURL || x.base64 || x.url || null;
+      return null;
+    })
+    .filter(Boolean);
+}
+
 exports.submitFullRequest = async (req, res) => {
   try {
-    const {
-      client_id,
-      first_name,
-      last_name,
-      email_address,
-      barangay,
-      address,
-      contact_number,
-      street,
-      additional_address,
-      auth_uid,
-      category,
-      service_type,
-      service_task,
-      description,
-      preferred_date,
-      preferred_time,
-      is_urgent,
-      tools_provided,
-      rate_type,
-      rate_from,
-      rate_to,
-      rate_value,
-      attachments = [],
-      metadata = {},
-    } = req.body || {};
+    const src = req.body || {};
+    const info = src.info || src.information || {};
+    const details = src.details || src.detail || {};
+    const rate = src.rate || src.pricing || {};
+    const metadata = src.metadata || {};
+
+    const client_id = pick(src, ['client_id', 'clientId', 'info.client_id', 'info.clientId']);
+    const first_name = pick(src, ['first_name', 'firstName', 'info.first_name', 'info.firstName', 'metadata.first_name', 'metadata.firstName']);
+    const last_name = pick(src, ['last_name', 'lastName', 'info.last_name', 'info.lastName', 'metadata.last_name', 'metadata.lastName']);
+    const email_address = pick(src, ['email_address', 'email', 'info.email_address', 'info.email', 'metadata.email']);
+    const barangay = pick(src, ['barangay', 'info.barangay', 'metadata.barangay'], '');
+    const address = pick(src, ['address', 'info.address', 'metadata.address']);
+    const contact_number = pick(src, ['contact_number', 'phone', 'mobile', 'info.contact_number', 'info.phone', 'info.mobile', 'metadata.contact_number', 'metadata.phone']);
+    const street = pick(src, ['street', 'info.street', 'metadata.street']);
+    const additional_address = pick(src, ['additional_address', 'additionalAddress', 'landmark', 'info.additional_address', 'info.additionalAddress', 'metadata.additional_address', 'metadata.additionalAddress']);
+    const auth_uid = pick(src, ['auth_uid', 'authUid', 'info.auth_uid', 'metadata.auth_uid']);
+
+    const category = pick(src, ['category', 'details.category']);
+    const service_type = pick(src, ['service_type', 'serviceType', 'details.service_type', 'details.serviceType']) || category;
+    const service_task = pick(src, ['service_task', 'serviceTask', 'task', 'details.service_task', 'details.serviceTask']);
+    const description = pick(src, ['description', 'service_description', 'details.description', 'details.service_description']);
+    const preferred_date = pick(src, ['preferred_date', 'preferredDate', 'details.preferred_date', 'details.preferredDate']);
+    const preferred_time = pick(src, ['preferred_time', 'preferredTime', 'details.preferred_time', 'details.preferredTime']);
+    const is_urgent = pick(src, ['is_urgent', 'isUrgent', 'urgent', 'details.is_urgent', 'details.isUrgent', 'metadata.is_urgent', 'metadata.isUrgent']);
+    const tools_provided = pick(src, ['tools_provided', 'toolsProvided', 'tools', 'details.tools_provided', 'details.toolsProvided', 'metadata.tools_provided', 'metadata.toolsProvided']);
+
+    const rate_type_raw = pick(src, ['rate_type', 'rateType', 'rate.rate_type', 'rate.rateType']);
+    const rate_from = pick(src, ['rate_from', 'rateFrom', 'rate.rate_from', 'rate.rateFrom']);
+    const rate_to = pick(src, ['rate_to', 'rateTo', 'rate.rate_to', 'rate.rateTo']);
+    const rate_value = pick(src, ['rate_value', 'rateValue', 'rate.rate_value', 'rate.rateValue']);
+
+    const attachments = normalizeAttachments(pick(src, ['attachments', 'details.attachments'], []));
 
     const serviceKind = service_type || category;
-
     let effectiveClientId = client_id || null;
     let effectiveAuthUid = null;
     let canonicalEmail = String(email_address || '').trim() || null;
@@ -108,7 +130,7 @@ exports.submitFullRequest = async (req, res) => {
     const request_group_id = newGroupId();
 
     let uploaded = [];
-    if (attachments && Array.isArray(attachments) && attachments.length) {
+    if (attachments && attachments.length) {
       try {
         const max = Math.min(attachments.length, 5);
         const promises = [];
@@ -165,7 +187,6 @@ exports.submitFullRequest = async (req, res) => {
     }
 
     const firstUpload = uploaded[0] || null;
-
     const urgentRaw = is_urgent ?? metadata.is_urgent ?? metadata.urgency ?? metadata.priority ?? '';
     const toolsRaw = tools_provided ?? metadata.tools_provided ?? metadata.tools ?? '';
 
@@ -182,7 +203,7 @@ exports.submitFullRequest = async (req, res) => {
       tools_provided: yesNo(toBoolStrict(toolsRaw)),
       service_description: description,
       image_url: firstUpload?.url ?? metadata.image_url ?? null,
-      image_name: firstUpload?.name ?? metadata.image_name ?? null,
+      image_name: firstUpload?.name ?? metadata.image_name ?? null
     };
 
     const missingDetails = [];
@@ -195,12 +216,18 @@ exports.submitFullRequest = async (req, res) => {
       return res.status(400).json({ message: friendlyError(e) });
     }
 
+    let inferredRateType = rate_type_raw || null;
+    if (!inferredRateType) {
+      if (rate_value) inferredRateType = 'fixed';
+      else if (rate_from || rate_to) inferredRateType = 'range';
+    }
+
     const rateRow = {
       request_group_id,
       client_id: effectiveClientId,
       auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
       email_address: infoRow.email_address,
-      rate_type: rate_type || null,
+      rate_type: inferredRateType || null,
       rate_from: rate_from || null,
       rate_to: rate_to || null,
       rate_value: rate_value || null,
@@ -236,7 +263,7 @@ exports.submitFullRequest = async (req, res) => {
       tools_provided: detailsRow.tools_provided,
       service_description: detailsRow.service_description,
       image_url: detailsRow.image_url,
-      image_name: detailsRow.image_name,
+      image_name: detailsRow.image_name
     };
 
     const pendingRate = {

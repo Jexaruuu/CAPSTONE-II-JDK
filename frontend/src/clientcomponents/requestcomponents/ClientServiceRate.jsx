@@ -204,7 +204,7 @@ const handleReviewClick = () => {
                 )}
                 <p className="text-sm text-gray-600 mt-1">This is the average rate for similar home services.</p>
                 <p className="text-md text-gray-600 mt-5">
-                  Our workers offer affordable rates for services like plumbing, carpentry, electrical work, car washing, and laundry. Prices may vary depending on the job, so feel free to talk with your service provider to agree on what works best.
+                  For service requests like plumbing, carpentry, electrical work, car washing, or laundry, costs can change based on the task and time needed. 
                 </p>
               </div>
             )}

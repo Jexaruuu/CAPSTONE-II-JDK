@@ -45,6 +45,7 @@ export default function ClientProfile() {
         const dob=data?.date_of_birth?String(data.date_of_birth).slice(0,10):"", f={ first_name:data?.first_name||"", last_name:data?.last_name||"", email:data?.email_address||"", phone:data?.phone||"", facebook:data?.facebook||"", instagram:data?.instagram||"", date_of_birth:dob };
         setForm(f); setBase(f); setAvatarUrl(data?.profile_picture||null);
         localStorage.setItem("first_name",f.first_name); localStorage.setItem("last_name",f.last_name); if(data?.sex) localStorage.setItem("sex",data.sex);
+        localStorage.setItem("email_address",f.email||""); localStorage.setItem("client_email",f.email||""); localStorage.setItem("email",f.email||""); localStorage.setItem("client_phone",f.phone||"");
         if(data?.created_at){ const t=new Date(data.created_at); setCreatedAt(t.toLocaleString("en-PH",{timeZone:"Asia/Manila",dateStyle:"long",timeStyle:"short"})); }
         setDpView(dob?new Date(dob):new Date(maxDOBDate));
       }catch{ const t=new Date(); setCreatedAt(t.toLocaleString("en-PH",{timeZone:"Asia/Manila",dateStyle:"long",timeStyle:"short"})); setDpView(new Date(maxDOBDate)); } };
