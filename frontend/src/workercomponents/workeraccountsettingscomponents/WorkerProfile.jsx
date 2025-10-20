@@ -23,6 +23,7 @@ export default function WorkerProfile() {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+  const [showSaving, setShowSaving] = useState(false);
 
   const toYMD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   const toMDY = (d) => `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`;
@@ -30,7 +31,7 @@ export default function WorkerProfile() {
 
   const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = useMemo(() => {
     const today=new Date(), max=new Date(today.getFullYear()-21,today.getMonth(),today.getDate()), min=new Date(today.getFullYear()-55,today.getMonth(),today.getDate());
-    return { minDOB:toYMD(min), maxDOB:toYMD(max), minDOBDate:min, maxDOBDate:max, minDOBLabel:toMDY(min), maxDOBLabel:toMDY(max) };
+    return { minDOB:toYMD(min), maxDOB:toYMD(max), minDOBDate:min, maxDOBDate: max, minDOBLabel:toMDY(min), maxDOBLabel:toMDY(max) };
   }, []);
 
   const appU = useMemo(() => { try{ const a=JSON.parse(localStorage.getItem("workerAuth")||"{}"); const au=a.auth_uid||a.authUid||a.uid||a.id||localStorage.getItem("auth_uid")||""; const e=a.email||localStorage.getItem("worker_email")||localStorage.getItem("email_address")||localStorage.getItem("email")||""; return encodeURIComponent(JSON.stringify({ r:"worker", e, au })); }catch{return"";} }, []);
@@ -49,7 +50,7 @@ export default function WorkerProfile() {
   }, [appU]);
 
   useEffect(()=>{ document.body.style.overflow=confirmOpen?"hidden":""; return()=>{ document.body.style.overflow=""; }; },[confirmOpen]);
-  useEffect(()=>{ const lock=showSuccess; const html=document.documentElement; const body=document.body; const prevHtml=html.style.overflow; const prevBody=body.style.overflow; if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; },[showSuccess]);
+  useEffect(()=>{ const lock=showSuccess||showSaving; const html=document.documentElement; const body=document.body; const prevHtml=html.style.overflow; const prevBody=body.style.overflow; if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; },[showSuccess,showSaving]);
 
   useEffect(()=>{ const out=(e)=>{ const panel=dpPortalRef.current; if(dpRef.current&&panel){ if(!dpRef.current.contains(e.target)&&!panel.contains(e.target)) setDpOpen(false); } else if(dpRef.current&&!dpRef.current.contains(e.target)) setDpOpen(false); }; document.addEventListener("mousedown",out); return()=>document.removeEventListener("mousedown",out); },[]);
 
@@ -77,7 +78,7 @@ export default function WorkerProfile() {
 
   const setMonthYear=(m,y)=>{ const next=new Date(y,m,1), minStart=new Date(minDOBDate.getFullYear(),minDOBDate.getMonth(),1), maxStart=new Date(maxDOBDate.getFullYear(),maxDOBDate.getMonth(),1); setDpView(next<minStart?minStart:next>maxStart?maxStart:next); };
 
-  const onSaveProfile=async()=>{ if(!canSaveProfile) return; setSavingProfile(true); setSaving(true); setSaved(false);
+  const onSaveProfile=async()=>{ if(!canSaveProfile) return; setShowSaving(true); setSavingProfile(true); setSaving(true); setSaved(false);
     try{
       if(phoneDirty||dobDirty){
         const payload={}; if(phoneDirty) payload.phone=form.phone||""; if(dobDirty) payload.date_of_birth=form.date_of_birth||null;
@@ -90,7 +91,7 @@ export default function WorkerProfile() {
       }
       setSaved(true); setSavedProfile(true); setShowSuccess(true); setTimeout(()=>{ setSaved(false); setSavedProfile(false); },1500);
     }catch(e){ const msg=(e?.response?.data?.message||e?.message||"").toLowerCase(); if(msg.includes("contact number already in use")){ setPhoneTaken(true); setEditingPhone(true); setPhoneEditCommitted(false); } }
-    setSavingProfile(false); setSaving(false);
+    setSavingProfile(false); setSaving(false); setShowSaving(false);
   };
 
   const onSaveSocial=async()=>{ if(!socialDirty) return;
@@ -100,7 +101,7 @@ export default function WorkerProfile() {
     if(instagramDirty){ payload.instagram=form.instagram?(/^https?:\/\//i.test(form.instagram)?form.instagram:`https://${form.instagram}`):null; }
     const fbReady=!("facebook" in payload)||payload.facebook==null||facebookValid, igReady=!("instagram" in payload)||payload.instagram==null||instagramValid;
     if(!fbReady||!igReady||savingSocial||facebookTaken||instagramTaken) return;
-    setSavingSocial(true); setSaving(true); setSaved(false);
+    setShowSaving(true); setSavingSocial(true); setSaving(true); setSaved(false);
     try{
       const {data}=await axios.post(`${API_BASE}/api/workers/profile${urlQS}`,payload,{withCredentials:true,headers:{ "Content-Type":"application/json",Accept:"application/json",...headersWithU }});
       const prevFb=base?.facebook||"", prevIg=base?.instagram||"", nextFb=data?.facebook??payload.facebook??form.facebook, nextIg=data?.instagram??payload.instagram??form.instagram;
@@ -116,7 +117,7 @@ export default function WorkerProfile() {
         else await axios.post(`${API_BASE}/api/notifications`,{title:"Instagram link updated",message:"Your Instagram link has been updated.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{}); }
     }catch(e){ const msg=(e?.response?.data?.message||e?.message||"").toLowerCase(); if(msg.includes("facebook")) setFacebookTaken(true); if(msg.includes("instagram")) setInstagramTaken(true);
       setSocialTouched((t)=>({ facebook:t.facebook||!!payload.facebook, instagram:t.instagram||!!payload.instagram })); }
-    setSavingSocial(false); setSaving(false);
+    setSavingSocial(false); setSaving(false); setShowSaving(false);
   };
 
   const CalendarPopover = dpOpen ? createPortal(
@@ -182,7 +183,6 @@ export default function WorkerProfile() {
         <section className="w-full rounded-2xl border border-gray-100 bg-white p-6 md:p-7 mb-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold tracking-tight text-gray-900">Personal Information</h3>
-            {savedProfile ? <span className="text-sm text-blue-700">Saved</span> : null}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
@@ -273,7 +273,6 @@ export default function WorkerProfile() {
           </div>
 
           <div className="mt-6 flex items-center justify-end gap-3">
-            {savedProfile ? <span className="text-sm text-blue-700">Saved</span> : null}
             <button type="button" disabled={!canSaveProfile} onClick={()=>{ setConfirmScope("profile"); setConfirmOpen(true); }} className={`rounded-xl px-5 py-2.5 text-sm font-medium transition shadow-sm ${canSaveProfile?"bg-[#008cfc] text-white hover:bg-blue-700":"bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}>{savingProfile?"Saving...":"Confirm"}</button>
           </div>
         </section>
@@ -338,6 +337,31 @@ export default function WorkerProfile() {
               <button type="button" disabled={confirmScope==="profile"?(!canSaveProfile):(!canSaveSocial)} onClick={()=>{ if(confirmScope==="profile") onSaveProfile(); else if(confirmScope==="social") onSaveSocial(); setConfirmOpen(false); }} className={`rounded-xl px-5 py-2 text-sm font-medium transition ${confirmScope==="profile"?(canSaveProfile?"bg-[#008cfc] text-white hover:bg-blue-700":"bg-[#008cfc] text-white opacity-60 cursor-not-allowed"):(canSaveSocial?"bg-[#008cfc] text-white hover:bg-blue-700":"bg-[#008cfc] text-white opacity-60 cursor-not-allowed")}`}>
                 {confirmScope==="profile"?(savingProfile?"Saving...":"Save"):(savingSocial?"Saving...":"Save")}
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showSaving ? (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
+            <div className="relative mx-auto w-32 h-32">
+              <div className="absolute inset-0 animate-spin rounded-full" style={{borderWidth:"8px",borderStyle:"solid",borderColor:"#008cfc22",borderTopColor:"#008cfc",borderRadius:"9999px"}} />
+              <div className="absolute inset-4 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="Logo" className="w-14 h-14 object-contain" onError={()=>setLogoBroken(true)} />
+                ) : (
+                  <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center space-y-1">
+              <div className="text-base font-semibold text-gray-900">Saving Changes</div>
+              <div className="text-sm text-gray-500">Please wait a moment</div>
             </div>
           </div>
         </div>
