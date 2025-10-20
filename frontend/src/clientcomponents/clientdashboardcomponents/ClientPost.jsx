@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft} from 'lucide-react';
@@ -108,10 +108,71 @@ const ClientPost = () => {
   const navigate = useNavigate();
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+  const [showProfileGate, setShowProfileGate] = useState(false);
 
-  const handlePostClick = (e) => {
+  const buildAppU = () => {
+    try {
+      const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
+      const au =
+        a.auth_uid ||
+        a.authUid ||
+        a.uid ||
+        a.id ||
+        localStorage.getItem('auth_uid') ||
+        '';
+      const e =
+        a.email ||
+        localStorage.getItem('client_email') ||
+        localStorage.getItem('email_address') ||
+        localStorage.getItem('email') ||
+        '';
+      return encodeURIComponent(JSON.stringify({ r: 'client', e, au }));
+    } catch {
+      return '';
+    }
+  };
+  const appU = useMemo(() => buildAppU(), []);
+  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+
+  const allowedPHPrefixes = useMemo(
+    () =>
+      new Set([
+        '905','906','907','908','909','910','912','913','914','915','916','917','918','919','920','921','922','923','925','926','927','928','929','930','931','932','933','934','935','936','937','938','939','940','941','942','943','944','945','946','947','948','949','950','951','952','953','954','955','956','957','958','959','960','961','962','963','964','965','966','967','968','969','970','971','972','973','974','975','976','977','978','979','980','981','982','983','984','985','986','987','988','989','990','991','992','993','994','995','996','997','998','999'
+      ]),
+    []
+  );
+  const isTriviallyFake = (d) =>
+    /^(\d)\1{9}$/.test(d) ||
+    ('9' + d).includes('0123456789') ||
+    ('9' + d).includes('9876543210') ||
+    new Set(d.split('')).size < 4;
+  const isValidPHMobile = (d) =>
+    d && d.length === 10 && d[0] === '9' && !isTriviallyFake(d) && allowedPHPrefixes.has(d.slice(0, 3));
+
+  const checkProfileComplete = async () => {
+    try {
+      const { data } = await axios.get(`${API_BASE}/api/clients/me`, {
+        withCredentials: true,
+        headers: headersWithU,
+      });
+      const phone = String(data?.phone || '').trim();
+      const dob = String(data?.date_of_birth || '').trim();
+      const phoneOk = isValidPHMobile(phone);
+      const dobOk = !!dob;
+      return phoneOk && dobOk;
+    } catch {
+      return false;
+    }
+  };
+
+  const handlePostClick = async (e) => {
     e.preventDefault();
     if (navLoading) return;
+    const ok = await checkProfileComplete();
+    if (!ok) {
+      setShowProfileGate(true);
+      return;
+    }
     setNavLoading(true);
     setTimeout(() => {
       navigate('/clientpostrequest');
@@ -327,31 +388,6 @@ const ClientPost = () => {
     return parts.join(', ');
   };
 
-  const getUrgency = (item) => {
-    const rawPrimary = item?.details?.is_urgent;
-    if (typeof rawPrimary === 'string') {
-      const s = rawPrimary.trim().toLowerCase();
-      if (s === 'yes' || s === 'true') return 'Urgent';
-      if (s === 'no' || s === 'false') return 'Not urgent';
-    }
-    if (typeof rawPrimary === 'boolean') return rawPrimary ? 'Urgent' : 'Not urgent';
-    const raw =
-      item?.details?.urgency ??
-      item?.details?.urgency_level ??
-      item?.details?.priority ??
-      item?.priority ??
-      '';
-    if (!raw) return '';
-    const t = String(raw).trim().toLowerCase();
-    if (t.includes('urgent')) return 'Urgent';
-    if (t === 'high') return 'Urgent';
-    if (t === 'low' || t === 'normal' || t === 'standard') return 'Not urgent';
-    return t
-      .split(/[\s_\-]+/)
-      .map((w) => (w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ''))
-      .join(' ');
-  };
-
   const resolveUrgentFlag = (item) => {
     const primary = toBoolStrictClient(item?.details?.is_urgent);
     if (primary !== null) return primary;
@@ -427,7 +463,7 @@ const ClientPost = () => {
     isPointerDownRef.current = false;
     const wrap = trackRef.current;
     if (wrap && pointerIdRef.current != null) {
-      wrap.releasePointerCapture?.(pointerIdRef.current);
+      wrap.releasePointerCapture?.(e.pointerId);
       wrap.classList.remove('drag-active');
     }
     pointerIdRef.current = null;
@@ -454,6 +490,10 @@ const ClientPost = () => {
   const capFirst = clientFirstName ? clientFirstName.charAt(0).toUpperCase() + clientFirstName.slice(1) : 'Client';
 
   const SHOW_CAROUSEL = false;
+
+  const goTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
@@ -530,7 +570,8 @@ const ClientPost = () => {
 
                   const iconTone = 'border-gray-400 text-[#008cfc]';
 
-                  const urgentText = urgentFlag === true ? 'Yes' : urgentFlag === false ? 'No' : getUrgency(item) || '-';
+                  const urgentText =
+                    urgentFlag === true ? 'Yes' : urgentFlag === false ? 'No' : (item?.details?.urgency || item?.details?.urgency_level || item?.details?.priority || '-') ;
 
                   const urgentClass =
                     urgentFlag === true
@@ -675,6 +716,43 @@ const ClientPost = () => {
             <div className="mt-6 text-center">
               <div className="text-base font-semibold text-gray-900">Preparing Step</div>
               <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProfileGate && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowProfileGate(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483648]">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Please setup your personal information first to proceed</div>
+              <div className="text-sm text-gray-600">Contact Number and Date of Birth are required. Social links are optional.</div>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowProfileGate(false)}
+                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <Link
+                to="/account-settings"
+                onClick={goTop}
+                className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition text-center"
+              >
+                Go to Profile
+              </Link>
             </div>
           </div>
         </div>
