@@ -71,6 +71,10 @@ const WorkerNavigation = () => {
   const [fullName, setFullName] = useState('');
   const [prefix, setPrefix] = useState('');
   const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem('workerAvatarUrl') || '/Clienticon.png');
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  const [initials, setInitials] = useState(
+    `${(localStorage.getItem('first_name') || '').trim().slice(0,1)}${(localStorage.getItem('last_name') || '').trim().slice(0,1)}`.toUpperCase() || ''
+  );
 
   useEffect(() => {
     const fName = localStorage.getItem('first_name') || '';
@@ -80,12 +84,28 @@ const WorkerNavigation = () => {
     else if (sex === 'Female') setPrefix('Ms.');
     else setPrefix('');
     setFullName(`${fName} ${lName}`);
+    setInitials(`${(fName || '').trim().slice(0,1)}${(lName || '').trim().slice(0,1)}`.toUpperCase() || '');
     const onAvatar = (e) => {
       const url = e?.detail?.url || '';
+      setAvatarBroken(false);
       setAvatarUrl(url || '/Clienticon.png');
     };
+    const onStorage = (e) => {
+      if (e.key === 'first_name' || e.key === 'last_name') {
+        const f = localStorage.getItem('first_name') || '';
+        const l = localStorage.getItem('last_name') || '';
+        setFullName(`${f} ${l}`.trim());
+        setInitials(`${(f || '').trim().slice(0,1)}${(l || '').trim().slice(0,1)}`.toUpperCase() || '');
+      }
+      if (e.key === 'workerAvatarUrl') {
+        const u = localStorage.getItem('workerAvatarUrl') || '';
+        setAvatarBroken(false);
+        setAvatarUrl(u || '/Clienticon.png');
+      }
+    };
     window.addEventListener('worker-avatar-updated', onAvatar);
-    return () => window.removeEventListener('worker-avatar-updated', onAvatar);
+    window.addEventListener('storage', onStorage);
+    return () => { window.removeEventListener('worker-avatar-updated', onAvatar); window.removeEventListener('storage', onStorage); };
   }, []);
 
   const navigate = useNavigate();
@@ -125,6 +145,17 @@ const WorkerNavigation = () => {
 
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+
+  const ProfileCircle = ({ size = 8 }) => {
+    const cls = size === 8 ? 'h-8 w-8' : size === 10 ? 'h-10 w-10' : 'h-8 w-8';
+    return (
+      <div className={`${cls} rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-semibold text-xs uppercase`}>
+        {initials || '?'}
+      </div>
+    );
+  };
+
+  const shouldShowImage = avatarUrl && avatarUrl !== '/Clienticon.png' && !avatarBroken;
 
   return (
     <>
@@ -242,11 +273,29 @@ const WorkerNavigation = () => {
             </div>
 
             <div className="cursor-pointer relative" onClick={handleProfileDropdown}>
-              <img src={avatarUrl || '/Clienticon.png'} alt="User Profile" className="h-8 w-8 rounded-full object-cover" />
+              {shouldShowImage ? (
+                <img
+                  src={avatarUrl}
+                  alt="User Profile"
+                  className="h-8 w-8 rounded-full object-cover"
+                  onError={() => { setAvatarBroken(true); setAvatarUrl(''); }}
+                />
+              ) : (
+                <ProfileCircle />
+              )}
               {showProfileDropdown && (
                 <div ref={profileDropdownRef} className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
                   <div className="px-4 py-3 border-b flex items-center space-x-3">
-                    <img src={avatarUrl || '/Clienticon.png'} alt="Profile Icon" className="h-8 w-8 rounded-full object-cover" />
+                    {shouldShowImage ? (
+                      <img
+                        src={avatarUrl}
+                        alt="Profile Icon"
+                        className="h-8 w-8 rounded-full object-cover"
+                        onError={() => { setAvatarBroken(true); setAvatarUrl(''); }}
+                      />
+                    ) : (
+                      <ProfileCircle />
+                    )}
                     <div>
                       <p className="font-semibold text-sm">{prefix} {fullName}</p>
                       <p className="text-xs text-gray-600">Worker</p>

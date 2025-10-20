@@ -22,6 +22,8 @@ export default function ClientProfile() {
   const [dpCoords, setDpCoords] = useState({ top: 0, left: 0, width: 300 });
   const [monthOpen, setMonthOpen] = useState(false), [yearOpen, setYearOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
 
   const toYMD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   const toMDY = (d) => `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`;
@@ -46,9 +48,10 @@ export default function ClientProfile() {
         setDpView(dob?new Date(dob):new Date(maxDOBDate));
       }catch{ const t=new Date(); setCreatedAt(t.toLocaleString("en-PH",{timeZone:"Asia/Manila",dateStyle:"long",timeStyle:"short"})); setDpView(new Date(maxDOBDate)); } };
     init();
-  }, [headersWithU, maxDOBDate]);
+  }, [appU]);
 
   useEffect(()=>{ document.body.style.overflow=confirmOpen?"hidden":""; return()=>{ document.body.style.overflow=""; }; },[confirmOpen]);
+  useEffect(()=>{ const lock=showSuccess; const html=document.documentElement; const body=document.body; const prevHtml=html.style.overflow; const prevBody=body.style.overflow; if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; },[showSuccess]);
 
   useEffect(()=>{ const out=(e)=>{ const panel=dpPortalRef.current; if(dpRef.current&&panel){ if(!dpRef.current.contains(e.target)&&!panel.contains(e.target)) setDpOpen(false); } else if(dpRef.current&&!dpRef.current.contains(e.target)) setDpOpen(false); }; document.addEventListener("mousedown",out); return()=>document.removeEventListener("mousedown",out); },[]);
 
@@ -88,7 +91,7 @@ export default function ClientProfile() {
         if(phoneDirty&&!form.phone) await axios.post(`${API_BASE}/api/notifications`,{title:"Contact number removed",message:"Your contact number has been removed.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
         if(dobDirty) await axios.post(`${API_BASE}/api/notifications`,{title:"Birthdate updated",message:"Your birthdate has been updated.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
       }
-      setSaved(true); setSavedProfile(true); setTimeout(()=>{ setSaved(false); setSavedProfile(false); },1500);
+      setSaved(true); setSavedProfile(true); setShowSuccess(true); setTimeout(()=>{ setSaved(false); setSavedProfile(false); },1500);
     }catch(e){ const msg=(e?.response?.data?.message||e?.message||"").toLowerCase(); if(msg.includes("contact number already in use")){ setPhoneTaken(true); setEditingPhone(true); setPhoneEditCommitted(false); } }
     setSavingProfile(false); setSaving(false);
   };
@@ -107,7 +110,7 @@ export default function ClientProfile() {
       setBase((b)=>({ ...(b||{}), first_name:data?.first_name||form.first_name, last_name:data?.last_name||form.last_name, email:data?.email_address||form.email, phone:b?.phone??form.phone, facebook:nextFb, instagram:nextIg, date_of_birth:b?.date_of_birth??form.date_of_birth }));
       setFacebookTaken(false); setInstagramTaken(false);
       setEditSocial({ facebook:false, instagram:false });
-      setSaved(true); setSavedSocial(true); setTimeout(()=>{ setSaved(false); setSavedSocial(false); },1500);
+      setSaved(true); setSavedSocial(true); setShowSuccess(true); setTimeout(()=>{ setSaved(false); setSavedSocial(false); },1500);
       if(facebookDirty){ if(prevFb&&!nextFb) await axios.post(`${API_BASE}/api/notifications`,{title:"Facebook link removed",message:"Your Facebook link has been removed.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
         else if(!prevFb&&nextFb) await axios.post(`${API_BASE}/api/notifications`,{title:"Facebook link added",message:"Your Facebook link has been added.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
         else await axios.post(`${API_BASE}/api/notifications`,{title:"Facebook link updated",message:"Your Facebook link has been updated.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{}); }
@@ -305,7 +308,7 @@ export default function ClientProfile() {
                 {!base?.facebook||editSocial.facebook ? (base?.facebook?
                   <button type="button" onClick={()=>{ setEditSocial((s)=>({ ...s, facebook:false })); setForm((f)=>({ ...f, facebook:base.facebook })); setFacebookTaken(false); setSocialTouched((t)=>({ ...t, facebook:false })); }} className="inline-flex items-center justify-center rounded-xl border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Cancel</button>:null)
                   : <>
-                      <button type="button" onClick={()=>{ setEditSocial((s)=>({ ...s, facebook,true: true })); setEditSocial((s)=>({ ...s, facebook:true })); setSocialTouched((t)=>({ ...t, facebook:false })); }} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
+                      <button type="button" onClick={()=>{ setEditSocial((s)=>({ ...s, facebook:true })); setSocialTouched((t)=>({ ...t, facebook:false })); }} className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50">Change</button>
                       <button type="button" onClick={()=>{ setForm((f)=>({ ...f, facebook:"" })); setEditSocial((s)=>({ ...s, facebook:true })); setSocialTouched((t)=>({ ...t, facebook:true })); setFacebookTaken(false); }} className="inline-flex items-center justify-center rounded-xl border border-red-500 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50">Remove</button>
                     </>}
               </div>
@@ -349,6 +352,30 @@ export default function ClientProfile() {
               <button type="button" disabled={confirmScope==="profile"?(!canSaveProfile):(!canSaveSocial)} onClick={()=>{ if(confirmScope==="profile") onSaveProfile(); else if(confirmScope==="social") onSaveSocial(); setConfirmOpen(false); }} className={`rounded-xl px-5 py-2 text-sm font-medium transition ${confirmScope==="profile"?(canSaveProfile?"bg-[#008cfc] text-white hover:bg-blue-700":"bg-[#008cfc] text-white opacity-60 cursor-not-allowed"):(canSaveSocial?"bg-[#008cfc] text-white hover:bg-blue-700":"bg-[#008cfc] text-white opacity-60 cursor-not-allowed")}`}>
                 {confirmScope==="profile"?(savingProfile?"Saving...":"Save"):(savingSocial?"Saving...":"Save")}
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showSuccess ? (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowSuccess(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483648]">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={()=>setLogoBroken(true)} />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Saved Successfully!</div>
+              <div className="text-sm text-gray-600">Your changes have been saved.</div>
+            </div>
+            <div className="mt-6">
+              <button type="button" onClick={()=>setShowSuccess(false)} className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition">OK</button>
             </div>
           </div>
         </div>
