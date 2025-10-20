@@ -74,12 +74,6 @@ export default function WorkerProfile() {
 
   const setMonthYear=(m,y)=>{ const next=new Date(y,m,1), minStart=new Date(minDOBDate.getFullYear(),minDOBDate.getMonth(),1), maxStart=new Date(maxDOBDate.getFullYear(),maxDOBDate.getMonth(),1); setDpView(next<minStart?minStart:next>maxStart?maxStart:next); };
 
-  const onPickAvatar=()=>{};
-  const onFileChange=()=>{};
-  const onRemoveAvatar=()=>{};
-
-  const initials = useMemo(()=>{ const a=(form.first_name||"").trim().slice(0,1).toUpperCase(); const b=(form.last_name||"").trim().slice(0,1).toUpperCase(); return (a||b)?`${a}${b}`:""; },[form.first_name,form.last_name]);
-
   const CalendarPopover = dpOpen ? createPortal(
     <div ref={dpPortalRef} className="fixed z-[1000]" style={{ top: dpCoords.top, left: dpCoords.left, width: dpCoords.width }}>
       <div className="rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
@@ -147,17 +141,9 @@ export default function WorkerProfile() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-              <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600 flex justify-center">Personal Photo</p>
-              <div className="mt-3 flex flex-col items-center gap-3">
-                <div className="h-24 w-24 rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                  {avatarUrl?(<img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover"/>):(<div className="h-full w-full flex items-center justify-center text-xl font-semibold text-gray-600">{initials||"?"}</div>)}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={onPickAvatar} className="rounded-xl px-3.5 py-2 text-sm font-medium bg-[#008cfc] text-white">{"+ Add photo"}</button>
-                  <button type="button" onClick={onPickAvatar} className="rounded-xl px-3.5 py-2 text-sm font-medium border border-[#008cfc] text-[#008cfc] hover:bg-blue-50">Change</button>
-                  <button type="button" onClick={onRemoveAvatar} className="rounded-xl px-3.5 py-2 text-sm font-medium border border-red-500 text-red-600 hover:bg-red-50">Remove</button>
-                </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex items-center justify-center">
+              <div className="h-24 w-24 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                {avatarUrl ? (<img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover"/>) : (<div className="h-full w-full flex items-center justify-center text-xl font-semibold text-gray-600">{initials||"?"}</div>)}
               </div>
             </div>
 

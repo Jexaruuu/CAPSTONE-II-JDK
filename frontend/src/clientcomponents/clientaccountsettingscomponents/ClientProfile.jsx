@@ -174,7 +174,6 @@ export default function ClientProfile() {
 }} className={["py-2 rounded-lg transition text-sm w-9 h-9 mx-auto", dis?"text-gray-300 cursor-not-allowed":"hover:bg-blue-50 text-gray-700", sel&&!dis?"bg-blue-600 text-white hover:bg-blue-600":""].join(" ")}>{day}</button>); } } cells.push(<div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">{row}</div>);} return <div className="mt-1">{cells}</div>; })()}
         <div className="flex items-center justify-between mt-3 px-2">
           <button type="button" onClick={()=>{ setForm((f)=>({ ...f, date_of_birth:"" })); setDobError(""); setDpOpen(false); setMonthOpen(false); setYearOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
-          
           <button type="button" onClick={()=>{ setDpView(new Date(maxDOBDate)); }} className="text-xs text-blue-600 hover:text-blue-700">Jump to latest allowed</button>
         </div>
       </div>
@@ -198,22 +197,9 @@ export default function ClientProfile() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-              <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600 flex justify-center">Personal Photo</p>
-              <div className="mt-3 flex flex-col items-center gap-3">
-                <div className="h-24 w-24 rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                  {avatarUrl?(<img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover"/>):(<div className="h-full w-full flex items-center justify-center text-xl font-semibold text-gray-600">{initials||"?"}</div>)}
-                </div>
-                <div className="flex items-center gap-2">
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden"/>
-                  {!avatarUrl?
-                    <button type="button" onClick={onPickAvatar} disabled className="rounded-xl px-3.5 py-2 text-sm font-medium bg-[#008cfc] text-white opacity-60 cursor-not-allowed">+ Add photo</button>:
-                    <>
-                      <button type="button" onClick={onPickAvatar} disabled className="rounded-xl px-3.5 py-2 text-sm font-medium border border-[#008cfc] text-[#008cfc] opacity-60 cursor-not-allowed">Change</button>
-                      <button type="button" onClick={onRemoveAvatar} disabled className="rounded-xl px-3.5 py-2 text-sm font-medium border border-red-500 text-red-600 opacity-60 cursor-not-allowed">Remove</button>
-                    </>
-                  }
-                </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex items-center justify-center">
+              <div className="h-24 w-24 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                {avatarUrl ? (<img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover"/>) : (<div className="h-full w-full flex items-center justify-center text-xl font-semibold text-gray-600">{initials||"?"}</div>)}
               </div>
             </div>
 
