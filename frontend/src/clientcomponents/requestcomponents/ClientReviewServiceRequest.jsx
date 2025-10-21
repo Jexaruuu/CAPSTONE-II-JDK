@@ -20,8 +20,8 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   }, []);
 
   const jumpTop = () => {
-    try { 
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); 
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     } catch {}
   };
 
@@ -154,17 +154,45 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
 
   const yesNo = (b) => (b ? 'Yes' : 'No');
 
+  const normalizeLocalPH10 = (v) => {
+    let d = String(v || '').replace(/\D/g, '');
+    if (d.startsWith('63')) d = d.slice(2);
+    if (d.startsWith('0')) d = d.slice(1);
+    if (d.length > 10) d = d.slice(-10);
+    if (d.length === 10 && d[0] === '9') return d;
+    return '';
+  };
+
+  const contactLocal10 = normalizeLocalPH10(contact_number);
+
+  const contactDisplay = (
+    <div className="inline-flex items-center gap-2">
+      <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
+      <span className="text-gray-700 text-sm">+63</span>
+      <span className={`text-[15px] leading-6 ${contactLocal10 ? 'text-gray-900' : 'text-gray-400'}`}>
+        {contactLocal10 || '9XXXXXXXXX'}
+      </span>
+    </div>
+  );
+
   const LabelValue = ({ label, value, emptyAs = '-' }) => {
+    const isElement = React.isValidElement(value);
     const mapped = typeof value === 'boolean' ? yesNo(value) : value;
     const isEmpty =
-      mapped === null ||
-      mapped === undefined ||
-      (typeof mapped === 'string' && mapped.trim() === '');
-    const display = isEmpty ? emptyAs : mapped;
+      !isElement &&
+      (mapped === null ||
+        mapped === undefined ||
+        (typeof mapped === 'string' && mapped.trim() === ''));
+    const display = isElement ? value : isEmpty ? emptyAs : mapped;
+    const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
-      <div className="flex items-start gap-3">
-        <span className="min-w-36 text-sm font-semibold text-gray-700">{label}</span>
-        <span className="text-[#0A66FF]">{display}</span>
+      <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
+        <span className="text-sm font-semibold text-black">{labelText}</span>
+        {isElement ? (
+          <div className="text-[15px] leading-6 text-gray-900">{display}</div>
+        ) : (
+          <span className="text-[15px] leading-6 text-gray-900">{display}</span>
+        )}
       </div>
     );
   };
@@ -266,7 +294,6 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       const desc = descRaw || 'N/A';
       const pDate = (payload.details.preferredDate || '').trim();
       const pTime = (payload.details.preferredTime || '').trim();
-      const reqImg = payload.details.image || '';
 
       const normalized = {
         client_id: clientId || '',
@@ -403,42 +430,44 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
-        <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
+        <div className="mx-auto w-full max-w-[1420px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
-            <div className="text-lg font-semibold text-gray-900">Review Service Request</div>
+            <div className="h-9 w-9 grid place-items-center rounded-xl border border-blue-100 bg-white shadow-sm">
+              <img src="/jdklogo.png" alt="" className="h-6 w-6 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+            </div>
+            <div className="text-[17px] font-semibold text-gray-900">Review Service Request</div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:block text-xs text-gray-500">Step 4 of 4</div>
-            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:block text-xs text-gray-500 tracking-wide">Step 4 of 4</div>
+            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden ring-1 ring-white">
               <div className="h-full w-full bg-[#008cfc]" />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[1520px] px-6">
+      <div className="mx-auto w-full max-w-[1420px] px-6">
         {!location.pathname.includes('/clientpostrequest') && (
-          <div className="mt-6 mb-6">
-            <div className="text-sm text-gray-500">4 of 4 | Post a Service Request</div>
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mt-2">Step 4: Review and Submit</h2>
+          <div className="mt-8 mb-6">
+            <div className="text-xs text-gray-500 tracking-wide">4 of 4 | Post a Service Request</div>
+            <h2 className="text-[28px] md:text-[32px] font-semibold tracking-tight mt-2 text-gray-900">Step 4: Review and Submit</h2>
           </div>
         )}
 
         <div className="space-y-6 mt-5">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-              <h3 className="text-xl md:text-2xl font-semibold">Personal Information</h3>
-              <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Client</span>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
+              <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Personal Information</h3>
+              <span className="text-[11px] px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Client</span>
             </div>
             <div className="px-6 py-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
-                <div className="text-base md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
+                <div className="text-base md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                   <LabelValue label="First Name" value={first_name} />
                   <LabelValue label="Last Name" value={last_name} />
-                  <LabelValue label="Contact Number" value={contact_number} />
+                  <LabelValue label="Contact Number" value={contactDisplay} />
                   <LabelValue label="Email" value={email} />
                   <LabelValue
                     label="Address"
@@ -452,7 +481,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                 </div>
 
                 <div className="md:col-span-1 flex flex-col items-center">
-                  <div className="text-base font-semibold mb-3 text-center">Profile Picture</div>
+                  <div className="text-sm font-semibold text-black mb-3">Profile Picture</div>
                   {profile_picture ? (
                     <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
                       <img
@@ -473,13 +502,13 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-                  <h3 className="text-xl md:text-2xl font-semibold">Service Request Details</h3>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">Request</span>
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
+                  <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Service Request Details</h3>
+                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">Request</span>
                 </div>
                 <div className="px-6 py-6">
-                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
+                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                     <LabelValue label="Service Type" value={service_type} />
                     <LabelValue label="Service Task" value={service_task} />
                     <LabelValue label="Preferred Date" value={preferred_date_display} />
@@ -487,15 +516,12 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     <LabelValue label="Urgent" value={is_urgent} />
                     <LabelValue label="Tools Provided" value={tools_provided} />
                     <div className="md:col-span-2">
-                      <div className="flex items-start gap-3">
-                        <span className="min-w-36 text-sm font-semibold text-gray-700">Description</span>
-                        <span className="text-[#0A66FF]">{service_description || '-'}</span>
-                      </div>
+                      <LabelValue label="Description" value={service_description || '-'} />
                     </div>
                     {review_image ? (
                       <div className="md:col-span-2">
-                        <div className="flex items-start gap-3">
-                          <span className="min-w-36 text-sm font-semibold text-gray-700">Request Image</span>
+                        <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
+                          <span className="text-sm font-semibold text-black">Request Image:</span>
                           <div className="w-full">
                             <div className="w-full h-64 rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50">
                               <img src={review_image} alt="" className="w-full h-full object-cover" />
@@ -508,13 +534,13 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-                  <h3 className="text-xl md:text-2xl font-semibold">Service Rate</h3>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100">Pricing</span>
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
+                  <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Service Rate</h3>
+                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100">Pricing</span>
                 </div>
                 <div className="px-6 py-6">
-                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
+                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                     <LabelValue label="Rate Type" value={rate_type} />
                     {rate_type === 'Hourly Rate' ? (
                       <LabelValue
@@ -530,37 +556,40 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
             </div>
 
             <aside className="lg:col-span-1 flex flex-col">
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden h-[451.5px] flex flex-col">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 overflow-hidden flex flex-col">
                 <div className="bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] px-6 py-5 text-white">
                   <div className="text-base font-medium">Summary</div>
-                  <div className="text-sm text-white/90">Review everything before submitting</div>
+                  <div className="text-xs text-white/90">Review everything before submitting</div>
                 </div>
                 <div className="px-6 py-5 space-y-4 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Client</span>
+                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <span className="text-sm font-semibold text-white/80 sr-only">.</span>
+                  </div>
+                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <span className="text-sm font-semibold text-gray-700">Client:</span>
                     <span className="text-sm font-medium text-gray-900">{first_name || '-'} {last_name || ''}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Service</span>
-                    <span className="text-sm font-medium text-gray-900 truncate max-w-[55%] text-right">{service_type || '-'}</span>
+                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <span className="text-sm font-semibold text-gray-700">Service:</span>
+                    <span className="text-sm font-medium text-gray-900 truncate max-w-[60%] text-right sm:text-left">{service_type || '-'}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Task</span>
-                    <span className="text-sm font-medium text-gray-900 truncate max-w-[55%] text-right">{service_task || '-'}</span>
+                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <span className="text-sm font-semibold text-gray-700">Task:</span>
+                    <span className="text-sm font-medium text-gray-900 truncate max-w-[60%] text-right sm:text-left">{service_task || '-'}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Schedule</span>
+                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <span className="text-sm font-semibold text-gray-700">Schedule:</span>
                     <span className="text-sm font-medium text-gray-900">{preferred_date_display || '-'} • {preferred_time_display || '-'}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Urgent</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${toBoolStrict(is_urgent) ? 'bg-[#E6F0FF] text-[#0A66FF] border-[#C9DAFF]' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <span className="text-sm font-semibold text-gray-700">Urgent:</span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full border justify-self-start ${toBoolStrict(is_urgent) ? 'bg-[#E6F0FF] text-[#0A66FF] border-[#C9DAFF]' : 'bg-red-50 text-red-700 border-red-200'}`}>
                       {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
                     </span>
                   </div>
                   <div className="h-px bg-gray-100 my-2" />
-                  <div className="space-y-2">
-                    <div className="text-sm text-gray-600">Rate</div>
+                  <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">
+                    <span className="text-sm font-semibold text-gray-700">Rate:</span>
                     {rate_type === 'Hourly Rate' ? (
                       <div className="text-lg font-semibold text-gray-900">₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-normal text-gray-500">per hour</span></div>
                     ) : rate_type === 'By the Job Rate' ? (
@@ -573,18 +602,18 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                 {submitError ? (
                   <div className="px-6 py-3 text-sm text-red-700 bg-red-50 border-t border-red-100">{submitError}</div>
                 ) : null}
-                <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3 -mt-8">
+                <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
                   <button
                     type="button"
                     onClick={handleBackClick}
-                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                   >
                     Back : Step 3
                   </button>
                   <button
                     type="button"
                     onClick={handleConfirm}
-                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-blue-700 transition shadow-sm"
+                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                   >
                     Confirm Request
                   </button>
@@ -604,7 +633,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white"
         >
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
@@ -639,9 +668,9 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white"
         >
-          <div className="relative w=[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBroken ? (
                 <img
@@ -671,7 +700,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
               <button
                 type="button"
                 onClick={handleGoDashboard}
-                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
               >
                 Go back to Dashboard
               </button>

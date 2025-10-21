@@ -14,14 +14,14 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const [logoBroken, setLogoBroken] = useState(false);
 
   useEffect(() => {
-  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-}, []);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, []);
 
-const jumpTop = () => {
-  try { 
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); 
-  } catch {}
-};
+  const jumpTop = () => {
+    try { 
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); 
+    } catch {}
+  };
 
   const navigate = useNavigate();
 
@@ -99,24 +99,24 @@ const jumpTop = () => {
     };
   }, [isLoadingNext]);
 
-const handleReviewClick = () => {
-  setAttempted(true);
-  if (!isFormValid) return;
-  jumpTop();                  // <— add this
-  setIsLoadingNext(true);
-  setTimeout(() => {
-    if (typeof handleNext === 'function') {
-      handleNext();
-    } else {
-      navigate('/clientreviewservicerequest', {
-        state: { title, rate_type: rateType, rate_from: rateFrom, rate_to: rateTo, rate_value: rateValue },
-      });
-    }
-  }, 2000);
-};
+  const handleReviewClick = () => {
+    setAttempted(true);
+    if (!isFormValid) return;
+    jumpTop();
+    setIsLoadingNext(true);
+    setTimeout(() => {
+      if (typeof handleNext === 'function') {
+        handleNext();
+      } else {
+        navigate('/clientreviewservicerequest', {
+          state: { title, rate_type: rateType, rate_from: rateFrom, rate_to: rateTo, rate_value: rateValue },
+        });
+      }
+    }, 2000);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -125,7 +125,7 @@ const handleReviewClick = () => {
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-xs text-gray-500">Step 3 of 4</div>
-            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden">
+            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden ring-1 ring-white">
               <div className="h-full w-3/4 bg-[#008cfc]" />
             </div>
           </div>
@@ -133,44 +133,56 @@ const handleReviewClick = () => {
       </div>
 
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-5">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-            <h3 className="text-xl md:text-2xl font-semibold">Service Request Price Rate</h3>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Rate</span>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
+            <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Service Request Price Rate</h3>
+            <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Rate</span>
           </div>
 
           <div className="px-6 py-6">
             <p className="text-sm text-gray-600 mb-6">Please choose the service rate type and enter the price.</p>
 
-            <div className="flex space-x-6 mb-6">
-              <div
-                className={`w-1/2 cursor-pointer p-4 border rounded-xl text-center ${rateType === 'Hourly Rate' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <button
+                type="button"
                 onClick={() => handleRateTypeChange({ target: { value: 'Hourly Rate' } })}
+                className={`p-4 border rounded-xl text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 ${rateType === 'Hourly Rate' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'}`}
               >
-                <div className="flex justify-center mb-2">
-                  <img src="/Clock.png" alt="Rate Icon" className="w-6 h-6" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 grid place-items-center rounded-lg bg-blue-100">
+                    <img src="/Clock.png" alt="" className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">By the hour</p>
+                    <p className="text-xs text-gray-500">Pay per hour of work</p>
+                  </div>
                 </div>
-                <p className="text-sm font-semibold">By the hour</p>
-              </div>
+              </button>
 
-              <div
-                className={`w-1/2 cursor-pointer p-4 border rounded-xl text-center ${rateType === 'By the Job Rate' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+              <button
+                type="button"
                 onClick={() => handleRateTypeChange({ target: { value: 'By the Job Rate' } })}
+                className={`p-4 border rounded-xl text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 ${rateType === 'By the Job Rate' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'}`}
               >
-                <div className="flex justify-center mb-2">
-                  <img src="/Contract.png" alt="Rate Icon" className="w-6 h-6" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 grid place-items-center rounded-lg bg-blue-100">
+                    <img src="/Contract.png" alt="" className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">By the job</p>
+                    <p className="text-xs text-gray-500">Single fixed price</p>
+                  </div>
                 </div>
-                <p className="text-sm font-semibold">By the job</p>
-              </div>
+              </button>
             </div>
 
             {rateType === 'Hourly Rate' && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Enter the Rate (Per Hour)</label>
-                <div className="flex space-x-6">
-                  <div className="w-1/2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
-                    <div className="relative">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
+                    <div className={`relative rounded-xl border ${attempted && !isHourlyValid() && !rateFrom ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₱</span>
                       <input
                         type="number"
@@ -178,14 +190,14 @@ const handleReviewClick = () => {
                         pattern="\d*"
                         value={rateFrom}
                         onChange={handleRateFromChange}
-                        className={`w-full pl-8 px-4 py-3 border ${attempted && !isHourlyValid() && !rateFrom ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                        className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
                         required
                       />
                     </div>
                   </div>
-                  <div className="w-1/2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
-                    <div className="relative">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
+                    <div className={`relative rounded-xl border ${attempted && !isHourlyValid() && !rateTo ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₱</span>
                       <input
                         type="number"
@@ -193,7 +205,7 @@ const handleReviewClick = () => {
                         pattern="\d*"
                         value={rateTo}
                         onChange={handleRateToChange}
-                        className={`w-full pl-8 px-4 py-3 border ${attempted && !isHourlyValid() && !rateTo ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                        className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
                         required
                       />
                     </div>
@@ -202,17 +214,15 @@ const handleReviewClick = () => {
                 {attempted && rateFrom && rateTo && !isHourlyValid() && (
                   <p className="text-xs text-red-600 mt-1">Enter valid amounts, and make sure “To” is greater than or equal to “From”.</p>
                 )}
-                <p className="text-sm text-gray-600 mt-1">This is the average rate for similar home services.</p>
-                <p className="text-md text-gray-600 mt-5">
-                  For service requests like plumbing, carpentry, electrical work, car washing, or laundry, costs can change based on the task and time needed. 
-                </p>
+                <p className="text-sm text-gray-600 mt-2">This is the average rate for similar home services.</p>
+                <p className="text-sm text-gray-600 mt-4">For service requests like plumbing, carpentry, electrical work, car washing, or laundry, costs can change based on the task and time needed.</p>
               </div>
             )}
 
             {rateType === 'By the Job Rate' && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Enter the Rate</label>
-                <div className="relative">
+                <div className={`relative rounded-xl border ${attempted && !isJobValid() ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₱</span>
                   <input
                     type="number"
@@ -220,34 +230,32 @@ const handleReviewClick = () => {
                     pattern="\d*"
                     value={rateValue}
                     onChange={handleRateValueChange}
-                    className={`w-full pl-8 px-4 py-3 border ${attempted && !isJobValid() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
                     required
                   />
                 </div>
                 {attempted && !isJobValid() && <p className="text-xs text-red-600 mt-1">Enter a valid amount greater than 0.</p>}
                 <p className="text-sm text-gray-600 mt-2">Set a fixed price for the service request.</p>
-                <p className="text-md text-gray-600 mt-4">
-                  The fixed price is an amount that you and the service provider can discuss and agree on together. Feel free to negotiate the price based on the scope of the work.
-                </p>
+                <p className="text-sm text-gray-600 mt-4">The fixed price is an amount that you and the service provider can discuss and agree on together. Feel free to negotiate the price based on the scope of the work.</p>
               </div>
             )}
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between gap-3">
-       <button
-  type="button"
-  onClick={() => { jumpTop(); handleBack(); }}   // <— wrap
-  className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
->
-  Back : Step 2
-</button>
+          <button
+            type="button"
+            onClick={() => { jumpTop(); handleBack(); }}
+            className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+          >
+            Back : Step 2
+          </button>
 
           <button
             type="button"
             onClick={handleReviewClick}
             disabled={!isFormValid}
-            className={`sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
+            className={`sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-[#0077d6]' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'} focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40`}
             aria-disabled={!isFormValid}
           >
             Review Service Request

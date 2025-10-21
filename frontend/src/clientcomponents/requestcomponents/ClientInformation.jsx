@@ -304,7 +304,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -313,7 +313,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-xs text-gray-500">Step 1 of 4</div>
-            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden">
+            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden ring-1 ring-white">
               <div className="h-full w-1/4 bg-[#008cfc]" />
             </div>
           </div>
@@ -321,10 +321,10 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
       </div>
 
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-5">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-            <h3 className="text-xl md:text-2xl font-semibold">Personal Information</h3>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Client</span>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
+            <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Personal Information</h3>
+            <span className="text-[11px] px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Client</span>
           </div>
           <div className="px-6 py-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-12 gap-y-6">
@@ -342,7 +342,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                       readOnly={nameLocked}
                       aria-readonly={nameLocked}
                       title={nameLocked ? 'This name comes from your account' : undefined}
-                      className={`w-full px-4 py-3 border ${attempted && !firstName.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${nameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      className={`w-full px-4 py-3 border ${attempted && !firstName.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40 ${nameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                       required
                       aria-invalid={attempted && !firstName.trim()}
                     />
@@ -357,7 +357,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                       readOnly={nameLocked}
                       aria-readonly={nameLocked}
                       title={nameLocked ? 'This name comes from your account' : undefined}
-                      className={`w-full px-4 py-3 border ${attempted && !lastName.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${nameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      className={`w-full px-4 py-3 border ${attempted && !lastName.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40 ${nameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                       required
                       aria-invalid={attempted && !lastName.trim()}
                     />
@@ -365,15 +365,16 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number</label>
-                    <div className={`flex items-center border rounded-xl ${attempted && !isContactValid ? 'border-red-500' : 'border-gray-300'} ${contactLocked ? 'bg-gray-100' : ''}`}>
-                      <div className="w-8 h-5 mr-2 rounded-md">
+                    <div className={`flex items-center rounded-xl border ${attempted && !isContactValid ? 'border-red-500' : 'border-gray-300'} ${contactLocked ? 'bg-gray-100' : ''} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
+                      <div className="w-8 h-5 ml-3 mr-2 rounded-md">
                         <img
                           src="philippines.png"
                           alt="Philippine Flag"
-                          className="w-full h-full object-contain rounded-md ml-1"
+                          className="w-full h-full object-contain rounded-md"
                         />
                       </div>
-                      <span className="text-gray-700 text-sm mr-2">+63</span>
+                      <span className="text-gray-700 text-sm mr-3">+63</span>
+                      <span className="h-6 w-px bg-gray-200 mr-2" />
                       <input
                         type="text"
                         value={contactNumber}
@@ -386,7 +387,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                         readOnly={contactLocked}
                         aria-readonly={contactLocked}
                         title={contactLocked ? 'This number comes from your account' : undefined}
-                        className={`w-full px-4 py-3 border-l border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-r-xl ${contactLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                        className={`w-full px-4 py-3 bg-transparent outline-none rounded-r-xl ${contactLocked ? 'cursor-not-allowed' : ''}`}
                         required
                         aria-invalid={attempted && !isContactValid}
                       />
@@ -406,7 +407,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                       readOnly={emailLocked}
                       aria-readonly={emailLocked}
                       title={emailLocked ? 'This email comes from your account' : undefined}
-                      className={`w-full px-4 py-3 border ${attempted && !validateEmail(email) ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${emailLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      className={`w-full px-4 py-3 border ${attempted && !validateEmail(email) ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40 ${emailLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                       required
                       aria-invalid={attempted && !validateEmail(email)}
                     />
@@ -415,72 +416,70 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                     )}
                   </div>
 
-                 <div className="relative" ref={dropdownRef}>
-  <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
-  <div className={`flex items-center rounded-xl border ${attempted && !barangay.trim() ? 'border-red-500' : 'border-gray-300'}`}>
-    <button
-      type="button"
-      onClick={toggleDropdown}
-      className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-      aria-expanded={showDropdown}
-      aria-haspopup="listbox"
-    >
-      {barangay || 'Select Barangay'}
-    </button>
-    <button
-      type="button"
-      onClick={toggleDropdown}
-      className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-      aria-label="Open barangay list"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
-      </svg>
-    </button>
-  </div>
+                  <div className="relative" ref={dropdownRef}>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
+                    <div className={`flex items-center rounded-xl border ${attempted && !barangay.trim() ? 'border-red-500' : 'border-gray-300'}`}>
+                      <button
+                        type="button"
+                        onClick={toggleDropdown}
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                        aria-expanded={showDropdown}
+                        aria-haspopup="listbox"
+                      >
+                        {barangay || 'Select Barangay'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={toggleDropdown}
+                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                        aria-label="Open barangay list"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
 
-  {showDropdown && (
-    <div
-      className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-3"
-      role="listbox"
-    >
-      <div className="text-sm font-semibold text-gray-800 px-2 pb-2">Select Barangay</div>
-      <div className="grid grid-cols-3 gap-1 max-h-56 overflow-y-auto px-2">
-        {sortedBarangays.map((barangayName, index) => {
-          const isSelected = barangayName === barangay;
-          return (
-            <button
-              key={index}
-              type="button"
-              onClick={() => { setBarangay(barangayName); setShowDropdown(false); }}
-              className={[
-                'text-left px-3 py-2 rounded-lg text-sm',
-                isSelected ? 'bg-blue-600 text-white hover:bg-blue-600' : 'text-gray-700 hover:bg-blue-50'
-              ].join(' ')}
-              role="option"
-              aria-selected={isSelected}
-            >
-              {barangayName}
-            </button>
-          );
-        })}
-      </div>
-      <div className="flex items-center justify-end mt-3 px-2">
-        <button
-          type="button"
-          onClick={() => { setBarangay(''); setShowDropdown(false); }}
-          className="text-xs text-gray-500 hover:text-gray-700"
-        >
-          Clear
-        </button>
-      </div>
-    </div>
-  )}
+                    {showDropdown && (
+                      <div
+                        className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-3"
+                        role="listbox"
+                      >
+                        <div className="text-sm font-semibold text-gray-800 px-2 pb-2">Select Barangay</div>
+                        <div className="grid grid-cols-3 gap-1 max-h-56 overflow-y-auto px-2">
+                          {sortedBarangays.map((barangayName, index) => {
+                            const isSelected = barangayName === barangay;
+                            return (
+                              <button
+                                key={index}
+                                type="button"
+                                onClick={() => { setBarangay(barangayName); setShowDropdown(false); }}
+                                className={['text-left px-3 py-2 rounded-lg text-sm', isSelected ? 'bg-blue-600 text-white hover:bg-blue-600' : 'text-gray-700 hover:bg-blue-50'].join(' ')}
+                                role="option"
+                                aria-selected={isSelected}
+                              >
+                                {barangayName}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center justify-end mt-3 px-2">
+                          <button
+                            type="button"
+                            onClick={() => { setBarangay(''); setShowDropdown(false); }}
+                            className="text-xs text-gray-500 hover:text-gray-700"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
-  {attempted && !barangay.trim() && (
-    <p className="text-xs text-red-600 mt-1">Please select your barangay.</p>
-  )}
-</div>
+                    {attempted && !barangay.trim() && (
+                      <p className="text-xs text-red-600 mt-1">Please select your barangay.</p>
+                    )}
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Street</label>
                     <input
@@ -488,7 +487,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                       value={street}
                       onChange={(e) => setStreet(e.target.value)}
                       placeholder="House No. and Street"
-                      className={`w-full px-4 py-3 border ${attempted && !street.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      className={`w-full px-4 py-3 border ${attempted && !street.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40`}
                       required
                       aria-invalid={attempted && !street.trim()}
                     />
@@ -500,7 +499,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                       value={additionalAddress}
                       onChange={(e) => setAdditionalAddress(e.target.value)}
                       placeholder="Additional Address (Required)"
-                      className={`w-full px-4 py-3 border ${attempted && !additionalAddress.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      className={`w-full px-4 py-3 border ${attempted && !additionalAddress.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40`}
                       required
                       aria-invalid={attempted && !additionalAddress.trim()}
                     />
@@ -530,7 +529,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition w-full"
+                      className="rounded-xl bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-[#0077d6] transition w-full shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                     >
                       Choose Photo
                     </button>
@@ -538,7 +537,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                       <button
                         type="button"
                         onClick={() => { setProfilePicture(null); setProfilePictureName(''); }}
-                        className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
+                        className="rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
                       >
                         Remove
                       </button>
@@ -568,7 +567,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           <Link to="/clientdashboard" onClick={clearDraftsAndGoDashboard} className="sm:w-1/3">
             <button
               type="button"
-              className="w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+              className="w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
             >
               Back
             </button>
@@ -578,7 +577,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
             type="button"
             onClick={onNextClick}
             disabled={!isFormValid}
-            className={`sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
+            className={`sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-[#0077d6]' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'} focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40`}
             aria-disabled={!isFormValid}
           >
             Next : Service Request Details

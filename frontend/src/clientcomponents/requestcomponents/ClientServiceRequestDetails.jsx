@@ -1,9 +1,9 @@
 // frontend/src/pages/client/ClientServiceRequestDetails.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import { compressImageFileToDataURL } from '../../utils/imageCompression';
 
 const STORAGE_KEY = 'clientServiceRequestDetails';
+const GLOBAL_DESC_KEY = 'clientServiceDescription';
 
 const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }) => {
   const [serviceType, setServiceType] = useState('');
@@ -94,6 +94,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
+    const globalDesc = localStorage.getItem(GLOBAL_DESC_KEY) || '';
     if (saved) {
       try {
         const data = JSON.parse(saved);
@@ -110,7 +111,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         setImageName(data.imageName || '');
         setAttachments(img ? [img] : []);
         setRequestImageUrl(data.request_image_url || img || '');
-      } catch {}
+        setServiceDescription(globalDesc || data.serviceDescription || '');
+      } catch {
+        if (globalDesc) setServiceDescription(globalDesc);
+      }
+    } else {
+      const d = localStorage.getItem(GLOBAL_DESC_KEY) || '';
+      if (d) setServiceDescription(d);
     }
     setHydrated(true);
   }, []);
@@ -119,7 +126,47 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     if (!hydrated) return;
     const payload = { serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, serviceDescription, image, imageName, attachments: image ? [image] : [], request_image_url: requestImageUrl };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem(GLOBAL_DESC_KEY, serviceDescription || '');
   }, [hydrated, serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, serviceDescription, image, imageName, requestImageUrl]);
+
+  useEffect(() => {
+    const clear = () => {
+      localStorage.removeItem(GLOBAL_DESC_KEY);
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const data = JSON.parse(saved) || {};
+          data.serviceDescription = '';
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
+    };
+    const onNavCheck = () => {
+      if (window.location.pathname === '/clientdashboard') clear();
+    };
+    const onClick = (e) => {
+      const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      if (a && a.getAttribute('href') === '/clientdashboard') clear();
+    };
+    const originalPush = history.pushState;
+    const originalReplace = history.replaceState;
+    history.pushState = function () { const r = originalPush.apply(this, arguments); window.dispatchEvent(new Event('pushstate')); return r; };
+    history.replaceState = function () { const r = originalReplace.apply(this, arguments); window.dispatchEvent(new Event('replacestate')); return r; };
+    window.addEventListener('pushstate', onNavCheck);
+    window.addEventListener('replacestate', onNavCheck);
+    window.addEventListener('popstate', onNavCheck);
+    document.addEventListener('click', onClick, true);
+    return () => {
+      window.removeEventListener('pushstate', onNavCheck);
+      window.removeEventListener('replacestate', onNavCheck);
+      window.removeEventListener('popstate', onNavCheck);
+      document.removeEventListener('click', onClick, true);
+      history.pushState = originalPush;
+      history.replaceState = originalReplace;
+    };
+  }, []);
 
   const handleServiceTypeChange = (val) => { setServiceType(val); setServiceTask(''); };
   const handleUrgentChange = (value) => { setIsUrgent(value); };
@@ -295,7 +342,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   );
 
   return (
-   <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -304,7 +351,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-xs text-gray-500">Step 2 of 4</div>
-            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden">
+            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden ring-1 ring-white">
               <div className="h-full w-2/4 bg-[#008cfc]" />
             </div>
           </div>
@@ -312,10 +359,10 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       </div>
 
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-5">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-            <h3 className="text-xl md:text-2xl font-semibold">Service Request Details</h3>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">Request</span>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
+            <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Service Request Details</h3>
+            <span className="text-[11px] px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">Request</span>
           </div>
 
           <div className="px-6 py-6">
@@ -337,11 +384,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       {sortedServiceTypes.map((t)=> <option key={t} value={t}>{t}</option>)}
                     </select>
 
-                    <div className={`flex items-center rounded-xl border ${attempted && !serviceType ? 'border-red-500' : 'border-gray-300'}`}>
+                    <div className={`flex items-center rounded-xl border ${attempted && !serviceType ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                       <button
                         type="button"
                         onClick={() => setStOpen((s)=>!s)}
-                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
                       >
                         {serviceType || 'Select Service Type'}
                       </button>
@@ -385,11 +432,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       {serviceType && serviceTasks[serviceType].map((t)=> <option key={t} value={t}>{t}</option>)}
                     </select>
 
-                    <div className={`flex items-center rounded-xl border ${attempted && !serviceTask ? 'border-red-500' : 'border-gray-300'} ${!serviceType ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                    <div className={`flex items-center rounded-xl border ${attempted && !serviceTask ? 'border-red-500' : 'border-gray-300'} ${!serviceType ? 'opacity-60 cursor-not-allowed' : ''} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                       <button
                         type="button"
                         onClick={() => serviceType && setTaskOpen((s)=>!s)}
-                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
                         disabled={!serviceType}
                       >
                         {serviceTask || 'Select Service Task'}
@@ -424,14 +471,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
                   <div className="relative" ref={pdRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Date</label>
-                    <div className={`flex items-center rounded-xl border ${attempted && (!preferredDate || isPastDate) ? 'border-red-500' : 'border-gray-300'}`}>
+                    <div className={`flex items-center rounded-xl border ${attempted && (!preferredDate || isPastDate) ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                       <input
                         type="text"
                         value={preferredDate ? toMDY(fromYMDLocal(preferredDate)) : ''}
                         onFocus={openPD}
                         readOnly
                         placeholder="mm/dd/yyyy"
-                        className="w-full px-4 py-3 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 rounded-l-xl focus:outline-none"
                         required
                         aria-invalid={attempted && (!preferredDate || isPastDate)}
                       />
@@ -569,14 +616,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
                   <div className="relative" ref={ptRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Time</label>
-                    <div className={`flex items-center rounded-xl border ${attempted && !preferredTime ? 'border-red-500' : 'border-gray-300'}`}>
+                    <div className={`flex items-center rounded-xl border ${attempted && !preferredTime ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                       <input
                         type="text"
                         value={preferredTime ? to12h(preferredTime) : ''}
                         onFocus={openPT}
                         readOnly
                         placeholder="hh:mm AM/PM"
-                        className="w-full px-4 py-3 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 rounded-l-xl focus:outline-none"
                         required
                         aria-invalid={attempted && !preferredTime}
                       />
@@ -661,11 +708,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       <option value="No">No</option>
                     </select>
 
-                    <div className={`flex items-center rounded-xl border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'}`}>
+                    <div className={`flex items-center rounded-xl border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                       <button
                         type="button"
                         onClick={() => setToolsOpen((s)=>!s)}
-                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
                       >
                         {toolsProvided || 'Select Yes or No'}
                       </button>
@@ -710,11 +757,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       <option value="No">No</option>
                     </select>
 
-                    <div className={`flex items-center rounded-xl border ${attempted && !isUrgent ? 'border-red-500' : 'border-gray-300'}`}>
+                    <div className={`flex items-center rounded-xl border ${attempted && !isUrgent ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                       <button
                         type="button"
                         onClick={() => setUrgentOpen((s)=>!s)}
-                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
                       >
                         {isUrgent || 'Select Yes or No'}
                       </button>
@@ -751,7 +798,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       value={serviceDescription}
                       onChange={(e) => setServiceDescription(e.target.value)}
                       placeholder="Describe the service you need"
-                      className={`w-full px-4 py-3 border ${attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      className={`w-full px-4 py-3 border ${attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40`}
                       required
                       aria-invalid={attempted && !serviceDescription.trim()}
                     />
@@ -769,7 +816,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition w-full"
+                      className="rounded-xl bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-[#0077d6] transition w-full shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                     >
                       Choose Photo
                     </button>
@@ -777,7 +824,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       <button
                         type="button"
                         onClick={() => { setImage(null); setImageName(''); setAttachments([]); setRequestImageUrl(''); }}
-                        className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
+                        className="rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
                       >
                         Remove
                       </button>
@@ -790,7 +837,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
                   <div className="mt-2">
                     {image ? (
-                      <div className="w-full h-[273px] bg-gray-200 rounded-xl overflow-hidden ring-2 ring-blue-100 shadow-sm">
+                      <div className="w-full h-[273px] bg-white rounded-xl overflow-hidden ring-2 ring-blue-100 shadow-sm">
                         <img src={image} alt="Uploaded Preview" className="w-full h-full object-cover" />
                       </div>
                     ) : (
@@ -812,7 +859,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           <button
             type="button"
             onClick={() => { jumpTop(); handleBack(); }}
-            className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+            className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
           >
             Back : Step 1
           </button>
@@ -821,7 +868,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
             type="button"
             onClick={onNextClick}
             disabled={!isFormValid}
-            className={`sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
+            className={`sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-[#0077d6]' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'} focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40`}
             aria-disabled={!isFormValid}
           >
             Next : Service Rate

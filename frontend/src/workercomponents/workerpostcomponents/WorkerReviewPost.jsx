@@ -121,16 +121,44 @@ const WorkerReviewPost = ({ handleBack }) => {
 
   const formatList = (arr) => Array.isArray(arr) && arr.length ? arr.join(', ') : '-';
 
+  const normalizeLocalPH10 = (v) => {
+    let d = String(v || '').replace(/\D/g, '');
+    if (d.startsWith('63')) d = d.slice(2);
+    if (d.startsWith('0')) d = d.slice(1);
+    if (d.length > 10) d = d.slice(-10);
+    if (d.length === 10 && d[0] === '9') return d;
+    return '';
+  };
+
+  const contactLocal10 = normalizeLocalPH10(contact_number);
+
+  const contactDisplay = (
+    <div className="inline-flex items-center gap-2">
+      <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
+      <span className="text-gray-700 text-sm">+63</span>
+      <span className={`text-[15px] leading-6 ${contactLocal10 ? 'text-gray-900' : 'text-gray-400'}`}>
+        {contactLocal10 || '9XXXXXXXXX'}
+      </span>
+    </div>
+  );
+
   const LabelValue = ({ label, value, emptyAs = '-' }) => {
+    const isElement = React.isValidElement(value);
     const isEmpty =
-      value === null ||
-      value === undefined ||
-      (typeof value === 'string' && value.trim() === '');
-    const display = isEmpty ? emptyAs : value;
+      !isElement &&
+      (value === null ||
+        value === undefined ||
+        (typeof value === 'string' && value.trim() === ''));
+    const display = isElement ? value : isEmpty ? emptyAs : value;
+    const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
-      <div className="flex items-start gap-3">
-        <span className="min-w-36 text-sm font-semibold text-gray-700">{label}</span>
-        <span className="text-[#0A66FF]">{display}</span>
+      <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
+        <span className="text-sm font-semibold text-black">{labelText}</span>
+        {isElement ? (
+          <div className="text-[15px] leading-6 text-gray-900">{display}</div>
+        ) : (
+          <span className="text-[15px] leading-6 text-gray-900">{display}</span>
+        )}
       </div>
     );
   };
@@ -272,7 +300,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                 <div className="text-base md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
                   <LabelValue label="First Name" value={first_name} />
                   <LabelValue label="Last Name" value={last_name} />
-                  <LabelValue label="Contact Number" value={contact_number} />
+                  <LabelValue label="Contact Number" value={contactDisplay} />
                   <LabelValue label="Email" value={email} />
                   <LabelValue
                     label="Address"
@@ -287,7 +315,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                 </div>
 
                 <div className="md:col-span-1 flex flex-col items-center">
-                  <div className="text-base font-semibold mb-3 text-center">Profile Picture</div>
+                  <div className="text-sm font-semibold text-black mb-3">Profile Picture</div>
                   {profile_picture ? (
                     <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
                       <img
@@ -316,14 +344,14 @@ const WorkerReviewPost = ({ handleBack }) => {
                 <div className="px-6 py-6">
                   <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
                     <LabelValue label="Service Types" value={formatList(service_types)} />
-                    <div>
-                      <div className="text-sm font-semibold text-gray-700 mb-2">Selected Tasks</div>
+                    <div className="md:col-span-2">
+                      <div className="text-sm font-semibold text-black mb-2">Selected Tasks</div>
                       {job_details && typeof job_details === 'object' && Object.keys(job_details).length ? (
                         <div className="space-y-2">
                           {Object.entries(job_details).map(([k, v]) => (
-                            <div key={k} className="flex items-start gap-3">
-                              <span className="min-w-36 text-sm font-semibold text-gray-700">{k}</span>
-                              <span className="text-[#0A66FF]">{formatList(v)}</span>
+                            <div key={k} className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
+                              <span className="text-sm font-semibold text-black">{`${k.replace(/:?\s*$/,'')}:`}</span>
+                              <span className="text-[15px] leading-6 text-gray-900">{formatList(v)}</span>
                             </div>
                           ))}
                         </div>
@@ -334,10 +362,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                     <LabelValue label="Tools Provided" value={tools_provided} />
                     <LabelValue label="Years of Experience" value={years_experience} />
                     <div className="md:col-span-2">
-                      <div className="flex items-start gap-3">
-                        <span className="min-w-36 text-sm font-semibold text-gray-700">Description</span>
-                        <span className="text-[#0A66FF]">{service_description || '-'}</span>
-                      </div>
+                      <LabelValue label="Description" value={service_description || '-'} />
                     </div>
                   </div>
                 </div>
@@ -431,7 +456,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                     <LabelValue label="First Name" value={first_name} />
                     <LabelValue label="Last Name" value={last_name} />
                     <LabelValue label="Birthdate" value={birth_date} />
-                    <LabelValue label="Contact Number" value={contact_number} />
+                    <LabelValue label="Contact Number" value={contactDisplay} />
                     <LabelValue label="Email" value={email} />
                     <LabelValue label="Address" value={street && barangay ? `${street}, ${barangay}` : street || barangay} />
                     <div className="hidden md:block mt-14" />
