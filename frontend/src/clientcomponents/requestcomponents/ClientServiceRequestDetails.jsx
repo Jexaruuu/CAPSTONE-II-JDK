@@ -139,12 +139,20 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         try {
           const data = JSON.parse(saved) || {};
           data.serviceDescription = '';
+          data.image = null;
+          data.imageName = '';
+          data.attachments = [];
+          data.request_image_url = '';
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         } catch {
           localStorage.removeItem(STORAGE_KEY);
         }
       }
       setServiceDescription('');
+      setImage(null);
+      setImageName('');
+      setAttachments([]);
+      setRequestImageUrl('');
     };
     const onNavCheck = () => {
       if (window.location.pathname === '/clientdashboard') clear();
@@ -823,7 +831,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         aria-label="Open urgent options"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" />
                         </svg>
                       </button>
                     </div>
