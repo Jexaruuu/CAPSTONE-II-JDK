@@ -240,6 +240,32 @@ export default function AdminServiceRequests() {
     return () => clearInterval(t);
   }, [filter, searchTerm]);
 
+  useEffect(() => {
+    const gid = viewRow?.request_group_id;
+    if (!gid) return;
+    let cancelled = false;
+    axios
+      .get(`${API_BASE}/api/clientservicerequests/by-group/${gid}`, { withCredentials: true })
+      .then((res) => {
+        if (cancelled) return;
+        const p = res?.data || {};
+        setViewRow((v) =>
+          v
+            ? {
+                ...v,
+                info: { ...v.info, ...(p.info || {}) },
+                details: { ...v.details, ...(p.details || {}) },
+                rate: { ...v.rate, ...(p.rate || {}) },
+              }
+            : v
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [viewRow?.request_group_id]);
+
   const sortedRows = useMemo(() => {
     if (!sort.key) return rows;
     if (sort.key === "created_at_ts") {
@@ -348,6 +374,8 @@ export default function AdminServiceRequests() {
           <div><div className="text-xs uppercase text-gray-500">Last Name</div><div className="font-medium text-gray-900">{viewRow?.info?.last_name || "-"}</div></div>
           <div><div className="text-xs uppercase text-gray-500">Email</div><div className="font-medium text-gray-900 break-all">{viewRow?.info?.email_address || viewRow.email || "-"}</div></div>
           <div><div className="text-xs uppercase text-gray-500">Barangay</div><div className="font-medium text-gray-900">{viewRow?.info?.barangay || "-"}</div></div>
+          <div><div className="text-xs uppercase text-gray-500">Street</div><div className="font-medium text-gray-900">{viewRow?.info?.street || "-"}</div></div>
+          <div><div className="text-xs uppercase text-gray-500">Additional Address</div><div className="font-medium text-gray-900">{viewRow?.info?.additional_address || "-"}</div></div>
         </div>
       );
     }
@@ -387,6 +415,24 @@ export default function AdminServiceRequests() {
       );
     }
     if (sectionOpen === "rate") {
+      const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
+      if (t.includes("by the job")) {
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div><div className="text-xs uppercase text-gray-500">Rate Type</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_type || "-"}</div></div>
+            <div><div className="text-xs uppercase text-gray-500">Rate Value</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_value ?? "-"}</div></div>
+          </div>
+        );
+      }
+      if (t.includes("hourly")) {
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div><div className="text-xs uppercase text-gray-500">Rate Type</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_type || "-"}</div></div>
+            <div><div className="text-xs uppercase text-gray-500">Rate From</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_from ?? "-"}</div></div>
+            <div><div className="text-xs uppercase text-gray-500">Rate To</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_to ?? "-"}</div></div>
+          </div>
+        );
+      }
       return (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div><div className="text-xs uppercase text-gray-500">Rate Type</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_type || "-"}</div></div>
@@ -410,7 +456,13 @@ export default function AdminServiceRequests() {
         <div className="-mx-6">
           <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
-              {tabs.map((t) => {
+              {[
+                { key: "all", label: "All", count: counts.total },
+                { key: "pending", label: "Pending", count: counts.pending },
+                { key: "approved", label: "Approved", count: counts.approved },
+                { key: "declined", label: "Declined", count: counts.declined },
+                { key: "expired", label: "Expired", count: expiredCount },
+              ].map((t) => {
                 const active = filter === t.key;
                 return (
                   <button
@@ -664,7 +716,7 @@ export default function AdminServiceRequests() {
                   <div className="flex flex-col items-start">
                     <div className="h-24 w-24 rounded-full ring-4 ring-white overflow-hidden bg-gray-100">
                       <img
-                        src={"/Clienticon.png"}
+                        src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture || "/Clienticon.png"}
                         alt="Client"
                         className="w-full h-full object-cover"
                         onError={({ currentTarget }) => {

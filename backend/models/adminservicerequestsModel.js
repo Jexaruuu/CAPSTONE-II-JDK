@@ -13,6 +13,7 @@ function buildSearchOr(term) {
     `info->>barangay.ilike.%${s}%`,
     `details->>service_type.ilike.%${s}%`,
     `details->>service_task.ilike.%${s}%`,
+    `details->>service_description.ilike.%${s}%`,
   ].join(',');
 }
 
@@ -32,6 +33,7 @@ function localSearchFilter(rows, term) {
       i.barangay,
       d.service_type,
       d.service_task,
+      d.service_description,
     ];
     return candidates.some((val) => norm(val).includes(q));
   });
