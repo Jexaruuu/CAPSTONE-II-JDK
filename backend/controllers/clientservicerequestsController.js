@@ -83,10 +83,10 @@ exports.submitFullRequest = async (req, res) => {
     const additional_address = pick(src, ['additional_address', 'additionalAddress', 'landmark', 'info.additional_address', 'info.additionalAddress', 'metadata.additional_address', 'metadata.additionalAddress']);
     const auth_uid = pick(src, ['auth_uid', 'authUid', 'info.auth_uid', 'metadata.auth_uid']);
 
-    const category = pick(src, ['category', 'details.category']);
+    const category = pick(src, ['category', 'details.category', 'serviceType', 'details.serviceType']);
     const service_type = pick(src, ['service_type', 'serviceType', 'details.service_type', 'details.serviceType']) || category;
     const service_task = pick(src, ['service_task', 'serviceTask', 'task', 'details.service_task', 'details.serviceTask']);
-    const description = pick(src, ['description', 'service_description', 'details.description', 'details.service_description']);
+    const description = pick(src, ['description', 'service_description', 'serviceDescription', 'details.description', 'details.service_description', 'details.serviceDescription']);
     const preferred_date = pick(src, ['preferred_date', 'preferredDate', 'details.preferred_date', 'details.preferredDate']);
     const preferred_time = pick(src, ['preferred_time', 'preferredTime', 'details.preferred_time', 'details.preferredTime']);
     const is_urgent = pick(src, ['is_urgent', 'isUrgent', 'urgent', 'details.is_urgent', 'details.isUrgent', 'metadata.is_urgent', 'metadata.isUrgent']);

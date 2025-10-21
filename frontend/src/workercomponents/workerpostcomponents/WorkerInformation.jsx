@@ -660,8 +660,8 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
               </div>
 
               <div className="lg:col-span-1">
-                <div className="text-base font-semibold mb-3 text-center">Profile Picture</div>
-                <p className="text-sm text-gray-600 text-center mb-5">Upload your profile picture.</p>
+                <div className="text-base font-semibold mb-3 text-center">Worker Profile Picture</div>
+                <p className="text-sm text-gray-600 text-center mb-5">Upload your picture here.</p>
                 <div className="flex flex-col items-center gap-5">
                   {!profilePicture ? (
                     <div className={`w-36 h-36 md:w-40 md:h-40 rounded-full grid place-items-center ${attempted && !profilePicture ? 'bg-red-200' : 'bg-gray-200'}`}>

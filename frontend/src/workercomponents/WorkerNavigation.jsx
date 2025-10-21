@@ -149,8 +149,8 @@ const WorkerNavigation = () => {
   const ProfileCircle = ({ size = 8 }) => {
     const cls = size === 8 ? 'h-8 w-8' : size === 10 ? 'h-10 w-10' : 'h-8 w-8';
     return (
-      <div className={`${cls} rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-semibold text-xs uppercase`}>
-        {initials || '?'}
+      <div className={`${cls} rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-semibold text-xs uppercase`}>
+        {initials || ''}
       </div>
     );
   };

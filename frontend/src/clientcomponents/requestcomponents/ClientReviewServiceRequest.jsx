@@ -1,4 +1,3 @@
-// frontend/src/pages/client/ClientReviewServiceRequest.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -232,8 +231,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           serviceDescription: detailsDraft.serviceDescription || '',
           image: detailsDraft.image || '',
           imageName: detailsDraft.imageName || '',
-          attachments: Array.isArray(detailsDraft.attachments) ? detailsDraft.attachments : (detailsDraft.image ? [detailsDraft.image] : []),
-          request_image_url: detailsDraft.request_image_url || detailsDraft.image || ''
+          attachments: Array.isArray(detailsDraft.attachments) ? detailsDraft.attachments : (detailsDraft.image ? [detailsDraft.image] : [])
         },
         rate: {
           rateType: rateDraft.rateType || '',
@@ -268,7 +266,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       const desc = descRaw || 'N/A';
       const pDate = (payload.details.preferredDate || '').trim();
       const pTime = (payload.details.preferredTime || '').trim();
-      const reqImg = review_image || '';
+      const reqImg = payload.details.image || '';
 
       const normalized = {
         client_id: clientId || '',
@@ -295,7 +293,6 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         attachments: payload.details.attachments,
         attachment: (payload.details.attachments && payload.details.attachments[0]) || payload.details.image || '',
         attachment_name: payload.details.imageName || '',
-        request_image_url: reqImg,
         metadata: {
           profile_picture: payload.info.profilePicture || '',
           profile_picture_name: payload.info.profilePictureName || '',
@@ -307,8 +304,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           last_name: (payload.info.lastName || '').trim(),
           email: emailVal,
           auth_uid: localStorage.getItem('auth_uid') || '',
-          image_name: payload.details.imageName || '',
-          request_image_url: reqImg
+          image_name: payload.details.imageName || ''
         },
         details: {
           service_type: svcType,
@@ -317,8 +313,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           preferred_time: pTime,
           is_urgent: toBoolStrict(payload.details.isUrgent),
           tools_provided: toBoolStrict(payload.details.toolsProvided),
-          service_description: desc,
-          request_image_url: reqImg
+          service_description: desc
         }
       };
 
@@ -373,70 +368,17 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         rate_to: normalized.rate_to,
         rate_value: normalized.rate_value,
         attachments: Array.isArray(normalized.attachments) && normalized.attachments.length ? normalized.attachments : (normalized.attachment ? [normalized.attachment] : []),
-        request_image_url: normalized.request_image_url,
         metadata: normalized.metadata,
         details: normalized.details
       };
 
-      try {
-        const jsonRes = await axios.post(
-          `${API_BASE}/api/clientservicerequests/submit`,
-          jsonBody,
-          { withCredentials: true, headers: { 'Content-Type': 'application/json', ...headersWithU } }
-        );
-        setRequestGroupId(jsonRes?.data?.request?.request_group_id || null);
-        setShowSuccess(true);
-      } catch (jsonErr) {
-        const status = jsonErr?.response?.status;
-        if (status !== 400) throw jsonErr;
-
-        const form = new FormData();
-        form.append('client_id', normalized.client_id);
-        form.append('first_name', normalized.first_name);
-        form.append('last_name', normalized.last_name);
-        form.append('email_address', normalized.email_address);
-        form.append('contact_number', normalized.contact_number);
-        form.append('street', normalized.street);
-        form.append('barangay', normalized.barangay);
-        form.append('additional_address', normalized.additional_address);
-        form.append('address', normalized.address);
-        form.append('service_type', normalized.service_type);
-        form.append('category', normalized.category);
-        form.append('service_task', normalized.service_task);
-        form.append('description', normalized.description);
-        form.append('preferred_date', normalized.preferred_date);
-        form.append('preferred_time', normalized.preferred_time);
-        form.append('is_urgent', normalized.is_urgent ? '1' : '0');
-        form.append('tools_provided', normalized.tools_provided ? '1' : '0');
-        form.append('rate_type', normalized.rate_type || '');
-        form.append('rate_from', normalized.rate_from ?? '');
-        form.append('rate_to', normalized.rate_to ?? '');
-        form.append('rate_value', normalized.rate_value ?? '');
-        form.append('request_image_url', normalized.request_image_url || '');
-        form.append('metadata', JSON.stringify(normalized.metadata || {}));
-        form.append('details', JSON.stringify(normalized.details || {}));
-        if (normalized.attachment) {
-          const blob = dataURLtoBlob(normalized.attachment);
-          if (blob) {
-            form.append('attachment', blob, normalized.attachment_name || 'attachment.jpg');
-          } else {
-            form.append('attachments[]', normalized.attachment);
-          }
-        }
-        if (Array.isArray(normalized.attachments)) {
-          normalized.attachments.forEach((a) => {
-            if (typeof a === 'string' && a.startsWith('data:')) form.append('attachments[]', a);
-          });
-        }
-
-        const formRes = await axios.post(
-          `${API_BASE}/api/clientservicerequests/submit`,
-          form,
-          { withCredentials: true, headers: { ...headersWithU } }
-        );
-        setRequestGroupId(formRes?.data?.request?.request_group_id || null);
-        setShowSuccess(true);
-      }
+      const jsonRes = await axios.post(
+        `${API_BASE}/api/clientservicerequests/submit`,
+        jsonBody,
+        { withCredentials: true, headers: { 'Content-Type': 'application/json', ...headersWithU } }
+      );
+      setRequestGroupId(jsonRes?.data?.request?.request_group_id || null);
+      setShowSuccess(true);
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Submission failed';
       setSubmitError(msg);
@@ -569,7 +511,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
                 <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
                   <h3 className="text-xl md:text-2xl font-semibold">Service Rate</h3>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Pricing</span>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100">Pricing</span>
                 </div>
                 <div className="px-6 py-6">
                   <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">

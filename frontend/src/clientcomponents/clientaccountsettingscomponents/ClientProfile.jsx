@@ -202,8 +202,12 @@ export default function ClientProfile() {
 
           <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
             <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex items-center justify-center">
-              <div className="h-24 w-24 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                {avatarUrl ? (<img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover"/>) : (<div className="h-full w-full flex items-center justify-center text-xl font-semibold text-gray-600">{initials||"?"}</div>)}
+              <div className="h-24 w-24 rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" onError={()=>setAvatarUrl(null)} />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-3xl font-semibold text-blue-600">{(initials||"?").toUpperCase()}</div>
+                )}
               </div>
             </div>
 
@@ -251,7 +255,7 @@ export default function ClientProfile() {
                 </div>)}
               </div>
 
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 relative min-h-[150px]" ref={dpRef}>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 relative min-h=[150px]" ref={dpRef}>
                 <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-600">Date of Birth</p>
                 {!editingDob && (<>
                   <div className="mt-2">{form.date_of_birth?

@@ -83,6 +83,7 @@ export default function AdminServiceRequests() {
   const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0, total: 0 });
 
   const [expiredCount, setExpiredCount] = useState(0);
+  const [sectionOpen, setSectionOpen] = useState("info");
 
   const isYes = (v) => {
     if (typeof v === "boolean") return v;
@@ -304,6 +305,99 @@ export default function AdminServiceRequests() {
 
   const COLSPAN = ENABLE_SELECTION ? 8 : 7;
 
+  const SectionButton = ({ k, label }) => {
+    const active = sectionOpen === k;
+    return (
+      <button
+        onClick={() => setSectionOpen(k)}
+        className={[
+          "rounded-full px-3.5 py-1.5 text-sm border",
+          active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
+        ].join(" ")}
+      >
+        {label}
+      </button>
+    );
+  };
+
+  const pickDetailImage = (details = {}) => {
+    const keys = [
+      "image_url",
+      "photo_url",
+      "attachment_url",
+      "image",
+      "service_image",
+      "service_request_image",
+      "screenshot_url",
+    ];
+    for (const k of keys) {
+      const v = details?.[k];
+      if (typeof v === "string" && (v.startsWith("http://") || v.startsWith("https://") || v.startsWith("data:"))) {
+        return v;
+      }
+    }
+    return null;
+  };
+
+  const renderSection = () => {
+    if (!viewRow) return null;
+    if (sectionOpen === "info") {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div><div className="text-xs uppercase text-gray-500">First Name</div><div className="font-medium text-gray-900">{viewRow?.info?.first_name || "-"}</div></div>
+          <div><div className="text-xs uppercase text-gray-500">Last Name</div><div className="font-medium text-gray-900">{viewRow?.info?.last_name || "-"}</div></div>
+          <div><div className="text-xs uppercase text-gray-500">Email</div><div className="font-medium text-gray-900 break-all">{viewRow?.info?.email_address || viewRow.email || "-"}</div></div>
+          <div><div className="text-xs uppercase text-gray-500">Barangay</div><div className="font-medium text-gray-900">{viewRow?.info?.barangay || "-"}</div></div>
+        </div>
+      );
+    }
+    if (sectionOpen === "details") {
+      const img = pickDetailImage(viewRow?.details);
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div><div className="text-xs uppercase text-gray-500">Service Type</div><div className="font-medium text-gray-900">{viewRow?.details?.service_type || "-"}</div></div>
+            <div><div className="text-xs uppercase text-gray-500">Task</div><div className="font-medium text-gray-900">{viewRow?.details?.service_task || "-"}</div></div>
+            <div><div className="text-xs uppercase text-gray-500">Preferred Date</div><div className="font-medium text-gray-900">{viewRow?.details?.preferred_date || "-"}</div></div>
+            <div><div className="text-xs uppercase text-gray-500">Preferred Time</div><div className="font-medium text-gray-900">{viewRow?.details?.preferred_time || "-"}</div></div>
+            <div><div className="text-xs uppercase text-gray-500">Urgent</div><div className="font-medium text-gray-900">{viewRow?.is_urgent ? "Yes" : "No"}</div></div>
+            <div><div className="text-xs uppercase text-gray-500">Tools Provided</div><div className="font-medium text-gray-900">{viewRow?.tools_provided ? "Yes" : "No"}</div></div>
+          </div>
+          <div className="lg:pl-2">
+            <div className="text-xs uppercase text-gray-500 mb-2">Request Image</div>
+            <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
+              {img ? (
+                <img
+                  src={img}
+                  alt="Service Request"
+                  className="w-full h-full object-contain"
+                  onError={({ currentTarget }) => {
+                    currentTarget.style.display = "none";
+                    const p = currentTarget.parentElement;
+                    if (p) p.innerHTML = '<div class="text-sm text-gray-500">No image available</div>';
+                  }}
+                />
+              ) : (
+                <div className="text-sm text-gray-500">No image available</div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (sectionOpen === "rate") {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div><div className="text-xs uppercase text-gray-500">Rate Type</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_type || "-"}</div></div>
+          <div><div className="text-xs uppercase text-gray-500">Rate From</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_from ?? "-"}</div></div>
+          <div><div className="text-xs uppercase text-gray-500">Rate To</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_to ?? "-"}</div></div>
+          <div><div className="text-xs uppercase text-gray-500">Rate Value</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_value ?? "-"}</div></div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <main className="p-6">
       <div className="mb-4">
@@ -497,7 +591,10 @@ export default function AdminServiceRequests() {
                             <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}>
                               <div className="inline-flex gap-2">
                                 <button
-                                  onClick={() => setViewRow(u)}
+                                  onClick={() => {
+                                    setViewRow(u);
+                                    setSectionOpen("info");
+                                  }}
                                   className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                                 >
                                   View
@@ -553,119 +650,93 @@ export default function AdminServiceRequests() {
       </section>
 
       {viewRow && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setViewRow(null)}
-        >
-          <div
-            className="w-full max-w-2xl rounded-2xl bg-white p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="text-lg font-semibold">Service Request</div>
-              <button onClick={() => setViewRow(null)} className="text-gray-500">
-                Close
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="font-medium">Client</div>
-                <div>
-                  {viewRow.name_first} {viewRow.name_last}
-                </div>
-                <div>{viewRow.email}</div>
-                <div>{viewRow.barangay}</div>
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl ring-1 ring-gray-200 overflow-hidden">
+              <div className="relative h-40 bg-gray-100">
+                <img src="/jdklogo.png" alt="Banner" className="absolute right-4 top-1/2 -translate-y-1/2 w-[200px] h-[200px] object-contain p-6 select-none pointer-events-none" />
               </div>
-              <div>
-                <div className="font-medium">Schedule</div>
-                <div>{viewRow.preferred_date}</div>
-                <div>{viewRow.preferred_time}</div>
-              </div>
-              <div className="col-span-2">
-                <div className="font-medium">Service</div>
-                <div>
-                  {viewRow.service_type} {viewRow.service_task ? `• ${viewRow.service_task}` : ""}
+
+              <div className="relative">
+                <div className="px-6 sm:px-10 -mt-12 grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-6 items-end">
+                  <div className="flex flex-col items-start">
+                    <div className="h-24 w-24 rounded-full ring-4 ring-white overflow-hidden bg-gray-100">
+                      <img
+                        src={"/Clienticon.png"}
+                        alt="Client"
+                        className="w-full h-full object-cover"
+                        onError={({ currentTarget }) => {
+                          currentTarget.style.display = "none";
+                          const parent = currentTarget.parentElement;
+                          if (parent) {
+                            parent.innerHTML = `<div class="w-full h-full grid place-items-center bg-blue-50 text-blue-600 text-3xl font-semibold">${(viewRow?.name_first || "?").trim().charAt(0).toUpperCase()}</div>`;
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
+                      </div>
+                      <div className="text-sm text-gray-500">{viewRow.email || "-"}</div>
+                    </div>
+                  </div>
+
+                  <div className="pb-2 text-right">
+                    <div className="text-[11px] uppercase tracking-wider text-gray-500">Created</div>
+                    <div className="text-sm font-semibold text-gray-900">{viewRow.created_at_display || "-"}</div>
+                    <div className="mt-2 inline-flex">
+                      <StatusPill value={viewRow.ui_status} />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  Urgent: {viewRow.is_urgent ? "Yes" : "No"} | Tools Provided: {viewRow.tools_provided ? "Yes" : "No"}
+
+                <div className="px-6 sm:px-10 pt-4 pb-3 flex items-center gap-2">
+                  <SectionButton k="info" label="Client Information" />
+                  <SectionButton k="details" label="Client Service Request" />
+                  <SectionButton k="rate" label="Client Service Rate" />
+                </div>
+
+                <div className="px-6 sm:px-10 pb-6">
+                  {renderSection()}
+                </div>
+
+                <div className="px-6 sm:px-10 pb-6 flex items-center justify-end gap-3">
+                  <button
+                    onClick={() => { setViewRow(null); }}
+                    className="inline-flex items-center rounded-full px-5 py-2 text-sm font-medium border border-gray-300 text-gray-800 hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (viewRow._expired) return;
+                      await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/decline`, {}, { withCredentials: true });
+                      setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined", ui_status: "declined" } : x)));
+                      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
+                      setViewRow(null);
+                    }}
+                    className="inline-flex items-center rounded-full bg-red-600 text-white px-5 py-2 text-sm font-medium disabled:bg-gray-200 disabled:text-gray-500"
+                    disabled={viewRow._expired || viewRow.status === "declined" || viewRow.status === "approved"}
+                  >
+                    Decline
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (viewRow._expired) return;
+                      await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/approve`, {}, { withCredentials: true });
+                      setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved", ui_status: "approved" } : x)));
+                      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
+                      setViewRow(null);
+                    }}
+                    className="inline-flex items-center rounded-full bg-emerald-600 text-white px-5 py-2 text-sm font-medium disabled:bg-gray-200 disabled:text-gray-500"
+                    disabled={viewRow._expired || viewRow.status === "approved" || viewRow.status === "declined"}
+                  >
+                    Approve
+                  </button>
                 </div>
               </div>
-              <div className="col-span-2">
-                <div className="font-medium">Rate</div>
-                <div>
-                  {viewRow.rate_type === "Hourly Rate"
-                    ? `₱${viewRow.rate_from ?? 0} - ₱${viewRow.rate_to ?? 0} / hr`
-                    : viewRow.rate_type === "By the Job Rate"
-                    ? `₱${viewRow.rate_value ?? 0} per job`
-                    : "-"}
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setViewRow(null)}
-                className="rounded-lg border border-gray-300 px-3 py-1.5"
-              >
-                Close
-              </button>
-              <button
-                onClick={async () => {
-                  if (viewRow._expired) return;
-                  await axios.post(
-                    `${API_BASE}/api/admin/servicerequests/${viewRow.id}/decline`,
-                    {},
-                    { withCredentials: true }
-                  );
-                  setRows((r) =>
-                    r.map((x) =>
-                      x.id === viewRow.id ? { ...x, status: "declined", ui_status: "declined" } : x
-                    )
-                  );
-                  setCounts((c) => ({
-                    ...c,
-                    pending: Math.max(0, c.pending - 1),
-                    declined: c.declined + 1,
-                  }));
-                  setViewRow(null);
-                }}
-                className="rounded-lg px-3 py-1.5 bg-red-600 text-white disabled:bg-gray-200 disabled:text-gray-500"
-                disabled={
-                  viewRow._expired ||
-                  viewRow.status === "declined" ||
-                  viewRow.status === "approved"
-                }
-              >
-                Decline
-              </button>
-              <button
-                onClick={async () => {
-                  if (viewRow._expired) return;
-                  await axios.post(
-                    `${API_BASE}/api/admin/servicerequests/${viewRow.id}/approve`,
-                    {},
-                    { withCredentials: true }
-                  );
-                  setRows((r) =>
-                    r.map((x) =>
-                      x.id === viewRow.id ? { ...x, status: "approved", ui_status: "approved" } : x
-                    )
-                  );
-                  setCounts((c) => ({
-                    ...c,
-                    pending: Math.max(0, c.pending - 1),
-                    approved: c.approved + 1,
-                  }));
-                  setViewRow(null);
-                }}
-                className="rounded-lg px-3 py-1.5 bg-emerald-600 text-white disabled:bg-gray-200 disabled:text-gray-500"
-                disabled={
-                  viewRow._expired ||
-                  viewRow.status === "approved" ||
-                  viewRow.status === "declined"
-                }
-              >
-                Approve
-              </button>
             </div>
           </div>
         </div>

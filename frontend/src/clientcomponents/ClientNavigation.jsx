@@ -203,7 +203,7 @@ const ClientNavigation = () => {
   const [navLoading, setNavLoading] = useState(false);
 
   const ProfileCircle = ({ size = 8 }) => (
-    <div className={`h-${size} w-${size} rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-semibold text-xs uppercase`}>
+    <div className={`h-${size} w-${size} rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-semibold text-xs uppercase`}>
       {initials || ''}
     </div>
   );

@@ -63,6 +63,7 @@ export default function AdminManageUser() {
       const facebook = u.facebook || u.social_facebook || "";
       const instagram = u.instagram || u.social_instagram || "";
       const phone = u.phone || u.contact_number || "";
+      const profile_picture = u.profile_picture || u.avatar || null;
 
       return {
         id: u.id || u.auth_uid || email,
@@ -74,7 +75,8 @@ export default function AdminManageUser() {
         date,
         facebook,
         instagram,
-        phone
+        phone,
+        profile_picture
       };
     });
   };
@@ -409,7 +411,7 @@ export default function AdminManageUser() {
                                   currentTarget.style.display = "none";
                                   const parent = currentTarget.parentElement;
                                   if (parent) {
-                                    parent.innerHTML = `<div class="h-9 w-9 grid place-items-center bg-blue-100 text-blue-700 text-xs font-semibold">${(u.first_name || "?").trim().charAt(0).toUpperCase()}</div>`;
+                                    parent.innerHTML = `<div class="h-9 w-9 grid place-items-center bg-blue-100 text-blue-700 text-xs font-semibold">${((u.first_name||"").trim().slice(0,1).toUpperCase()+(u.last_name||"").trim().slice(0,1).toUpperCase())||"?"}</div>`;
                                   }
                                 }}
                               />
@@ -503,19 +505,18 @@ export default function AdminManageUser() {
               <div className="relative">
                 <div className="px-6 sm:px-10 -mt-12 grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-6 items-end">
                   <div className="flex flex-col items-start">
-                    <div className="h-24 w-24 rounded-full ring-4 ring-white overflow-hidden bg-gray-100">
-                      <img
-                        src={"/Clienticon.png"}
-                        alt={`${viewUser.first_name} ${viewUser.last_name}`}
-                        className="w-full h-full object-cover"
-                        onError={({ currentTarget }) => {
-                          currentTarget.style.display = "none";
-                          const parent = currentTarget.parentElement;
-                          if (parent) {
-                            parent.innerHTML = `<div class="w-full h-full grid place-items-center bg-blue-50 text-blue-600 text-3xl font-semibold">${(viewUser.first_name || "?").trim().charAt(0).toUpperCase()}</div>`;
-                          }
-                        }}
-                      />
+                    <div className="h-24 w-24 rounded-full ring-4 ring-white overflow-hidden bg-gray-100 flex items-center justify-center">
+                      {viewUser.profile_picture ? (
+                        <img
+                          src={viewUser.profile_picture}
+                          alt={`${viewUser.first_name} ${viewUser.last_name}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-blue-50 text-blue-600 text-3xl font-semibold">
+                          {(((viewUser.first_name || "").trim().slice(0,1) + (viewUser.last_name || "").trim().slice(0,1)) || "?").toUpperCase()}
+                        </div>
+                      )}
                     </div>
                     <div className="mt-3">
                       <div className="text-2xl font-bold text-gray-900">
