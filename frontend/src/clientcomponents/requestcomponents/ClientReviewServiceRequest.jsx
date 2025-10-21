@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const CONFIRM_FLAG = 'clientRequestJustConfirmed';
+const GLOBAL_DESC_KEY = 'clientServiceDescription';
 
 const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack }) => {
   const location = useLocation();
@@ -406,6 +408,9 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       );
       setRequestGroupId(jsonRes?.data?.request?.request_group_id || null);
       setShowSuccess(true);
+      localStorage.setItem(CONFIRM_FLAG, '1');
+      localStorage.removeItem(GLOBAL_DESC_KEY);
+      window.dispatchEvent(new Event('client-request-confirmed'));
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Submission failed';
       setSubmitError(msg);
@@ -419,6 +424,9 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       localStorage.removeItem('clientInformationForm');
       localStorage.removeItem('clientServiceRequestDetails');
       localStorage.removeItem('clientServiceRate');
+      localStorage.removeItem(GLOBAL_DESC_KEY);
+      localStorage.setItem(CONFIRM_FLAG, '1');
+      window.dispatchEvent(new Event('client-request-confirmed'));
     } catch {}
 
     jumpTop();

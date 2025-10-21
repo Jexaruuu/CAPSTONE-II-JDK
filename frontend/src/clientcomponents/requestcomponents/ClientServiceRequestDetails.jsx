@@ -4,6 +4,7 @@ import { compressImageFileToDataURL } from '../../utils/imageCompression';
 
 const STORAGE_KEY = 'clientServiceRequestDetails';
 const GLOBAL_DESC_KEY = 'clientServiceDescription';
+const CONFIRM_FLAG = 'clientRequestJustConfirmed';
 
 const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }) => {
   const [serviceType, setServiceType] = useState('');
@@ -142,6 +143,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           localStorage.removeItem(STORAGE_KEY);
         }
       }
+      setServiceDescription('');
     };
     const onNavCheck = () => {
       if (window.location.pathname === '/clientdashboard') clear();
@@ -149,6 +151,16 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const onClick = (e) => {
       const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
       if (a && a.getAttribute('href') === '/clientdashboard') clear();
+    };
+    const onStorage = (e) => {
+      if (e && e.key === CONFIRM_FLAG && e.newValue === '1') {
+        clear();
+        localStorage.removeItem(CONFIRM_FLAG);
+      }
+    };
+    const onCustomConfirmed = () => {
+      clear();
+      localStorage.removeItem(CONFIRM_FLAG);
     };
     const originalPush = history.pushState;
     const originalReplace = history.replaceState;
@@ -158,11 +170,19 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     window.addEventListener('replacestate', onNavCheck);
     window.addEventListener('popstate', onNavCheck);
     document.addEventListener('click', onClick, true);
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('client-request-confirmed', onCustomConfirmed);
+    if (localStorage.getItem(CONFIRM_FLAG) === '1') {
+      clear();
+      localStorage.removeItem(CONFIRM_FLAG);
+    }
     return () => {
       window.removeEventListener('pushstate', onNavCheck);
       window.removeEventListener('replacestate', onNavCheck);
       window.removeEventListener('popstate', onNavCheck);
       document.removeEventListener('click', onClick, true);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('client-request-confirmed', onCustomConfirmed);
       history.pushState = originalPush;
       history.replaceState = originalReplace;
     };
@@ -772,7 +792,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         aria-label="Open urgent options"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
                         </svg>
                       </button>
                     </div>
