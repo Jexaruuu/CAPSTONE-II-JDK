@@ -5,6 +5,7 @@ import { compressImageFileToDataURL } from '../../utils/imageCompression';
 const STORAGE_KEY = 'clientServiceRequestDetails';
 const GLOBAL_DESC_KEY = 'clientServiceDescription';
 const CONFIRM_FLAG = 'clientRequestJustConfirmed';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }) => {
   const [serviceType, setServiceType] = useState('');
@@ -187,6 +188,36 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       history.replaceState = originalReplace;
     };
   }, []);
+
+  useEffect(() => {
+    const run = async () => {
+      if (image) return;
+      let email = localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+      if (!email) {
+        try {
+          const r = await fetch(`${API_BASE}/api/account/me`, { credentials: 'include' });
+          if (r.ok) {
+            const j = await r.json();
+            email = j?.email_address || '';
+          }
+        } catch {}
+      }
+      if (!email) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/clientservicerequests/details?email=${encodeURIComponent(email)}&limit=1`, { credentials: 'include' });
+        if (!res.ok) return;
+        const j = await res.json();
+        const row = Array.isArray(j.items) && j.items.length ? j.items[0] : null;
+        if (row && row.image_url) {
+          setImage(row.image_url);
+          setImageName(row.image_name || '');
+          setAttachments([row.image_url]);
+          setRequestImageUrl(row.image_url);
+        }
+      } catch {}
+    };
+    run();
+  }, [image]);
 
   const handleServiceTypeChange = (val) => { setServiceType(val); setServiceTask(''); };
   const handleUrgentChange = (value) => { setIsUrgent(value); };

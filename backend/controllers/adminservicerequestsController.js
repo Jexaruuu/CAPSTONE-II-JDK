@@ -51,7 +51,7 @@ async function hydrate(baseRows) {
       .in('request_group_id', gids),
     supabaseAdmin
       .from('client_service_request_details')
-      .select('request_group_id, preferred_date, preferred_time, service_type, service_task, is_urgent, tools_provided')
+      .select('request_group_id, preferred_date, preferred_time, service_type, service_task, is_urgent, tools_provided, image_url, image_name')
       .in('request_group_id', gids),
     supabaseAdmin
       .from('client_service_rate')

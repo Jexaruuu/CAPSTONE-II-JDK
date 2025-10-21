@@ -101,5 +101,6 @@ app.use("/api/pendingservicerequests",pendingservicerequestsRoutes);
 app.use("/api/pendingworkerapplication",pendingworkerapplicationRoutes);
 
 ensureStorageBucket("user-notifications",true).catch(()=>{});
+ensureStorageBucket(process.env.SUPABASE_BUCKET_SERVICE_IMAGES || "service-request-images",true).catch(()=>{});
 
 app.listen(PORT,()=>{console.log(`Server running on port ${PORT}`)});

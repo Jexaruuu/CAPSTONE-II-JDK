@@ -6,6 +6,8 @@ const {
   newGroupId,
   findClientByEmail,
   findClientById,
+  listDetailsByEmail,
+  getCombinedByGroupId
 } = require('../models/clientservicerequestsModel');
 const { insertPendingRequest } = require('../models/pendingservicerequestsModel');
 const { supabaseAdmin } = require('../supabaseClient');
@@ -133,8 +135,9 @@ exports.submitFullRequest = async (req, res) => {
     if (attachments && attachments.length) {
       try {
         const max = Math.min(attachments.length, 5);
+        const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
         const promises = [];
-        for (let i = 0; i < max; i++) promises.push(uploadDataUrlToBucket('csr-attachments', attachments[i], `${request_group_id}-${i + 1}`));
+        for (let i = 0; i < max; i++) promises.push(uploadDataUrlToBucket(bucket, attachments[i], `${request_group_id}-${i + 1}`));
         const results = await Promise.all(promises);
         uploaded = results.filter(x => x?.url).map(x => ({ url: x.url, name: x.name }));
       } catch {
@@ -326,5 +329,29 @@ exports.listApproved = async (req, res) => {
     return res.status(200).json({ items: filtered });
   } catch {
     return res.status(500).json({ message: 'Failed to load approved requests' });
+  }
+};
+
+exports.detailsByEmail = async (req, res) => {
+  try {
+    const email = String(req.query.email || '').trim();
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
+    const items = await listDetailsByEmail(email, limit);
+    return res.status(200).json({ items });
+  } catch (e) {
+    return res.status(500).json({ message: 'Failed to load details' });
+  }
+};
+
+exports.byGroup = async (req, res) => {
+  try {
+    const gid = String(req.params.groupId || '').trim();
+    if (!gid) return res.status(400).json({ message: 'groupId is required' });
+    const row = await getCombinedByGroupId(gid);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    return res.status(200).json(row);
+  } catch {
+    return res.status(500).json({ message: 'Failed to load request' });
   }
 };

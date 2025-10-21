@@ -362,6 +362,7 @@ export default function AdminServiceRequests() {
             <div><div className="text-xs uppercase text-gray-500">Preferred Time</div><div className="font-medium text-gray-900">{viewRow?.details?.preferred_time || "-"}</div></div>
             <div><div className="text-xs uppercase text-gray-500">Urgent</div><div className="font-medium text-gray-900">{viewRow?.is_urgent ? "Yes" : "No"}</div></div>
             <div><div className="text-xs uppercase text-gray-500">Tools Provided</div><div className="font-medium text-gray-900">{viewRow?.tools_provided ? "Yes" : "No"}</div></div>
+            <div className="sm:col-span-2"><div className="text-xs uppercase text-gray-500">Service Description</div><div className="font-medium text-gray-900 whitespace-pre-line">{viewRow?.details?.service_description || viewRow?.details?.description || "-"}</div></div>
           </div>
           <div className="lg:pl-2">
             <div className="text-xs uppercase text-gray-500 mb-2">Request Image</div>
@@ -370,7 +371,7 @@ export default function AdminServiceRequests() {
                 <img
                   src={img}
                   alt="Service Request"
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                   onError={({ currentTarget }) => {
                     currentTarget.style.display = "none";
                     const p = currentTarget.parentElement;

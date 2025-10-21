@@ -1,4 +1,3 @@
-// models/clientservicerequestsModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 const crypto = require('crypto');
 
@@ -72,6 +71,30 @@ function newGroupId() {
   return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
 }
 
+async function listDetailsByEmail(email, limit = 10) {
+  const { data, error } = await supabaseAdmin
+    .from('client_service_request_details')
+    .select('id, request_group_id, created_at, email_address, service_type, service_task, service_description, preferred_date, preferred_time, is_urgent, tools_provided, image_url, image_name')
+    .eq('email_address', email)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+async function getCombinedByGroupId(request_group_id) {
+  const [infoRes, detRes, rateRes] = await Promise.all([
+    supabaseAdmin.from('client_information').select('*').eq('request_group_id', request_group_id).maybeSingle(),
+    supabaseAdmin.from('client_service_request_details').select('*').eq('request_group_id', request_group_id).maybeSingle(),
+    supabaseAdmin.from('client_service_rate').select('*').eq('request_group_id', request_group_id).maybeSingle()
+  ]);
+  if (infoRes.error) throw infoRes.error;
+  if (detRes.error) throw detRes.error;
+  if (rateRes.error) throw rateRes.error;
+  if (!detRes.data && !infoRes.data && !rateRes.data) return null;
+  return { info: infoRes.data || {}, details: detRes.data || {}, rate: rateRes.data || {} };
+}
+
 module.exports = {
   uploadDataUrlToBucket,
   findClientByEmail,
@@ -80,5 +103,7 @@ module.exports = {
   insertServiceRequestDetails,
   insertServiceRate,
   insertServiceRequestStatus,
-  newGroupId
+  newGroupId,
+  listDetailsByEmail,
+  getCombinedByGroupId
 };
