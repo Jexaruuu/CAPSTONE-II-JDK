@@ -6,6 +6,8 @@ const STORAGE_KEY = 'clientServiceRequestDetails';
 const GLOBAL_DESC_KEY = 'clientServiceDescription';
 const CONFIRM_FLAG = 'clientRequestJustConfirmed';
 const IMAGE_CLEARED_FLAG = 'clientServiceImageCleared';
+const PRESERVE_IMAGE_FLAG = 'clientPreserveServiceImage';
+const IMAGE_CACHE_KEY = 'clientServiceImageCache';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }) => {
@@ -88,21 +90,28 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   }, []);
 
   useEffect(() => {
-  return () => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      saved.serviceDescription = '';
-      saved.image = null;
-      saved.imageName = '';
-      saved.attachments = [];
-      saved.request_image_url = '';
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-    localStorage.setItem('clientServiceImageCleared', '1');
-  };
-}, []);
+    return () => {
+      try {
+        if (localStorage.getItem(PRESERVE_IMAGE_FLAG) === '1') {
+          localStorage.removeItem(PRESERVE_IMAGE_FLAG);
+          return;
+        }
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        saved.serviceDescription = '';
+        saved.image = null;
+        saved.imageName = '';
+        saved.attachments = [];
+        saved.request_image_url = '';
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+        localStorage.removeItem(IMAGE_CACHE_KEY);
+        localStorage.setItem(IMAGE_CLEARED_FLAG, '1');
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(IMAGE_CACHE_KEY);
+        localStorage.setItem(IMAGE_CLEARED_FLAG, '1');
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -115,6 +124,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     const globalDesc = localStorage.getItem(GLOBAL_DESC_KEY) || '';
+    let hydratedImage = null;
+    let hydratedImageName = '';
     if (saved) {
       try {
         const data = JSON.parse(saved);
@@ -127,10 +138,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         setIsUrgent(data.isUrgent || '');
         setToolsProvided(data.toolsProvided || '');
         const img = data.image || (Array.isArray(data.attachments) && data.attachments[0]) || null;
-        setImage(img || null);
-        setImageName(data.imageName || '');
-        setAttachments(img ? [img] : []);
-        setRequestImageUrl(data.request_image_url || img || '');
+        hydratedImage = img || null;
+        hydratedImageName = data.imageName || '';
         setServiceDescription(globalDesc || data.serviceDescription || '');
       } catch {
         if (globalDesc) setServiceDescription(globalDesc);
@@ -138,6 +147,21 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     } else {
       const d = localStorage.getItem(GLOBAL_DESC_KEY) || '';
       if (d) setServiceDescription(d);
+    }
+    if (!hydratedImage) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(IMAGE_CACHE_KEY) || 'null');
+        if (cached && cached.image) {
+          hydratedImage = cached.image;
+          hydratedImageName = cached.imageName || '';
+        }
+      } catch {}
+    }
+    if (hydratedImage) {
+      setImage(hydratedImage);
+      setImageName(hydratedImageName || '');
+      setAttachments([hydratedImage]);
+      setRequestImageUrl(hydratedImage);
     }
     setHydrated(true);
   }, []);
@@ -147,6 +171,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const payload = { serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, serviceDescription, image, imageName, attachments: image ? [image] : [], request_image_url: requestImageUrl };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     localStorage.setItem(GLOBAL_DESC_KEY, serviceDescription || '');
+    if (image) {
+      localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify({ image, imageName }));
+    }
   }, [hydrated, serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, serviceDescription, image, imageName, requestImageUrl]);
 
   useEffect(() => {
@@ -166,6 +193,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           localStorage.removeItem(STORAGE_KEY);
         }
       }
+      localStorage.removeItem(IMAGE_CACHE_KEY);
       localStorage.setItem(IMAGE_CLEARED_FLAG, '1');
       setServiceDescription('');
       setImage(null);
@@ -223,6 +251,16 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const run = async () => {
       if (image) return;
       if (localStorage.getItem(IMAGE_CLEARED_FLAG) === '1') return;
+      try {
+        const cached = JSON.parse(localStorage.getItem(IMAGE_CACHE_KEY) || 'null');
+        if (cached && cached.image) {
+          setImage(cached.image);
+          setImageName(cached.imageName || '');
+          setAttachments([cached.image]);
+          setRequestImageUrl(cached.image);
+          return;
+        }
+      } catch {}
       let email = localStorage.getItem('email_address') || localStorage.getItem('email') || '';
       if (!email) {
         try {
@@ -244,6 +282,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           setImageName(row.image_name || '');
           setAttachments([row.image_url]);
           setRequestImageUrl(row.image_url);
+          localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify({ image: row.image_url, imageName: row.image_name || '' }));
         }
       } catch {}
     };
@@ -262,9 +301,15 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       setImage(compressed);
       setAttachments([compressed]);
       setRequestImageUrl(compressed);
+      localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify({ image: compressed, imageName: file.name }));
     } catch {
       const reader = new FileReader();
-      reader.onload = () => { setImage(reader.result); setAttachments([reader.result]); setRequestImageUrl(reader.result); };
+      reader.onload = () => {
+        setImage(reader.result);
+        setAttachments([reader.result]);
+        setRequestImageUrl(reader.result);
+        localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify({ image: reader.result, imageName: file.name }));
+      };
       reader.readAsDataURL(file);
     }
     localStorage.removeItem(IMAGE_CLEARED_FLAG);
@@ -313,6 +358,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     setAttempted(true);
     if (isFormValid) {
       jumpTop();
+      localStorage.setItem(PRESERVE_IMAGE_FLAG, '1');
       setIsLoadingNext(true);
       setTimeout(() => { handleNext(); }, 2000);
     }
@@ -590,7 +636,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                             className={`p-2 rounded-lg hover:bg-gray-100 ${canPrevPD() ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
                             aria-label="Previous month"
                           >‹</button>
-                          <div className="relative flex items-center gap-2">
+                          <div className="relative flex items中心 gap-2">
                             <div className="relative">
                               <button
                                 type="button"
@@ -906,7 +952,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     {image && (
                       <button
                         type="button"
-                        onClick={() => { setImage(null); setImageName(''); setAttachments([]); setRequestImageUrl(''); }}
+                        onClick={() => { setImage(null); setImageName(''); setAttachments([]); setRequestImageUrl(''); localStorage.removeItem(IMAGE_CACHE_KEY); }}
                         className="rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
                       >
                         Remove
@@ -941,7 +987,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         <div className="flex flex-col sm:flex-row justify-between gap-3">
           <button
             type="button"
-            onClick={() => { jumpTop(); handleBack(); }}
+            onClick={() => { localStorage.setItem(PRESERVE_IMAGE_FLAG, '1'); jumpTop(); handleBack(); }}
             className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
           >
             Back : Step 1
@@ -968,9 +1014,10 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
         >
-          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"

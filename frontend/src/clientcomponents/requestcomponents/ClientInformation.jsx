@@ -594,9 +594,10 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
         >
-          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
