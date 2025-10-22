@@ -24,7 +24,7 @@ function StatusPill({ value }) {
   return (
     <span
       className={[
-        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
         cfg.bg,
         cfg.text,
         cfg.br,
@@ -65,6 +65,18 @@ function parseDateTime(val) {
 function fmtDateTime(val) {
   const d = parseDateTime(val);
   return d ? d.toLocaleString() : "";
+}
+function peso(val) {
+  if (val === null || val === undefined || val === "") return "-";
+  const n = Number(val);
+  if (!isNaN(n)) {
+    try {
+      return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(n);
+    } catch {
+      return `₱ ${n}`;
+    }
+  }
+  return `₱ ${val}`;
 }
 
 export default function AdminServiceRequests() {
@@ -338,8 +350,8 @@ export default function AdminServiceRequests() {
       <button
         onClick={() => setSectionOpen(k)}
         className={[
-          "rounded-full px-3.5 py-1.5 text-sm border",
-          active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
+          "rounded-full px-3.5 py-1.5 text-sm border transition",
+          active ? "bg-[#008cfc] text-white border-[#008cfc]" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
         ].join(" ")}
       >
         {label}
@@ -366,81 +378,261 @@ export default function AdminServiceRequests() {
     return null;
   };
 
+  const Field = ({ label, value }) => (
+    <div className="text-left">
+      <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">{label}</div>
+      <div className="mt-1 text-[15px] font-semibold text-gray-900 break-words">{value ?? "-"}</div>
+    </div>
+  );
+
+  const SectionCard = ({ title, children, badge }) => (
+    <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="px-6 pt-5 pb-4 border-b border-gray-100 flex items-center justify-between">
+        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+        {badge || null}
+      </div>
+      <div className="p-6">{children}</div>
+    </section>
+  );
+
   const renderSection = () => {
     if (!viewRow) return null;
+    if (sectionOpen === "all") {
+      const img = pickDetailImage(viewRow?.details);
+      const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
+      return (
+        <div className="space-y-6">
+          <SectionCard
+            title="Personal Information"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                Client
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+              <Field label="First Name" value={viewRow?.info?.first_name || "-"} />
+              <Field label="Last Name" value={viewRow?.info?.last_name || "-"} />
+              <Field label="Email" value={viewRow?.info?.email_address || viewRow.email || "-"} />
+              <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
+              <Field label="Street" value={viewRow?.info?.street || "-"} />
+              <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Service Request Details"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
+                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                Request
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+              <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                <Field label="Service Type" value={viewRow?.details?.service_type || "-"} />
+                <Field label="Task" value={viewRow?.details?.service_task || "-"} />
+                <Field label="Preferred Date" value={viewRow?.details?.preferred_date || "-"} />
+                <Field label="Preferred Time" value={viewRow?.details?.preferred_time || "-"} />
+                <Field label="Urgent" value={viewRow?.is_urgent ? "Yes" : "No"} />
+                <Field label="Tools Provided" value={viewRow?.tools_provided ? "Yes" : "No"} />
+                <div className="sm:col-span-2">
+                  <Field
+                    label="Description"
+                    value={
+                      <span className="whitespace-pre-line text-[15px] leading-relaxed">
+                        {viewRow?.details?.service_description || viewRow?.details?.description || "-"}
+                      </span>
+                    }
+                  />
+                </div>
+              </div>
+              <div className="xl:col-span-2">
+                <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
+                  {img ? (
+                    <img
+                      src={img}
+                      alt="Service Request"
+                      className="w-full h-full object-cover"
+                      onError={({ currentTarget }) => {
+                        currentTarget.style.display = "none";
+                        const p = currentTarget.parentElement;
+                        if (p) p.innerHTML = '<div class="text-sm text-gray-500">No image available</div>';
+                      }}
+                    />
+                  ) : (
+                    <div className="text-sm text-gray-500">No image available</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Service Rate"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                Pricing
+              </span>
+            }
+          >
+            {t.includes("by the job") ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-3xl">
+                <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+                <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+              </div>
+            ) : t.includes("hourly") ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6 max-w-4xl">
+                <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+                <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
+                <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+                <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+                <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
+                <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
+                <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+              </div>
+            )}
+          </SectionCard>
+        </div>
+      );
+    }
     if (sectionOpen === "info") {
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div><div className="text-xs uppercase text-gray-500">First Name</div><div className="font-medium text-gray-900">{viewRow?.info?.first_name || "-"}</div></div>
-          <div><div className="text-xs uppercase text-gray-500">Last Name</div><div className="font-medium text-gray-900">{viewRow?.info?.last_name || "-"}</div></div>
-          <div><div className="text-xs uppercase text-gray-500">Email</div><div className="font-medium text-gray-900 break-all">{viewRow?.info?.email_address || viewRow.email || "-"}</div></div>
-          <div><div className="text-xs uppercase text-gray-500">Barangay</div><div className="font-medium text-gray-900">{viewRow?.info?.barangay || "-"}</div></div>
-          <div><div className="text-xs uppercase text-gray-500">Street</div><div className="font-medium text-gray-900">{viewRow?.info?.street || "-"}</div></div>
-          <div><div className="text-xs uppercase text-gray-500">Additional Address</div><div className="font-medium text-gray-900">{viewRow?.info?.additional_address || "-"}</div></div>
-        </div>
+        <SectionCard
+          title="Personal Information"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Client
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+            <Field label="First Name" value={viewRow?.info?.first_name || "-"} />
+            <Field label="Last Name" value={viewRow?.info?.last_name || "-"} />
+            <Field label="Email" value={viewRow?.info?.email_address || viewRow.email || "-"} />
+            <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
+            <Field label="Street" value={viewRow?.info?.street || "-"} />
+            <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
+          </div>
+        </SectionCard>
       );
     }
     if (sectionOpen === "details") {
       const img = pickDetailImage(viewRow?.details);
       return (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div><div className="text-xs uppercase text-gray-500">Service Type</div><div className="font-medium text-gray-900">{viewRow?.details?.service_type || "-"}</div></div>
-            <div><div className="text-xs uppercase text-gray-500">Task</div><div className="font-medium text-gray-900">{viewRow?.details?.service_task || "-"}</div></div>
-            <div><div className="text-xs uppercase text-gray-500">Preferred Date</div><div className="font-medium text-gray-900">{viewRow?.details?.preferred_date || "-"}</div></div>
-            <div><div className="text-xs uppercase text-gray-500">Preferred Time</div><div className="font-medium text-gray-900">{viewRow?.details?.preferred_time || "-"}</div></div>
-            <div><div className="text-xs uppercase text-gray-500">Urgent</div><div className="font-medium text-gray-900">{viewRow?.is_urgent ? "Yes" : "No"}</div></div>
-            <div><div className="text-xs uppercase text-gray-500">Tools Provided</div><div className="font-medium text-gray-900">{viewRow?.tools_provided ? "Yes" : "No"}</div></div>
-            <div className="sm:col-span-2"><div className="text-xs uppercase text-gray-500">Service Description</div><div className="font-medium text-gray-900 whitespace-pre-line">{viewRow?.details?.service_description || viewRow?.details?.description || "-"}</div></div>
-          </div>
-          <div className="lg:pl-2">
-            <div className="text-xs uppercase text-gray-500 mb-2">Request Image</div>
-            <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
-              {img ? (
-                <img
-                  src={img}
-                  alt="Service Request"
-                  className="w-full h-full object-cover"
-                  onError={({ currentTarget }) => {
-                    currentTarget.style.display = "none";
-                    const p = currentTarget.parentElement;
-                    if (p) p.innerHTML = '<div class="text-sm text-gray-500">No image available</div>';
-                  }}
+        <SectionCard
+          title="Service Request Details"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Request
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+            <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+              <Field label="Service Type" value={viewRow?.details?.service_type || "-"} />
+              <Field label="Task" value={viewRow?.details?.service_task || "-"} />
+              <Field label="Preferred Date" value={viewRow?.details?.preferred_date || "-"} />
+              <Field label="Preferred Time" value={viewRow?.details?.preferred_time || "-"} />
+              <Field label="Urgent" value={viewRow?.is_urgent ? "Yes" : "No"} />
+              <Field label="Tools Provided" value={viewRow?.tools_provided ? "Yes" : "No"} />
+              <div className="sm:col-span-2">
+                <Field
+                  label="Description"
+                  value={
+                    <span className="whitespace-pre-line text-[15px] leading-relaxed">
+                      {viewRow?.details?.service_description || viewRow?.details?.description || "-"}
+                    </span>
+                  }
                 />
-              ) : (
-                <div className="text-sm text-gray-500">No image available</div>
-              )}
+              </div>
+            </div>
+            <div className="xl:col-span-2">
+              <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
+                {img ? (
+                  <img
+                    src={img}
+                    alt="Service Request"
+                    className="w-full h-full object-cover"
+                    onError={({ currentTarget }) => {
+                      currentTarget.style.display = "none";
+                      const p = currentTarget.parentElement;
+                      if (p) p.innerHTML = '<div class="text-sm text-gray-500">No image available</div>';
+                    }}
+                  />
+                ) : (
+                  <div className="text-sm text-gray-500">No image available</div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </SectionCard>
       );
     }
     if (sectionOpen === "rate") {
       const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
       if (t.includes("by the job")) {
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div><div className="text-xs uppercase text-gray-500">Rate Type</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_type || "-"}</div></div>
-            <div><div className="text-xs uppercase text-gray-500">Rate Value</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_value ?? "-"}</div></div>
-          </div>
+          <SectionCard
+            title="Service Rate"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                Pricing
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-3xl">
+              <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+              <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+            </div>
+          </SectionCard>
         );
       }
       if (t.includes("hourly")) {
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div><div className="text-xs uppercase text-gray-500">Rate Type</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_type || "-"}</div></div>
-            <div><div className="text-xs uppercase text-gray-500">Rate From</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_from ?? "-"}</div></div>
-            <div><div className="text-xs uppercase text-gray-500">Rate To</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_to ?? "-"}</div></div>
-          </div>
+          <SectionCard
+            title="Service Rate"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                Pricing
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6 max-w-4xl">
+              <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+              <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
+              <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
+            </div>
+          </SectionCard>
         );
       }
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div><div className="text-xs uppercase text-gray-500">Rate Type</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_type || "-"}</div></div>
-          <div><div className="text-xs uppercase text-gray-500">Rate From</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_from ?? "-"}</div></div>
-          <div><div className="text-xs uppercase text-gray-500">Rate To</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_to ?? "-"}</div></div>
-          <div><div className="text-xs uppercase text-gray-500">Rate Value</div><div className="font-medium text-gray-900">{viewRow?.rate?.rate_value ?? "-"}</div></div>
-        </div>
+        <SectionCard
+          title="Service Rate"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Pricing
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+            <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+            <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
+            <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
+            <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+          </div>
+        </SectionCard>
       );
     }
     return null;
@@ -665,7 +857,7 @@ export default function AdminServiceRequests() {
                                 <button
                                   onClick={() => {
                                     setViewRow(u);
-                                    setSectionOpen("info");
+                                    setSectionOpen("all");
                                   }}
                                   className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                                 >
@@ -760,93 +952,92 @@ export default function AdminServiceRequests() {
       </section>
 
       {viewRow && (
-        <div className="fixed inset-0 z-50">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Request details"
+          tabIndex={-1}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+        >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
-          <div className="absolute inset-0 flex items-center justify-center p-4">
-            <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl ring-1 ring-gray-200 overflow-hidden">
-              <div className="relative h-40 bg-gray-100">
-                <img src="/jdklogo.png" alt="Banner" className="absolute right-4 top-1/2 -translate-y-1/2 w-[200px] h-[200px] object-contain p-6 select-none pointer-events-none" />
+          <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
+              <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
+                {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
+                  <img
+                    src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={({ currentTarget }) => {
+                      currentTarget.style.display = "none";
+                      const parent = currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${(viewRow?.name_first || "?").trim().charAt(0).toUpperCase()}</div>`;
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">
+                    {(((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1)) || "?").toUpperCase()}
+                  </div>
+                )}
               </div>
 
-              <div className="relative">
-                <div className="px-6 sm:px-10 -mt-12 grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-6 items-end">
-                  <div className="flex flex-col items-start">
-                    <div className="h-24 w-24 rounded-full ring-4 ring-white overflow-hidden bg-gray-100">
-                      <img
-                        src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture || "/Clienticon.png"}
-                        alt="Client"
-                        className="w-full h-full object-cover"
-                        onError={({ currentTarget }) => {
-                          currentTarget.style.display = "none";
-                          const parent = currentTarget.parentElement;
-                          if (parent) {
-                            parent.innerHTML = `<div class="w-full h-full grid place-items-center bg-blue-50 text-blue-600 text-3xl font-semibold">${(viewRow?.name_first || "?").trim().charAt(0).toUpperCase()}</div>`;
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="mt-3">
-                      <div className="text-2xl font-bold text-gray-900">
-                        {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
-                      </div>
-                      <div className="text-sm text-gray-500">{viewRow.email || "-"}</div>
-                    </div>
-                  </div>
-
-                  <div className="pb-2 text-right">
-                    <div className="text-[11px] uppercase tracking-wider text-gray-500">Created</div>
-                    <div className="text-sm font-semibold text-gray-900">{viewRow.created_at_display || "-"}</div>
-                    <div className="mt-2 inline-flex">
-                      <StatusPill value={viewRow.ui_status} />
-                    </div>
-                  </div>
+              <div className="mt-5 text-center space-y-0.5">
+                <div className="text-2xl font-semibold text-gray-900">
+                  {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
                 </div>
-
-                <div className="px-6 sm:px-10 pt-4 pb-3 flex items-center gap-2">
-                  <SectionButton k="info" label="Client Information" />
-                  <SectionButton k="details" label="Client Service Request" />
-                  <SectionButton k="rate" label="Client Service Rate" />
-                </div>
-
-                <div className="px-6 sm:px-10 pb-6">
-                  {renderSection()}
-                </div>
-
-                <div className="px-6 sm:px-10 pb-6 flex items-center justify-end gap-3">
-                  <button
-                    onClick={() => { setViewRow(null); }}
-                    className="inline-flex items-center rounded-full px-5 py-2 text-sm font-medium border border-gray-300 text-gray-800 hover:bg-gray-50"
-                  >
-                    Close
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (viewRow._expired) return;
-                      await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/decline`, {}, { withCredentials: true });
-                      setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined", ui_status: "declined" } : x)));
-                      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
-                      setViewRow(null);
-                    }}
-                    className="inline-flex items-center rounded-full bg-red-600 text-white px-5 py-2 text-sm font-medium disabled:bg-gray-200 disabled:text-gray-500"
-                    disabled={viewRow._expired || viewRow.status === "declined" || viewRow.status === "approved"}
-                  >
-                    Decline
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (viewRow._expired) return;
-                      await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/approve`, {}, { withCredentials: true });
-                      setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved", ui_status: "approved" } : x)));
-                      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
-                      setViewRow(null);
-                    }}
-                    className="inline-flex items-center rounded-full bg-emerald-600 text-white px-5 py-2 text-sm font-medium disabled:bg-gray-200 disabled:text-gray-500"
-                    disabled={viewRow._expired || viewRow.status === "approved" || viewRow.status === "declined"}
-                  >
-                    Approve
-                  </button>
-                </div>
+                <div className="text-sm text-gray-600">{viewRow.email || "-"}</div>
               </div>
+
+              <div className="mt-3 flex items-center justify-center gap-3">
+                <div className="text-sm text-gray-600">
+                  Created <span className="font-semibold text-gray-900">{viewRow.created_at_display || "-"}</span>
+                </div>
+                <StatusPill value={viewRow.ui_status} />
+              </div>
+            </div>
+
+            <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto bg-gray-50">
+              {renderSection()}
+            </div>
+
+            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-gray-200 bg-white">
+              <button
+                type="button"
+                onClick={() => { setViewRow(null); }}
+                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (viewRow._expired) return;
+                  await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/decline`, {}, { withCredentials: true });
+                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined", ui_status: "declined" } : x)));
+                  setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
+                  setViewRow(null);
+                }}
+                className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={viewRow._expired || viewRow.status === "declined" || viewRow.status === "approved"}
+              >
+                Decline
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (viewRow._expired) return;
+                  await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/approve`, {}, { withCredentials: true });
+                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved", ui_status: "approved" } : x)));
+                  setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
+                  setViewRow(null);
+                }}
+                className="w-full inline-flex items-center justify-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={viewRow._expired || viewRow.status === "approved" || viewRow.status === "declined"}
+              >
+                Approve
+              </button>
             </div>
           </div>
         </div>

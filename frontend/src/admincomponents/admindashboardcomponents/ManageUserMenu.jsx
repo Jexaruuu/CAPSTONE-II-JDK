@@ -204,6 +204,10 @@ export default function AdminManageUser() {
     setViewUser(null);
   };
 
+  const handleDisable = (user) => {
+    alert(`Disable ${user.first_name || ""} ${user.last_name || ""}`);
+  };
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") closeModal();
@@ -211,6 +215,38 @@ export default function AdminManageUser() {
     if (viewOpen) document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [viewOpen]);
+
+  const RolePill = ({ role }) => {
+    const isWorker = String(role || "").toLowerCase() === "worker";
+    return (
+      <span
+        className={[
+          "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
+          isWorker ? "border-indigo-200 text-indigo-700 bg-indigo-50" : "border-emerald-200 text-emerald-700 bg-emerald-50",
+        ].join(" ")}
+      >
+        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+        {(role || "-").charAt(0).toUpperCase() + (role || "-").slice(1)}
+      </span>
+    );
+  };
+
+  const Field = ({ label, value }) => (
+    <div className="text-left">
+      <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">{label}</div>
+      <div className="mt-1 text-[15px] font-semibold text-gray-900 break-words">{value ?? "-"}</div>
+    </div>
+  );
+
+  const SectionCard = ({ title, children, badge }) => (
+    <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="px-6 pt-5 pb-4 border-b border-gray-100 flex items-center justify-between">
+        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+        {badge || null}
+      </div>
+      <div className="p-6">{children}</div>
+    </section>
+  );
 
   return (
     <main className="p-6">
@@ -446,7 +482,12 @@ export default function AdminManageUser() {
                             </span>
                           </td>
                           <td className="px-4 py-4 w-40 text-left border border-gray-200">
-                            <RowMenu onView={() => { setViewUser(u); setViewOpen(true); }} onEdit={() => {}} onRemove={() => {}} />
+                            <RowMenu
+                              onView={() => { setViewUser(u); setViewOpen(true); }}
+                              onEdit={() => {}}
+                              onRemove={() => {}}
+                              onDisable={() => handleDisable(u)}
+                            />
                           </td>
                         </tr>
                       ))}
@@ -498,91 +539,133 @@ export default function AdminManageUser() {
           aria-modal="true"
           aria-label="User details"
           tabIndex={-1}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] bg-gradient-to-br from-blue-50 to-white flex items-center justify-center overflow-hidden">
-              {viewUser.profile_picture ? (
-                <img src={viewUser.profile_picture} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">
-                  {(((viewUser.first_name || "").trim().slice(0,1) + (viewUser.last_name || "").trim().slice(0,1)) || "?").toUpperCase()}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 text-center space-y-1">
-              <div className="text-lg font-semibold text-gray-900">
-                {[viewUser.first_name, viewUser.last_name].filter(Boolean).join(" ") || "-"}
-              </div>
-              <div className="text-sm text-gray-600">{viewUser.email || "-"}</div>
-              <div className="mt-1">
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium mt-2 ${
-                    (viewUser.role || "").toLowerCase() === "worker"
-                      ? "border-indigo-200 text-indigo-700 bg-indigo-50"
-                      : "border-emerald-200 text-emerald-700 bg-emerald-50"
-                  }`}
-                >
-                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                  {viewUser.role?.charAt(0).toUpperCase() + viewUser.role?.slice(1)}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-3">
-              <div className="grid grid-cols-[120px,1fr] items-start gap-x-3 text-sm">
-                <div className="text-gray-500">Created</div>
-                <div className="font-medium text-gray-900">{formatPrettyDate(viewUser.date)}</div>
-              </div>
-              <div className="grid grid-cols-[120px,1fr] items-start gap-x-3 text-sm">
-                <div className="text-gray-500">Gender</div>
-                <div className="inline-flex items-center gap-2 text-gray-900">
-                  {String(viewUser.sex || "").toLowerCase() === "male" && <Mars className="h-4 w-4 text-blue-600" />}
-                  {String(viewUser.sex || "").toLowerCase() === "female" && <Venus className="h-4 w-4 text-pink-600" />}
-                  <span>{viewUser.sex && viewUser.sex !== "-" ? viewUser.sex : "No gender provided"}</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-[120px,1fr] items-start gap-x-3 text-sm">
-                <div className="text-gray-500">Contact</div>
-                {viewUser.phone ? (
-                  <div className="inline-flex items-center gap-2 text-gray-900">
-                    <img src="/philippines.png" alt="PH" className="h-4 w-6 rounded-sm object-cover" />
-                    <span className="text-gray-700">+63</span>
-                    <span className="font-medium tracking-wide">{viewUser.phone}</span>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeModal} />
+          <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
+              <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
+                {viewUser.profile_picture ? (
+                  <img
+                    src={viewUser.profile_picture}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={({ currentTarget }) => {
+                      currentTarget.style.display = "none";
+                      const parent = currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${(((viewUser.first_name||"").trim().slice(0,1)+(viewUser.last_name||"").trim().slice(0,1))||"?").toUpperCase()}</div>`;
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">
+                    {(((viewUser.first_name || "").trim().slice(0,1) + (viewUser.last_name || "").trim().slice(0,1)) || "?").toUpperCase()}
                   </div>
-                ) : (
-                  <div className="text-gray-500">None</div>
                 )}
               </div>
-              <div className="grid grid-cols-[120px,1fr] items-start gap-x-3 text-sm">
-                <div className="text-gray-500">Facebook</div>
-                {viewUser.facebook ? (
-                  <a href={viewUser.facebook} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:underline break-all">
-                    <FaFacebookF /> {viewUser.facebook}
-                  </a>
-                ) : (
-                  <div className="text-gray-500">None</div>
-                )}
+
+              <div className="mt-5 text-center space-y-0.5">
+                <div className="text-2xl font-semibold text-gray-900">
+                  {[viewUser.first_name, viewUser.last_name].filter(Boolean).join(" ") || "-"}
+                </div>
+                <div className="text-sm text-gray-600">{viewUser.email || "-"}</div>
               </div>
-              <div className="grid grid-cols-[120px,1fr] items-start gap-x-3 text-sm">
-                <div className="text-gray-500">Instagram</div>
-                {viewUser.instagram ? (
-                  <a href={viewUser.instagram} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:underline break-all">
-                    <FaInstagram className="text-pink-500" /> {viewUser.instagram}
-                  </a>
-                ) : (
-                  <div className="text-gray-500">None</div>
-                )}
+
+              <div className="mt-3 flex items-center justify-center gap-3">
+                <div className="text-sm text-gray-600">
+                  Created <span className="font-semibold text-gray-900">{formatPrettyDate(viewUser.date)}</span>
+                </div>
+                <RolePill role={viewUser.role} />
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto bg-gray-50">
+              <div className="space-y-6">
+                <SectionCard
+                  title="Account Information"
+                  badge={
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                      User
+                    </span>
+                  }
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+                    <Field label="First Name" value={viewUser.first_name || "-"} />
+                    <Field label="Last Name" value={viewUser.last_name || "-"} />
+                    <Field label="Email" value={viewUser.email || "-"} />
+                    <Field
+                      label="Gender"
+                      value={
+                        <span className="inline-flex items-center gap-2">
+                          {String(viewUser.sex || "").toLowerCase() === "male" && <Mars className="h-4 w-4 text-blue-600" />}
+                          {String(viewUser.sex || "").toLowerCase() === "female" && <Venus className="h-4 w-4 text-pink-600" />}
+                          <span>{viewUser.sex && viewUser.sex !== "-" ? viewUser.sex : "No gender provided"}</span>
+                        </span>
+                      }
+                    />
+                    <Field
+                      label="Contact"
+                      value={
+                        viewUser.phone ? (
+                          <span className="inline-flex items-center gap-2">
+                            <img src="/philippines.png" alt="PH" className="h-4 w-6 rounded-sm object-cover" />
+                            <span className="text-gray-700">+63</span>
+                            <span className="font-medium tracking-wide">{viewUser.phone}</span>
+                          </span>
+                        ) : (
+                          "None"
+                        )
+                      }
+                    />
+                  </div>
+                </SectionCard>
+
+                <SectionCard
+                  title="Social Links"
+                  badge={
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
+                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                      Social
+                    </span>
+                  }
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-4xl">
+                    <Field
+                      label="Facebook"
+                      value={
+                        viewUser.facebook ? (
+                          <a href={viewUser.facebook} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:underline break-all">
+                            <FaFacebookF /> {viewUser.facebook}
+                          </a>
+                        ) : (
+                          "None"
+                        )
+                      }
+                    />
+                    <Field
+                      label="Instagram"
+                      value={
+                        viewUser.instagram ? (
+                          <a href={viewUser.instagram} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:underline break-all">
+                            <FaInstagram className="text-pink-500" /> {viewUser.instagram}
+                          </a>
+                        ) : (
+                          "None"
+                        )
+                      }
+                    />
+                  </div>
+                </SectionCard>
+              </div>
+            </div>
+
+            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-1 gap-3 border-t border-gray-200 bg-white">
               <button
                 type="button"
                 onClick={closeModal}
-                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
               >
                 Close
               </button>
@@ -594,7 +677,7 @@ export default function AdminManageUser() {
   );
 }
 
-function RowMenu({ onView, onEdit, onRemove }) {
+function RowMenu({ onView, onEdit, onRemove, onDisable }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -626,6 +709,24 @@ function RowMenu({ onView, onEdit, onRemove }) {
           aria-label="View user"
         >
           View
+        </span>
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            setOpen(false);
+            onDisable?.();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onDisable?.();
+            }
+          }}
+          className="cursor-pointer inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+          aria-label="Disable user"
+        >
+          Disable
         </span>
       </div>
     </div>
