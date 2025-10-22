@@ -468,7 +468,10 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60">
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
               <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Personal Information</h3>
-              <span className="text-[11px] px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Client</span>
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                Client
+              </span>
             </div>
             <div className="px-6 py-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
@@ -513,7 +516,10 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60">
                 <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
                   <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Service Request Details</h3>
-                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">Request</span>
+                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
+                    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                    Request
+                  </span>
                 </div>
                 <div className="px-6 py-6">
                   <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
@@ -521,7 +527,12 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     <LabelValue label="Service Task" value={service_task} />
                     <LabelValue label="Preferred Date" value={preferred_date_display} />
                     <LabelValue label="Preferred Time" value={preferred_time_display} />
-                    <LabelValue label="Urgent" value={is_urgent} />
+                    <LabelValue label="Urgent" value={
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${toBoolStrict(is_urgent) ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                        {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
+                      </span>
+                    } />
                     <LabelValue label="Tools Provided" value={tools_provided} />
                     <div className="md:col-span-2">
                       <LabelValue label="Description" value={service_description || '-'} />
@@ -545,7 +556,10 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60">
                 <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
                   <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Service Rate</h3>
-                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100">Pricing</span>
+                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                    Pricing
+                  </span>
                 </div>
                 <div className="px-6 py-6">
                   <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
@@ -591,9 +605,17 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Urgent:</span>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full border justify-self-start ${toBoolStrict(is_urgent) ? 'bg-[#E6F0FF] text-[#0A66FF] border-[#C9DAFF]' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                      {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
-                    </span>
+                    {toBoolStrict(is_urgent) ? (
+  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium w-24 justify-center bg-blue-50 text-blue-700 border-blue-200">
+    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+    Yes
+  </span>
+) : (
+  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium w-24 justify-center bg-red-50 text-red-700 border-red-200">
+    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+    No
+  </span>
+)}
                   </div>
                   <div className="h-px bg-gray-100 my-2" />
                   <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">

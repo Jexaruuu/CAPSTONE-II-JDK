@@ -236,6 +236,7 @@ export default function AdminServiceRequests() {
   useEffect(() => {
     const t = setTimeout(() => {
       fetchItems(filter, searchTerm);
+      setCurrentPage(1);
     }, 400);
     return () => clearInterval(t);
   }, [filter, searchTerm]);
@@ -445,6 +446,23 @@ export default function AdminServiceRequests() {
     return null;
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 7;
+
+  const totalPages = useMemo(() => {
+    const t = Math.ceil(sortedRows.length / pageSize);
+    return t > 0 ? t : 1;
+  }, [sortedRows.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1);
+  }, [totalPages]);
+
+  const pageRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, currentPage]);
+
   return (
     <main className="p-6">
       <div className="mb-4">
@@ -512,6 +530,7 @@ export default function AdminServiceRequests() {
                 onClick={() => {
                   fetchCounts();
                   fetchItems(filter, searchTerm);
+                  setCurrentPage(1);
                 }}
                 className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
               >
@@ -594,7 +613,7 @@ export default function AdminServiceRequests() {
                     </thead>
 
                     <tbody className="text-sm text-gray-800">
-                      {sortedRows.map((u, idx) => {
+                      {pageRows.map((u, idx) => {
                         const disableActions =
                           u._expired || u.status === "approved" || u.status === "declined";
                         return (
@@ -672,7 +691,7 @@ export default function AdminServiceRequests() {
                         );
                       })}
 
-                      {!loading && !loadError && sortedRows.length === 0 && (
+                      {!loading && !loadError && pageRows.length === 0 && (
                         <tr>
                           <td colSpan={COLSPAN} className="px-4 py-16 text-center text-gray-500 border border-gray-200">
                             No requests found.
@@ -695,6 +714,44 @@ export default function AdminServiceRequests() {
                       Clear
                     </button>
                   </div>
+                </div>
+              )}
+
+              {!loading && !loadError && sortedRows.length > 0 && (
+                <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
+                  <nav className="flex items-center gap-2">
+                    <button
+                      className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                      disabled={currentPage <= 1}
+                      aria-label="Previous page"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    >
+                      ‹
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        className={[
+                          "h-9 min-w-9 px-3 rounded-md border",
+                          p === currentPage
+                            ? "border-[#008cfc] bg-[#008cfc] text-white"
+                            : "border-gray-300 text-gray-700 hover:bg-gray-50",
+                        ].join(" ")}
+                        aria-current={p === currentPage ? "page" : undefined}
+                        onClick={() => setCurrentPage(p)}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                    <button
+                      className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      disabled={currentPage >= totalPages}
+                      aria-label="Next page"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    >
+                      ›
+                    </button>
+                  </nav>
                 </div>
               )}
             </div>

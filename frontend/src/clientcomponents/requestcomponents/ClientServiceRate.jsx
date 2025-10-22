@@ -136,7 +136,10 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
             <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Service Request Price Rate</h3>
-            <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Rate</span>
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Rate
+            </span>
           </div>
 
           <div className="px-6 py-6">
