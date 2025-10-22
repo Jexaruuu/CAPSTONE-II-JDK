@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { MoreHorizontal, ChevronsUpDown, Check, Mars, Venus } from "lucide-react";
+import { ChevronsUpDown, Check, Mars, Venus } from "lucide-react";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -38,6 +38,7 @@ export default function AdminManageUser() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [viewOpen, setViewOpen] = useState(false);
   const [viewUser, setViewUser] = useState(null);
+  const [logoBroken, setLogoBroken] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 400);
@@ -492,134 +493,99 @@ export default function AdminManageUser() {
       </section>
 
       {viewOpen && viewUser && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="absolute inset-0 flex items-center justify-center p-4">
-            <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl ring-1 ring-gray-200 overflow-hidden">
-              <div className="relative h-40 bg-gray-100">
-                <img src="/jdklogo.png" alt="Banner" className="absolute right-4 top-1/2 -translate-y-1/2 w-[200px] h-[200px] object-contain p-6 select-none pointer-events-none" />
-                <div className="hidden absolute -top-6 -left-10 h-40 w-40 rounded-full bg-white/10 blur-md" />
-                <div className="hidden absolute -bottom-10 left-1/3 h-44 w-44 rounded-full bg-white/10 blur-md" />
-                <div className="hidden absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/10 blur-md" />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="User details"
+          tabIndex={-1}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] bg-gradient-to-br from-blue-50 to-white flex items-center justify-center overflow-hidden">
+              {viewUser.profile_picture ? (
+                <img src={viewUser.profile_picture} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">
+                  {(((viewUser.first_name || "").trim().slice(0,1) + (viewUser.last_name || "").trim().slice(0,1)) || "?").toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 text-center space-y-1">
+              <div className="text-lg font-semibold text-gray-900">
+                {[viewUser.first_name, viewUser.last_name].filter(Boolean).join(" ") || "-"}
               </div>
-              <div className="relative">
-                <div className="px-6 sm:px-10 -mt-12 grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-6 items-end">
-                  <div className="flex flex-col items-start">
-                    <div className="h-24 w-24 rounded-full ring-4 ring-white overflow-hidden bg-gray-100 flex items-center justify-center">
-                      {viewUser.profile_picture ? (
-                        <img
-                          src={viewUser.profile_picture}
-                          alt={`${viewUser.first_name} ${viewUser.last_name}`}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-blue-50 text-blue-600 text-3xl font-semibold">
-                          {(((viewUser.first_name || "").trim().slice(0,1) + (viewUser.last_name || "").trim().slice(0,1)) || "?").toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-3">
-                      <div className="text-2xl font-bold text-gray-900">
-                        {[viewUser.first_name, viewUser.last_name].filter(Boolean).join(" ") || "-"}
-                      </div>
-                      <div className="text-sm text-gray-500">{viewUser.email || "-"}</div>
-                    </div>
-                  </div>
-                  <div className="pb-2 text-right">
-                    <div className="text-[11px] uppercase tracking-wider text-gray-500">Created</div>
-                    <div className="text-sm font-semibold text-gray-900">{formatPrettyDate(viewUser.date)}</div>
-                    <span
-                      className={`mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${
-                        (viewUser.role || "").toLowerCase() === "worker"
-                          ? "border-indigo-200 text-indigo-700 bg-indigo-50"
-                          : "border-emerald-200 text-emerald-700 bg-emerald-50"
-                      }`}
-                    >
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                      {viewUser.role?.charAt(0).toUpperCase() + viewUser.role?.slice(1)}
-                    </span>
-                  </div>
-                </div>
+              <div className="text-sm text-gray-600">{viewUser.email || "-"}</div>
+              <div className="mt-1">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium mt-2 ${
+                    (viewUser.role || "").toLowerCase() === "worker"
+                      ? "border-indigo-200 text-indigo-700 bg-indigo-50"
+                      : "border-emerald-200 text-emerald-700 bg-emerald-50"
+                  }`}
+                >
+                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                  {viewUser.role?.charAt(0).toUpperCase() + viewUser.role?.slice(1)}
+                </span>
+              </div>
+            </div>
 
-                <div className="px-6 sm:px-10 pt-4 pb-2">
-                  <div className="inline-flex items-center gap-2 text-sm text-gray-800">
-                    {String(viewUser.sex || "").toLowerCase() === "male" && <Mars className="h-4 w-4 text-blue-600" />}
-                    {String(viewUser.sex || "").toLowerCase() === "female" && <Venus className="h-4 w-4 text-pink-600" />}
-                    <span>{viewUser.sex && viewUser.sex !== "-" ? viewUser.sex : "No gender provided"}</span>
-                  </div>
-                  <div className="mt-3">
-                    <div className="text-sm font-semibold text-gray-900">Contact Number:</div>
-                    {viewUser.phone ? (
-                      <div className="mt-1 inline-flex items-center gap-2 text-sm text-gray-800">
-                        <img src="/philippines.png" alt="PH" className="h-4 w-6 rounded-sm object-cover" />
-                        <span className="text-gray-700">+63</span>
-                        <span className="font-medium tracking-wide">{viewUser.phone}</span>
-                      </div>
-                    ) : (
-                      <div className="mt-1 text-sm text-gray-500">None</div>
-                    )}
-                  </div>
-                  <div className="mt-4">
-                    <div className="text-sm font-semibold text-gray-900">Social Media Links:</div>
-                    {viewUser.facebook || viewUser.instagram ? (
-                      <div className="mt-2 flex flex-col gap-2">
-                        {viewUser.facebook && (
-                          <div className="flex items-center gap-2">
-                            <FaFacebookF className="text-blue-600" />
-                            <a
-                              href={viewUser.facebook}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-blue-600 hover:underline text-sm break-all"
-                            >
-                              {viewUser.facebook}
-                            </a>
-                          </div>
-                        )}
-                        {viewUser.instagram && (
-                          <div className="flex items-center gap-2">
-                            <FaInstagram className="text-pink-500" />
-                            <a
-                              href={viewUser.instagram}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-blue-600 hover:underline text-sm break-all"
-                            >
-                              {viewUser.instagram}
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="mt-2 text-sm text-gray-500">None</div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="hidden px-6 sm:px-10 pb-6 items-center justify-between">
-                  <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500">Role</div>
-                      <div className="text-base font-semibold text-gray-900">
-                        {viewUser.role?.charAt(0).toUpperCase() + viewUser.role?.slice(1)}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500">Gender</div>
-                      <div className="text-base font-semibold text-gray-900">{viewUser.sex || "-"}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="px-6 sm:px-10 pb-6 flex items-center justify-end">
-                  <button
-                    onClick={closeModal}
-                    className="inline-flex items-center rounded-full bg-blue-600 text-white px-5 py-2 text-sm font-medium hover:bg-blue-700"
-                  >
-                    Close
-                  </button>
+            <div className="mt-6 space-y-3">
+              <div className="grid grid-cols-[120px,1fr] items-start gap-x-3 text-sm">
+                <div className="text-gray-500">Created</div>
+                <div className="font-medium text-gray-900">{formatPrettyDate(viewUser.date)}</div>
+              </div>
+              <div className="grid grid-cols-[120px,1fr] items-start gap-x-3 text-sm">
+                <div className="text-gray-500">Gender</div>
+                <div className="inline-flex items-center gap-2 text-gray-900">
+                  {String(viewUser.sex || "").toLowerCase() === "male" && <Mars className="h-4 w-4 text-blue-600" />}
+                  {String(viewUser.sex || "").toLowerCase() === "female" && <Venus className="h-4 w-4 text-pink-600" />}
+                  <span>{viewUser.sex && viewUser.sex !== "-" ? viewUser.sex : "No gender provided"}</span>
                 </div>
               </div>
+              <div className="grid grid-cols-[120px,1fr] items-start gap-x-3 text-sm">
+                <div className="text-gray-500">Contact</div>
+                {viewUser.phone ? (
+                  <div className="inline-flex items-center gap-2 text-gray-900">
+                    <img src="/philippines.png" alt="PH" className="h-4 w-6 rounded-sm object-cover" />
+                    <span className="text-gray-700">+63</span>
+                    <span className="font-medium tracking-wide">{viewUser.phone}</span>
+                  </div>
+                ) : (
+                  <div className="text-gray-500">None</div>
+                )}
+              </div>
+              <div className="grid grid-cols-[120px,1fr] items-start gap-x-3 text-sm">
+                <div className="text-gray-500">Facebook</div>
+                {viewUser.facebook ? (
+                  <a href={viewUser.facebook} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:underline break-all">
+                    <FaFacebookF /> {viewUser.facebook}
+                  </a>
+                ) : (
+                  <div className="text-gray-500">None</div>
+                )}
+              </div>
+              <div className="grid grid-cols-[120px,1fr] items-start gap-x-3 text-sm">
+                <div className="text-gray-500">Instagram</div>
+                {viewUser.instagram ? (
+                  <a href={viewUser.instagram} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:underline break-all">
+                    <FaInstagram className="text-pink-500" /> {viewUser.instagram}
+                  </a>
+                ) : (
+                  <div className="text-gray-500">None</div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
