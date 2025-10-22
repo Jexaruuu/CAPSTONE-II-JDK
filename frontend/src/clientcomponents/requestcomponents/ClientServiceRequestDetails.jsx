@@ -5,6 +5,7 @@ import { compressImageFileToDataURL } from '../../utils/imageCompression';
 const STORAGE_KEY = 'clientServiceRequestDetails';
 const GLOBAL_DESC_KEY = 'clientServiceDescription';
 const CONFIRM_FLAG = 'clientRequestJustConfirmed';
+const IMAGE_CLEARED_FLAG = 'clientServiceImageCleared';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }) => {
@@ -87,6 +88,23 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   }, []);
 
   useEffect(() => {
+  return () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      saved.serviceDescription = '';
+      saved.image = null;
+      saved.imageName = '';
+      saved.attachments = [];
+      saved.request_image_url = '';
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    localStorage.setItem('clientServiceImageCleared', '1');
+  };
+}, []);
+
+  useEffect(() => {
     const id = setInterval(() => {
       const t = getTodayLocalDateString();
       setTodayStr((prev) => (prev !== t ? t : prev));
@@ -148,6 +166,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           localStorage.removeItem(STORAGE_KEY);
         }
       }
+      localStorage.setItem(IMAGE_CLEARED_FLAG, '1');
       setServiceDescription('');
       setImage(null);
       setImageName('');
@@ -155,11 +174,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       setRequestImageUrl('');
     };
     const onNavCheck = () => {
-      if (window.location.pathname === '/clientdashboard') clear();
+      if (window.location.pathname === '/clientdashboard' || window.location.pathname.startsWith('/clientdashboard')) clear();
     };
     const onClick = (e) => {
       const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
-      if (a && a.getAttribute('href') === '/clientdashboard') clear();
+      if (a) {
+        const href = a.getAttribute('href');
+        if (href === '/clientdashboard' || href?.startsWith('/clientdashboard')) clear();
+      }
     };
     const onStorage = (e) => {
       if (e && e.key === CONFIRM_FLAG && e.newValue === '1') {
@@ -200,6 +222,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   useEffect(() => {
     const run = async () => {
       if (image) return;
+      if (localStorage.getItem(IMAGE_CLEARED_FLAG) === '1') return;
       let email = localStorage.getItem('email_address') || localStorage.getItem('email') || '';
       if (!email) {
         try {
@@ -244,6 +267,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       reader.onload = () => { setImage(reader.result); setAttachments([reader.result]); setRequestImageUrl(reader.result); };
       reader.readAsDataURL(file);
     }
+    localStorage.removeItem(IMAGE_CLEARED_FLAG);
   };
 
   const handlePreferredDateChange = (value) => {
