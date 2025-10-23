@@ -100,35 +100,42 @@ const Card = ({ item, onEdit, onOpenMenu }) => {
   const r = item.rate || {};
   const Icon = iconForService(d.service_type || d.service_task);
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 md:p-6 shadow-sm">
+    <div className="rounded-2xl border border-gray-300 bg-white p-5 md:p-6 shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Link to={`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`} className="block">
-            <h3 className="text-lg md:text-xl font-semibold text-gray-900 truncate hover:underline">
-              {d.service_type || "Service"} • {d.service_task || "Task"}
+          <Link to={`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`} className="block pointer-events-none select-text">
+            <h3 className="text-xl md:text-2xl font-semibold truncate text-[#008cfc]">
+              {d.service_type || "Service"}
             </h3>
+            <div className="mt-0.5 text-base md:text-lg truncate text-black">
+              <span className="font-semibold">Service Task:</span> {d.service_task || "Task"}
+            </div>
           </Link>
-          <p className="mt-1 text-sm text-gray-500">Created {timeAgo(item.created_at)} by You</p>
-          <div className="mt-4 text-sm text-gray-700 space-y-1.5">
-            <div className="flex flex-wrap gap-x-6 gap-y-1">
-              <span className="text-gray-500">Preferred Date:</span>
-              <span className="font-medium">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+          <p className="mt-1 text-base text-gray-500">Created {timeAgo(item.created_at)} by You</p>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12 md:gap-x-16 text-base text-gray-700">
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <span className="text-gray-700 font-semibold">Preferred Date:</span>
+                <span className="font-medium text-[#008cfc]">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <span className="text-gray-700 font-semibold">Preferred Time:</span>
+                <span className="font-medium text-[#008cfc]">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <span className="text-gray-700 font-semibold">Urgency:</span>
+                <span className="font-medium text-[#008cfc]">{d.is_urgent || "-"}</span>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-1">
-              <span className="text-gray-500">Preferred Time:</span>
-              <span className="font-medium">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
-            </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-1">
-              <span className="text-gray-500">Urgency:</span>
-              <span className="font-medium">{d.is_urgent || "-"}</span>
-            </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-1">
-              <span className="text-gray-500">Rate Type:</span>
-              <span className="font-medium">{formatRateType(r.rate_type)}</span>
-            </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-1">
-              <span className="text-gray-500">Service Rate:</span>
-              <span className="font-medium"><RateText rate={r} /></span>
+            <div className="space-y-1.5 md:pl-10">
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <span className="text-gray-700 font-semibold">Rate Type:</span>
+                <span className="font-medium text-[#008cfc]">{formatRateType(r.rate_type)}</span>
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <span className="text-gray-700 font-semibold">Service Rate:</span>
+                <span className="font-medium text-[#008cfc]"><RateText rate={r} /></span>
+              </div>
             </div>
           </div>
         </div>
@@ -139,14 +146,14 @@ const Card = ({ item, onEdit, onOpenMenu }) => {
       <div className="-mt-9 flex justify-end gap-2">
         <Link
           to={`/current-service-request/${encodeURIComponent(item.id)}`}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
         >
           View
         </Link>
         <button
           type="button"
           onClick={() => onEdit(item)}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
         >
           Edit Request
         </button>
@@ -270,7 +277,7 @@ export default function ClientCurrentServiceRequest() {
       <div className="flex-1 flex flex-col">
         <header className="mx-auto w-full max-w-[1525px] px-6 pt-6 md:pt-8">
           <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-            Current Service Requests
+            Service Requests Status
           </h1>
         </header>
 

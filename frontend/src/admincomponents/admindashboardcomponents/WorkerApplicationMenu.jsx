@@ -270,32 +270,34 @@ export default function WorkerApplicationMenu() {
       <section className="mt-6">
         <div className="-mx-6">
           <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-2">
-              {tabs.map((t) => {
-                const active = filter === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    onClick={() => setFilter(t.key)}
-                    className={[
-                      "rounded-full px-3.5 py-1.5 text-sm border",
-                      active
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
-                    ].join(" ")}
-                  >
-                    <span>{t.label}</span>
-                    <span
-                      className={[
-                        "ml-2 inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold",
-                        active ? "bg-white/20" : "bg-gray-100 text-gray-700",
-                      ].join(" ")}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-gray-700">Filter</span>
+              <div className="flex items-center gap-2">
+                {tabs.map((t) => {
+                  const active = filter === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      onClick={() => setFilter(t.key)}
+                      className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                        active
+                          ? "border-[#008cfc] bg-[#008cfc] text-white"
+                          : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                      title={`${t.label} (${typeof t.count === "number" ? t.count : "0"})`}
                     >
-                      {typeof t.count === "number" ? t.count : "—"}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span>{t.label}</span>
+                      <span
+                        className={`inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold ${
+                          active ? "bg-white/20" : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {typeof t.count === "number" ? t.count : "—"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -304,13 +306,13 @@ export default function WorkerApplicationMenu() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search Applications"
-                  className="w-72 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-7 h-10 w-72 rounded-md border border-gray-300 bg-white px-3 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   aria-label="Search applications"
                 />
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm("")}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
+                    className="mt-3.5 absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
                     aria-label="Clear search"
                   >
                     ✕
@@ -322,7 +324,7 @@ export default function WorkerApplicationMenu() {
                   fetchCounts();
                   fetchItems(filter, searchTerm);
                 }}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
               >
                 Refresh
               </button>

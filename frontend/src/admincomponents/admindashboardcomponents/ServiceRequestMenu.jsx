@@ -73,6 +73,22 @@ function TaskPill({ value }) {
   );
 }
 
+function YesNoPill({ yes }) {
+  const truthy = yes === true || yes === 1 || String(yes).toLowerCase() === "yes" || String(yes).toLowerCase() === "true";
+  const falsy = yes === false || yes === 0 || String(yes).toLowerCase() === "no" || String(yes).toLowerCase() === "false";
+  const cfg = truthy
+    ? { bg: "bg-emerald-50", text: "text-emerald-700", br: "border-emerald-200", label: "Yes" }
+    : falsy
+    ? { bg: "bg-red-50", text: "text-red-700", br: "border-red-200", label: "No" }
+    : { bg: "bg-gray-50", text: "text-gray-600", br: "border-gray-200", label: "-" };
+  return (
+    <span className={["inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide", cfg.bg, cfg.text, cfg.br].join(" ")}>
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+      {cfg.label}
+    </span>
+  );
+}
+
 function dateOnlyFrom(val) {
   if (!val) return null;
   const raw = String(val).trim();
@@ -462,7 +478,7 @@ export default function AdminServiceRequests() {
   );
 
   const SectionCard = ({ title, children, badge }) => (
-    <section className="relative rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-lg transition-all duration-200 ring-1 ring-gray-100 hover:ring-blue-100">
+    <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
       <div className="px-6 pt-5 pb-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-2xl flex items-center justify-between">
         <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500"></span>
@@ -492,9 +508,6 @@ export default function AdminServiceRequests() {
             }
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-              <Field label="First Name" value={viewRow?.info?.first_name || "-"} />
-              <Field label="Last Name" value={viewRow?.info?.last_name || "-"} />
-              <Field label="Email" value={viewRow?.info?.email_address || viewRow.email || "-"} />
               <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
               <Field label="Street" value={viewRow?.info?.street || "-"} />
               <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
@@ -516,8 +529,8 @@ export default function AdminServiceRequests() {
                 <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
                 <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
                 <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
-                <Field label="Urgent" value={viewRow?.is_urgent ? "Yes" : "No"} />
-                <Field label="Tools Provided" value={viewRow?.tools_provided ? "Yes" : "No"} />
+                <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
+                <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
                 <div className="sm:col-span-2">
                   <Field
                     label="Description"
@@ -594,9 +607,6 @@ export default function AdminServiceRequests() {
           }
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
-            <Field label="First Name" value={viewRow?.info?.first_name || "-"} />
-            <Field label="Last Name" value={viewRow?.info?.last_name || "-"} />
-            <Field label="Email" value={viewRow?.info?.email_address || viewRow.email || "-"} />
             <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
             <Field label="Street" value={viewRow?.info?.street || "-"} />
             <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
@@ -622,8 +632,8 @@ export default function AdminServiceRequests() {
               <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
               <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
               <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
-              <Field label="Urgent" value={viewRow?.is_urgent ? "Yes" : "No"} />
-              <Field label="Tools Provided" value={viewRow?.tools_provided ? "Yes" : "No"} />
+              <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
+              <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
               <div className="sm:col-span-2">
                 <Field
                   label="Description"
@@ -745,38 +755,37 @@ export default function AdminServiceRequests() {
       <section className="mt-6">
         <div className="-mx-6">
           <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-2">
-              {[
-                { key: "all", label: "All", count: counts.total },
-                { key: "pending", label: "Pending", count: counts.pending },
-                { key: "approved", label: "Approved", count: counts.approved },
-                { key: "declined", label: "Declined", count: counts.declined },
-                { key: "expired", label: "Expired", count: expiredCount },
-              ].map((t) => {
-                const active = filter === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    onClick={() => setFilter(t.key)}
-                    className={[
-                      "rounded-full px-3.5 py-1.5 text-sm border",
-                      active
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
-                    ].join(" ")}
-                  >
-                    <span>{t.label}</span>
-                    <span
-                      className={[
-                        "ml-2 inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold",
-                        active ? "bg-white/20" : "bg-gray-100 text-gray-700",
-                      ].join(" ")}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-gray-700">Filter</span>
+              <div className="flex items-center gap-2">
+                {[
+                  { key: "all", label: "All", count: counts.total },
+                  { key: "pending", label: "Pending", count: counts.pending },
+                  { key: "approved", label: "Approved", count: counts.approved },
+                  { key: "declined", label: "Declined", count: counts.declined },
+                  { key: "expired", label: "Expired", count: expiredCount },
+                ].map((t) => {
+                  const active = filter === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      onClick={() => setFilter(t.key)}
+                      className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                        active ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
                     >
-                      {typeof t.count === "number" ? t.count : "—"}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span>{t.label}</span>
+                      <span
+                        className={`inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold ${
+                          active ? "bg-white/20" : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {typeof t.count === "number" ? t.count : "—"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -785,13 +794,13 @@ export default function AdminServiceRequests() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search Requests"
-                  className="w-72 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-7 h-10 w-72 rounded-md border border-gray-300 bg-white px-3 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   aria-label="Search requests"
                 />
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm("")}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
+                    className="mt-3.5 absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
                     aria-label="Clear search"
                   >
                     ✕
@@ -804,7 +813,7 @@ export default function AdminServiceRequests() {
                   fetchItems(filter, searchTerm);
                   setCurrentPage(1);
                 }}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
               >
                 Refresh
               </button>
@@ -1087,7 +1096,7 @@ export default function AdminServiceRequests() {
 
               <div className="mt-3 flex items-center justify-center gap-3">
                 <div className="text-sm text-gray-600">
-                  Created <span className="font-semibold text-gray-900">{viewRow.created_at_display || "-"}</span>
+                  Created <span className="font-semibold text-[#008cfc]">{viewRow.created_at_display || "-"}</span>
                 </div>
                 <StatusPill value={viewRow.ui_status} />
               </div>

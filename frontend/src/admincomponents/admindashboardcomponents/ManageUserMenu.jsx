@@ -242,27 +242,54 @@ export default function AdminManageUser() {
     );
   };
 
+  const SexBadge = ({ sex }) => {
+    const s = String(sex || "").toLowerCase();
+    const isMale = s === "male";
+    const isFemale = s === "female";
+    const cls = isMale
+      ? "border-blue-200 text-blue-700 bg-blue-50"
+      : isFemale
+      ? "border-pink-200 text-pink-700 bg-pink-50"
+      : "border-gray-200 text-gray-700 bg-gray-50";
+    return (
+      <span className={["inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium", cls].join(" ")}>
+        {isMale && <Mars className="h-3.5 w-3.5" />}
+        {isFemale && <Venus className="h-3.5 w-3.5" />}
+        <span>{sex || "-"}</span>
+      </span>
+    );
+  };
+
   const Field = ({ label, value }) => (
-    <div className="text-left">
-      <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">{label}</div>
-      <div className="mt-1 text-[15px] font-semibold text-gray-900 break-words">{value ?? "-"}</div>
+    <div className="text-center">
+      <div className="text-[11px] font-semibold tracking-widest text-black uppercase">{label}</div>
+      <div className="mt-1 text-[15px] font-semibold text-[#008cfc] break-words">{value ?? "-"}</div>
     </div>
   );
 
   const SectionCard = ({ title, children, badge }) => (
-    <section className="relative rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-lg transition-all duration-200 ring-1 ring-gray-100 hover:ring-blue-100">
-      <div className="px-6 pt-5 pb-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-2xl flex items-center justify-between">
-        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+    <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+      <div className="px-5 pt-4 pb-3 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-2xl flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <span className="inline-block h-2 w-2 rounded-full bg-blue-500"></span>
           {title}
         </h3>
         {badge || null}
       </div>
-      <div className="p-6">
+      <div className="p-5 text-center">
         {children}
       </div>
       <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
     </section>
+  );
+
+  const ProfileCircle = ({ initials, size = 72 }) => (
+    <div
+      className="bg-blue-50 border border-blue-200 text-blue-600 grid place-items-center font-semibold uppercase"
+      style={{ width: size, height: size, borderRadius: 9999 }}
+    >
+      <span className="text-xl">{initials}</span>
+    </div>
   );
 
   return (
@@ -289,32 +316,34 @@ export default function AdminManageUser() {
           </div>
 
           <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-3">
-            <div className="flex items-center gap-2">
-              {roleTabs.map(t => {
-                const active = roleFilter === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    onClick={() => setRoleFilter(t.key)}
-                    className={[
-                      "rounded-full px-3.5 py-1.5 text-sm border",
-                      active
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                    ].join(" ")}
-                  >
-                    <span>{t.label}</span>
-                    <span
-                      className={[
-                        "ml-2 inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold",
-                        active ? "bg-white/20" : "bg-gray-100 text-gray-700"
-                      ].join(" ")}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-gray-700">Filter</span>
+              <div className="flex items-center gap-2">
+                {roleTabs.map((t) => {
+                  const active = roleFilter === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      onClick={() => setRoleFilter(t.key)}
+                      className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                        active
+                          ? "border-[#008cfc] bg-[#008cfc] text-white"
+                          : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                      title={`${t.label} (${typeof t.count === "number" ? t.count : "0"})`}
                     >
-                      {typeof t.count === "number" ? t.count : "—"}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span>{t.label}</span>
+                      <span
+                        className={`inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold ${
+                          active ? "bg-white/20" : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {typeof t.count === "number" ? t.count : "—"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -323,13 +352,13 @@ export default function AdminManageUser() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search Users"
-                  className="w-72 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-7 h-10 w-72 rounded-md border border-gray-300 bg-white px-3 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   aria-label="Search users"
                 />
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
+                    className="mt-3.5 absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
                     aria-label="Clear search"
                   >
                     ✕
@@ -338,7 +367,7 @@ export default function AdminManageUser() {
               </div>
               <button
                 onClick={fetchUsers}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
               >
                 Refresh
               </button>
@@ -465,7 +494,8 @@ export default function AdminManageUser() {
                                   currentTarget.style.display = "none";
                                   const parent = currentTarget.parentElement;
                                   if (parent) {
-                                    parent.innerHTML = `<div class="h-9 w-9 grid place-items-center bg-blue-100 text-blue-700 text-xs font-semibold">${((u.first_name||"").trim().slice(0,1).toUpperCase()+(u.last_name||"").trim().slice(0,1).toUpperCase())||"?"}</div>`;
+                                    const initials = `${(u.first_name || "").trim().slice(0,1)}${(u.last_name || "").trim().slice(0,1)}`.toUpperCase();
+                                    parent.innerHTML = `<div class="h-9 w-9 rounded-full bg-blue-50 border border-blue-200 text-blue-600 grid place-items-center text-xs font-semibold">${initials || ""}</div>`;
                                   }
                                 }}
                               />
@@ -482,9 +512,7 @@ export default function AdminManageUser() {
                           </td>
                           <td className="px-4 py-4 border border-gray-200">{u.last_name || "-"}</td>
                           <td className="px-4 py-4 border border-gray-200">
-                            <span className={`${String(u.sex || "").toLowerCase() === "male" ? "text-blue-600" : String(u.sex || "").toLowerCase() === "female" ? "text-pink-600" : "text-gray-800"}`}>
-                              {u.sex || "-"}
-                            </span>
+                            <SexBadge sex={u.sex} />
                           </td>
                           <td className="px-4 py-4 border border-gray-200">
                             <div className="text-gray-700 truncate">{u.email}</div>
@@ -560,82 +588,73 @@ export default function AdminManageUser() {
           aria-modal="true"
           aria-label="User details"
           tabIndex={-1}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-3"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
-            <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
-              <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
+          <div className="relative w-full max-w-[680px] max-h-[85vh] h-auto rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className="relative px-6 pt-6 pb-3 bg-gradient-to-b from-blue-50 to-white">
+              <div className="mx-auto ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow" style={{width:72,height:72,borderRadius:9999}}>
                 {viewUser.profile_picture ? (
                   <img
                     src={viewUser.profile_picture}
                     alt="Profile"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover rounded-full"
                     onError={({ currentTarget }) => {
                       currentTarget.style.display = "none";
                       const parent = currentTarget.parentElement;
                       if (parent) {
-                        parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${(((viewUser.first_name||"").trim().slice(0,1)+(viewUser.last_name||"").trim().slice(0,1))||"?").toUpperCase()}</div>`;
+                        const initials = `${(viewUser.first_name || "").trim().slice(0,1)}${(viewUser.last_name || "").trim().slice(0,1)}`.toUpperCase();
+                        parent.innerHTML = `<div class="w-full h-full rounded-full bg-blue-50 border border-blue-200 text-blue-600 grid place-items-center font-semibold text-xl uppercase">${initials}</div>`;
                       }
                     }}
                   />
                 ) : (
-                  <div className="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">
-                    {(((viewUser.first_name || "").trim().slice(0,1) + (viewUser.last_name || "").trim().slice(0,1)) || "?").toUpperCase()}
-                  </div>
+                  <ProfileCircle
+                    initials={`${(viewUser.first_name || "").trim().slice(0,1)}${(viewUser.last_name || "").trim().slice(0,1)}`.toUpperCase()}
+                    size={72}
+                  />
                 )}
               </div>
 
-              <div className="mt-5 text-center space-y-0.5">
-                <div className="text-2xl font-semibold text-gray-900">
+              <div className="mt-3 text-center space-y-0.5">
+                <div className="text-lg font-semibold text-gray-900">
                   {[viewUser.first_name, viewUser.last_name].filter(Boolean).join(" ") || "-"}
                 </div>
                 <div className="text-sm text-gray-600">{viewUser.email || "-"}</div>
               </div>
 
-              <div className="mt-3 flex items-center justify-center gap-3">
+              <div className="mt-2 flex items-center justify-center gap-3">
                 <div className="text-sm text-gray-600">
-                  Created <span className="font-semibold text-gray-900">{formatPrettyDate(viewUser.date)}</span>
+                  Created <span className="font-semibold text-[#008cfc]">{formatPrettyDate(viewUser.date)}</span>
                 </div>
                 <RolePill role={viewUser.role} />
               </div>
             </div>
 
-            <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
-              <div className="space-y-6">
+            <div className="px-5 sm:px-6 py-3 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
+              <div className="space-y-3">
                 <SectionCard
-                  title="Account Information"
+                  title="Personal Information"
                   badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium bg-blue-50 text-blue-700 border-blue-200">
+                      <span className="h-2.5 w-2.5 rounded-full bg-current opacity-30" />
                       User
                     </span>
                   }
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
-                    <Field label="First Name" value={viewUser.first_name || "-"} />
-                    <Field label="Last Name" value={viewUser.last_name || "-"} />
-                    <Field label="Email" value={viewUser.email || "-"} />
+                  <div className="flex flex-col items-center gap-4">
                     <Field
                       label="Gender"
-                      value={
-                        <span className="inline-flex items-center gap-2">
-                          {String(viewUser.sex || "").toLowerCase() === "male" && <Mars className="h-4 w-4 text-blue-600" />}
-                          {String(viewUser.sex || "").toLowerCase() === "female" && <Venus className="h-4 w-4 text-pink-600" />}
-                          <span className={`${String(viewUser.sex || "").toLowerCase() === "male" ? "text-blue-600" : String(viewUser.sex || "").toLowerCase() === "female" ? "text-pink-600" : "text-gray-900"}`}>
-                            {viewUser.sex && viewUser.sex !== "-" ? viewUser.sex : "No gender provided"}
-                          </span>
-                        </span>
-                      }
+                      value={<SexBadge sex={viewUser.sex} />}
                     />
                     <Field
-                      label="Contact"
+                      label="Contact Number"
                       value={
                         viewUser.phone ? (
-                          <span className="inline-flex items-center gap-2">
+                          <span className="inline-flex items-center gap-2 justify-center">
                             <img src="/philippines.png" alt="PH" className="h-4 w-6 rounded-sm object-cover" />
-                            <span className="text-gray-700">+63</span>
-                            <span className="font-medium tracking-wide">{viewUser.phone}</span>
+                            <span className="text-[#008cfc]">+63</span>
+                            <span className="font-semibold tracking-wide text-[#008cfc]">{viewUser.phone}</span>
                           </span>
                         ) : (
                           "None"
@@ -648,18 +667,18 @@ export default function AdminManageUser() {
                 <SectionCard
                   title="Social Links"
                   badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
+                      <span className="h-2.5 w-2.5 rounded-full bg-current opacity-30" />
                       Social
                     </span>
                   }
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-4xl">
+                  <div className="flex flex-col items-center gap-4">
                     <Field
                       label="Facebook"
                       value={
                         viewUser.facebook ? (
-                          <a href={viewUser.facebook} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:underline break-all">
+                          <a href={viewUser.facebook} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 justify-center text-[#008cfc] hover:underline break-all">
                             <FaFacebookF /> {viewUser.facebook}
                           </a>
                         ) : (
@@ -671,7 +690,7 @@ export default function AdminManageUser() {
                       label="Instagram"
                       value={
                         viewUser.instagram ? (
-                          <a href={viewUser.instagram} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:underline break-all">
+                          <a href={viewUser.instagram} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 justify-center text-[#008cfc] hover:underline break-all">
                             <FaInstagram className="text-pink-500" /> {viewUser.instagram}
                           </a>
                         ) : (
@@ -684,11 +703,11 @@ export default function AdminManageUser() {
               </div>
             </div>
 
-            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-1 gap-3 border-t border-gray-200 bg-white">
+            <div className="px-5 sm:px-6 pb-4 pt-3 grid grid-cols-1 gap-2 border-t border-gray-200 bg-white">
               <button
                 type="button"
                 onClick={closeModal}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-2 text-sm font-medium text-[#008cfc] hover:bg-blue-50"
               >
                 Close
               </button>
@@ -728,7 +747,7 @@ function RowMenu({ onView, onEdit, onRemove, onDisable }) {
               onView?.();
             }
           }}
-          className="cursor-pointer inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+          className="cursor-pointer inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-[#008cfc] hover:bg-blue-50"
           aria-label="View user"
         >
           View
