@@ -122,6 +122,17 @@ export default function AdminManageUser() {
     }
   }, [selected, rows.length]);
 
+  useEffect(() => {
+    if (viewOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [viewOpen]);
+
   const roleCounts = useMemo(() => {
     const acc = { client: 0, worker: 0, total: 0 };
     for (const u of rows) {
@@ -239,12 +250,18 @@ export default function AdminManageUser() {
   );
 
   const SectionCard = ({ title, children, badge }) => (
-    <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="px-6 pt-5 pb-4 border-b border-gray-100 flex items-center justify-between">
-        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+    <section className="relative rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-lg transition-all duration-200 ring-1 ring-gray-100 hover:ring-blue-100">
+      <div className="px-6 pt-5 pb-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-2xl flex items-center justify-between">
+        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+          {title}
+        </h3>
         {badge || null}
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-6">
+        {children}
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
     </section>
   );
 
@@ -341,8 +358,8 @@ export default function AdminManageUser() {
                 </div>
               )}
 
-              <div className="overflow-x-auto">
-                <div className="max-h-[520px] md:max-h-[63vh] overflow-y-auto">
+              <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+                <div className="max-h-[520px] md:max-h-[63vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
                   <table className="min-w-full border-separate border-spacing-0">
                     <thead>
                       <tr className="text-left text-sm text-gray-600">
@@ -421,7 +438,7 @@ export default function AdminManageUser() {
                       </tr>
                     </thead>
 
-                    <tbody className="text-sm text-gray-800">
+                    <tbody className="text-sm text-gray-800 font-semibold">
                       {sortedRows.map((u, idx) => (
                         <tr
                           key={u.id}
@@ -458,13 +475,17 @@ export default function AdminManageUser() {
                             <div className="flex items-center gap-3">
                               <div className="min-w-0">
                                 <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"}`}>
-                                  {u.first_name || "-"}
+                                  <span className="font-semibold">{u.first_name || "-"}</span>
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td className="px-4 py-4 border border-gray-200">{u.last_name || "-"}</td>
-                          <td className="px-4 py-4 border border-gray-200">{u.sex || "-"}</td>
+                          <td className="px-4 py-4 border border-gray-200">
+                            <span className={`${String(u.sex || "").toLowerCase() === "male" ? "text-blue-600" : String(u.sex || "").toLowerCase() === "female" ? "text-pink-600" : "text-gray-800"}`}>
+                              {u.sex || "-"}
+                            </span>
+                          </td>
                           <td className="px-4 py-4 border border-gray-200">
                             <div className="text-gray-700 truncate">{u.email}</div>
                           </td>
@@ -580,7 +601,7 @@ export default function AdminManageUser() {
               </div>
             </div>
 
-            <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto bg-gray-50">
+            <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
               <div className="space-y-6">
                 <SectionCard
                   title="Account Information"
@@ -601,7 +622,9 @@ export default function AdminManageUser() {
                         <span className="inline-flex items-center gap-2">
                           {String(viewUser.sex || "").toLowerCase() === "male" && <Mars className="h-4 w-4 text-blue-600" />}
                           {String(viewUser.sex || "").toLowerCase() === "female" && <Venus className="h-4 w-4 text-pink-600" />}
-                          <span>{viewUser.sex && viewUser.sex !== "-" ? viewUser.sex : "No gender provided"}</span>
+                          <span className={`${String(viewUser.sex || "").toLowerCase() === "male" ? "text-blue-600" : String(viewUser.sex || "").toLowerCase() === "female" ? "text-pink-600" : "text-gray-900"}`}>
+                            {viewUser.sex && viewUser.sex !== "-" ? viewUser.sex : "No gender provided"}
+                          </span>
                         </span>
                       }
                     />
