@@ -375,11 +375,11 @@ export default function AdminManageUser() {
                             />
                           </th>
                         )}
-                        <th className="hidden sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
+                        <th className="hidden sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
                           Avatar
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("first_name")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -388,7 +388,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("last_name")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -397,7 +397,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("sex")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -406,7 +406,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("email")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -415,7 +415,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("date")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -424,7 +424,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-medium text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("role")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -432,7 +432,7 @@ export default function AdminManageUser() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-medium text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
                           Action
                         </th>
                       </tr>
@@ -474,7 +474,7 @@ export default function AdminManageUser() {
                           <td className="px-4 py-4 border border-gray-200">
                             <div className="flex items-center gap-3">
                               <div className="min-w-0">
-                                <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"}`}>
+                                <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
                                   <span className="font-semibold">{u.first_name || "-"}</span>
                                 </div>
                               </div>

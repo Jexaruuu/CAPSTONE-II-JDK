@@ -355,3 +355,39 @@ exports.byGroup = async (req, res) => {
     return res.status(500).json({ message: 'Failed to load request' });
   }
 };
+
+exports.listCurrent = async (req, res) => {
+  try {
+    const email = String(req.query.email || req.session?.user?.email_address || '').trim();
+    if (!email) return res.status(401).json({ message: 'Unauthorized' });
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
+    const details = await listDetailsByEmail(email, limit);
+    const groups = details.map(d => d.request_group_id).filter(Boolean);
+    const combined = await Promise.all(groups.map(g => getCombinedByGroupId(g)));
+    const items = combined.filter(Boolean).map(row => {
+      const d = row.details || {};
+      const r = row.rate || {};
+      return {
+        id: row.details?.request_group_id || row.info?.request_group_id || row.rate?.request_group_id || '',
+        created_at: d.created_at || row.info?.created_at || new Date().toISOString(),
+        details: {
+          service_type: d.service_type || '',
+          service_task: d.service_task || '',
+          preferred_date: d.preferred_date || '',
+          preferred_time: d.preferred_time || '',
+          is_urgent: d.is_urgent || ''
+        },
+        rate: {
+          rate_type: r.rate_type || '',
+          rate_from: r.rate_from || '',
+          rate_to: r.rate_to || '',
+          rate_value: r.rate_value || ''
+        },
+        status: 'pending'
+      };
+    });
+    return res.status(200).json({ items });
+  } catch {
+    return res.status(500).json({ message: 'Failed to load current requests' });
+  }
+};

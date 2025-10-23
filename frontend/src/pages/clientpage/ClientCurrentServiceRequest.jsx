@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import ClientNavigation from "../../clientcomponents/ClientNavigation";
 import ClientFooter from "../../clientcomponents/ClientFooter";
+import { Hammer, Zap, Wrench, Car, Shirt } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -33,50 +34,122 @@ const formatDate = (iso) => {
   }
 };
 
+const peso = (v) => {
+  if (v === null || v === undefined) return "";
+  const s = String(v).trim();
+  if (!s) return "";
+  if (/₱|php/i.test(s)) return s;
+  const n = parseFloat(s.replace(/,/g, ""));
+  if (!isNaN(n)) return `₱${n.toLocaleString()}`;
+  return `₱${s}`;
+};
+
+const formatTime12 = (t) => {
+  try {
+    const raw = String(t || "").trim();
+    if (!raw) return "-";
+    if (/[ap]\s*\.?\s*m\.?/i.test(raw)) {
+      const up = raw.toUpperCase().replace(/\./g, "");
+      return up.includes("AM") || up.includes("PM") ? up.replace(/\s*(AM|PM)$/, " $1") : up;
+    }
+    const timePart = raw.split(" ")[0];
+    const [hh, mm = "00"] = timePart.split(":");
+    let h = parseInt(hh, 10);
+    if (isNaN(h)) return raw;
+    const m = String(parseInt(mm, 10)).padStart(2, "0");
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${h}:${m} ${ampm}`;
+  } catch {
+    return String(t || "-");
+  }
+};
+
+const RateText = ({ rate }) => {
+  const t = String(rate?.rate_type || "").toLowerCase();
+  const from = rate?.rate_from;
+  const to = rate?.rate_to;
+  const val = rate?.rate_value;
+  if (t === "fixed" || t === "by_job" || t === "by the job" || t === "by_the_job") return <span>{val ? `${peso(val)}` : "-"}</span>;
+  if (t === "hourly" || t === "range") return <span>{from || to ? `${from ? peso(from) : ""}${from && to ? " - " : ""}${to ? peso(to) : ""}` : "-"}</span>;
+  if (val) return <span>{peso(val)}</span>;
+  if (from || to) return <span>{from ? peso(from) : ""}{from && to ? " - " : ""}{to ? peso(to) : ""}</span>;
+  return <span>-</span>;
+};
+
+const iconForService = (serviceType) => {
+  const s = String(serviceType || "").toLowerCase();
+  if (s.includes("car wash")) return Car;
+  if (s.includes("car washing")) return Car;
+  if (s.includes("carpentry") || s.includes("carpenter")) return Hammer;
+  if (s.includes("electric")) return Zap;
+  if (s.includes("plumb")) return Wrench;
+  if (s.includes("laundry")) return Shirt;
+  return Hammer;
+};
+
+const formatRateType = (t) => {
+  const s = String(t || "").replace(/_/g, " ").trim().toLowerCase();
+  if (!s) return "-";
+  return s.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+};
+
 const Card = ({ item, onEdit, onOpenMenu }) => {
+  const d = item.details || {};
+  const r = item.rate || {};
+  const Icon = iconForService(d.service_type || d.service_task);
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 md:p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Link
-            to={`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`}
-            className="block"
-          >
+          <Link to={`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`} className="block">
             <h3 className="text-lg md:text-xl font-semibold text-gray-900 truncate hover:underline">
-              {item.title}
+              {d.service_type || "Service"} • {d.service_task || "Task"}
             </h3>
           </Link>
           <p className="mt-1 text-sm text-gray-500">Created {timeAgo(item.created_at)} by You</p>
-          <p className="mt-4 text-sm text-gray-700">
-            {item.status === "draft" ? "Draft" : item.status === "active" ? "Active" : item.status}
-            <span className="text-gray-400"> • Saved {formatDate(item.saved_at || item.updated_at || item.created_at)}</span>
-          </p>
+          <div className="mt-4 text-sm text-gray-700 space-y-1.5">
+            <div className="flex flex-wrap gap-x-6 gap-y-1">
+              <span className="text-gray-500">Preferred Date:</span>
+              <span className="font-medium">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-1">
+              <span className="text-gray-500">Preferred Time:</span>
+              <span className="font-medium">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-1">
+              <span className="text-gray-500">Urgency:</span>
+              <span className="font-medium">{d.is_urgent || "-"}</span>
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-1">
+              <span className="text-gray-500">Rate Type:</span>
+              <span className="font-medium">{formatRateType(r.rate_type)}</span>
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-1">
+              <span className="text-gray-500">Service Rate:</span>
+              <span className="font-medium"><RateText rate={r} /></span>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          {item.status === "draft" ? (
-            <button
-              onClick={() => onEdit(item)}
-              className="rounded-lg border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50"
-            >
-              Edit draft
-            </button>
-          ) : (
-            <Link
-              to={`/current-service-request/${encodeURIComponent(item.id)}`}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              View
-            </Link>
-          )}
-          <button
-            onClick={() => onOpenMenu(item)}
-            className="h-9 w-9 grid place-items-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"
-            aria-label="More actions"
-            title="More actions"
-          >
-            •••
-          </button>
+        <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center shrink-0">
+          <Icon className="h-5 w-5" />
         </div>
+      </div>
+      <div className="-mt-9 flex justify-end gap-2">
+        <Link
+          to={`/current-service-request/${encodeURIComponent(item.id)}`}
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          View
+        </Link>
+        <button
+          type="button"
+          onClick={() => onEdit(item)}
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Edit Request
+        </button>
       </div>
     </div>
   );
@@ -86,6 +159,9 @@ export default function ClientCurrentServiceRequest() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 5;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -93,40 +169,21 @@ export default function ClientCurrentServiceRequest() {
     (async () => {
       setLoading(true);
       try {
-        const { data } = await axios.get(
-          `${API_BASE}/api/client/service-requests?scope=current`,
-          { withCredentials: true }
-        );
+        const { data } = await axios.get(`${API_BASE}/api/client/service-requests?scope=current`, { withCredentials: true });
         if (!cancelled) {
           const arr = Array.isArray(data) ? data : data?.items || [];
           const normalized = arr.map((r, i) => ({
             id: r.id ?? `${i}`,
-            title: r.title ?? "Untitled request",
-            status: (r.status || "draft").toLowerCase(),
+            status: (r.status || "pending").toLowerCase(),
             created_at: r.created_at || new Date().toISOString(),
-            updated_at: r.updated_at || r.created_at || new Date().toISOString(),
-            saved_at: r.saved_at,
+            updated_at: r.created_at || new Date().toISOString(),
+            details: r.details || {},
+            rate: r.rate || {}
           }));
-          setItems(
-            normalized.sort(
-              (a, b) =>
-                new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-            )
-          );
+          setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
         }
       } catch {
-        if (!cancelled) {
-          setItems([
-            {
-              id: "draft-1",
-              title: "Web Development Project: Create a Dynamic Website",
-              status: "draft",
-              created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 21).toISOString(),
-              saved_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 19).toISOString(),
-              updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 19).toISOString(),
-            },
-          ]);
-        }
+        if (!cancelled) setItems([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -136,11 +193,69 @@ export default function ClientCurrentServiceRequest() {
     };
   }, []);
 
+  const onRefresh = async () => {
+    setLoading(true);
+    try {
+      const { data } = await axios.get(`${API_BASE}/api/client/service-requests?scope=current`, { withCredentials: true });
+      const arr = Array.isArray(data) ? data : data?.items || [];
+      const normalized = arr.map((r, i) => ({
+        id: r.id ?? `${i}`,
+        status: (r.status || "pending").toLowerCase(),
+        created_at: r.created_at || new Date().toISOString(),
+        updated_at: r.created_at || new Date().toISOString(),
+        details: r.details || {},
+        rate: r.rate || {}
+      }));
+      setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((i) => i.title.toLowerCase().includes(q));
-  }, [items, query]);
+    let list = items;
+    if (statusFilter === "approved") list = list.filter((i) => (i.status || "").toLowerCase() === "approved");
+    if (statusFilter === "declined") list = list.filter((i) => (i.status || "").toLowerCase() === "declined");
+    if (!q) return list;
+    return list.filter((i) => {
+      const s1 = (i.details?.service_type || "").toLowerCase();
+      const s2 = (i.details?.service_task || "").toLowerCase();
+      return s1.includes(q) || s2.includes(q);
+    });
+  }, [items, query, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, statusFilter]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
+
+  const pages = useMemo(() => {
+    const t = totalPages;
+    const p = page;
+    const out = [];
+    if (t <= 7) {
+      for (let i = 1; i <= t; i++) out.push(i);
+    } else {
+      out.push(1);
+      if (p > 4) out.push("…");
+      const start = Math.max(2, p - 1);
+      const end = Math.min(t - 1, p + 1);
+      for (let i = start; i <= end; i++) out.push(i);
+      if (p < t - 3) out.push("…");
+      out.push(t);
+    }
+    return out;
+  }, [totalPages, page]);
 
   const onEdit = (item) => {
     navigate(`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`);
@@ -160,25 +275,52 @@ export default function ClientCurrentServiceRequest() {
         </header>
 
         <div className="mx-auto w-full max-w-[1525px] px-6 mt-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="flex-1 sm:w-auto">
-                <div className="flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
-                  <span className="text-gray-500 text-lg">🔍︎</span>
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search service requests"
-                    className="border-none outline-none text-black w-full sm:w-64 md:w-80 h-full placeholder:text-gray-400 bg-transparent"
-                  />
-                </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-gray-700">Filter</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("all")}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "all" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter((v) => (v === "approved" ? "all" : "approved"))}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "approved" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  Approved Requests
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter((v) => (v === "declined" ? "all" : "declined"))}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "declined" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  Declined Requests
+                </button>
+              </div>
+            </div>
+            <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
+              <div className="flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
+                <span className="text-gray-500 text-lg">🔍︎</span>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search service requests"
+                  className="border-none outline-none text-black w-full sm:w-64 md:w-80 h-full placeholder:text-gray-400 bg-transparent"
+                />
               </div>
               <button
                 type="button"
-                className="inline-flex items-center gap-2 h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 hover:bg-gray-50"
+                onClick={onRefresh}
+                disabled={loading}
+                className="inline-flex items-center gap-2 h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                title="Refresh"
+                aria-label="Refresh"
               >
-                <span className="-ml-0.5">⚙️</span>
-                Filters
+                ⟳ Refresh
               </button>
             </div>
           </div>
@@ -191,12 +333,12 @@ export default function ClientCurrentServiceRequest() {
               <div className="mt-3 h-3 w-40 bg-gray-200 rounded" />
               <div className="mt-5 h-3 w-52 bg-gray-200 rounded" />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : paginated.length === 0 ? (
             <div className="rounded-2xl border border-gray-200 bg-white p-8 text-gray-600">
               No service requests found.
             </div>
           ) : (
-            filtered.map((item) => (
+            paginated.map((item) => (
               <Card
                 key={item.id}
                 item={item}
@@ -215,20 +357,34 @@ export default function ClientCurrentServiceRequest() {
               <nav className="flex items-center gap-2">
                 <button
                   className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                  disabled
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   aria-label="Previous page"
                 >
                   ‹
                 </button>
-                <button
-                  className="h-9 min-w-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white"
-                  aria-current="page"
-                >
-                  1
-                </button>
+                {pages.map((p, idx) =>
+                  typeof p === "number" ? (
+                    <button
+                      key={`${p}-${idx}`}
+                      onClick={() => setPage(p)}
+                      className={`h-9 min-w-9 px-3 rounded-md border text-sm ${
+                        p === page
+                          ? "border-[#008cfc] bg-[#008cfc] text-white"
+                          : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                      }`}
+                      aria-current={p === page ? "page" : undefined}
+                    >
+                      {p}
+                    </button>
+                  ) : (
+                    <span key={`dots-${idx}`} className="px-1 text-gray-500 select-none">…</span>
+                  )
+                )}
                 <button
                   className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                  disabled
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   aria-label="Next page"
                 >
                   ›

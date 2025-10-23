@@ -175,9 +175,9 @@ const WorkerNavigation = () => {
                   <svg className="w-4 h-4 ml-1 inline-block" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                 </span>
                 {showManageRequestDropdown && (
-                  <div ref={manageRequestDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
+                  <div ref={manageRequestDropdownRef} className="-ml-4 absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                     <ul className="space-y-2 py-2">
-                      <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/current-work-post" onClick={goTop}>Current Application</Link></li>
+                      <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/current-work-post" onClick={goTop}>Application Post Status</Link></li>
                       <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/completed-works" onClick={goTop}>Completed Works</Link></li>
                     </ul>
                   </div>
