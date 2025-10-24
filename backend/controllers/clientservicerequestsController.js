@@ -7,7 +7,9 @@ const {
   findClientByEmail,
   findClientById,
   listDetailsByEmail,
-  getCombinedByGroupId
+  getCombinedByGroupId,
+  insertClientCancelRequest,
+  getCancelledByGroupIds
 } = require('../models/clientservicerequestsModel');
 const { insertPendingRequest } = require('../models/pendingservicerequestsModel');
 const { supabaseAdmin } = require('../supabaseClient');
@@ -339,7 +341,7 @@ exports.detailsByEmail = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
     const items = await listDetailsByEmail(email, limit);
     return res.status(200).json({ items });
-  } catch (e) {
+  } catch {
     return res.status(500).json({ message: 'Failed to load details' });
   }
 };
@@ -358,12 +360,24 @@ exports.byGroup = async (req, res) => {
 
 exports.listCurrent = async (req, res) => {
   try {
+    const scope = String(req.query.scope || 'current').toLowerCase();
     const email = String(req.query.email || req.session?.user?.email_address || '').trim();
     if (!email) return res.status(401).json({ message: 'Unauthorized' });
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
     const details = await listDetailsByEmail(email, limit);
     const groups = details.map(d => d.request_group_id).filter(Boolean);
-    const combined = await Promise.all(groups.map(g => getCombinedByGroupId(g)));
+    const cancelledIds = await getCancelledByGroupIds(groups);
+    let targetGroups = groups;
+    let statusValue = 'pending';
+    if (scope === 'cancelled') {
+      targetGroups = cancelledIds;
+      statusValue = 'cancelled';
+    } else {
+      const activeGroups = groups.filter(g => !cancelledIds.includes(g));
+      targetGroups = activeGroups;
+      statusValue = 'pending';
+    }
+    const combined = await Promise.all(targetGroups.map(g => getCombinedByGroupId(g)));
     const items = combined.filter(Boolean).map(row => {
       const d = row.details || {};
       const r = row.rate || {};
@@ -383,11 +397,37 @@ exports.listCurrent = async (req, res) => {
           rate_to: r.rate_to || '',
           rate_value: r.rate_value || ''
         },
-        status: 'pending'
+        status: statusValue
       };
     });
     return res.status(200).json({ items });
   } catch {
     return res.status(500).json({ message: 'Failed to load current requests' });
+  }
+};
+
+exports.cancelRequest = async (req, res) => {
+  try {
+    const src = req.body || {};
+    const request_group_id = String(src.request_group_id || '').trim();
+    const client_id = src.client_id ?? null;
+    const email_address = src.email_address ? String(src.email_address).trim() : null;
+    const reason_choice = src.reason_choice ? String(src.reason_choice).trim() : null;
+    const reason_other = src.reason_other ? String(src.reason_other).trim() : null;
+    if (!request_group_id) return res.status(400).json({ message: 'request_group_id is required' });
+    if (!reason_choice && !reason_other) return res.status(400).json({ message: 'Provide a reason' });
+
+    await insertClientCancelRequest({
+      request_group_id,
+      client_id,
+      email_address,
+      reason_choice,
+      reason_other,
+      created_at: new Date().toISOString()
+    });
+
+    return res.status(201).json({ message: 'Cancellation recorded' });
+  } catch (e) {
+    return res.status(500).json({ message: friendlyError(e) });
   }
 };

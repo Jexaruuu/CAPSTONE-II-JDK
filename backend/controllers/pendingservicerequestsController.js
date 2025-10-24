@@ -5,6 +5,7 @@ const {
   markStatus,
   countByStatus,
   insertPendingRequest,
+  listByEmail,
 } = require('../models/pendingservicerequestsModel');
 
 exports.list = async (req, res) => {
@@ -84,5 +85,20 @@ exports.create = async (req, res) => {
     return res.status(201).json({ request: row });
   } catch (e) {
     return res.status(400).json({ message: e?.message || 'Failed to create pending request' });
+  }
+};
+
+exports.listMine = async (req, res) => {
+  try {
+    const s = req.session?.user || {};
+    const email = s.email_address || null;
+    if (!email) return res.status(401).json({ message: 'Unauthorized' });
+    const statusRaw = typeof req.query.status === 'string' ? req.query.status.trim().toLowerCase() : 'all';
+    const status = statusRaw === 'all' ? null : statusRaw;
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '200', 10), 1), 500);
+    const items = await listByEmail(email, status, limit);
+    return res.status(200).json({ items });
+  } catch (e) {
+    return res.status(400).json({ message: e?.message || 'Failed to list your requests' });
   }
 };

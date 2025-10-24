@@ -61,9 +61,9 @@ function TaskPill({ value }) {
     <span
       className={[
         "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
-        "bg-orange-50",
-        "text-orange-700",
-        "border-orange-200",
+        "bg-gray-100",
+        "text-gray-700",
+        "border-gray-300",
       ].join(" ")}
       title={value || "-"}
     >
@@ -193,7 +193,8 @@ export default function AdminServiceRequests() {
     let pending = 0, approved = 0, declined = 0, expired = 0;
     for (const r of items) {
       const s = String(r?.status || "pending").toLowerCase();
-      const exp = isExpired(r?.details?.preferred_date);
+      const isFinal = s === "approved" || s === "declined";
+      const exp = isExpired(r?.details?.preferred_date) && !isFinal;
       if (exp) {
         expired++;
       } else if (s === "approved") {
@@ -249,7 +250,9 @@ export default function AdminServiceRequests() {
         const i = r.info || {};
         const d = r.details || {};
         const rate = r.rate || {};
-        const expired = isExpired(d.preferred_date);
+        const statusNorm = String(r.status || "pending").toLowerCase();
+        const isFinal = statusNorm === "approved" || statusNorm === "declined";
+        const expired = isExpired(d.preferred_date) && !isFinal;
         const createdRaw =
           r.created_at || r.createdAt || d.created_at || d.createdAt || r.created || d.created || null;
         const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
@@ -406,7 +409,11 @@ export default function AdminServiceRequests() {
 
   const approve = async (id) => {
     await axios.post(`${API_BASE}/api/admin/servicerequests/${id}/approve`, {}, { withCredentials: true });
-    setRows((r) => r.map((x) => (x.id === id ? { ...x, status: "approved", ui_status: "approved" } : x)));
+    setRows((r) =>
+      r.map((x) =>
+        x.id === id ? { ...x, status: "approved", ui_status: "approved", _expired: false } : x
+      )
+    );
     setSelected((s) => {
       const n = new Set(s);
       n.delete(id);
@@ -417,7 +424,11 @@ export default function AdminServiceRequests() {
 
   const decline = async (id) => {
     await axios.post(`${API_BASE}/api/admin/servicerequests/${id}/decline`, {}, { withCredentials: true });
-    setRows((r) => r.map((x) => (x.id === id ? { ...x, status: "declined", ui_status: "declined" } : x)));
+    setRows((r) =>
+      r.map((x) =>
+        x.id === id ? { ...x, status: "declined", ui_status: "declined", _expired: false } : x
+      )
+    );
     setSelected((s) => {
       const n = new Set(s);
       n.delete(id);
@@ -490,7 +501,6 @@ export default function AdminServiceRequests() {
       <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
     </section>
   );
-
   const renderSection = () => {
     if (!viewRow) return null;
     if (sectionOpen === "all") {
@@ -1040,7 +1050,7 @@ export default function AdminServiceRequests() {
                       </button>
                     ))}
                     <button
-                      className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
                       disabled={currentPage >= totalPages}
                       aria-label="Next page"
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
@@ -1119,7 +1129,7 @@ export default function AdminServiceRequests() {
                 onClick={async () => {
                   if (viewRow._expired) return;
                   await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/decline`, {}, { withCredentials: true });
-                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined", ui_status: "declined" } : x)));
+                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined", ui_status: "declined", _expired: false } : x)));
                   setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
                   setViewRow(null);
                 }}
@@ -1133,7 +1143,7 @@ export default function AdminServiceRequests() {
                 onClick={async () => {
                   if (viewRow._expired) return;
                   await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/approve`, {}, { withCredentials: true });
-                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved", ui_status: "approved" } : x)));
+                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved", ui_status: "approved", _expired: false } : x)));
                   setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
                   setViewRow(null);
                 }}

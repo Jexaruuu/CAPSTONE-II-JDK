@@ -67,10 +67,15 @@ async function insertServiceRequestStatus(row) {
   if (error) throw error;
   return data;
 }
+async function insertClientCancelRequest(row) {
+  const payload = { ...row, created_at: row.created_at || new Date().toISOString() };
+  const { data, error } = await supabaseAdmin.from('client_cancel_request').insert([payload]).select('id').single();
+  if (error) throw error;
+  return data;
+}
 function newGroupId() {
   return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
 }
-
 async function listDetailsByEmail(email, limit = 10) {
   const { data, error } = await supabaseAdmin
     .from('client_service_request_details')
@@ -81,7 +86,6 @@ async function listDetailsByEmail(email, limit = 10) {
   if (error) throw error;
   return Array.isArray(data) ? data : [];
 }
-
 async function getCombinedByGroupId(request_group_id) {
   const [infoRes, detRes, rateRes] = await Promise.all([
     supabaseAdmin.from('client_information').select('*').eq('request_group_id', request_group_id).maybeSingle(),
@@ -94,6 +98,15 @@ async function getCombinedByGroupId(request_group_id) {
   if (!detRes.data && !infoRes.data && !rateRes.data) return null;
   return { info: infoRes.data || {}, details: detRes.data || {}, rate: rateRes.data || {} };
 }
+async function getCancelledByGroupIds(groupIds) {
+  if (!Array.isArray(groupIds) || groupIds.length === 0) return [];
+  const { data, error } = await supabaseAdmin
+    .from('client_cancel_request')
+    .select('request_group_id')
+    .in('request_group_id', groupIds);
+  if (error) throw error;
+  return (data || []).map(x => x.request_group_id).filter(Boolean);
+}
 
 module.exports = {
   uploadDataUrlToBucket,
@@ -103,7 +116,9 @@ module.exports = {
   insertServiceRequestDetails,
   insertServiceRate,
   insertServiceRequestStatus,
+  insertClientCancelRequest,
   newGroupId,
   listDetailsByEmail,
-  getCombinedByGroupId
+  getCombinedByGroupId,
+  getCancelledByGroupIds
 };

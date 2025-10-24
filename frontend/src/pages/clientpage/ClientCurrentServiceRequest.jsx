@@ -1,3 +1,4 @@
+// Duplicate block removed to resolve redeclaration errors.
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -66,6 +67,34 @@ const formatTime12 = (t) => {
   }
 };
 
+const toBoolStrict = (v) => {
+  if (typeof v === "boolean") return v;
+  if (v === 1 || v === "1") return true;
+  if (v === 0 || v === "0") return false;
+  const s = String(v ?? "").trim().toLowerCase();
+  if (["yes", "y", "true", "t"].includes(s)) return true;
+  if (["no", "n", "false", "f"].includes(s)) return false;
+  return false;
+};
+
+const dateOnlyFrom = (val) => {
+  if (!val) return null;
+  const raw = String(val).trim();
+  const token = raw.split("T")[0].split(" ")[0];
+  let m;
+  if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(token))) return new Date(+m[1], +m[2] - 1, +m[3]);
+  if ((m = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(token))) return new Date(+m[3], +m[1] - 1, +m[2]);
+  const d = new Date(raw);
+  return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+};
+const isExpired = (val) => {
+  const d = dateOnlyFrom(val);
+  if (!d) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d < today;
+};
+
 const RateText = ({ rate }) => {
   const t = String(rate?.rate_type || "").toLowerCase();
   const from = rate?.rate_from;
@@ -97,18 +126,32 @@ const formatRateType = (t) => {
 
 const Card = ({ item, onEdit, onOpenMenu, onView }) => {
   const d = item.details || {};
-  const r = item.rate || {};
+  const rate = item.rate || {};
   const Icon = iconForService(d.service_type || d.service_task);
+  const hasUrgency = d.is_urgent !== undefined && d.is_urgent !== null && String(d.is_urgent).trim() !== "";
+  const urgentBool = toBoolStrict(d.is_urgent);
+  const statusLower = String(item.status || "").toLowerCase();
+  const isCancelled = statusLower === "cancelled";
+  const isPending = statusLower === "pending";
+  const isApproved = statusLower === "approved";
+  const isDeclined = statusLower === "declined";
+  const isExpiredReq = isExpired(d.preferred_date) && !(isApproved || isDeclined);
+  const cardBase = "rounded-2xl border p-5 md:p-6 shadow-sm transition-all duration-300";
+  const cardState = (isCancelled || isExpiredReq)
+    ? "border-gray-200 bg-gray-50"
+    : isDeclined
+      ? "border-gray-300 bg-white hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
+      : "border-gray-300 bg-white hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl";
   return (
-    <div className="rounded-2xl border border-gray-300 bg-white p-5 md:p-6 shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+    <div className={`${cardBase} ${cardState}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <Link to={`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`} className="block pointer-events-none select-text">
-            <h3 className="text-xl md:text-2xl font-semibold truncate">
+            <h3 className={`text-xl md:text-2xl font-semibold truncate ${(isCancelled || isExpiredReq) ? "text-gray-700" : ""}`}>
               <span className="text-gray-700">Service Type:</span>{" "}
-              <span className="text-[#008cfc]">{d.service_type || "Service"}</span>
+              <span className={(isCancelled || isExpiredReq) ? "text-gray-500" : "text-[#008cfc]"}>{d.service_type || "Service"}</span>
             </h3>
-            <div className="mt-0.5 text-base md:text-lg truncate text-black">
+            <div className={`mt-0.5 text-base md:text-lg truncate ${(isCancelled || isExpiredReq) ? "text-gray-600" : "text-black"}`}>
               <span className="font-semibold">Service Task:</span> {d.service_task || "Task"}
             </div>
           </Link>
@@ -117,45 +160,94 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
             <div className="space-y-1.5">
               <div className="flex flex-wrap gap-x-6 gap-y-1">
                 <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                <span className="font-medium text-[#008cfc]">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+                <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
               </div>
               <div className="flex flex-wrap gap-x-6 gap-y-1">
                 <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                <span className="font-medium text-[#008cfc]">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
+                <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
               </div>
               <div className="flex flex-wrap gap-x-6 gap-y-1">
                 <span className="text-gray-700 font-semibold">Urgency:</span>
-                <span className="font-medium text-[#008cfc]">{d.is_urgent || "-"}</span>
+                <span className={`font-medium ${hasUrgency ? (urgentBool ? ((isCancelled || isExpiredReq) ? "text-gray-600" : "text-green-600") : ((isCancelled || isExpiredReq) ? "text-gray-600" : "text-red-600")) : ((isCancelled || isExpiredReq) ? "text-gray-500" : "text-[#008cfc]")}`}>
+                  {hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}
+                </span>
               </div>
             </div>
             <div className="space-y-1.5 md:pl-10">
               <div className="flex flex-wrap gap-x-6 gap-y-1">
                 <span className="text-gray-700 font-semibold">Rate Type:</span>
-                <span className="font-medium text-[#008cfc]">{formatRateType(r.rate_type)}</span>
+                <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{formatRateType(rate.rate_type)}</span>
               </div>
               <div className="flex flex-wrap gap-x-6 gap-y-1">
                 <span className="text-gray-700 font-semibold">Service Rate:</span>
-                <span className="font-medium text-[#008cfc]"><RateText rate={r} /></span>
+                <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}><RateText rate={rate} /></span>
               </div>
             </div>
           </div>
         </div>
-        <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center shrink-0">
-          <Icon className="h-5 w-5" />
+        <div className="flex items-center gap-2 shrink-0">
+          {isCancelled && (
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Cancelled Request
+            </span>
+          )}
+          {isDeclined && !isCancelled && !isExpiredReq && (
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Declined Request
+            </span>
+          )}
+          {isExpiredReq && !isCancelled && (
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Expired Request
+            </span>
+          )}
+          {isPending && !isCancelled && !isExpiredReq && !isDeclined && (
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+              <span className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+              Pending
+            </span>
+          )}
+          {isApproved && !isCancelled && !isExpiredReq && !isDeclined && (
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Approved
+            </span>
+          )}
+          <div className={`h-10 w-10 rounded-lg border flex items-center justify-center ${(isCancelled || isExpiredReq) ? "border-gray-300 text-gray-500" : "border-gray-300 text-[#008cfc]"}`}>
+            <Icon className="h-5 w-5" />
+          </div>
         </div>
       </div>
       <div className="-mt-9 flex justify-end gap-2">
-        <Link
-          to={`/current-service-request/${encodeURIComponent(item.id)}`}
-          onClick={(e) => { e.preventDefault(); onView(item.id); }}
-          className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
-        >
-          View
-        </Link>
+        {isDeclined && !(isCancelled || isExpiredReq) ? (
+          <Link
+            to={`/current-service-request/${encodeURIComponent(item.id)}`}
+            onClick={(e) => { e.preventDefault(); onView(item.id); }}
+            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50"
+            aria-disabled={false}
+            tabIndex={0}
+          >
+            Declined Reason
+          </Link>
+        ) : (
+          <Link
+            to={`/current-service-request/${encodeURIComponent(item.id)}`}
+            onClick={(e) => { if (isCancelled || isExpiredReq) { e.preventDefault(); return; } e.preventDefault(); onView(item.id); }}
+            className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium ${(isCancelled || isExpiredReq) ? "border-gray-300 text-gray-400 cursor-not-allowed pointer-events-none" : "border-blue-300 text-blue-600 hover:bg-blue-50"}`}
+            aria-disabled={isCancelled || isExpiredReq}
+            tabIndex={(isCancelled || isExpiredReq) ? -1 : 0}
+          >
+            View
+          </Link>
+        )}
         <button
           type="button"
-          onClick={() => onEdit(item)}
-          className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+          onClick={() => { if (!(isCancelled || isExpiredReq)) onEdit(item); }}
+          disabled={isCancelled || isExpiredReq}
+          className={`h-10 px-4 rounded-md transition ${(isCancelled || isExpiredReq) ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}
         >
           Edit Request
         </button>
@@ -175,78 +267,83 @@ export default function ClientCurrentServiceRequest() {
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const { data } = await axios.get(`${API_BASE}/api/client/service-requests?scope=current`, { withCredentials: true });
-        if (!cancelled) {
-          const arr = Array.isArray(data) ? data : data?.items || [];
-          const normalized = arr.map((r, i) => ({
-            id: r.id ?? `${i}`,
-            status: (r.status || "pending").toLowerCase(),
-            created_at: r.created_at || new Date().toISOString(),
-            updated_at: r.created_at || new Date().toISOString(),
-            details: r.details || {},
-            rate: r.rate || {}
-          }));
-          setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
-        }
-      } catch {
-        if (!cancelled) setItems([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    const lock = isOpeningView;
-    const html = document.documentElement;
-    const body = document.body;
-    const prevHtmlOverflow = html.style.overflow;
-    const prevBodyOverflow = body.style.overflow;
-    if (lock) {
-      html.style.overflow = "hidden";
-      body.style.overflow = "hidden";
-    } else {
-      html.style.overflow = prevHtmlOverflow || "";
-      body.style.overflow = prevBodyOverflow || "";
-    }
-    return () => {
-      html.style.overflow = prevHtmlOverflow || "";
-      body.style.overflow = prevBodyOverflow || "";
-    };
-  }, [isOpeningView]);
-
-  const onRefresh = async () => {
+  const fetchByStatus = async (statusKey) => {
     setLoading(true);
     try {
-      const { data } = await axios.get(`${API_BASE}/api/client/service-requests?scope=current`, { withCredentials: true });
-      const arr = Array.isArray(data) ? data : data?.items || [];
-      const normalized = arr.map((r, i) => ({
-        id: r.id ?? `${i}`,
-        status: (r.status || "pending").toLowerCase(),
-        created_at: r.created_at || new Date().toISOString(),
-        updated_at: r.created_at || new Date().toISOString(),
-        details: r.details || {},
-        rate: r.rate || {}
-      }));
-      setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+      if (statusKey === "cancelled") {
+        const { data } = await axios.get(`${API_BASE}/api/client/service-requests`, {
+          params: { scope: "cancelled" },
+          withCredentials: true,
+        });
+        const arr = Array.isArray(data) ? data : data?.items || [];
+        const normalized = arr.map((r, i) => ({
+          id: r.id ?? `${i}`,
+          status: "cancelled",
+          created_at: r.created_at || new Date().toISOString(),
+          updated_at: r.updated_at || r.created_at || new Date().toISOString(),
+          details: r.details || {},
+          rate: r.rate || {},
+        }));
+        setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+      } else if (statusKey === "expired") {
+        const { data } = await axios.get(`${API_BASE}/api/pendingservicerequests/mine`, {
+          params: { status: "all" },
+          withCredentials: true,
+        });
+        const arr = Array.isArray(data?.items) ? data.items : [];
+        const normalized = arr.map((r, i) => ({
+          id: r.id ?? `${i}`,
+          status: String(r.status || "pending").toLowerCase(),
+          created_at: r.created_at || new Date().toISOString(),
+          updated_at: r.decided_at || r.created_at || new Date().toISOString(),
+          details: r.details || {},
+          rate: r.rate || {},
+        }));
+        setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+      } else {
+        const statusParam = statusKey === "all" ? "all" : statusKey;
+        const { data } = await axios.get(`${API_BASE}/api/pendingservicerequests/mine`, {
+          params: { status: statusParam },
+          withCredentials: true,
+        });
+        const arr = Array.isArray(data?.items) ? data.items : [];
+        const normalized = arr.map((r, i) => ({
+          id: r.id ?? `${i}`,
+          status: String(r.status || "pending").toLowerCase(),
+          created_at: r.created_at || new Date().toISOString(),
+          updated_at: r.decided_at || r.created_at || new Date().toISOString(),
+          details: r.details || {},
+          rate: r.rate || {},
+        }));
+        setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+      }
+    } catch {
+      setItems([]);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchByStatus(statusFilter);
+  }, [statusFilter]);
+
+  const onRefresh = async () => {
+    fetchByStatus(statusFilter);
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = items;
+    if (statusFilter === "all") list = list.filter((i) => (i.status || "").toLowerCase() !== "cancelled");
+    if (statusFilter === "pending") list = list.filter((i) => (i.status || "").toLowerCase() === "pending" && !isExpired(i?.details?.preferred_date));
     if (statusFilter === "approved") list = list.filter((i) => (i.status || "").toLowerCase() === "approved");
     if (statusFilter === "declined") list = list.filter((i) => (i.status || "").toLowerCase() === "declined");
+    if (statusFilter === "cancelled") list = list.filter((i) => (i.status || "").toLowerCase() === "cancelled");
+    if (statusFilter === "expired") list = list.filter((i) => {
+      const s = String(i.status || "").toLowerCase();
+      return isExpired(i?.details?.preferred_date) && s !== "approved" && s !== "declined";
+    });
     if (!q) return list;
     return list.filter((i) => {
       const s1 = (i.details?.service_type || "").toLowerCase();
@@ -255,10 +352,13 @@ export default function ClientCurrentServiceRequest() {
     });
   }, [items, query, statusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const PAGE_SIZE_LOCAL = 5;
+  const PAGE_SIZE_USE = PAGE_SIZE || PAGE_SIZE_LOCAL;
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE_USE));
   const paginated = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
+    const start = (page - 1) * PAGE_SIZE_USE;
+    return filtered.slice(start, start + PAGE_SIZE_USE);
   }, [filtered, page]);
 
   useEffect(() => {
@@ -325,17 +425,38 @@ export default function ClientCurrentServiceRequest() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setStatusFilter((v) => (v === "pending" ? "all" : "pending"))}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "pending" ? "border-yellow-500 bg-yellow-500 text-white hover:bg-yellow-600" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  Pending Requests
+                </button>
+                <button
+                  type="button"
                   onClick={() => setStatusFilter((v) => (v === "approved" ? "all" : "approved"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "approved" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "approved" ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
                 >
                   Approved Requests
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "declined" ? "all" : "declined"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "declined" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "declined" ? "border-red-600 bg-red-600 text-white hover:bg-red-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
                 >
                   Declined Requests
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter((v) => (v === "cancelled" ? "all" : "cancelled"))}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "cancelled" ? "border-orange-600 bg-orange-600 text-white hover:bg-orange-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  Cancelled Requests
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter((v) => (v === "expired" ? "all" : "expired"))}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "expired" ? "border-gray-600 bg-gray-600 text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  Expired Requests
                 </button>
               </div>
             </div>

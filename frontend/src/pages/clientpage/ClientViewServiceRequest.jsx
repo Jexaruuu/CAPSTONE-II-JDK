@@ -8,6 +8,14 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const CONFIRM_FLAG = 'clientRequestJustConfirmed';
 const GLOBAL_DESC_KEY = 'clientServiceDescription';
 
+const REASONS = [
+  'Change of plans',
+  'Booked another provider',
+  'Schedule conflict',
+  'Price too high',
+  'Posted by mistake'
+];
+
 const ClientViewServiceRequest = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -17,6 +25,12 @@ const ClientViewServiceRequest = () => {
   const [clientIdState, setClientIdState] = useState(null);
   const [row, setRow] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [showCancel, setShowCancel] = useState(false);
+  const [reason, setReason] = useState('');
+  const [otherReason, setOtherReason] = useState('');
+  const [submittingCancel, setSubmittingCancel] = useState(false);
+  const [cancelErr, setCancelErr] = useState('');
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -79,7 +93,7 @@ const ClientViewServiceRequest = () => {
     const body = document.body;
     const prevHtmlOverflow = html.style.overflow;
     const prevBodyOverflow = body.style.overflow;
-    if (loading) {
+    if (loading || showCancel || submittingCancel) {
       html.style.overflow = 'hidden';
       body.style.overflow = 'hidden';
     } else {
@@ -90,7 +104,7 @@ const ClientViewServiceRequest = () => {
       html.style.overflow = prevHtmlOverflow || '';
       body.style.overflow = prevBodyOverflow || '';
     };
-  }, [loading]);
+  }, [loading, showCancel, submittingCancel]);
 
   const savedInfo = (() => { try { return JSON.parse(localStorage.getItem('clientInformationForm') || '{}'); } catch { return {}; }})();
   const savedDetails = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRequestDetails') || '{}'); } catch { return {}; }})();
@@ -231,11 +245,42 @@ const ClientViewServiceRequest = () => {
   };
 
   const handleCancel = () => {
+    setCancelErr('');
+    setReason('');
+    setOtherReason('');
+    setShowCancel(true);
+  };
+
+  const submitCancel = async () => {
+    if (!reason && !otherReason.trim()) {
+      setCancelErr('Please select a reason or write one.');
+      return;
+    }
+    setCancelErr('');
+    setShowCancel(false);
+    await new Promise((r) => setTimeout(r, 30));
+    setSubmittingCancel(true);
     try {
-      window.dispatchEvent(new Event('client-request-cancelled'));
-    } catch {}
-    jumpTop();
-    navigate('/clientdashboard', { replace: true });
+      await axios.post(
+        `${API_BASE}/api/clientservicerequests/cancel`,
+        {
+          request_group_id: id,
+          client_id: clientIdState || null,
+          email_address: email || null,
+          reason_choice: reason || null,
+          reason_other: otherReason || null
+        },
+        { withCredentials: true, headers: headersWithU }
+      );
+      try { window.dispatchEvent(new CustomEvent('client-request-cancelled', { detail: { id } })); } catch {}
+      jumpTop();
+      navigate('/clientcurrentservicerequests', { replace: true, state: { cancelled: id } });
+    } catch (e) {
+      const msg = e?.response?.data?.message || 'Failed to cancel. Try again.';
+      setCancelErr(msg);
+      setSubmittingCancel(false);
+      setShowCancel(true);
+    }
   };
 
   return (
@@ -311,8 +356,8 @@ const ClientViewServiceRequest = () => {
                     <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                       <LabelValue label="Service Type" value={service_type} />
                       <LabelValue label="Service Task" value={service_task} />
-                      <LabelValue label="Preferred Date" value={preferred_date_display} />
-                      <LabelValue label="Preferred Time" value={preferred_time_display} />
+                      <LabelValue label="Preferred Date" value={formatDateMDY(preferred_date)} />
+                      <LabelValue label="Preferred Time" value={formatTime12h(preferred_time)} />
                       <LabelValue
                         label="Urgent"
                         value={
@@ -396,7 +441,7 @@ const ClientViewServiceRequest = () => {
                     </div>
                     <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                       <span className="text-sm font-semibold text-gray-700">Schedule:</span>
-                      <span className="text-base md:text-lg font-medium text-[#008cfc]">{preferred_date_display || '-'} • {preferred_time_display || '-'}</span>
+                      <span className="text-base md:text-lg font-medium text-[#008cfc]">{formatDateMDY(preferred_date) || '-'} • {formatTime12h(preferred_time) || '-'}</span>
                     </div>
                     <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                       <span className="text-sm font-semibold text-gray-700">Urgent:</span>
@@ -439,6 +484,7 @@ const ClientViewServiceRequest = () => {
             </div>
           </div>
         </div>
+
         {loading && (
           <div
             role="dialog"
@@ -475,6 +521,115 @@ const ClientViewServiceRequest = () => {
               </div>
               <div className="mt-6 text-center space-y-1">
                 <div className="text-lg font-semibold text-gray-900">Loading Request</div>
+                <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showCancel && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Cancel request"
+            tabIndex={-1}
+            autoFocus
+            className="fixed inset-0 z-[2147483646] flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingCancel && setShowCancel(false)} />
+            <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
+              <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
+                <div className="text-xl font-semibold">Cancel Service Request</div>
+                <div className="text-xs opacity-90">Tell us why you want to cancel</div>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <div className="grid grid-cols-1 gap-2">
+                  {REASONS.map((r) => (
+                    <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${reason===r?'border-red-500 ring-1 ring-red-300 bg-red-50':'border-gray-200 hover:bg-gray-50'}`}>
+                      <input
+                        type="radio"
+                        name="cancel-reason"
+                        className="h-4 w-4"
+                        checked={reason === r}
+                        onChange={() => setReason((curr) => (curr === r ? '' : r))}
+                        disabled={submittingCancel}
+                      />
+                      <span className="text-sm md:text-base">{r}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-gray-700">Other</div>
+                  <textarea
+                    value={otherReason}
+                    onChange={(e) => setOtherReason(e.target.value)}
+                    disabled={submittingCancel}
+                    placeholder="Type your reason here"
+                    className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  />
+                </div>
+
+                {cancelErr ? <div className="text-sm text-red-600">{cancelErr}</div> : null}
+              </div>
+              <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => !submittingCancel && setShowCancel(false)}
+                  className="h-[44px] px-5 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  disabled={submittingCancel}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={submitCancel}
+                  className="h-[44px] px-5 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                  disabled={submittingCancel}
+                >
+                  {submittingCancel ? 'Submitting...' : 'Confirm Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {submittingCancel && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Cancelling request"
+            tabIndex={-1}
+            autoFocus
+            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+              <div className="relative mx-auto w-40 h-40">
+                <div
+                  className="absolute inset-0 animate-spin rounded-full"
+                  style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+                />
+                <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {!logoBroken ? (
+                    <img
+                      src="/jdklogo.png"
+                      alt="JDK Homecare Logo"
+                      className="w-20 h-20 object-contain"
+                      onError={() => setLogoBroken(true)}
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                      <span className="font-bold text-[#008cfc]">JDK</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="mt-6 text-center space-y-1">
+                <div className="text-lg font-semibold text-gray-900">Cancelling Request</div>
                 <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
               </div>
             </div>

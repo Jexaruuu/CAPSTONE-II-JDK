@@ -5,6 +5,7 @@ const ctrl = require('../controllers/pendingservicerequestsController');
 router.get('/', ctrl.list);
 router.get('/count', ctrl.count);
 router.get('/counts', ctrl.counts);
+router.get('/mine', ctrl.listMine);
 router.get('/:id', ctrl.getById);
 router.patch('/:id/status', ctrl.updateStatus);
 router.post('/', ctrl.create);

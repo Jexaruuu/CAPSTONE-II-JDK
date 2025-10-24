@@ -20,6 +20,19 @@ async function listPending(status = 'pending', limit = 200) {
   return data || [];
 }
 
+async function listByEmail(email, status = null, limit = 200) {
+  if (!email) return [];
+  let q = supabaseAdmin.from('csr_pending')
+    .select('*')
+    .eq('email_address', email)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (status && status !== 'all') q = q.eq('status', status);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+
 async function countPending() {
   const { count, error } = await supabaseAdmin
     .from('csr_pending')
@@ -62,6 +75,7 @@ async function countByStatus(status) {
 module.exports = {
   insertPendingRequest,
   listPending,
+  listByEmail,
   countPending,
   getPendingById,
   markStatus,
