@@ -310,7 +310,7 @@ export default function AdminManageUser() {
                 onClick={fetchUsers}
                 className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
               >
-                Refresh
+                ⟳ Refresh
               </button>
             </div>
           </div>
@@ -369,7 +369,7 @@ export default function AdminManageUser() {
                 onClick={fetchUsers}
                 className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
               >
-                Refresh
+                ⟳ Refresh
               </button>
             </div>
           </div>

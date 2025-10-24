@@ -18,6 +18,7 @@ import ClientNotifications from './pages/clientpage/ClientNotifications';
 import ClientCurrentServiceRequest from './pages/clientpage/ClientCurrentServiceRequest';
 import ClientCompletedRequest from './pages/clientpage/ClientCompletedRequest';
 import ClientFindAvailableWorker from './pages/clientpage/ClientFindAvailableWorker';
+import ClientViewServiceRequest from './pages/clientpage/ClientViewServiceRequest';
 
 import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from './pages/successpage/WorkerSuccess';
@@ -142,6 +143,16 @@ const App = () => {
             <ProtectedRoute>
               <ClientOnlyRoute>
                 <ClientCurrentServiceRequest />
+              </ClientOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/current-service-request/:id"
+          element={
+            <ProtectedRoute>
+              <ClientOnlyRoute>
+                <ClientViewServiceRequest />
               </ClientOnlyRoute>
             </ProtectedRoute>
           }

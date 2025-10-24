@@ -95,7 +95,7 @@ const formatRateType = (t) => {
   return s.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 };
 
-const Card = ({ item, onEdit, onOpenMenu }) => {
+const Card = ({ item, onEdit, onOpenMenu, onView }) => {
   const d = item.details || {};
   const r = item.rate || {};
   const Icon = iconForService(d.service_type || d.service_task);
@@ -104,8 +104,9 @@ const Card = ({ item, onEdit, onOpenMenu }) => {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <Link to={`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`} className="block pointer-events-none select-text">
-            <h3 className="text-xl md:text-2xl font-semibold truncate text-[#008cfc]">
-              {d.service_type || "Service"}
+            <h3 className="text-xl md:text-2xl font-semibold truncate">
+              <span className="text-gray-700">Service Type:</span>{" "}
+              <span className="text-[#008cfc]">{d.service_type || "Service"}</span>
             </h3>
             <div className="mt-0.5 text-base md:text-lg truncate text-black">
               <span className="font-semibold">Service Task:</span> {d.service_task || "Task"}
@@ -146,6 +147,7 @@ const Card = ({ item, onEdit, onOpenMenu }) => {
       <div className="-mt-9 flex justify-end gap-2">
         <Link
           to={`/current-service-request/${encodeURIComponent(item.id)}`}
+          onClick={(e) => { e.preventDefault(); onView(item.id); }}
           className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
         >
           View
@@ -168,6 +170,8 @@ export default function ClientCurrentServiceRequest() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [isOpeningView, setIsOpeningView] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
 
@@ -199,6 +203,25 @@ export default function ClientCurrentServiceRequest() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const lock = isOpeningView;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    if (lock) {
+      html.style.overflow = "hidden";
+      body.style.overflow = "hidden";
+    } else {
+      html.style.overflow = prevHtmlOverflow || "";
+      body.style.overflow = prevBodyOverflow || "";
+    }
+    return () => {
+      html.style.overflow = prevHtmlOverflow || "";
+      body.style.overflow = prevBodyOverflow || "";
+    };
+  }, [isOpeningView]);
 
   const onRefresh = async () => {
     setLoading(true);
@@ -270,6 +293,13 @@ export default function ClientCurrentServiceRequest() {
 
   const onOpenMenu = () => {};
 
+  const onView = (id) => {
+    setIsOpeningView(true);
+    setTimeout(() => {
+      navigate(`/current-service-request/${encodeURIComponent(id)}`);
+    }, 700);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white via-[#F7FBFF] to-white">
       <ClientNavigation />
@@ -310,7 +340,7 @@ export default function ClientCurrentServiceRequest() {
               </div>
             </div>
             <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
-              <div className="flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
+              <div className="mt-6 flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
                 <span className="text-gray-500 text-lg">🔍︎</span>
                 <input
                   value={query}
@@ -323,7 +353,7 @@ export default function ClientCurrentServiceRequest() {
                 type="button"
                 onClick={onRefresh}
                 disabled={loading}
-                className="inline-flex items-center gap-2 h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="mt-6 inline-flex items-center gap-2 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50 disabled:opacity-50"
                 title="Refresh"
                 aria-label="Refresh"
               >
@@ -351,6 +381,7 @@ export default function ClientCurrentServiceRequest() {
                 item={item}
                 onEdit={onEdit}
                 onOpenMenu={onOpenMenu}
+                onView={onView}
               />
             ))
           )}
@@ -403,6 +434,48 @@ export default function ClientCurrentServiceRequest() {
       </div>
 
       <ClientFooter />
+
+      {isOpeningView && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Opening request"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#008cfc22", borderTopColor: "#008cfc", borderRadius: "9999px" }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center space-y-1">
+              <div className="text-lg font-semibold text-gray-900">Opening Request</div>
+              <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

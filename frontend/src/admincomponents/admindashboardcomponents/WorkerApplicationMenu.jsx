@@ -326,7 +326,7 @@ export default function WorkerApplicationMenu() {
                 }}
                 className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
               >
-                Refresh
+                ⟳ Refresh
               </button>
             </div>
           </div>
