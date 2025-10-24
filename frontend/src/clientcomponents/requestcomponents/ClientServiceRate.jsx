@@ -121,10 +121,10 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
-            <div className="text-lg font-semibold text-gray-900">Please choose your service rate</div>
+            <div className="text-2xl md:text-3xl font-semibold text-gray-900">Please choose your service rate</div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="hidden sm:block text-xs text-gray-500">Step 3 of 4</div>
+            <div className="hidden sm:block text-sm text-gray-500">Step 3 of 4</div>
             <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden ring-1 ring-white">
               <div className="h-full w-3/4 bg-[#008cfc]" />
             </div>
@@ -135,7 +135,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
-            <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Service Request Price Rate</h3>
+            <h3 className="text-xl md:text-2xl font-semibold text-gray-900">Service Request Price Rate</h3>
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Rate
@@ -143,7 +143,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
           </div>
 
           <div className="px-6 py-6">
-            <p className="text-sm text-gray-600 mb-6">Please choose the service rate type and enter the price.</p>
+            <p className="text-base text-gray-600 mb-6">Please choose the service rate type and enter the price.</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <button
@@ -156,8 +156,8 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                     <img src="/Clock.png" alt="" className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">By the hour</p>
-                    <p className="text-xs text-gray-500">Pay per hour of work</p>
+                    <p className="text-base font-semibold text-gray-900">By the hour</p>
+                    <p className="text-sm text-gray-500">Pay per hour of work</p>
                   </div>
                 </div>
               </button>
@@ -172,8 +172,8 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                     <img src="/Contract.png" alt="" className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">By the job</p>
-                    <p className="text-xs text-gray-500">Single fixed price</p>
+                    <p className="text-base font-semibold text-gray-900">By the job</p>
+                    <p className="text-sm text-gray-500">Single fixed price</p>
                   </div>
                 </div>
               </button>
@@ -217,8 +217,8 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                 {attempted && rateFrom && rateTo && !isHourlyValid() && (
                   <p className="text-xs text-red-600 mt-1">Enter valid amounts, and make sure “To” is greater than or equal to “From”.</p>
                 )}
-                <p className="text-sm text-gray-600 mt-2">This is the average rate for similar home services.</p>
-                <p className="text-sm text-gray-600 mt-4">For service requests like plumbing, carpentry, electrical work, car washing, or laundry, costs can change based on the task and time needed.</p>
+                <p className="text-base text-gray-600 mt-2">This is the average rate for similar home services.</p>
+                <p className="text-base text-gray-600 mt-4">For service requests like plumbing, carpentry, electrical work, car washing, or laundry, costs can change based on the task and time needed.</p>
               </div>
             )}
 
@@ -238,8 +238,8 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                   />
                 </div>
                 {attempted && !isJobValid() && <p className="text-xs text-red-600 mt-1">Enter a valid amount greater than 0.</p>}
-                <p className="text-sm text-gray-600 mt-2">Set a fixed price for the service request.</p>
-                <p className="text-sm text-gray-600 mt-4">The fixed price is an amount that you and the service provider can discuss and agree on together. Feel free to negotiate the price based on the scope of the work.</p>
+                <p className="text-base text-gray-600 mt-2">Set a fixed price for the service request.</p>
+                <p className="text-base text-gray-600 mt-4">The fixed price is an amount that you and the service provider can discuss and agree on together. Feel free to negotiate the price based on the scope of the work.</p>
               </div>
             )}
           </div>
@@ -277,7 +277,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
               <div
@@ -307,7 +307,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
               </div>
             </div>
             <div className="mt-6 text-center">
-              <div className="text-base font-semibold text-gray-900">Preparing Step 4</div>
+              <div className="text-lg font-semibold text-gray-900">Preparing Step 4</div>
               <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
             </div>
           </div>

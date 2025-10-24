@@ -309,10 +309,10 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
-            <div className="text-lg font-semibold text-gray-900">Please fill in your details</div>
+            <div className="text-2xl md:text-3xl font-semibold text-gray-900">Please fill in your details</div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="hidden sm:block text-xs text-gray-500">Step 1 of 4</div>
+            <div className="hidden sm:block text-sm text-gray-500">Step 1 of 4</div>
             <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden ring-1 ring-white">
               <div className="h-full w-1/4 bg-[#008cfc]" />
             </div>
@@ -323,7 +323,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
-            <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Personal Information</h3>
+            <h3 className="text-xl md:text-2xl font-semibold text-gray-900">Personal Information</h3>
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Client
@@ -332,7 +332,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
           <div className="px-6 py-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-12 gap-y-6">
               <div className="lg:col-span-2">
-                <p className="text-sm text-gray-600 mb-6">Please fill in your personal details to proceed.</p>
+                <p className="text-base text-gray-600 mb-6">Please fill in your personal details to proceed.</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -514,8 +514,8 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
               </div>
 
               <div className="lg:col-span-1">
-                <div className="text-base font-semibold mb-3 text-center">Client Profile Picture</div>
-                <p className="text-sm text-gray-600 text-center mb-5">Upload your picture here.</p>
+                <div className="text-xl md:text-2xl font-semibold mb-3 text-center">Client Profile Picture</div>
+                <p className="text-base text-gray-600 text-center mb-5">Upload your picture here.</p>
                 <div className="flex flex-col items-center gap-5">
                   {!profilePicture ? (
                     <div className={`w-36 h-36 md:w-40 md:h-40 rounded-full grid place-items-center ${attempted && !profilePicture ? 'bg-red-200' : 'bg-gray-200'}`}>
@@ -629,7 +629,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
               </div>
             </div>
             <div className="mt-6 text-center">
-              <div className="text-base font-semibold text-gray-900">Preparing Step 2</div>
+              <div className="text-lg font-semibold text-gray-900">Preparing Step 2</div>
               <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
             </div>
           </div>
