@@ -230,6 +230,14 @@ const ClientViewServiceRequest = () => {
     else navigate('/clientdashboard', { replace: true });
   };
 
+  const handleCancel = () => {
+    try {
+      window.dispatchEvent(new Event('client-request-cancelled'));
+    } catch {}
+    jumpTop();
+    navigate('/clientdashboard', { replace: true });
+  };
+
   return (
     <>
       <ClientNavigation />
@@ -238,15 +246,16 @@ const ClientViewServiceRequest = () => {
           {!location.pathname.includes('/clientpostrequest') && (
             <div className="mt-8 mb-6">
               <h2 className="text-[28px] md:text-[32px] font-semibold tracking-tight mt-2 text-gray-900">Service Request Details</h2>
+              <div className="pt-4 text-sm text-gray-600">Check your service request details here.</div>
             </div>
           )}
 
           <div className="space-y-6 mt-5">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60">
-              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
-                <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Personal Information</h3>
-                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+            <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+              <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
+                <h3 className="text-xl md:text-[22px] font-semibold">Personal Information</h3>
+                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                  <span className="h-3 w-3 rounded-full bg-white/60" />
                   Client
                 </span>
               </div>
@@ -269,7 +278,7 @@ const ClientViewServiceRequest = () => {
                   </div>
 
                   <div className="md:col-span-1 flex flex-col items-center">
-                    <div className="text-sm font-semibold text-black mb-3">Profile Picture</div>
+                    <div className="text-sm font-semibold text-black mb-3">Client Picture</div>
                     {profile_picture ? (
                       <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
                         <img
@@ -290,11 +299,11 @@ const ClientViewServiceRequest = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
               <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60">
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
-                    <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Service Request Details</h3>
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+                  <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
+                    <h3 className="text-xl md:text-[22px] font-semibold">Service Request Details</h3>
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                      <span className="h-3 w-3 rounded-full bg-white/60" />
                       Request
                     </span>
                   </div>
@@ -304,13 +313,22 @@ const ClientViewServiceRequest = () => {
                       <LabelValue label="Service Task" value={service_task} />
                       <LabelValue label="Preferred Date" value={preferred_date_display} />
                       <LabelValue label="Preferred Time" value={preferred_time_display} />
-                      <LabelValue label="Urgent" value={
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium w-24 justify-center ${toBoolStrict(is_urgent) ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                          <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                          {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
-                        </span>
-                      } />
-                      <LabelValue label="Tools Provided" value={tools_provided} />
+                      <LabelValue
+                        label="Urgent"
+                        value={
+                          <span className={`text-base md:text-lg font-semibold ${toBoolStrict(is_urgent) ? 'text-green-600' : 'text-red-600'}`}>
+                            {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
+                          </span>
+                        }
+                      />
+                      <LabelValue
+                        label="Tools Provided"
+                        value={
+                          <span className={`text-base md:text-lg font-semibold ${toBoolStrict(tools_provided) ? 'text-green-600' : 'text-red-600'}`}>
+                            {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
+                          </span>
+                        }
+                      />
                       <div className="md:col-span-2">
                         <LabelValue label="Description" value={service_description || '-'} />
                       </div>
@@ -330,11 +348,11 @@ const ClientViewServiceRequest = () => {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60">
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
-                    <h3 className="text-xl md:text-[22px] font-semibold text-gray-900">Service Rate</h3>
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+                  <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
+                    <h3 className="text-xl md:text-[22px] font-semibold">Service Rate</h3>
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                      <span className="h-3 w-3 rounded-full bg-white/60" />
                       Pricing
                     </span>
                   </div>
@@ -355,8 +373,8 @@ const ClientViewServiceRequest = () => {
               </div>
 
               <aside className="lg:col-span-1 flex flex-col">
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 overflow-hidden flex flex-col">
-                  <div className="bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] px-6 py-5 text-white">
+                <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 overflow-hidden flex flex-col transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+                  <div className="bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] px-6 py-5 text-white rounded-t-2xl">
                     <div className="text-base font-medium">Summary</div>
                     <div className="text-xs text-white/90">Review everything before leaving</div>
                   </div>
@@ -382,17 +400,9 @@ const ClientViewServiceRequest = () => {
                     </div>
                     <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                       <span className="text-sm font-semibold text-gray-700">Urgent:</span>
-                      {toBoolStrict(is_urgent) ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium w-24 justify-center bg-blue-50 text-blue-700 border-blue-200">
-                          <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                          Yes
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium w-24 justify-center bg-red-50 text-red-700 border-red-200">
-                          <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                          No
-                        </span>
-                      )}
+                      <span className={`text-base md:text-lg font-semibold ${toBoolStrict(is_urgent) ? 'text-green-600' : 'text-red-600'}`}>
+                        {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
+                      </span>
                     </div>
                     <div className="h-px bg-gray-100 my-2" />
                     <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">
@@ -407,13 +417,22 @@ const ClientViewServiceRequest = () => {
                     </div>
                   </div>
                   <div className="px-6 py-4 border-t border-gray-100">
-                    <button
-                      type="button"
-                      onClick={handleDone}
-                      className="w-full h-[50px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
-                    >
-                      Done View
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={handleDone}
+                        className="w-full h-[50px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                      >
+                        Done View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancel}
+                        className="w-full h-[50px] px-5 py-3 rounded-xl bg-red-600 text-white hover:bg-red-700 transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+                      >
+                        Cancel Request
+                      </button>
+                    </div>
                   </div>
                 </div>
               </aside>
