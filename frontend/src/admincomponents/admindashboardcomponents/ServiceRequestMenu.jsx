@@ -251,8 +251,7 @@ export default function AdminServiceRequests() {
         const d = r.details || {};
         const rate = r.rate || {};
         const statusNorm = String(r.status || "pending").toLowerCase();
-        const isFinal = statusNorm === "approved" || statusNorm === "declined";
-        const expired = isExpired(d.preferred_date) && !isFinal;
+        const expired = isExpired(d.preferred_date);
         const createdRaw =
           r.created_at || r.createdAt || d.created_at || d.createdAt || r.created || d.created || null;
         const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
@@ -260,7 +259,7 @@ export default function AdminServiceRequests() {
           id: r.id,
           request_group_id: r.request_group_id,
           status: r.status || "pending",
-          ui_status: expired ? "expired" : r.status || "pending",
+          ui_status: r.status || "pending",
           name_first: i.first_name || "",
           name_last: i.last_name || "",
           email: i.email_address || d.email_address || "",
@@ -289,6 +288,10 @@ export default function AdminServiceRequests() {
       if (statusArg === "expired") {
         finalRows = mapped.filter((r) => r._expired);
       } else if (statusArg === "all") {
+        finalRows = mapped;
+      } else if (statusArg === "declined") {
+        finalRows = mapped;
+      } else if (statusArg === "approved") {
         finalRows = mapped;
       } else {
         finalRows = mapped.filter((r) => !r._expired);
@@ -411,7 +414,7 @@ export default function AdminServiceRequests() {
     await axios.post(`${API_BASE}/api/admin/servicerequests/${id}/approve`, {}, { withCredentials: true });
     setRows((r) =>
       r.map((x) =>
-        x.id === id ? { ...x, status: "approved", ui_status: "approved", _expired: false } : x
+        x.id === id ? { ...x, status: "approved", ui_status: "approved", _expired: x._expired } : x
       )
     );
     setSelected((s) => {
@@ -426,7 +429,7 @@ export default function AdminServiceRequests() {
     await axios.post(`${API_BASE}/api/admin/servicerequests/${id}/decline`, {}, { withCredentials: true });
     setRows((r) =>
       r.map((x) =>
-        x.id === id ? { ...x, status: "declined", ui_status: "declined", _expired: false } : x
+        x.id === id ? { ...x, status: "declined", ui_status: "declined", _expired: x._expired } : x
       )
     );
     setSelected((s) => {
@@ -922,6 +925,7 @@ export default function AdminServiceRequests() {
                       {pageRows.map((u, idx) => {
                         const disableActions =
                           u._expired || u.status === "approved" || u.status === "declined";
+                        const isFinal = u.status === "approved" || u.status === "declined";
                         return (
                           <tr
                             key={u.id}
@@ -963,7 +967,20 @@ export default function AdminServiceRequests() {
                               {u.created_at_display || "-"}
                             </td>
                             <td className="px-4 py-4 border border-gray-200">
-                              <StatusPill value={u.ui_status} />
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {u._expired ? (
+                                  isFinal ? (
+                                    <>
+                                      <StatusPill value={u.status} />
+                                      <StatusPill value="expired" />
+                                    </>
+                                  ) : (
+                                    <StatusPill value="expired" />
+                                  )
+                                ) : (
+                                  <StatusPill value={u.ui_status} />
+                                )}
+                              </div>
                             </td>
 
                             <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}>
@@ -1108,7 +1125,20 @@ export default function AdminServiceRequests() {
                 <div className="text-sm text-gray-600">
                   Created <span className="font-semibold text-[#008cfc]">{viewRow.created_at_display || "-"}</span>
                 </div>
-                <StatusPill value={viewRow.ui_status} />
+                <div className="flex items-center gap-1 flex-wrap">
+                  {viewRow._expired ? (
+                    (viewRow.status === "approved" || viewRow.status === "declined") ? (
+                      <>
+                        <StatusPill value={viewRow.status} />
+                        <StatusPill value="expired" />
+                      </>
+                    ) : (
+                      <StatusPill value="expired" />
+                    )
+                  ) : (
+                    <StatusPill value={viewRow.ui_status} />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1129,7 +1159,7 @@ export default function AdminServiceRequests() {
                 onClick={async () => {
                   if (viewRow._expired) return;
                   await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/decline`, {}, { withCredentials: true });
-                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined", ui_status: "declined", _expired: false } : x)));
+                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined", ui_status: "declined", _expired: x._expired } : x)));
                   setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
                   setViewRow(null);
                 }}
@@ -1143,7 +1173,7 @@ export default function AdminServiceRequests() {
                 onClick={async () => {
                   if (viewRow._expired) return;
                   await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/approve`, {}, { withCredentials: true });
-                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved", ui_status: "approved", _expired: false } : x)));
+                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved", ui_status: "approved", _expired: x._expired } : x)));
                   setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
                   setViewRow(null);
                 }}

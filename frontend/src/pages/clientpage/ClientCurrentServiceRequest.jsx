@@ -1,4 +1,3 @@
-// Duplicate block removed to resolve redeclaration errors.
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -135,13 +134,15 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
   const isPending = statusLower === "pending";
   const isApproved = statusLower === "approved";
   const isDeclined = statusLower === "declined";
-  const isExpiredReq = isExpired(d.preferred_date) && !(isApproved || isDeclined);
+  const isExpiredReq = isExpired(d.preferred_date);
   const cardBase = "rounded-2xl border p-5 md:p-6 shadow-sm transition-all duration-300";
   const cardState = (isCancelled || isExpiredReq)
     ? "border-gray-200 bg-gray-50"
     : isDeclined
       ? "border-gray-300 bg-white hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
-      : "border-gray-300 bg-white hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl";
+      : isApproved
+        ? "border-gray-300 bg-white hover:border-emerald-600 hover:ring-2 hover:ring-emerald-600 hover:shadow-xl"
+        : "border-gray-300 bg-white hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl";
   return (
     <div className={`${cardBase} ${cardState}`}>
       <div className="flex items-start justify-between gap-4">
@@ -192,10 +193,16 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
               Cancelled Request
             </span>
           )}
-          {isDeclined && !isCancelled && !isExpiredReq && (
+          {isDeclined && !isCancelled && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Declined Request
+            </span>
+          )}
+          {isApproved && !isCancelled && !isDeclined && (
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Approved
             </span>
           )}
           {isExpiredReq && !isCancelled && (
@@ -204,19 +211,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
               Expired Request
             </span>
           )}
-          {isPending && !isCancelled && !isExpiredReq && !isDeclined && (
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
-              <span className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
-              Pending
-            </span>
-          )}
-          {isApproved && !isCancelled && !isExpiredReq && !isDeclined && (
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Approved
-            </span>
-          )}
-          <div className={`h-10 w-10 rounded-lg border flex items-center justify-center ${(isCancelled || isExpiredReq) ? "border-gray-300 text-gray-500" : "border-gray-300 text-[#008cfc]"}`}>
+          <div className={`h-10 w-10 rounded-lg border flex items-center justify-center ${(isCancelled || isExpiredReq || isDeclined) ? "border-gray-300 text-gray-500" : "border-gray-300 text-[#008cfc]"}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -245,9 +240,9 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
         )}
         <button
           type="button"
-          onClick={() => { if (!(isCancelled || isExpiredReq)) onEdit(item); }}
-          disabled={isCancelled || isExpiredReq}
-          className={`h-10 px-4 rounded-md transition ${(isCancelled || isExpiredReq) ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}
+          onClick={() => { if (!(isCancelled || isExpiredReq || isDeclined)) onEdit(item); }}
+          disabled={isCancelled || isExpiredReq || isDeclined}
+          className={`h-10 px-4 rounded-md transition ${(isCancelled || isExpiredReq || isDeclined) ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}
         >
           Edit Request
         </button>
@@ -335,15 +330,17 @@ export default function ClientCurrentServiceRequest() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = items;
-    if (statusFilter === "all") list = list.filter((i) => (i.status || "").toLowerCase() !== "cancelled");
+    if (statusFilter === "all") {
+      list = list.filter((i) => {
+        const s = String(i.status || "").toLowerCase();
+        return s !== "cancelled";
+      });
+    }
     if (statusFilter === "pending") list = list.filter((i) => (i.status || "").toLowerCase() === "pending" && !isExpired(i?.details?.preferred_date));
     if (statusFilter === "approved") list = list.filter((i) => (i.status || "").toLowerCase() === "approved");
     if (statusFilter === "declined") list = list.filter((i) => (i.status || "").toLowerCase() === "declined");
-    if (statusFilter === "cancelled") list = list.filter((i) => (i.status || "").toLowerCase() === "cancelled");
-    if (statusFilter === "expired") list = list.filter((i) => {
-      const s = String(i.status || "").toLowerCase();
-      return isExpired(i?.details?.preferred_date) && s !== "approved" && s !== "declined";
-    });
+    if (statusFilter === "cancelled") list = list.filter((i) => (i.status || "").toLowerCase() === "cancelled" && !isExpired(i?.details?.preferred_date));
+    if (statusFilter === "expired") list = list.filter((i) => isExpired(i?.details?.preferred_date));
     if (!q) return list;
     return list.filter((i) => {
       const s1 = (i.details?.service_type || "").toLowerCase();
@@ -461,7 +458,7 @@ export default function ClientCurrentServiceRequest() {
               </div>
             </div>
             <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
-              <div className="mt-6 flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
+              <div className="mt-6 flex items中心 h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
                 <span className="text-gray-500 text-lg">🔍︎</span>
                 <input
                   value={query}
@@ -565,7 +562,7 @@ export default function ClientCurrentServiceRequest() {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify中心 cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
@@ -584,7 +581,7 @@ export default function ClientCurrentServiceRequest() {
                     onError={() => setLogoBroken(true)}
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items中心 justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
                   </div>
                 )}
