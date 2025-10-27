@@ -59,6 +59,7 @@ const AdminSideNavigation = () => {
   }, []);
 
   const serviceActive = location.pathname.startsWith('/admindashboard/service-requests');
+  const workerActive = location.pathname.startsWith('/admindashboard/worker-applications');
 
   return (
     <aside className="h-screen w-72 shrink-0 px-3 py-4">
@@ -99,12 +100,26 @@ const AdminSideNavigation = () => {
                   to="/admindashboard/service-requests/cancelled"
                   className={({ isActive }) =>
                     [
-                      'ml-8 mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[15px] md:text-base font-medium',
+                      'ml-8 mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[15px] md:text-sm font-sm',
                       isActive ? 'bg-gray-100 text-[#008cfc]' : 'text-gray-700 hover:bg-gray-50 hover:text-[#008cfc]',
                     ].join(' ')
                   }
                 >
-                  <span>Cancel Requests</span>
+                  <span>Cancelled Requests</span>
+                </NavLink>
+              )}
+
+              {badgeKey === 'worker' && workerActive && (
+                <NavLink
+                  to="/admindashboard/worker-applications/cancelled"
+                  className={({ isActive }) =>
+                    [
+                      'ml-8 mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[15px] md:text-sm font-sm',
+                      isActive ? 'bg-gray-100 text-[#008cfc]' : 'text-gray-700 hover:bg-gray-50 hover:text-[#008cfc]',
+                    ].join(' ')
+                  }
+                >
+                  <span>Cancelled Applications</span>
                 </NavLink>
               )}
             </div>
