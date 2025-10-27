@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, ClipboardList, FileText, LogOut } from 'lucide-react';
 import axios from 'axios';
 import { sbAdmin as supabase } from '../supabaseBrowser';
@@ -9,12 +9,13 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const navItems = [
   { label: 'Dashboard',           to: '/admindashboard',                     icon: LayoutDashboard },
   { label: 'Manage Users',        to: '/admindashboard/manage-users',        icon: Users },
-  { label: 'Service Request',     to: '/admindashboard/service-requests',    icon: FileText,       badgeKey: 'service' },
+  { label: 'Service Requests',     to: '/admindashboard/service-requests',    icon: FileText,       badgeKey: 'service' },
   { label: 'Worker Applications', to: '/admindashboard/worker-applications', icon: ClipboardList,  badgeKey: 'worker' },
 ];
 
 const AdminSideNavigation = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingWorkerCount, setPendingWorkerCount] = useState(0);
 
@@ -57,6 +58,8 @@ const AdminSideNavigation = () => {
     return () => clearInterval(t);
   }, []);
 
+  const serviceActive = location.pathname.startsWith('/admindashboard/service-requests');
+
   return (
     <aside className="h-screen w-72 shrink-0 px-3 py-4">
       <div className="h-full rounded-2xl bg-white border border-gray-200 shadow-sm p-3 flex flex-col">
@@ -66,30 +69,45 @@ const AdminSideNavigation = () => {
 
         <nav className="-mt-16 space-y-1 overflow-y-auto">
           {navItems.map(({ label, to, icon: Icon, badgeKey }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/admindashboard'}
-              className={({ isActive }) =>
-                [
-                  'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] md:text-base font-medium transition-colors',
-                  isActive ? 'bg-gray-100 text-[#008cfc]' : 'text-black hover:bg-gray-50 hover:text-[#008cfc]',
-                ].join(' ')
-              }
-            >
-              <Icon className="h-5 w-5" />
-              <span>{label}</span>
-              {badgeKey === 'service' && pendingCount > 0 && (
-                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] leading-none text-white">
-                  {pendingCount}
-                </span>
+            <div key={to}>
+              <NavLink
+                to={to}
+                end={to === '/admindashboard'}
+                className={({ isActive }) =>
+                  [
+                    'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] md:text-base font-medium transition-colors',
+                    isActive ? 'bg-gray-100 text-[#008cfc]' : 'text-black hover:bg-gray-50 hover:text-[#008cfc]',
+                  ].join(' ')
+                }
+              >
+                <Icon className="h-5 w-5" />
+                <span>{label}</span>
+                {badgeKey === 'service' && pendingCount > 0 && (
+                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] leading-none text-white">
+                    {pendingCount}
+                  </span>
+                )}
+                {badgeKey === 'worker' && pendingWorkerCount > 0 && (
+                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] leading-none text-white">
+                    {pendingWorkerCount}
+                  </span>
+                )}
+              </NavLink>
+
+              {badgeKey === 'service' && serviceActive && (
+                <NavLink
+                  to="/admindashboard/service-requests/cancelled"
+                  className={({ isActive }) =>
+                    [
+                      'ml-8 mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[15px] md:text-base font-medium',
+                      isActive ? 'bg-gray-100 text-[#008cfc]' : 'text-gray-700 hover:bg-gray-50 hover:text-[#008cfc]',
+                    ].join(' ')
+                  }
+                >
+                  <span>Cancel Requests</span>
+                </NavLink>
               )}
-              {badgeKey === 'worker' && pendingWorkerCount > 0 && (
-                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] leading-none text-white">
-                  {pendingWorkerCount}
-                </span>
-              )}
-            </NavLink>
+            </div>
           ))}
         </nav>
 

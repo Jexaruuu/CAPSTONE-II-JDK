@@ -107,6 +107,17 @@ async function getCancelledByGroupIds(groupIds) {
   if (error) throw error;
   return (data || []).map(x => x.request_group_id).filter(Boolean);
 }
+async function listPendingByEmail(email) {
+  const { data, error } = await supabaseAdmin
+    .from('csr_pending')
+    .select('id, request_group_id, status, created_at, details')
+    .eq('email_address', email)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
 
 module.exports = {
   uploadDataUrlToBucket,
@@ -120,5 +131,6 @@ module.exports = {
   newGroupId,
   listDetailsByEmail,
   getCombinedByGroupId,
-  getCancelledByGroupIds
+  getCancelledByGroupIds,
+  listPendingByEmail
 };

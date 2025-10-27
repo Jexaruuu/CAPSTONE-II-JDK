@@ -177,8 +177,8 @@ const WorkerNavigation = () => {
                 {showManageRequestDropdown && (
                   <div ref={manageRequestDropdownRef} className="-ml-4 absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                     <ul className="space-y-2 py-2">
-                      <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/current-work-post" onClick={goTop}>Application Post Status</Link></li>
-                      <li className="px-4 py-2 hover:bg-gray-300 transition"><Link to="/completed-works" onClick={goTop}>Completed Works</Link></li>
+                      <li className="px-4 py-2 transition cursor-pointer hover:bg-[#008cfc] hover:text-white"><Link to="/current-work-post" onClick={goTop} className="block w-full h-full">Application Post Status</Link></li>
+                      <li className="px-4 py-2 transition cursor-pointer hover:bg-[#008cfc] hover:text-white"><Link to="/completed-works" onClick={goTop} className="block w-full h-full">Completed Works</Link></li>
                     </ul>
                   </div>
                 )}
@@ -201,7 +201,7 @@ const WorkerNavigation = () => {
                 {showReportsDropdown && (
                   <div ref={reportsDropdownRef} className="absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                     <ul className="space-y-2 py-2">
-                      <li className="px-4 py-2 hover:bg-gray-300 transition">Transaction History</li>
+                      <li className="px-4 py-2 transition cursor-pointer hover:bg-[#008cfc] hover:text-white">Transaction History</li>
                     </ul>
                   </div>
                 )}
@@ -263,7 +263,7 @@ const WorkerNavigation = () => {
                     <div className="px-4 py-3 text-sm text-gray-600">No notifications</div>
                   </div>
                   <div
-                    className="px-4 py-2 text-blue-500 cursor-pointer hover:bg-gray-100 text-sm"
+                    className="px-4 py-2 text-blue-500 cursor-pointer text-sm transition-colors hover:bg-[#008cfc] hover:text-white"
                     onClick={(e) => { e.stopPropagation(); goTop(); navigate('/worker-notifications'); }}
                   >
                     See all notifications
@@ -302,10 +302,10 @@ const WorkerNavigation = () => {
                     </div>
                   </div>
                   <ul className="py-2">
-                    <li className="px-4 py-2 hover:bg-gray-300 transition cursor-pointer">
-                      <Link to="/worker-account-settings" onClick={goTop}>Account Settings</Link>
+                    <li className="px-4 py-2 transition cursor-pointer hover:bg-[#008cfc] hover:text-white">
+                      <Link to="/worker-account-settings" onClick={goTop} className="block w-full h-full">Account Settings</Link>
                     </li>
-                    <li className="px-4 py-2 hover:bg-gray-300 transition cursor-pointer">
+                    <li className="px-4 py-2 transition cursor-pointer hover:bg-[#008cfc] hover:text-white">
                       <span onClick={handleLogout}>Log out</span>
                     </li>
                   </ul>

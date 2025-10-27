@@ -130,7 +130,8 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
   const hasUrgency = d.is_urgent !== undefined && d.is_urgent !== null && String(d.is_urgent).trim() !== "";
   const urgentBool = toBoolStrict(d.is_urgent);
   const statusLower = String(item.status || "").toLowerCase();
-  const isCancelled = statusLower === "cancelled";
+  const userCancelled = !!item.user_cancelled;
+  const isCancelled = statusLower === "cancelled" || userCancelled;
   const isPending = statusLower === "pending";
   const isApproved = statusLower === "approved";
   const isDeclined = statusLower === "declined";
@@ -187,25 +188,34 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {isCancelled && (
+          {(isCancelled) && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Cancelled Request
             </span>
           )}
-          {isDeclined && !isCancelled && (
+          {(!isCancelled && isDeclined) && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Declined Request
             </span>
           )}
-          {isApproved && !isCancelled && !isDeclined && (
+          {(!isCancelled && !isDeclined && isApproved) && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Approved
             </span>
           )}
-          {isExpiredReq && !isCancelled && (
+          {(!isCancelled && !isDeclined && !isExpiredReq && isPending) && (
+            <span className="relative inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+              <span className="relative inline-flex">
+                <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
+              </span>
+              Pending
+            </span>
+          )}
+          {(isExpiredReq && !isCancelled) && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Expired Request
@@ -217,7 +227,17 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
         </div>
       </div>
       <div className="-mt-9 flex justify-end gap-2">
-        {isDeclined && !(isCancelled || isExpiredReq) ? (
+        {isCancelled ? (
+          <Link
+            to={`/current-service-request/${encodeURIComponent(item.id)}`}
+            onClick={(e) => { e.preventDefault(); onView(item.id); }}
+            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-orange-300 text-orange-600 hover:bg-orange-50"
+            aria-disabled={false}
+            tabIndex={0}
+          >
+            Cancel Reason
+          </Link>
+        ) : (!isCancelled && isDeclined) ? (
           <Link
             to={`/current-service-request/${encodeURIComponent(item.id)}`}
             onClick={(e) => { e.preventDefault(); onView(item.id); }}
@@ -238,14 +258,16 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
             View
           </Link>
         )}
-        <button
-          type="button"
-          onClick={() => { if (!(isCancelled || isExpiredReq || isDeclined)) onEdit(item); }}
-          disabled={isCancelled || isExpiredReq || isDeclined}
-          className={`h-10 px-4 rounded-md transition ${(isCancelled || isExpiredReq || isDeclined) ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}
-        >
-          Edit Request
-        </button>
+        {!isPending && !isCancelled && (
+          <button
+            type="button"
+            onClick={() => { if (!(isCancelled || isExpiredReq || isDeclined)) onEdit(item); }}
+            disabled={isCancelled || isExpiredReq || isDeclined}
+            className={`h-10 px-4 rounded-md transition ${(isCancelled || isExpiredReq || isDeclined) ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}
+          >
+            Edit Request
+          </button>
+        )}
       </div>
     </div>
   );
@@ -262,6 +284,19 @@ export default function ClientCurrentServiceRequest() {
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
 
+  const markUserCancelled = (arr) => {
+    let ids = [];
+    try {
+      ids = JSON.parse(localStorage.getItem("clientPostHiddenIds") || "[]");
+    } catch {}
+    const setIds = new Set((ids || []).map(String));
+    return arr.map((r) => {
+      const idStr = String(r.id);
+      if (setIds.has(idStr)) return { ...r, status: "cancelled", user_cancelled: true };
+      return r;
+    });
+  };
+
   const fetchByStatus = async (statusKey) => {
     setLoading(true);
     try {
@@ -272,14 +307,14 @@ export default function ClientCurrentServiceRequest() {
         });
         const arr = Array.isArray(data) ? data : data?.items || [];
         const normalized = arr.map((r, i) => ({
-          id: r.id ?? `${i}`,
+          id: r.request_group_id ?? r.id ?? `${i}`,
           status: "cancelled",
           created_at: r.created_at || new Date().toISOString(),
           updated_at: r.updated_at || r.created_at || new Date().toISOString(),
           details: r.details || {},
           rate: r.rate || {},
         }));
-        setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+        setItems(markUserCancelled(normalized).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       } else if (statusKey === "expired") {
         const { data } = await axios.get(`${API_BASE}/api/pendingservicerequests/mine`, {
           params: { status: "all" },
@@ -287,14 +322,14 @@ export default function ClientCurrentServiceRequest() {
         });
         const arr = Array.isArray(data?.items) ? data.items : [];
         const normalized = arr.map((r, i) => ({
-          id: r.id ?? `${i}`,
+          id: r.request_group_id ?? r.details?.request_group_id ?? r.id ?? `${i}`,
           status: String(r.status || "pending").toLowerCase(),
           created_at: r.created_at || new Date().toISOString(),
           updated_at: r.decided_at || r.created_at || new Date().toISOString(),
           details: r.details || {},
           rate: r.rate || {},
         }));
-        setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+        setItems(markUserCancelled(normalized).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       } else {
         const statusParam = statusKey === "all" ? "all" : statusKey;
         const { data } = await axios.get(`${API_BASE}/api/pendingservicerequests/mine`, {
@@ -303,14 +338,14 @@ export default function ClientCurrentServiceRequest() {
         });
         const arr = Array.isArray(data?.items) ? data.items : [];
         const normalized = arr.map((r, i) => ({
-          id: r.id ?? `${i}`,
+          id: r.request_group_id ?? r.details?.request_group_id ?? r.id ?? `${i}`,
           status: String(r.status || "pending").toLowerCase(),
           created_at: r.created_at || new Date().toISOString(),
           updated_at: r.decided_at || r.created_at || new Date().toISOString(),
           details: r.details || {},
           rate: r.rate || {},
         }));
-        setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+        setItems(markUserCancelled(normalized).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       }
     } catch {
       setItems([]);
@@ -330,16 +365,10 @@ export default function ClientCurrentServiceRequest() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = items;
-    if (statusFilter === "all") {
-      list = list.filter((i) => {
-        const s = String(i.status || "").toLowerCase();
-        return s !== "cancelled";
-      });
-    }
-    if (statusFilter === "pending") list = list.filter((i) => (i.status || "").toLowerCase() === "pending" && !isExpired(i?.details?.preferred_date));
-    if (statusFilter === "approved") list = list.filter((i) => (i.status || "").toLowerCase() === "approved");
-    if (statusFilter === "declined") list = list.filter((i) => (i.status || "").toLowerCase() === "declined");
-    if (statusFilter === "cancelled") list = list.filter((i) => (i.status || "").toLowerCase() === "cancelled" && !isExpired(i?.details?.preferred_date));
+    if (statusFilter === "pending") list = list.filter((i) => (i.status || "").toLowerCase() === "pending" && !i.user_cancelled && !isExpired(i?.details?.preferred_date));
+    if (statusFilter === "approved") list = list.filter((i) => (i.status || "").toLowerCase() === "approved" && !i.user_cancelled);
+    if (statusFilter === "declined") list = list.filter((i) => (i.status || "").toLowerCase() === "declined" && !i.user_cancelled);
+    if (statusFilter === "cancelled") list = list.filter((i) => (((i.status || "").toLowerCase() === "cancelled") || i.user_cancelled) && !isExpired(i?.details?.preferred_date));
     if (statusFilter === "expired") list = list.filter((i) => isExpired(i?.details?.preferred_date));
     if (!q) return list;
     return list.filter((i) => {
@@ -390,11 +419,19 @@ export default function ClientCurrentServiceRequest() {
 
   const onOpenMenu = () => {};
 
-  const onView = (id) => {
+  const onView = async (id) => {
     setIsOpeningView(true);
-    setTimeout(() => {
+    try {
+      const { data } = await axios.get(`${API_BASE}/api/clientservicerequests/by-group/${encodeURIComponent(id)}`, {
+        withCredentials: true,
+      });
+      try {
+        sessionStorage.setItem("csr_view_payload", JSON.stringify(data));
+      } catch {}
       navigate(`/current-service-request/${encodeURIComponent(id)}`);
-    }, 700);
+    } catch {
+      setIsOpeningView(false);
+    }
   };
 
   return (
@@ -458,7 +495,7 @@ export default function ClientCurrentServiceRequest() {
               </div>
             </div>
             <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
-              <div className="mt-6 flex items中心 h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
+              <div className="mt-6 flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
                 <span className="text-gray-500 text-lg">🔍︎</span>
                 <input
                   value={query}
@@ -562,7 +599,7 @@ export default function ClientCurrentServiceRequest() {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify中心 cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
@@ -581,7 +618,7 @@ export default function ClientCurrentServiceRequest() {
                     onError={() => setLogoBroken(true)}
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items中心 justify-center">
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
                   </div>
                 )}

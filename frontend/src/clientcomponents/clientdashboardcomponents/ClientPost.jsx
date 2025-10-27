@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft} from 'lucide-react';
+import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -87,6 +87,25 @@ function toBoolStrictClient(v) {
   return null;
 }
 
+function timeAgo(input) {
+  if (!input) return '';
+  const d = new Date(input);
+  if (isNaN(d)) return '';
+  const ms = Date.now() - d.getTime();
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 45) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} minute${m === 1 ? '' : 's'}`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? '' : 's'}`;
+  const dys = Math.floor(h / 24);
+  if (dys < 30) return `${dys} day${dys === 1 ? '' : 's'}`;
+  const mo = Math.floor(dys / 30);
+  if (mo < 12) return `${mo} month${mo === 1 ? '' : 's'}`;
+  const y = Math.floor(mo / 12);
+  return `${y} year${y === 1 ? '' : 's'}`;
+}
+
 const ClientPost = () => {
   const [loading, setLoading] = useState(true);
   const [approved, setApproved] = useState([]);
@@ -109,6 +128,8 @@ const ClientPost = () => {
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [showProfileGate, setShowProfileGate] = useState(false);
+
+  const [currentItems, setCurrentItems] = useState([]);
 
   const buildAppU = () => {
     try {
@@ -168,6 +189,7 @@ const ClientPost = () => {
   const handlePostClick = async (e) => {
     e.preventDefault();
     if (navLoading) return;
+    if (currentItems.length > 0) return;
     const ok = await checkProfileComplete();
     if (!ok) {
       setShowProfileGate(true);
@@ -258,6 +280,25 @@ const ClientPost = () => {
       .catch(() => setApproved([]))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const loadCurrent = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/client/service-requests`, {
+          withCredentials: true,
+          headers: headersWithU
+        });
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const filtered = items.filter((it) => String(it?.status || it?.details?.status || '').toLowerCase() !== 'declined' && !isExpired(it?.details?.preferred_date));
+        setCurrentItems(filtered);
+      } catch {
+        setCurrentItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCurrent();
+  }, [appU]);
 
   useEffect(() => {
     if (banners.length < 2) return;
@@ -495,15 +536,42 @@ const ClientPost = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const hasCurrent = currentItems.length > 0;
+  const currentItem = hasCurrent ? currentItems[0] : null;
+  const statusLower = String(currentItem?.status || '').toLowerCase();
+  const isPending = statusLower === 'pending';
+  const isApproved = statusLower === 'approved';
+  const isDeclined = statusLower === 'declined';
+  const createdAt = currentItem?.created_at || currentItem?.details?.created_at || '';
+  const createdAgo = createdAt ? timeAgo(createdAt) : '';
+
+  const urgentBoolLocal = toBoolStrictClient(currentItem?.details?.is_urgent);
+  const urgentTextLocal = urgentBoolLocal === null ? '-' : urgentBoolLocal ? 'Yes' : 'No';
+  const urgentClassLocal =
+    urgentBoolLocal === null ? 'font-medium' : urgentBoolLocal ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
+      <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">
+        <div className="relative h-36 sm:h-44 md:h-52 lg:h-72">
+          {banners.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt=""
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${i === bannerIdx ? 'opacity-100' : 'opacity-0'}`}
+            />
+          ))}
+        </div>
+      </div>
+
       <h2 className="text-4xl font-semibold mb-10">
         Welcome, {honorific ? `${honorific} ` : ''}{capFirst}
       </h2>
 
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-2xl font-semibold">Service Request Post</h3>
+          <h3 className="text-2xl font-semibold">{hasCurrent ? 'Current Service Request' : 'Service Request Post'}</h3>
           {hasApproved && (
             <Link
               to="/clientpostrequest"
@@ -515,7 +583,116 @@ const ClientPost = () => {
           )}
         </div>
 
-        {!hasApproved && (
+        {hasCurrent ? (
+          <div className="bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300 hover:ring-2 hover:shadow-xl hover:ring-inset hover:border-[#008cfc] hover:ring-[#008cfc]">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-xl md:text-2xl font-semibold truncate">
+                  <span className="text-gray-700">Service Type:</span>{' '}
+                  <span className="text-[#008cfc]">{currentItem?.details?.service_type || 'Service'}</span>
+                </div>
+                <div className="mt-1 text-base md:text-lg truncate">
+                  <span className="font-semibold">Service Task:</span> {currentItem?.details?.service_task || 'Task'}
+                </div>
+                <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago by You` : ''}</div>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      <span className="text-gray-700 font-semibold">Preferred Date:</span>
+                      <span className="text-[#008cfc] font-medium">{currentItem?.details?.preferred_date ? formatDateMMDDYYYY(currentItem.details.preferred_date) : '-'}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      <span className="text-gray-700 font-semibold">Preferred Time:</span>
+                      <span className="text-[#008cfc] font-medium">{currentItem?.details?.preferred_time ? formatTime12h(currentItem.details.preferred_time) : '-'}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      <span className="text-gray-700 font-semibold">Urgency:</span>
+                      <span className={urgentClassLocal}>{urgentTextLocal}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 md:pl-10">
+                    <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      <span className="text-gray-700 font-semibold">Rate Type:</span>
+                      <span className="text-[#008cfc] font-medium">{currentItem?.rate?.rate_type ? String(currentItem.rate.rate_type).replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase()) : '-'}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      <span className="text-gray-700 font-semibold">Service Rate:</span>
+                      <span className="text-[#008cfc] font-medium">
+                        {(() => {
+                          const t = String(currentItem?.rate?.rate_type || '').toLowerCase();
+                          const from = currentItem?.rate?.rate_from;
+                          const to = currentItem?.rate?.rate_to;
+                          const val = currentItem?.rate?.rate_value;
+                          const peso = (v) => {
+                            if (v === null || v === undefined) return '';
+                            const s = String(v).trim();
+                            if (!s) return '';
+                            if (/₱|php/i.test(s)) return s;
+                            const n = parseFloat(s.replace(/,/g, ''));
+                            if (!isNaN(n)) return `₱${n.toLocaleString()}`;
+                            return `₱${s}`;
+                          };
+                          if (t === 'fixed' || t === 'by_job' || t === 'by the job' || t === 'by_the_job') return val ? `${peso(val)}` : '-';
+                          if (t === 'hourly' || t === 'range') return from || to ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}` : '-';
+                          if (val) return peso(val);
+                          if (from || to) return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
+                          return '-';
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {isDeclined && (
+                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+                    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                    Declined
+                  </span>
+                )}
+                {isApproved && (
+                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                    Approved Request
+                  </span>
+                )}
+                {isPending && (
+                  <span className="relative inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+                    <span className="relative inline-flex">
+                      <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
+                    </span>
+                    Pending
+                  </span>
+                )}
+                <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
+                  {(() => {
+                    const Icon = getServiceIcon(currentItem?.details?.service_type || currentItem?.details?.service_task || '');
+                    return <Icon className="h-5 w-5" />;
+                  })()}
+                </div>
+              </div>
+            </div>
+            <div className="-mt-9 flex justify-end gap-2">
+              <Link
+                to={`/current-service-request/${encodeURIComponent(currentItem?.id || '')}`}
+                onClick={(e) => { e.preventDefault(); navigate(`/current-service-request/${encodeURIComponent(currentItem?.id || '')}`); }}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
+                View
+              </Link>
+              {!isPending && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/clientreviewservicerequest?id=${encodeURIComponent(currentItem?.id || '')}`)}
+                  className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+                >
+                  Edit Request
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
           <div className="bg-white border border-gray-200 rounded-lg p-6 text-center shadow-sm">
             <div className="flex justify-center mb-4">
               <img src="/Request.png" alt="Request" className="w-20 h-20 object-contain" />
@@ -526,7 +703,7 @@ const ClientPost = () => {
             <Link
               to="/clientpostrequest"
               onClick={handlePostClick}
-              className="inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition"
+              className={`inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition ${currentItems.length > 0 ? 'pointer-events-none opacity-50' : ''}`}
             >
               + Post a service request
             </Link>
@@ -661,19 +838,6 @@ const ClientPost = () => {
           </div>
         </div>
       )}
-
-      <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mt-8">
-        <div className="relative h-36 sm:h-44 md:h-52 lg:h-72">
-          {banners.map((src, i) => (
-            <img
-              key={i}
-              src={src}
-              alt=""
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${i === bannerIdx ? 'opacity-100' : 'opacity-0'}`}
-            />
-          ))}
-        </div>
-      </div>
 
       {navLoading && (
         <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">

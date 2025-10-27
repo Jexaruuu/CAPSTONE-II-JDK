@@ -410,6 +410,19 @@ function WorkerPost() {
 
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
+      <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">
+        <div className="relative h-36 sm:h-44 md:h-52 lg:h-72">
+          {banners.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt=""
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${i === bannerIdx ? 'opacity-100' : 'opacity-0'}`}
+            />
+          ))}
+        </div>
+      </div>
+
       <h2 className="text-4xl font-semibold mb-10">
         Welcome, {honorific ? `${honorific} ` : ''}{capFirst}
       </h2>
@@ -550,19 +563,6 @@ function WorkerPost() {
           </div>
         </div>
       )}
-
-      <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mt-8">
-        <div className="relative h-36 sm:h-44 md:h-52 lg:h-72">
-          {banners.map((src, i) => (
-            <img
-              key={i}
-              src={src}
-              alt=""
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${i === bannerIdx ? 'opacity-100' : 'opacity-0'}`}
-            />
-          ))}
-        </div>
-      </div>
 
       {navLoading && (
         <div

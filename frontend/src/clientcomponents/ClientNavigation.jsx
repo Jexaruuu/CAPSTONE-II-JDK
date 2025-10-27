@@ -226,8 +226,8 @@ const ClientNavigation = () => {
                 {showManageRequestDropdown && (
                   <div ref={manageRequestDropdownRef} className="-ml-4 absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                     <ul className="space-y-2 py-2">
-                      <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200"><Link to="/current-service-request" onClick={goTop}>Service Requests Status</Link></li>
-                      <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200"><Link to="/completed-service-request" onClick={goTop}>Completed Requests</Link></li>
+                      <li className="px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white"><Link to="/current-service-request" onClick={goTop} className="block w-full h-full">Service Requests Status</Link></li>
+                      <li className="px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white"><Link to="/completed-service-request" onClick={goTop} className="block w-full h-full">Completed Requests</Link></li>
                     </ul>
                   </div>
                 )}
@@ -277,7 +277,7 @@ const ClientNavigation = () => {
                   <div className="max-h-80 overflow-auto">
                     <div className="px-4 py-3 text-sm text-gray-600">No notifications</div>
                   </div>
-                  <div className="px-4 py-2 text-blue-500 cursor-pointer hover:bg-gray-100 text-sm" onClick={(e) => { e.stopPropagation(); goTop(); navigate('/client-notifications'); }}>
+                  <div className="px-4 py-2 text-sm cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white" onClick={(e) => { e.stopPropagation(); goTop(); navigate('/client-notifications'); }}>
                     See all notifications
                   </div>
                 </div>
@@ -308,8 +308,8 @@ const ClientNavigation = () => {
                     </div>
                   </div>
                   <ul className="py-2">
-                    <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200"><Link to="/account-settings" onClick={goTop}>Account Settings</Link></li>
-                    <li className="px-4 py-2 cursor-pointer hover:bg-gray-300 transition-colors duration-200"><span onClick={async()=>{ try{ await axios.post(`${API_BASE}/api/login/logout`, {}, { withCredentials: true }); localStorage.clear(); goTop(); navigate('/', { replace: true }); window.location.reload(); }catch{} }}>Log out</span></li>
+                    <li className="px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white"><Link to="/account-settings" onClick={goTop} className="block w-full h-full">Account Settings</Link></li>
+                    <li className="px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white"><span onClick={async()=>{ try{ await axios.post(`${API_BASE}/api/login/logout`, {}, { withCredentials: true }); localStorage.clear(); goTop(); navigate('/', { replace: true }); window.location.reload(); }catch{} }}>Log out</span></li>
                   </ul>
                 </div>
               )}

@@ -272,7 +272,21 @@ const ClientViewServiceRequest = () => {
         },
         { withCredentials: true, headers: headersWithU }
       );
-      try { window.dispatchEvent(new CustomEvent('client-request-cancelled', { detail: { id } })); } catch {}
+      try {
+        window.dispatchEvent(new CustomEvent('client-request-cancelled', { detail: { id } }));
+      } catch {}
+      try {
+        localStorage.removeItem('clientInformationForm');
+        localStorage.removeItem('clientServiceRequestDetails');
+        localStorage.removeItem('clientServiceRate');
+        localStorage.removeItem(GLOBAL_DESC_KEY);
+        sessionStorage.removeItem('csr_view_payload');
+        const k = 'clientPostHiddenIds';
+        const raw = localStorage.getItem(k);
+        const arr = Array.isArray(JSON.parse(raw || '[]')) ? JSON.parse(raw || '[]') : [];
+        if (!arr.includes(id)) arr.push(id);
+        localStorage.setItem(k, JSON.stringify(arr));
+      } catch {}
       jumpTop();
       navigate('/clientcurrentservicerequests', { replace: true, state: { cancelled: id } });
     } catch (e) {
@@ -383,7 +397,7 @@ const ClientViewServiceRequest = () => {
                             <span className="font-semibold text-gray-700">Request Image:</span>
                             <div className="w-full">
                               <div className="w-full h-64 rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50">
-                                <img src={review_image} alt="" className="w-full h-full object-cover" />
+                                <img src={review_image} alt="" className="w/full h/full object-cover" />
                               </div>
                             </div>
                           </div>
@@ -462,18 +476,18 @@ const ClientViewServiceRequest = () => {
                     </div>
                   </div>
                   <div className="px-6 py-4 border-t border-gray-100">
-                    <div className="flex gap-3">
+                    <div className="flex gap-2 justify-end">
                       <button
                         type="button"
                         onClick={handleDone}
-                        className="w-full h-[50px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                        className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
                       >
                         Done View
                       </button>
                       <button
                         type="button"
                         onClick={handleCancel}
-                        className="w-full h-[50px] px-5 py-3 rounded-xl bg-red-600 text-white hover:bg-red-700 transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+                        className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-orange-300 text-orange-600 hover:bg-orange-50"
                       >
                         Cancel Request
                       </button>
@@ -538,14 +552,14 @@ const ClientViewServiceRequest = () => {
           >
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingCancel && setShowCancel(false)} />
             <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
-              <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
+              <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-orange-600 to-orange-500 text-white">
                 <div className="text-xl font-semibold">Cancel Service Request</div>
                 <div className="text-xs opacity-90">Tell us why you want to cancel</div>
               </div>
               <div className="px-6 py-5 space-y-4">
                 <div className="grid grid-cols-1 gap-2">
                   {REASONS.map((r) => (
-                    <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${reason===r?'border-red-500 ring-1 ring-red-300 bg-red-50':'border-gray-200 hover:bg-gray-50'}`}>
+                    <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${reason===r?'border-orange-500 ring-1 ring-orange-300 bg-orange-50':'border-gray-200 hover:bg-gray-50'}`}>
                       <input
                         type="radio"
                         name="cancel-reason"
@@ -566,17 +580,17 @@ const ClientViewServiceRequest = () => {
                     onChange={(e) => setOtherReason(e.target.value)}
                     disabled={submittingCancel}
                     placeholder="Type your reason here"
-                    className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                    className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                   />
                 </div>
 
-                {cancelErr ? <div className="text-sm text-red-600">{cancelErr}</div> : null}
+                {cancelErr ? <div className="text-sm text-orange-700">{cancelErr}</div> : null}
               </div>
               <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
                 <button
                   type="button"
                   onClick={() => !submittingCancel && setShowCancel(false)}
-                  className="h-[44px] px-5 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
                   disabled={submittingCancel}
                 >
                   Back
@@ -584,7 +598,7 @@ const ClientViewServiceRequest = () => {
                 <button
                   type="button"
                   onClick={submitCancel}
-                  className="h-[44px] px-5 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-orange-300 text-orange-600 hover:bg-orange-50 disabled:opacity-60"
                   disabled={submittingCancel}
                 >
                   {submittingCancel ? 'Submitting...' : 'Confirm Cancel'}

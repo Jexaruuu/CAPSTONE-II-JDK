@@ -131,6 +131,26 @@ exports.submitFullRequest = async (req, res) => {
     if (!serviceKind || !description) return res.status(400).json({ message: 'Missing required fields: service_type/category and description.' });
     if (!effectiveClientId) return res.status(400).json({ message: 'Unable to identify client. Provide client_id or a known email_address.' });
 
+    try {
+      const { data: existing } = await supabaseAdmin
+        .from('csr_pending')
+        .select('request_group_id,status,details')
+        .eq('email_address', canonicalEmail)
+        .in('status', ['pending', 'approved'])
+        .order('created_at', { ascending: false })
+        .limit(50);
+      const rows = Array.isArray(existing) ? existing : [];
+      const gids = rows.map(r => r.request_group_id).filter(Boolean);
+      const cancelled = await getCancelledByGroupIds(gids);
+      const active = rows.filter(r => {
+        const s = String(r.status || '').toLowerCase();
+        const notCancelled = !cancelled.includes(r.request_group_id);
+        const notExpired = !isExpiredPreferredDate(r?.details?.preferred_date);
+        return (s === 'pending' || s === 'approved') && notExpired && notCancelled;
+      });
+      if (active.length > 0) return res.status(409).json({ message: 'You already have an active service request.' });
+    } catch {}
+
     const request_group_id = newGroupId();
 
     let uploaded = [];
@@ -377,12 +397,23 @@ exports.listCurrent = async (req, res) => {
       targetGroups = activeGroups;
       statusValue = 'pending';
     }
+    let statusMap = {};
+    if (targetGroups.length) {
+      const { data: pend } = await supabaseAdmin
+        .from('csr_pending')
+        .select('request_group_id,status,created_at,details')
+        .in('request_group_id', targetGroups);
+      (Array.isArray(pend) ? pend : []).forEach(r => {
+        statusMap[r.request_group_id] = String(r.status || 'pending').toLowerCase();
+      });
+    }
     const combined = await Promise.all(targetGroups.map(g => getCombinedByGroupId(g)));
     const items = combined.filter(Boolean).map(row => {
       const d = row.details || {};
       const r = row.rate || {};
+      const gid = row.details?.request_group_id || row.info?.request_group_id || row.rate?.request_group_id || '';
       return {
-        id: row.details?.request_group_id || row.info?.request_group_id || row.rate?.request_group_id || '',
+        id: gid,
         created_at: d.created_at || row.info?.created_at || new Date().toISOString(),
         details: {
           service_type: d.service_type || '',
@@ -397,7 +428,7 @@ exports.listCurrent = async (req, res) => {
           rate_to: r.rate_to || '',
           rate_value: r.rate_value || ''
         },
-        status: statusValue
+        status: scope === 'cancelled' ? 'cancelled' : (statusMap[gid] || statusValue)
       };
     });
     return res.status(200).json({ items });
