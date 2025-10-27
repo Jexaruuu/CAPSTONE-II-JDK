@@ -207,7 +207,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
           {(isCancelled) && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Cancelled Request
+              Canceled Request
             </span>
           )}
           {(!isCancelled && isDeclined) && (
@@ -528,7 +528,7 @@ export default function ClientCurrentServiceRequest() {
                   onClick={() => setStatusFilter((v) => (v === "cancelled" ? "all" : "cancelled"))}
                   className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "cancelled" ? "border-orange-600 bg-orange-600 text-white hover:bg-orange-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
                 >
-                  Cancelled Requests
+                  Canceled Requests
                 </button>
                 <button
                   type="button"

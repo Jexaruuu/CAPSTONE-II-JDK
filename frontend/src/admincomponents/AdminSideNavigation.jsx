@@ -105,7 +105,7 @@ const AdminSideNavigation = () => {
                     ].join(' ')
                   }
                 >
-                  <span>Cancelled Requests</span>
+                  <span>Canceled Requests</span>
                 </NavLink>
               )}
 
@@ -119,7 +119,7 @@ const AdminSideNavigation = () => {
                     ].join(' ')
                   }
                 >
-                  <span>Cancelled Applications</span>
+                  <span>Canceled Applications</span>
                 </NavLink>
               )}
             </div>
