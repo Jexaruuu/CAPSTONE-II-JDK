@@ -197,10 +197,38 @@ const ClientNavigation = () => {
   const logoTo = role === 'client' ? '/clientdashboard' : '/clientwelcome';
 
   const [searchQuery, setSearchQuery] = useState('');
-  const goSearch = () => { const q = searchQuery.trim(); goTop(); navigate(`/find-a-worker${q ? `?search=${encodeURIComponent(q)}` : ''}`); };
+  const [navLoading, setNavLoading] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
+
+  const beginRoute = (to) => {
+    if (navLoading) return;
+    setNavLoading(true);
+    setTimeout(() => { navigate(to, { replace: true }); }, 2000);
+  };
+
+  const goSearch = () => {
+    const q = searchQuery.trim();
+    goTop();
+    beginRoute(`/find-a-worker${q ? `?search=${encodeURIComponent(q)}` : ''}`);
+  };
   const onSearchKey = (e) => { if (e.key === 'Enter') goSearch(); };
 
-  const [navLoading, setNavLoading] = useState(false);
+  useEffect(() => {
+    if (!navLoading) return;
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [navLoading]);
 
   const ProfileCircle = ({ size = 8 }) => (
     <div className={`h-${size} w-${size} rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-semibold text-xs uppercase`}>
@@ -213,7 +241,16 @@ const ClientNavigation = () => {
       <div className="bg-white/95 backdrop-blur fixed top-0 left-0 right-0 z-50">
         <div className="max-w-[1530px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
           <div className="flex items-center space-x-6 -ml-2.5">
-            <Link to={logoTo} replace onClick={() => { clearPostDrafts(); goTop(); }}>
+            <Link
+              to={logoTo}
+              replace
+              onClick={(e) => {
+                e.preventDefault();
+                clearPostDrafts();
+                goTop();
+                beginRoute(logoTo);
+              }}
+            >
               <img src="/jdklogo.png" alt="Logo" className="h-48 w-48 object-contain" style={{ margin: '0 10px' }} />
             </Link>
 
@@ -226,15 +263,35 @@ const ClientNavigation = () => {
                 {showManageRequestDropdown && (
                   <div ref={manageRequestDropdownRef} className="-ml-4 absolute top-full mt-2 border border-gray-300 bg-white shadow-md rounded-md w-60">
                     <ul className="space-y-2 py-2">
-                      <li className="px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white"><Link to="/current-service-request" onClick={goTop} className="block w-full h-full">Service Requests Status</Link></li>
-                      <li className="px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white"><Link to="/completed-service-request" onClick={goTop} className="block w-full h-full">Completed Requests</Link></li>
+                      <li className="px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white">
+                        <Link
+                          to="/current-service-request"
+                          onClick={(e) => { e.preventDefault(); goTop(); beginRoute('/current-service-request'); }}
+                          className="block w-full h-full"
+                        >
+                          Service Requests Status
+                        </Link>
+                      </li>
+                      <li className="px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white">
+                        <Link
+                          to="/completed-service-request"
+                          onClick={(e) => { e.preventDefault(); goTop(); beginRoute('/completed-service-request'); }}
+                          className="block w-full h-full"
+                        >
+                          Completed Requests
+                        </Link>
+                      </li>
                     </ul>
                   </div>
                 )}
               </li>
 
               <li className="relative cursor-pointer group">
-                <Link to="/find-a-worker" className="text-black font-medium relative inline-block" onClick={() => { handleSearchBarDropdown(); goTop(); }}>
+                <Link
+                  to="/find-a-worker"
+                  className="text-black font-medium relative inline-block"
+                  onClick={(e) => { e.preventDefault(); handleSearchBarDropdown(); goTop(); beginRoute('/find-a-worker'); }}
+                >
                   <span className="relative">Hire a Worker<span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" /></span>
                 </Link>
               </li>
@@ -246,7 +303,11 @@ const ClientNavigation = () => {
               </li>
 
               <li className="relative cursor-pointer group">
-                <Link to="/clientmessages" className="text-black font-medium relative inline-block" onClick={goTop}>
+                <Link
+                  to="/clientmessages"
+                  className="text-black font-medium relative inline-block"
+                  onClick={(e) => { e.preventDefault(); goTop(); beginRoute('/clientmessages'); }}
+                >
                   Messages
                   <span className="absolute bottom-0 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out"></span>
                 </Link>
@@ -267,7 +328,13 @@ const ClientNavigation = () => {
               />
             </div>
 
-            <button type="button" onClick={() => { handleSearchBarDropdown(); goSearch(); }} className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition">Search</button>
+            <button
+              type="button"
+              onClick={() => { handleSearchBarDropdown(); goSearch(); }}
+              className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+            >
+              Search
+            </button>
 
             <div className="cursor-pointer relative" onClick={() => handleDropdownToggle('Bell')}>
               <img src="/Bellicon.png" alt="Notification Bell" className="h-8 w-8" />
@@ -308,7 +375,15 @@ const ClientNavigation = () => {
                     </div>
                   </div>
                   <ul className="py-2">
-                    <li className="px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white"><Link to="/account-settings" onClick={goTop} className="block w-full h-full">Account Settings</Link></li>
+                    <li className="px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white">
+                      <Link
+                        to="/account-settings"
+                        onClick={(e) => { e.preventDefault(); goTop(); beginRoute('/account-settings'); }}
+                        className="block w-full h-full"
+                      >
+                        Account Settings
+                      </Link>
+                    </li>
                     <li className="px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#008cfc] hover:text-white"><span onClick={async()=>{ try{ await axios.post(`${API_BASE}/api/login/logout`, {}, { withCredentials: true }); localStorage.clear(); goTop(); navigate('/', { replace: true }); window.location.reload(); }catch{} }}>Log out</span></li>
                   </ul>
                 </div>
@@ -319,6 +394,50 @@ const ClientNavigation = () => {
       </div>
 
       <div className="h-[90px]" aria-hidden />
+
+      {navLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

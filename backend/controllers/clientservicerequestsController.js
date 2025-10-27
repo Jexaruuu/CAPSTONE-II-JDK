@@ -428,6 +428,11 @@ exports.listCurrent = async (req, res) => {
           rate_to: r.rate_to || '',
           rate_value: r.rate_value || ''
         },
+        info: {
+          profile_picture_url: row.info?.profile_picture_url || null,
+          first_name: row.info?.first_name || null,
+          last_name: row.info?.last_name || null
+        },
         status: scope === 'cancelled' ? 'cancelled' : (statusMap[gid] || statusValue)
       };
     });

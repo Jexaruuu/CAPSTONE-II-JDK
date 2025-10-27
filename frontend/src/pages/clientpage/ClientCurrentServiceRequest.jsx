@@ -144,45 +144,61 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
       : isApproved
         ? "border-gray-300 bg-white hover:border-emerald-600 hover:ring-2 hover:ring-emerald-600 hover:shadow-xl"
         : "border-gray-300 bg-white hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl";
+  const profileUrl = useMemo(() => {
+    const u = item?.info?.profile_picture_url || "";
+    if (u) return u;
+    const name = item?.info?.first_name || "Client";
+    return `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name)}`;
+  }, [item]);
   return (
     <div className={`${cardBase} ${cardState}`}>
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <Link to={`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`} className="block pointer-events-none select-text">
-            <h3 className={`text-xl md:text-2xl font-semibold truncate ${(isCancelled || isExpiredReq) ? "text-gray-700" : ""}`}>
-              <span className="text-gray-700">Service Type:</span>{" "}
-              <span className={(isCancelled || isExpiredReq) ? "text-gray-500" : "text-[#008cfc]"}>{d.service_type || "Service"}</span>
-            </h3>
-            <div className={`mt-0.5 text-base md:text-lg truncate ${(isCancelled || isExpiredReq) ? "text-gray-600" : "text-black"}`}>
-              <span className="font-semibold">Service Task:</span> {d.service_task || "Task"}
-            </div>
-          </Link>
-          <p className="mt-1 text-base text-gray-500">Created {timeAgo(item.created_at)} by You</p>
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12 md:gap-x-16 text-base text-gray-700">
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap gap-x-6 gap-y-1">
-                <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+        <div className="flex items-start gap-4 min-w-0">
+          <div className="shrink-0">
+            <img
+              src={profileUrl}
+              alt=""
+              className="w-16 h-16 rounded-full object-cover border border-blue-300"
+              onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(item?.info?.first_name || "Client")}`; }}
+            />
+          </div>
+          <div className="min-w-0">
+            <Link to={`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`} className="block pointer-events-none select-text">
+              <h3 className={`text-xl md:text-2xl font-semibold truncate ${(isCancelled || isExpiredReq) ? "text-gray-700" : ""}`}>
+                <span className="text-gray-700">Service Type:</span>{" "}
+                <span className={(isCancelled || isExpiredReq) ? "text-gray-500" : "text-[#008cfc]"}>{d.service_type || "Service"}</span>
+              </h3>
+              <div className={`mt-0.5 text-base md:text-lg truncate ${(isCancelled || isExpiredReq) ? "text-gray-600" : "text-black"}`}>
+                <span className="font-semibold">Service Task:</span> {d.service_task || "Task"}
               </div>
-              <div className="flex flex-wrap gap-x-6 gap-y-1">
-                <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
+            </Link>
+            <p className="mt-1 text-base text-gray-500">Created {timeAgo(item.created_at)} by You</p>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12 md:gap-x-16 text-base text-gray-700">
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Preferred Date:</span>
+                  <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Preferred Time:</span>
+                  <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Urgency:</span>
+                  <span className={`font-medium ${hasUrgency ? (urgentBool ? ((isCancelled || isExpiredReq) ? "text-gray-600" : "text-green-600") : ((isCancelled || isExpiredReq) ? "text-gray-600" : "text-red-600")) : ((isCancelled || isExpiredReq) ? "text-gray-500" : "text-[#008cfc]")}`}>
+                    {hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-x-6 gap-y-1">
-                <span className="text-gray-700 font-semibold">Urgency:</span>
-                <span className={`font-medium ${hasUrgency ? (urgentBool ? ((isCancelled || isExpiredReq) ? "text-gray-600" : "text-green-600") : ((isCancelled || isExpiredReq) ? "text-gray-600" : "text-red-600")) : ((isCancelled || isExpiredReq) ? "text-gray-500" : "text-[#008cfc]")}`}>
-                  {hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}
-                </span>
-              </div>
-            </div>
-            <div className="space-y-1.5 md:pl-10">
-              <div className="flex flex-wrap gap-x-6 gap-y-1">
-                <span className="text-gray-700 font-semibold">Rate Type:</span>
-                <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{formatRateType(rate.rate_type)}</span>
-              </div>
-              <div className="flex flex-wrap gap-x-6 gap-y-1">
-                <span className="text-gray-700 font-semibold">Service Rate:</span>
-                <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}><RateText rate={rate} /></span>
+              <div className="space-y-1.5 md:pl-10">
+                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Rate Type:</span>
+                  <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{formatRateType(rate.rate_type)}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Service Rate:</span>
+                  <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}><RateText rate={rate} /></span>
+                </div>
               </div>
             </div>
           </div>
@@ -297,6 +313,29 @@ export default function ClientCurrentServiceRequest() {
     });
   };
 
+  const enrichProfiles = async (arr) => {
+    const out = Array.isArray(arr) ? arr.slice() : [];
+    for (let i = 0; i < out.length; i++) {
+      const it = out[i] || {};
+      const has = it?.info?.profile_picture_url;
+      if (has) continue;
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/clientservicerequests/by-group/${encodeURIComponent(it.id)}`, { withCredentials: true });
+        const info = data?.info || {};
+        out[i] = {
+          ...it,
+          info: {
+            ...it.info,
+            profile_picture_url: info.profile_picture_url || it.info?.profile_picture_url || null,
+            first_name: it.info?.first_name || info.first_name || null,
+            last_name: it.info?.last_name || info.last_name || null
+          }
+        };
+      } catch {}
+    }
+    return out;
+  };
+
   const fetchByStatus = async (statusKey) => {
     setLoading(true);
     try {
@@ -313,8 +352,10 @@ export default function ClientCurrentServiceRequest() {
           updated_at: r.updated_at || r.created_at || new Date().toISOString(),
           details: r.details || {},
           rate: r.rate || {},
+          info: r.info || {}
         }));
-        setItems(markUserCancelled(normalized).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+        const withAvatars = await enrichProfiles(normalized);
+        setItems(markUserCancelled(withAvatars).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       } else if (statusKey === "expired") {
         const { data } = await axios.get(`${API_BASE}/api/pendingservicerequests/mine`, {
           params: { status: "all" },
@@ -328,8 +369,10 @@ export default function ClientCurrentServiceRequest() {
           updated_at: r.decided_at || r.created_at || new Date().toISOString(),
           details: r.details || {},
           rate: r.rate || {},
+          info: r.info || {}
         }));
-        setItems(markUserCancelled(normalized).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+        const withAvatars = await enrichProfiles(normalized);
+        setItems(markUserCancelled(withAvatars).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       } else {
         const statusParam = statusKey === "all" ? "all" : statusKey;
         const { data } = await axios.get(`${API_BASE}/api/pendingservicerequests/mine`, {
@@ -344,8 +387,10 @@ export default function ClientCurrentServiceRequest() {
           updated_at: r.decided_at || r.created_at || new Date().toISOString(),
           details: r.details || {},
           rate: r.rate || {},
+          info: r.info || {}
         }));
-        setItems(markUserCancelled(normalized).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+        const withAvatars = await enrichProfiles(normalized);
+        setItems(markUserCancelled(withAvatars).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       }
     } catch {
       setItems([]);

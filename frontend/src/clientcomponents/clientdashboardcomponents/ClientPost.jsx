@@ -550,6 +550,13 @@ const ClientPost = () => {
   const urgentClassLocal =
     urgentBoolLocal === null ? 'font-medium' : urgentBoolLocal ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
 
+  const profileUrl = useMemo(() => {
+    const u = currentItem?.info?.profile_picture_url || '';
+    if (u) return u;
+    const name = capFirst || 'Client';
+    return `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name)}`;
+  }, [currentItem, capFirst]);
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">
@@ -586,59 +593,69 @@ const ClientPost = () => {
         {hasCurrent ? (
           <div className="bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300 hover:ring-2 hover:shadow-xl hover:ring-inset hover:border-[#008cfc] hover:ring-[#008cfc]">
             <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="text-xl md:text-2xl font-semibold truncate">
-                  <span className="text-gray-700">Service Type:</span>{' '}
-                  <span className="text-[#008cfc]">{currentItem?.details?.service_type || 'Service'}</span>
+              <div className="flex items-start gap-4 min-w-0">
+                <div className="shrink-0">
+                  <img
+                    src={profileUrl}
+                    alt=""
+                    className="w-20 h-20 rounded-full object-cover border border-blue-300"
+                    onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(capFirst || 'Client')}`; }}
+                  />
                 </div>
-                <div className="mt-1 text-base md:text-lg truncate">
-                  <span className="font-semibold">Service Task:</span> {currentItem?.details?.service_task || 'Task'}
-                </div>
-                <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago by You` : ''}</div>
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
-                  <div className="space-y-1.5">
-                    <div className="flex flex-wrap gap-x-6 gap-y-1">
-                      <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                      <span className="text-[#008cfc] font-medium">{currentItem?.details?.preferred_date ? formatDateMMDDYYYY(currentItem.details.preferred_date) : '-'}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-6 gap-y-1">
-                      <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                      <span className="text-[#008cfc] font-medium">{currentItem?.details?.preferred_time ? formatTime12h(currentItem.details.preferred_time) : '-'}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-6 gap-y-1">
-                      <span className="text-gray-700 font-semibold">Urgency:</span>
-                      <span className={urgentClassLocal}>{urgentTextLocal}</span>
-                    </div>
+                <div className="min-w-0">
+                  <div className="text-xl md:text-2xl font-semibold truncate">
+                    <span className="text-gray-700">Service Type:</span>{' '}
+                    <span className="text-[#008cfc]">{currentItem?.details?.service_type || 'Service'}</span>
                   </div>
-                  <div className="space-y-1.5 md:pl-10">
-                    <div className="flex flex-wrap gap-x-6 gap-y-1">
-                      <span className="text-gray-700 font-semibold">Rate Type:</span>
-                      <span className="text-[#008cfc] font-medium">{currentItem?.rate?.rate_type ? String(currentItem.rate.rate_type).replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase()) : '-'}</span>
+                  <div className="mt-1 text-base md:text-lg truncate">
+                    <span className="font-semibold">Service Task:</span> {currentItem?.details?.service_task || 'Task'}
+                  </div>
+                  <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago by You` : ''}</div>
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <span className="text-gray-700 font-semibold">Preferred Date:</span>
+                        <span className="text-[#008cfc] font-medium">{currentItem?.details?.preferred_date ? formatDateMMDDYYYY(currentItem.details.preferred_date) : '-'}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <span className="text-gray-700 font-semibold">Preferred Time:</span>
+                        <span className="text-[#008cfc] font-medium">{currentItem?.details?.preferred_time ? formatTime12h(currentItem.details.preferred_time) : '-'}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <span className="text-gray-700 font-semibold">Urgency:</span>
+                        <span className={urgentClassLocal}>{urgentTextLocal}</span>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-x-6 gap-y-1">
-                      <span className="text-gray-700 font-semibold">Service Rate:</span>
-                      <span className="text-[#008cfc] font-medium">
-                        {(() => {
-                          const t = String(currentItem?.rate?.rate_type || '').toLowerCase();
-                          const from = currentItem?.rate?.rate_from;
-                          const to = currentItem?.rate?.rate_to;
-                          const val = currentItem?.rate?.rate_value;
-                          const peso = (v) => {
-                            if (v === null || v === undefined) return '';
-                            const s = String(v).trim();
-                            if (!s) return '';
-                            if (/₱|php/i.test(s)) return s;
-                            const n = parseFloat(s.replace(/,/g, ''));
-                            if (!isNaN(n)) return `₱${n.toLocaleString()}`;
-                            return `₱${s}`;
-                          };
-                          if (t === 'fixed' || t === 'by_job' || t === 'by the job' || t === 'by_the_job') return val ? `${peso(val)}` : '-';
-                          if (t === 'hourly' || t === 'range') return from || to ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}` : '-';
-                          if (val) return peso(val);
-                          if (from || to) return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
-                          return '-';
-                        })()}
-                      </span>
+                    <div className="space-y-1.5 md:pl-10">
+                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <span className="text-gray-700 font-semibold">Rate Type:</span>
+                        <span className="text-[#008cfc] font-medium">{currentItem?.rate?.rate_type ? String(currentItem.rate.rate_type).replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase()) : '-'}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <span className="text-gray-700 font-semibold">Service Rate:</span>
+                        <span className="text-[#008cfc] font-medium">
+                          {(() => {
+                            const t = String(currentItem?.rate?.rate_type || '').toLowerCase();
+                            const from = currentItem?.rate?.rate_from;
+                            const to = currentItem?.rate?.rate_to;
+                            const val = currentItem?.rate?.rate_value;
+                            const peso = (v) => {
+                              if (v === null || v === undefined) return '';
+                              const s = String(v).trim();
+                              if (!s) return '';
+                              if (/₱|php/i.test(s)) return s;
+                              const n = parseFloat(s.replace(/,/g, ''));
+                              if (!isNaN(n)) return `₱${n.toLocaleString()}`;
+                              return `₱${s}`;
+                            };
+                            if (t === 'fixed' || t === 'by_job' || t === 'by the job' || t === 'by_the_job') return val ? `${peso(val)}` : '-';
+                            if (t === 'hourly' || t === 'range') return from || to ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}` : '-';
+                            if (val) return peso(val);
+                            if (from || to) return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
+                            return '-';
+                          })()}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
