@@ -46,6 +46,8 @@ async function hydrate(baseRows) {
       request_group_id: r.request_group_id,
       status: r.status,
       created_at: r.created_at,
+      decisin_reason: r.decisin_reason,
+      decided_at: r.decided_at,
       info: {},
       details: {},
       rate: {},
@@ -86,6 +88,8 @@ async function hydrate(baseRows) {
       request_group_id: r.request_group_id,
       status: r.status,
       created_at: r.created_at,
+      decisin_reason: r.decisin_reason,
+      decided_at: r.decided_at,
       info: infoMap.get(r.request_group_id) || {},
       details: d,
       rate: rateMap.get(r.request_group_id) || {},
@@ -155,7 +159,8 @@ exports.approve = async (req, res) => {
 exports.decline = async (req, res) => {
   try {
     const { id } = req.params;
-    const row = await markStatus(id, 'declined');
+    const { reason_choice = null, reason_other = null } = req.body || {};
+    const row = await markStatus(id, 'declined', { reason_choice, reason_other });
     return res.status(200).json({ message: 'Declined', request: row });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to decline request', error: err?.message });

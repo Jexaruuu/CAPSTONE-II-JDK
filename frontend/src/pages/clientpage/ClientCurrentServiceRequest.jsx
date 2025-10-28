@@ -123,7 +123,7 @@ const formatRateType = (t) => {
   return s.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 };
 
-const Card = ({ item, onEdit, onOpenMenu, onView }) => {
+const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
   const d = item.details || {};
   const rate = item.rate || {};
   const Icon = iconForService(d.service_type || d.service_task);
@@ -256,7 +256,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
         ) : (!isCancelled && isDeclined) ? (
           <Link
             to={`/current-service-request/${encodeURIComponent(item.id)}`}
-            onClick={(e) => { e.preventDefault(); onView(item.id); }}
+            onClick={(e) => { e.preventDefault(); onReason(item); }}
             className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50"
             aria-disabled={false}
             tabIndex={0}
@@ -297,6 +297,8 @@ export default function ClientCurrentServiceRequest() {
   const [page, setPage] = useState(1);
   const [isOpeningView, setIsOpeningView] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+  const [showReason, setShowReason] = useState(false);
+  const [reasonTarget, setReasonTarget] = useState(null);
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
 
@@ -371,7 +373,11 @@ export default function ClientCurrentServiceRequest() {
           updated_at: r.updated_at || r.created_at || new Date().toISOString(),
           details: r.details || {},
           rate: r.rate || {},
-          info: r.info || {}
+          info: r.info || {},
+          decision_reason: r.decision_reason || r.reason || null,
+          reason_choice: r.reason_choice || null,
+          reason_other: r.reason_other || null,
+          decided_at: r.decided_at || null
         }));
         const withAvatars = await enrichProfiles(normalized);
         setItems(markUserCancelled(withAvatars).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
@@ -388,7 +394,11 @@ export default function ClientCurrentServiceRequest() {
           updated_at: r.decided_at || r.created_at || new Date().toISOString(),
           details: r.details || {},
           rate: r.rate || {},
-          info: r.info || {}
+          info: r.info || {},
+          decision_reason: r.decision_reason || r.reason || null,
+          reason_choice: r.reason_choice || null,
+          reason_other: r.reason_other || null,
+          decided_at: r.decided_at || null
         }));
         const overridden = applyCancelledOverride(normalized, cancelledIds);
         const withAvatars = await enrichProfiles(overridden);
@@ -407,7 +417,11 @@ export default function ClientCurrentServiceRequest() {
           updated_at: r.decided_at || r.created_at || new Date().toISOString(),
           details: r.details || {},
           rate: r.rate || {},
-          info: r.info || {}
+          info: r.info || {},
+          decision_reason: r.decision_reason || r.reason || null,
+          reason_choice: r.reason_choice || null,
+          reason_other: r.reason_other || null,
+          decided_at: r.decided_at || null
         }));
         const overridden = applyCancelledOverride(normalized, cancelledIds);
         const withAvatars = await enrichProfiles(overridden);
@@ -498,6 +512,22 @@ export default function ClientCurrentServiceRequest() {
     } catch {
       setIsOpeningView(false);
     }
+  };
+
+  const getReasonText = (row) => {
+    const rc = row?.reason_choice || row?.details?.reason_choice || row?.details?.decline_reason_choice;
+    const ro = row?.reason_other || row?.details?.reason_other || row?.details?.decline_reason_other;
+    const parts = [];
+    if (rc) parts.push(rc);
+    if (ro) parts.push(ro);
+    const fallback = row?.decision_reason || row?.details?.decline_reason || row?.reason || row?.reason_text;
+    if (!parts.length && fallback) parts.push(fallback);
+    return parts.join(" — ") || "No reason provided.";
+  };
+
+  const onReason = (item) => {
+    setReasonTarget(item);
+    setShowReason(true);
   };
 
   return (
@@ -603,6 +633,7 @@ export default function ClientCurrentServiceRequest() {
                 onEdit={onEdit}
                 onOpenMenu={onOpenMenu}
                 onView={onView}
+                onReason={onReason}
               />
             ))
           )}
@@ -693,6 +724,67 @@ export default function ClientCurrentServiceRequest() {
             <div className="mt-6 text-center space-y-1">
               <div className="text-lg font-semibold text-gray-900">Opening Request</div>
               <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReason && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Decline reason"
+          tabIndex={-1}
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
+          <div className="relative w-full max-w-[720px] rounded-2xl border border-orange-300 bg-white shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-orange-50 to-white border-b border-orange-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-orange-700">Decline Reason</h3>
+                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
+                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                  {(reasonTarget?.details?.service_type || "Request")}
+                </span>
+              </div>
+              <div className="mt-1 text-sm text-gray-600">
+                Created {reasonTarget?.created_at ? `${formatDate(reasonTarget.created_at)}` : "-"}
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+                <div className="text-[11px] font-semibold tracking-widest text-orange-700 uppercase">Reason</div>
+                <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
+                  {getReasonText(reasonTarget)}
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                  <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service Task</div>
+                  <div className="mt-1 text-[15px] font-semibold text-gray-900">
+                    {reasonTarget?.details?.service_task || "-"}
+                  </div>
+                  <div className="text-sm text-gray-600">{reasonTarget?.details?.service_type || "-"}</div>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                  <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Preferred Schedule</div>
+                  <div className="mt-1 text-[15px] font-semibold text-gray-900">
+                    {reasonTarget?.details?.preferred_date ? formatDate(reasonTarget.details.preferred_date) : "-"}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {reasonTarget?.details?.preferred_time ? formatTime12(reasonTarget.details.preferred_time) : "-"}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
+              <button
+                type="button"
+                onClick={() => { setShowReason(false); }}
+                className="w-full inline-flex items-center justify-center rounded-lg border border-orange-300 px-3 py-2 text-sm font-medium text-orange-600 hover:bg-orange-50"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

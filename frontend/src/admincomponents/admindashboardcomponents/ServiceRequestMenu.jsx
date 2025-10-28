@@ -236,7 +236,7 @@ export default function AdminServiceRequests() {
       const res = await axios.get(`${API_BASE}/api/admin/servicerequests/count`, {
         withCredentials: true,
       });
-    const c = res?.data || {};
+      const c = res?.data || {};
       setCounts({
         pending: c.pending || 0,
         approved: c.approved || 0,
@@ -307,6 +307,8 @@ export default function AdminServiceRequests() {
           rate,
           reason_choice: r.reason_choice || r.decline_reason_choice || r.decline_reason || r.reason,
           reason_other: r.reason_other || r.decline_reason_other || r.other_reason || r.reason_text,
+          reason_text: r.decision_reason || r.reason || null,
+          decided_at: r.decided_at || null,
           _expired: expired,
           created_at_raw: createdRaw,
           created_at_ts: createdTs,
@@ -501,6 +503,7 @@ export default function AdminServiceRequests() {
     try {
       await decline(declineTarget.id, { reason_choice: declineReason || null, reason_other: other || null });
       setDeclineTarget(null);
+      fetchItems(filter, searchTerm);
     } catch (e) {
       setDeclineErr(e?.response?.data?.message || "Failed to decline. Try again.");
       setShowDecline(true);
@@ -515,7 +518,7 @@ export default function AdminServiceRequests() {
     const ro = row?.reason_other || row?.details?.reason_other || row?.details?.decline_reason_other;
     if (rc) parts.push(rc);
     if (ro) parts.push(ro);
-    const fallback = row?.details?.decline_reason || row?.decline_reason || row?.reason;
+    const fallback = row?.reason_text || row?.details?.decline_reason || row?.decline_reason || row?.reason;
     if (!parts.length && fallback) parts.push(fallback);
     return parts.join(" — ") || "No reason provided.";
   };
@@ -838,7 +841,7 @@ export default function AdminServiceRequests() {
   const totalPages = useMemo(() => {
     const t = Math.ceil(sortedRows.length / pageSize);
     return t > 0 ? t : 1;
-    }, [sortedRows.length]);
+  }, [sortedRows.length]);
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(1);

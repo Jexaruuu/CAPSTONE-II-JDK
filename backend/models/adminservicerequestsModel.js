@@ -42,7 +42,7 @@ function localSearchFilter(rows, term) {
 async function listPending(status = null, limit = 500, search = null) {
   let q = supabaseAdmin
     .from('csr_pending')
-    .select('id, request_group_id, status, created_at, email_address, info, details, rate')
+    .select('id, request_group_id, status, created_at, email_address, info, details, rate, decision_reason, decided_at, reason_choice, reason_other')
     .order('created_at', { ascending: false })
     .limit(limit);
   if (status && status !== 'all') {
@@ -55,15 +55,37 @@ async function listPending(status = null, limit = 500, search = null) {
   return filtered;
 }
 
-async function markStatus(id, newStatus) {
+function combineReason(reason_choice, reason_other) {
+  const a = (reason_choice || '').trim();
+  const b = (reason_other || '').trim();
+  if (a && b) return `${a} — ${b}`;
+  return a || b || null;
+}
+
+async function markStatus(id, newStatus, payload = {}) {
   const allowed = new Set(['pending', 'approved', 'declined']);
   const next = String(newStatus || '').toLowerCase();
   if (!allowed.has(next)) throw new Error('Invalid status');
+
+  const patch = { status: next };
+  if (next === 'declined') {
+    const reason = combineReason(payload.reason_choice, payload.reason_other);
+    if (reason) patch.decision_reason = reason;
+    patch.reason_choice = payload.reason_choice || null;
+    patch.reason_other = payload.reason_other || null;
+    patch.decided_at = new Date().toISOString();
+  } else {
+    patch.decision_reason = null;
+    patch.reason_choice = null;
+    patch.reason_other = null;
+    patch.decided_at = null;
+  }
+
   const { data, error } = await supabaseAdmin
     .from('csr_pending')
-    .update({ status: next })
+    .update(patch)
     .eq('id', id)
-    .select('id, request_group_id, status, created_at')
+    .select('id, request_group_id, status, created_at, decision_reason, decided_at, reason_choice, reason_other')
     .single();
   if (error) throw error;
   return data;
