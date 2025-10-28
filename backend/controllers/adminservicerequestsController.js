@@ -38,6 +38,14 @@ async function cancelledSet(groupIds) {
   return s;
 }
 
+async function cancelledTimes(groupIds) {
+  if (!Array.isArray(groupIds) || groupIds.length === 0) return new Map();
+  const { data } = await supabaseAdmin.from('client_cancel_request').select('request_group_id,canceled_at').in('request_group_id', groupIds);
+  const m = new Map();
+  (data || []).forEach(r => { if (r.request_group_id) m.set(r.request_group_id, r.canceled_at || null); });
+  return m;
+}
+
 async function hydrate(baseRows) {
   const gids = baseRows.map(r => r.request_group_id).filter(Boolean);
   if (gids.length === 0) {
@@ -107,7 +115,8 @@ exports.list = async (req, res) => {
     const items0 = await hydrate(base);
     const gids = items0.map(r => r.request_group_id).filter(Boolean);
     const cancelled = await cancelledSet(gids);
-    const items = items0.map(r => cancelled.has(r.request_group_id) ? { ...r, status: 'cancelled' } : r);
+    const cancelMap = await cancelledTimes(gids);
+    const items = items0.map(r => cancelled.has(r.request_group_id) ? { ...r, status: 'cancelled', canceled_at: cancelMap.get(r.request_group_id) || null } : r);
 
     let out;
     if (status === 'cancelled') {

@@ -9,7 +9,8 @@ const {
   listDetailsByEmail,
   getCombinedByGroupId,
   insertClientCancelRequest,
-  getCancelledByGroupIds
+  getCancelledByGroupIds,
+  getCancelledMapByGroupIds
 } = require('../models/clientservicerequestsModel');
 const { insertPendingRequest } = require('../models/pendingservicerequestsModel');
 const { supabaseAdmin } = require('../supabaseClient');
@@ -366,6 +367,7 @@ exports.listCurrent = async (req, res) => {
     const details = await listDetailsByEmail(email, limit);
     const groups = details.map(d => d.request_group_id).filter(Boolean);
     const cancelledIds = await getCancelledByGroupIds(groups);
+    const cancelMap = await getCancelledMapByGroupIds(groups);
     let targetGroups = groups;
     let statusValue = 'pending';
     if (scope === 'cancelled') {
@@ -413,9 +415,9 @@ exports.listCurrent = async (req, res) => {
           last_name: row.info?.last_name || null
         }
       };
-      if (scope === 'cancelled') return { ...base, status: 'cancelled' };
+      if (scope === 'cancelled') return { ...base, status: 'cancelled', canceled_at: cancelMap[gid] || null };
       const s = statusMap[gid] || statusValue;
-      return cancelledIds.includes(gid) ? { ...base, status: 'cancelled' } : { ...base, status: s };
+      return cancelledIds.includes(gid) ? { ...base, status: 'cancelled', canceled_at: cancelMap[gid] || null } : { ...base, status: s };
     });
     return res.status(200).json({ items });
   } catch {
@@ -458,16 +460,17 @@ exports.cancelRequest = async (req, res) => {
     if (!request_group_id) return res.status(400).json({ message: 'request_group_id is required' });
     if (!reason_choice && !reason_other) return res.status(400).json({ message: 'Provide a reason' });
 
+    const canceled_at = new Date().toISOString();
     await insertClientCancelRequest({
       request_group_id,
       client_id,
       email_address,
       reason_choice,
       reason_other,
-      created_at: new Date().toISOString()
+      canceled_at
     });
 
-    return res.status(201).json({ message: 'Cancellation recorded' });
+    return res.status(201).json({ message: 'Cancellation recorded', canceled_at });
   } catch (e) {
     return res.status(500).json({ message: friendlyError(e) });
   }

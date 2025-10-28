@@ -32,6 +32,7 @@ const ClientViewServiceRequest = () => {
   const [submittingCancel, setSubmittingCancel] = useState(false);
   const [cancelErr, setCancelErr] = useState('');
   const [leavingDone, setLeavingDone] = useState(false);
+  const [showCancelSuccess, setShowCancelSuccess] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -94,7 +95,7 @@ const ClientViewServiceRequest = () => {
     const body = document.body;
     const prevHtmlOverflow = html.style.overflow;
     const prevBodyOverflow = body.style.overflow;
-    if (loading || showCancel || submittingCancel || leavingDone) {
+    if (loading || showCancel || submittingCancel || leavingDone || showCancelSuccess) {
       html.style.overflow = 'hidden';
       body.style.overflow = 'hidden';
     } else {
@@ -105,7 +106,7 @@ const ClientViewServiceRequest = () => {
       html.style.overflow = prevHtmlOverflow || '';
       body.style.overflow = prevBodyOverflow || '';
     };
-  }, [loading, showCancel, submittingCancel, leavingDone]);
+  }, [loading, showCancel, submittingCancel, leavingDone, showCancelSuccess]);
 
   const savedInfo = (() => { try { return JSON.parse(localStorage.getItem('clientInformationForm') || '{}'); } catch { return {}; }})();
   const savedDetails = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRequestDetails') || '{}'); } catch { return {}; }})();
@@ -290,14 +291,20 @@ const ClientViewServiceRequest = () => {
         if (!arr.includes(id)) arr.push(id);
         localStorage.setItem(k, JSON.stringify(arr));
       } catch {}
-      jumpTop();
-      navigate('/clientcurrentservicerequests', { replace: true, state: { cancelled: id } });
+      setShowCancelSuccess(true);
     } catch (e) {
       const msg = e?.response?.data?.message || 'Failed to cancel. Try again.';
       setCancelErr(msg);
       setSubmittingCancel(false);
       setShowCancel(true);
+    } finally {
+      setSubmittingCancel(false);
     }
+  };
+
+  const handleGoAfterCancel = () => {
+    jumpTop();
+    navigate('/current-service-request', { replace: true, state: { cancelled: id } });
   };
 
   return (
@@ -648,6 +655,51 @@ const ClientViewServiceRequest = () => {
               <div className="mt-6 text-center space-y-1">
                 <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
                 <div className="text-sm text-gray-600 animate-pulse">Submitting cancellation</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showCancelSuccess && !submittingCancel && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Request cancelled"
+            tabIndex={-1}
+            autoFocus
+            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+              <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-16 h-16 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+              <div className="mt-6 text-center space-y-2">
+                <div className="text-lg font-semibold text-gray-900">Request Cancelled!</div>
+                <div className="text-sm text-gray-600">Your service request has been cancelled.</div>
+                <div className="text-xs text-gray-500">You can review it under your Current Service Requests.</div>
+              </div>
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={handleGoAfterCancel}
+                  className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                >
+                  Go to Current Requests
+                </button>
               </div>
             </div>
           </div>

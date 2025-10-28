@@ -68,7 +68,7 @@ async function insertServiceRequestStatus(row) {
   return data;
 }
 async function insertClientCancelRequest(row) {
-  const payload = { ...row, created_at: row.created_at || new Date().toISOString() };
+  const payload = { ...row, canceled_at: row.canceled_at || new Date().toISOString() };
   const { data, error } = await supabaseAdmin.from('client_cancel_request').insert([payload]).select('id').single();
   if (error) throw error;
   return data;
@@ -107,6 +107,17 @@ async function getCancelledByGroupIds(groupIds) {
   if (error) throw error;
   return (data || []).map(x => x.request_group_id).filter(Boolean);
 }
+async function getCancelledMapByGroupIds(groupIds) {
+  if (!Array.isArray(groupIds) || groupIds.length === 0) return {};
+  const { data, error } = await supabaseAdmin
+    .from('client_cancel_request')
+    .select('request_group_id,canceled_at')
+    .in('request_group_id', groupIds);
+  if (error) throw error;
+  const m = {};
+  (data || []).forEach(x => { if (x.request_group_id) m[x.request_group_id] = x.canceled_at || null; });
+  return m;
+}
 async function listPendingByEmail(email) {
   const { data, error } = await supabaseAdmin
     .from('csr_pending')
@@ -132,5 +143,6 @@ module.exports = {
   listDetailsByEmail,
   getCombinedByGroupId,
   getCancelledByGroupIds,
+  getCancelledMapByGroupIds,
   listPendingByEmail
 };
