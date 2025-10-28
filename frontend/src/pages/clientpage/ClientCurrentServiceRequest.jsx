@@ -144,7 +144,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
       : isApproved
         ? "border-gray-300 bg-white hover:border-emerald-600 hover:ring-2 hover:ring-emerald-600 hover:shadow-xl"
         : "border-gray-300 bg-white hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl";
-  const profileUrl = useMemo(() => {
+  const profileUrl = React.useMemo(() => {
     const u = item?.info?.profile_picture_url || "";
     if (u) return u;
     const name = item?.info?.first_name || "Client";
@@ -251,7 +251,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
             aria-disabled={false}
             tabIndex={0}
           >
-            Cancel Reason
+            View Reason
           </Link>
         ) : (!isCancelled && isDeclined) ? (
           <Link
@@ -261,7 +261,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
             aria-disabled={false}
             tabIndex={0}
           >
-            Declined Reason
+            View Reason
           </Link>
         ) : (
           <Link
@@ -274,7 +274,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView }) => {
             View
           </Link>
         )}
-        {!isPending && !isCancelled && (
+        {!isPending && !isCancelled && !isDeclined && (
           <button
             type="button"
             onClick={() => { if (!(isCancelled || isExpiredReq || isDeclined)) onEdit(item); }}
@@ -336,11 +336,30 @@ export default function ClientCurrentServiceRequest() {
     return out;
   };
 
+  const getCancelledIds = async () => {
+    try {
+      const { data } = await axios.get(`${API_BASE}/api/clientservicerequests`, {
+        params: { scope: "cancelled" },
+        withCredentials: true,
+      });
+      const arr = Array.isArray(data?.items) ? data.items : [];
+      const ids = arr.map(r => r.details?.request_group_id || r.info?.request_group_id || r.rate?.request_group_id || r.id).filter(Boolean);
+      return new Set(ids.map(String));
+    } catch {
+      return new Set();
+    }
+  };
+
+  const applyCancelledOverride = (arr, cancelledSet) => {
+    return arr.map(r => cancelledSet.has(String(r.id)) ? { ...r, status: "cancelled" } : r);
+  };
+
   const fetchByStatus = async (statusKey) => {
     setLoading(true);
     try {
+      const cancelledIds = await getCancelledIds();
       if (statusKey === "cancelled") {
-        const { data } = await axios.get(`${API_BASE}/api/client/service-requests`, {
+        const { data } = await axios.get(`${API_BASE}/api/clientservicerequests`, {
           params: { scope: "cancelled" },
           withCredentials: true,
         });
@@ -371,7 +390,8 @@ export default function ClientCurrentServiceRequest() {
           rate: r.rate || {},
           info: r.info || {}
         }));
-        const withAvatars = await enrichProfiles(normalized);
+        const overridden = applyCancelledOverride(normalized, cancelledIds);
+        const withAvatars = await enrichProfiles(overridden);
         setItems(markUserCancelled(withAvatars).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       } else {
         const statusParam = statusKey === "all" ? "all" : statusKey;
@@ -389,7 +409,8 @@ export default function ClientCurrentServiceRequest() {
           rate: r.rate || {},
           info: r.info || {}
         }));
-        const withAvatars = await enrichProfiles(normalized);
+        const overridden = applyCancelledOverride(normalized, cancelledIds);
+        const withAvatars = await enrichProfiles(overridden);
         setItems(markUserCancelled(withAvatars).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       }
     } catch {

@@ -269,12 +269,17 @@ export default function AdminManageUser() {
 
   const SectionCard = ({ title, children, badge }) => (
     <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
-      <div className="px-5 pt-4 pb-3 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-2xl flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full bg-blue-500"></span>
+      <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
+        <h3 className="text-[15px] font-semibold flex items-center gap-2">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
           {title}
         </h3>
-        {badge || null}
+        {badge || (
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="h-3 w-3 rounded-full bg-white/60" />
+            Info
+          </span>
+        )}
       </div>
       <div className="p-5 text-center">
         {children}
@@ -383,7 +388,7 @@ export default function AdminManageUser() {
               )}
               {loadError && !loading && (
                 <div className="px-4 py-3 text-sm text-red-700 bg-red-50 border-b border-red-100">
-                  {loadError}
+                {loadError}
                 </div>
               )}
 
@@ -636,8 +641,8 @@ export default function AdminManageUser() {
                 <SectionCard
                   title="Personal Information"
                   badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium bg-blue-50 text-blue-700 border-blue-200">
-                      <span className="h-2.5 w-2.5 rounded-full bg-current opacity-30" />
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                      <span className="h-3 w-3 rounded-full bg-white/60" />
                       User
                     </span>
                   }
@@ -667,8 +672,8 @@ export default function AdminManageUser() {
                 <SectionCard
                   title="Social Links"
                   badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
-                      <span className="h-2.5 w-2.5 rounded-full bg-current opacity-30" />
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                      <span className="h-3 w-3 rounded-full bg-white/60" />
                       Social
                     </span>
                   }

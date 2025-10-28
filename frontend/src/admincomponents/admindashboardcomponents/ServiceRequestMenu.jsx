@@ -8,16 +8,26 @@ const ENABLE_SELECTION = false;
 const BOLD_FIRST_NAME = false;
 const ACTION_ALIGN_RIGHT = false;
 
+const REASONS_ADMIN = [
+  "Incomplete details",
+  "Invalid schedule",
+  "Outside service area",
+  "Pricing mismatch"
+];
+
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
 function StatusPill({ value }) {
   const v = String(value || "").toLowerCase();
+  const isCanceled = v === "canceled" || v === "cancelled";
   const cfg =
     v === "approved"
       ? { bg: "bg-emerald-50", text: "text-emerald-700", br: "border-emerald-200", label: "Approved" }
       : v === "declined"
       ? { bg: "bg-red-50", text: "text-red-700", br: "border-red-200", label: "Declined" }
+      : isCanceled
+      ? { bg: "bg-violet-50", text: "text-violet-700", br: "border-violet-200", label: "Canceled" }
       : v === "expired"
       ? { bg: "bg-gray-50", text: "text-gray-600", br: "border-gray-200", label: "Expired" }
       : { bg: "bg-amber-50", text: "text-amber-700", br: "border-amber-200", label: "Pending" };
@@ -173,10 +183,20 @@ export default function AdminServiceRequests() {
 
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0, total: 0 });
+  const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0, canceled: 0, total: 0 });
 
   const [expiredCount, setExpiredCount] = useState(0);
   const [sectionOpen, setSectionOpen] = useState("info");
+
+  const [showDecline, setShowDecline] = useState(false);
+  const [declineTarget, setDeclineTarget] = useState(null);
+  const [declineReason, setDeclineReason] = useState("");
+  const [declineOther, setDeclineOther] = useState("");
+  const [declineErr, setDeclineErr] = useState("");
+  const [submittingDecline, setSubmittingDecline] = useState(false);
+
+  const [showReason, setShowReason] = useState(false);
+  const [reasonTarget, setReasonTarget] = useState(null);
 
   const isYes = (v) => {
     if (typeof v === "boolean") return v;
@@ -190,10 +210,11 @@ export default function AdminServiceRequests() {
   const rate_toNumber = (x) => (x === null || x === undefined || x === "" ? null : Number(x));
 
   const summarizeCounts = (items = []) => {
-    let pending = 0, approved = 0, declined = 0, expired = 0;
+    let pending = 0, approved = 0, declined = 0, expired = 0, canceled = 0;
     for (const r of items) {
       const s = String(r?.status || "pending").toLowerCase();
-      const isFinal = s === "approved" || s === "declined";
+      const isCanceled = s === "canceled" || s === "cancelled";
+      const isFinal = s === "approved" || s === "declined" || isCanceled;
       const exp = isExpired(r?.details?.preferred_date) && !isFinal;
       if (exp) {
         expired++;
@@ -201,11 +222,13 @@ export default function AdminServiceRequests() {
         approved++;
       } else if (s === "declined") {
         declined++;
+      } else if (isCanceled) {
+        canceled++;
       } else {
         pending++;
       }
     }
-    return { pending, approved, declined, total: pending + approved + declined + expired, expired };
+    return { pending, approved, declined, canceled, total: pending + approved + declined + expired + canceled, expired };
   };
 
   const fetchCounts = async () => {
@@ -213,11 +236,12 @@ export default function AdminServiceRequests() {
       const res = await axios.get(`${API_BASE}/api/admin/servicerequests/count`, {
         withCredentials: true,
       });
-      const c = res?.data || {};
+    const c = res?.data || {};
       setCounts({
         pending: c.pending || 0,
         approved: c.approved || 0,
         declined: c.declined || 0,
+        canceled: 0,
         total: c.total || 0,
       });
     } catch {}
@@ -226,8 +250,12 @@ export default function AdminServiceRequests() {
         withCredentials: true,
       });
       const items = Array.isArray(resAll?.data?.items) ? resAll.data.items : [];
-      const s = summarizeCounts(items);
-      setCounts({ pending: s.pending, approved: s.approved, declined: s.declined, total: s.total });
+      const filtered = items.filter(it => {
+        const s = String(it.status || "").toLowerCase();
+        return s !== "canceled" && s !== "cancelled";
+      });
+      const s = summarizeCounts(filtered);
+      setCounts({ pending: s.pending, approved: s.approved, declined: s.declined, canceled: 0, total: s.total });
       setExpiredCount(s.expired);
     } catch {}
   };
@@ -277,6 +305,8 @@ export default function AdminServiceRequests() {
           info: i,
           details: d,
           rate,
+          reason_choice: r.reason_choice || r.decline_reason_choice || r.decline_reason || r.reason,
+          reason_other: r.reason_other || r.decline_reason_other || r.other_reason || r.reason_text,
           _expired: expired,
           created_at_raw: createdRaw,
           created_at_ts: createdTs,
@@ -284,25 +314,26 @@ export default function AdminServiceRequests() {
         };
       });
 
+      const withoutCancelled = mapped.filter(r => {
+        const s = String(r.status || "").toLowerCase();
+        return s !== "canceled" && s !== "cancelled";
+      });
+
       let finalRows;
       if (statusArg === "expired") {
-        finalRows = mapped.filter((r) => r._expired);
+        finalRows = withoutCancelled.filter((r) => r._expired);
       } else if (statusArg === "all") {
-        finalRows = mapped;
-      } else if (statusArg === "declined") {
-        finalRows = mapped;
-      } else if (statusArg === "approved") {
-        finalRows = mapped;
+        finalRows = withoutCancelled;
       } else {
-        finalRows = mapped.filter((r) => !r._expired);
+        finalRows = withoutCancelled;
       }
 
       setRows(finalRows);
 
       if (!params.status) {
-        const s = summarizeCounts(items);
+        const s = summarizeCounts(withoutCancelled);
         setExpiredCount(s.expired);
-        setCounts({ pending: s.pending, approved: s.approved, declined: s.declined, total: s.total });
+        setCounts({ pending: s.pending, approved: s.approved, declined: s.declined, canceled: 0, total: s.total });
       }
     } catch (err) {
       setLoadError(err?.response?.data?.message || err?.message || "Failed to load");
@@ -425,11 +456,20 @@ export default function AdminServiceRequests() {
     setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
   };
 
-  const decline = async (id) => {
-    await axios.post(`${API_BASE}/api/admin/servicerequests/${id}/decline`, {}, { withCredentials: true });
+  const decline = async (id, payload = null) => {
+    await axios.post(`${API_BASE}/api/admin/servicerequests/${id}/decline`, payload || {}, { withCredentials: true });
     setRows((r) =>
       r.map((x) =>
-        x.id === id ? { ...x, status: "declined", ui_status: "declined", _expired: x._expired } : x
+        x.id === id
+          ? {
+              ...x,
+              status: "declined",
+              ui_status: "declined",
+              reason_choice: payload?.reason_choice ?? x.reason_choice,
+              reason_other: payload?.reason_other ?? x.reason_other,
+              _expired: x._expired,
+            }
+          : x
       )
     );
     setSelected((s) => {
@@ -440,11 +480,57 @@ export default function AdminServiceRequests() {
     setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
   };
 
+  const openDeclineModal = (row) => {
+    setDeclineErr("");
+    setDeclineReason("");
+    setDeclineOther("");
+    setDeclineTarget(row);
+    setShowDecline(true);
+  };
+
+  const submitDecline = async () => {
+    const other = declineOther.trim();
+    if (!declineReason && !other) {
+      setDeclineErr("Please select a reason or write one.");
+      return;
+    }
+    setDeclineErr("");
+    setShowDecline(false);
+    await new Promise((r) => setTimeout(r, 30));
+    setSubmittingDecline(true);
+    try {
+      await decline(declineTarget.id, { reason_choice: declineReason || null, reason_other: other || null });
+      setDeclineTarget(null);
+    } catch (e) {
+      setDeclineErr(e?.response?.data?.message || "Failed to decline. Try again.");
+      setShowDecline(true);
+    } finally {
+      setSubmittingDecline(false);
+    }
+  };
+
+  const getReasonText = (row) => {
+    const parts = [];
+    const rc = row?.reason_choice || row?.details?.reason_choice || row?.details?.decline_reason_choice;
+    const ro = row?.reason_other || row?.details?.reason_other || row?.details?.decline_reason_other;
+    if (rc) parts.push(rc);
+    if (ro) parts.push(ro);
+    const fallback = row?.details?.decline_reason || row?.decline_reason || row?.reason;
+    if (!parts.length && fallback) parts.push(fallback);
+    return parts.join(" — ") || "No reason provided.";
+  };
+
+  const openReasonModal = (row) => {
+    setReasonTarget(row);
+    setShowReason(true);
+  };
+
   const tabs = [
     { key: "all", label: "All", count: counts.total },
     { key: "pending", label: "Pending", count: counts.pending },
     { key: "approved", label: "Approved", count: counts.approved },
     { key: "declined", label: "Declined", count: counts.declined },
+    { key: "canceled", label: "Canceled", count: counts.canceled },
     { key: "expired", label: "Expired", count: expiredCount },
   ];
 
@@ -493,12 +579,17 @@ export default function AdminServiceRequests() {
 
   const SectionCard = ({ title, children, badge }) => (
     <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
-      <div className="px-6 pt-5 pb-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-2xl flex items-center justify-between">
-        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+      <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
+        <h3 className="text-base font-semibold flex items-center gap-2">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
           {title}
         </h3>
-        {badge || null}
+        {badge || (
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="h-3 w-3 rounded-full bg-white/60" />
+            Info
+          </span>
+        )}
       </div>
       <div className="p-6">{children}</div>
       <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
@@ -514,8 +605,8 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Personal Information"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
                 Client
               </span>
             }
@@ -530,8 +621,8 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Request Details"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
-                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
                 Request
               </span>
             }
@@ -579,8 +670,8 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
                 Pricing
               </span>
             }
@@ -613,8 +704,8 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Personal Information"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
               Client
             </span>
           }
@@ -633,8 +724,8 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Service Request Details"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
               Request
             </span>
           }
@@ -687,8 +778,8 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
                 Pricing
               </span>
             }
@@ -705,8 +796,8 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
                 Pricing
               </span>
             }
@@ -723,8 +814,8 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
               Pricing
             </span>
           }
@@ -747,7 +838,7 @@ export default function AdminServiceRequests() {
   const totalPages = useMemo(() => {
     const t = Math.ceil(sortedRows.length / pageSize);
     return t > 0 ? t : 1;
-  }, [sortedRows.length]);
+    }, [sortedRows.length]);
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(1);
@@ -776,6 +867,7 @@ export default function AdminServiceRequests() {
                   { key: "pending", label: "Pending", count: counts.pending },
                   { key: "approved", label: "Approved", count: counts.approved },
                   { key: "declined", label: "Declined", count: counts.declined },
+                  { key: "canceled", label: "Canceled", count: counts.canceled },
                   { key: "expired", label: "Expired", count: expiredCount },
                 ].map((t) => {
                   const active = filter === t.key;
@@ -923,9 +1015,13 @@ export default function AdminServiceRequests() {
 
                     <tbody className="text-sm text-gray-800 font-semibold">
                       {pageRows.map((u, idx) => {
+                        const sLower = String(u.status).toLowerCase();
+                        const isCanceled = sLower === "canceled" || sLower === "cancelled";
                         const disableActions =
-                          u._expired || u.status === "approved" || u.status === "declined";
-                        const isFinal = u.status === "approved" || u.status === "declined";
+                          u._expired || u.status === "approved" || u.status === "declined" || isCanceled;
+                        const isFinal = u.status === "approved" || u.status === "declined" || isCanceled;
+                        const isDeclined = sLower === "declined";
+                        const isApproved = sLower === "approved";
                         return (
                           <tr
                             key={u.id}
@@ -970,10 +1066,14 @@ export default function AdminServiceRequests() {
                               <div className="flex items-center gap-1 flex-wrap">
                                 {u._expired ? (
                                   isFinal ? (
-                                    <>
-                                      <StatusPill value={u.status} />
-                                      <StatusPill value="expired" />
-                                    </>
+                                    isCanceled ? (
+                                      <StatusPill value="canceled" />
+                                    ) : (
+                                      <>
+                                        <StatusPill value={u.status} />
+                                        <StatusPill value="expired" />
+                                      </>
+                                    )
                                   ) : (
                                     <StatusPill value="expired" />
                                   )
@@ -994,20 +1094,31 @@ export default function AdminServiceRequests() {
                                 >
                                   View
                                 </button>
-                                <button
-                                  onClick={() => decline(u.id)}
-                                  className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={disableActions}
-                                >
-                                  Decline
-                                </button>
-                                <button
-                                  onClick={() => approve(u.id)}
-                                  className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={disableActions}
-                                >
-                                  Approve
-                                </button>
+                                {isDeclined ? (
+                                  <button
+                                    onClick={() => openReasonModal(u)}
+                                    className="inline-flex items-center rounded-lg border border-amber-300 px-3 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50"
+                                  >
+                                    Reason
+                                  </button>
+                                ) : isApproved ? null : (
+                                  <>
+                                    <button
+                                      onClick={() => openDeclineModal(u)}
+                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      disabled={disableActions}
+                                    >
+                                      Decline
+                                    </button>
+                                    <button
+                                      onClick={() => approve(u.id)}
+                                      className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      disabled={disableActions}
+                                    >
+                                      Approve
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -1127,11 +1238,15 @@ export default function AdminServiceRequests() {
                 </div>
                 <div className="flex items-center gap-1 flex-wrap">
                   {viewRow._expired ? (
-                    (viewRow.status === "approved" || viewRow.status === "declined") ? (
-                      <>
-                        <StatusPill value={viewRow.status} />
-                        <StatusPill value="expired" />
-                      </>
+                    (viewRow.status === "approved" || viewRow.status === "declined" || ["canceled","cancelled"].includes(String(viewRow.status).toLowerCase())) ? (
+                      ["canceled","cancelled"].includes(String(viewRow.status).toLowerCase()) ? (
+                        <StatusPill value="canceled" />
+                      ) : (
+                        <>
+                          <StatusPill value={viewRow.status} />
+                          <StatusPill value="expired" />
+                        </>
+                      )
                     ) : (
                       <StatusPill value="expired" />
                     )
@@ -1146,7 +1261,7 @@ export default function AdminServiceRequests() {
               {renderSection()}
             </div>
 
-            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-gray-200 bg-white">
+            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 gap-3 border-t border-gray-200 bg-white">
               <button
                 type="button"
                 onClick={() => { setViewRow(null); }}
@@ -1154,34 +1269,133 @@ export default function AdminServiceRequests() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDecline && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Decline service request"
+          tabIndex={-1}
+          autoFocus
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingDecline && setShowDecline(false)} />
+          <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
+              <div className="text-xl font-semibold">Decline Service Request</div>
+              <div className="text-xs opacity-90">Select reason for declining</div>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-1 gap-2">
+                {REASONS_ADMIN.map((r) => (
+                  <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${declineReason===r?'border-red-500 ring-1 ring-red-300 bg-red-50':'border-gray-200 hover:bg-gray-50'}`}>
+                    <input
+                      type="radio"
+                      name="decline-reason"
+                      className="h-4 w-4"
+                      checked={declineReason === r}
+                      onChange={() => setDeclineReason((curr) => (curr === r ? "" : r))}
+                      disabled={submittingDecline}
+                    />
+                    <span className="text-sm md:text-base">{r}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-sm font-semibold text-gray-700">Other</div>
+                <textarea
+                  value={declineOther}
+                  onChange={(e) => setDeclineOther(e.target.value)}
+                  disabled={submittingDecline}
+                  placeholder="Type other reason here"
+                  className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                />
+              </div>
+
+              {declineErr ? <div className="text-sm text-red-700">{declineErr}</div> : null}
+            </div>
+            <div className="px-6 py-4 border-top border-t border-gray-100 flex gap-3 justify-end">
               <button
                 type="button"
-                onClick={async () => {
-                  if (viewRow._expired) return;
-                  await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/decline`, {}, { withCredentials: true });
-                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined", ui_status: "declined", _expired: x._expired } : x)));
-                  setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
-                  setViewRow(null);
-                }}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={viewRow._expired || viewRow.status === "declined" || viewRow.status === "approved"}
+                onClick={() => !submittingDecline && setShowDecline(false)}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+                disabled={submittingDecline}
               >
-                Decline
+                Back
               </button>
               <button
                 type="button"
-                onClick={async () => {
-                  if (viewRow._expired) return;
-                  await axios.post(`${API_BASE}/api/admin/servicerequests/${viewRow.id}/approve`, {}, { withCredentials: true });
-                  setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved", ui_status: "approved", _expired: x._expired } : x)));
-                  setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
-                  setViewRow(null);
-                }}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={viewRow._expired || viewRow.status === "approved" || viewRow.status === "declined"}
+                onClick={submitDecline}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                disabled={submittingDecline}
               >
-                Approve
+                {submittingDecline ? "Submitting..." : "Confirm Decline"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReason && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Decline reason"
+          tabIndex={-1}
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowReason(false)} />
+          <div className="relative w-full max-w-[520px] mx-4 rounded-2xl border border-blue-200 bg-white shadow-2xl">
+            <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+              <div className="text-xl font-semibold">Decline Reason</div>
+              <div className="text-xs opacity-90">Submitted by admin</div>
+            </div>
+            <div className="px-6 py-5">
+              <div className="text-sm text-gray-700 whitespace-pre-line">
+                {getReasonText(reasonTarget)}
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowReason(false)}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {submittingDecline && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Please wait a moment"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#008cfc22", borderTopColor: "#008cfc", borderRadius: "9999px" }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+            </div>
+            <div className="mt-6 text-center space-y-1">
+              <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
+              <div className="text-sm text-gray-600 animate-pulse">Submitting decline</div>
             </div>
           </div>
         </div>

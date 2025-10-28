@@ -30,6 +30,14 @@ function isExpired(val) {
   return d < today;
 }
 
+async function cancelledSet(groupIds) {
+  if (!Array.isArray(groupIds) || groupIds.length === 0) return new Set();
+  const { data } = await supabaseAdmin.from('client_cancel_request').select('request_group_id').in('request_group_id', groupIds);
+  const s = new Set();
+  (data || []).forEach(r => { if (r.request_group_id) s.add(r.request_group_id); });
+  return s;
+}
+
 async function hydrate(baseRows) {
   const gids = baseRows.map(r => r.request_group_id).filter(Boolean);
   if (gids.length === 0) {
@@ -87,12 +95,26 @@ async function hydrate(baseRows) {
 
 exports.list = async (req, res) => {
   try {
-    let status = (req.query.status ?? '').trim().toLowerCase();
-    if (!status || status === 'all') status = null;
+    let rawStatus = (req.query.status ?? '').trim().toLowerCase();
+    let status = rawStatus && rawStatus !== 'all' ? rawStatus : null;
     const search = (req.query.q || req.query.search || '').trim() || null;
-    const base = await listPending(status, 500, search);
-    const items = await hydrate(base);
-    return res.status(200).json({ items, total: items.length });
+
+    const base = status === 'cancelled' ? await listPending(null, 500, search) : await listPending(status, 500, search);
+    const items0 = await hydrate(base);
+    const gids = items0.map(r => r.request_group_id).filter(Boolean);
+    const cancelled = await cancelledSet(gids);
+    const items = items0.map(r => cancelled.has(r.request_group_id) ? { ...r, status: 'cancelled' } : r);
+
+    let out;
+    if (status === 'cancelled') {
+      out = items.filter(r => String(r.status || '').toLowerCase() === 'cancelled');
+    } else if (status) {
+      out = items.filter(r => String(r.status || '').toLowerCase() === status);
+    } else {
+      out = items.filter(r => String(r.status || '').toLowerCase() !== 'cancelled');
+    }
+
+    return res.status(200).json({ items: out, total: out.length });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to list service requests', error: err?.message });
   }
@@ -101,9 +123,13 @@ exports.list = async (req, res) => {
 exports.count = async (_req, res) => {
   try {
     const base = await listPending(null, 2000, null);
-    const items = await hydrate(base);
+    const items0 = await hydrate(base);
+    const gids = items0.map(r => r.request_group_id).filter(Boolean);
+    const cancelled = await cancelledSet(gids);
     let pending = 0, approved = 0, declined = 0;
-    for (const r of items) {
+    for (const r of items0) {
+      const gid = r.request_group_id;
+      if (cancelled.has(gid)) continue;
       const s = String(r.status || 'pending').toLowerCase();
       const expired = isExpired(r?.details?.preferred_date);
       if (s === 'approved') approved++;

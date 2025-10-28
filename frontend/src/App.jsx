@@ -40,6 +40,7 @@ import DashboardMenu from './admincomponents/admindashboardcomponents/DashboardM
 import ManageUserMenu from './admincomponents/admindashboardcomponents/ManageUserMenu';
 import ServiceRequestMenu from './admincomponents/admindashboardcomponents/ServiceRequestMenu';
 import WorkerApplicationMenu from './admincomponents/admindashboardcomponents/WorkerApplicationMenu';
+import CanceledRequestMenu from './admincomponents/admindashboardcomponents/CanceledRequestMenu';
 
 const AdminSettings = () => <div className="p-6">Settings</div>;
 
@@ -82,6 +83,7 @@ const App = () => {
           <Route index element={<DashboardMenu />} />
           <Route path="manage-users" element={<ManageUserMenu />} />
           <Route path="service-requests" element={<ServiceRequestMenu />} />
+          <Route path="service-requests/cancelled" element={<CanceledRequestMenu />} />
           <Route path="worker-applications" element={<WorkerApplicationMenu />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>

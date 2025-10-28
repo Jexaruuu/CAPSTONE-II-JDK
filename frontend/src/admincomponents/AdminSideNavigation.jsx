@@ -9,7 +9,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const navItems = [
   { label: 'Dashboard',           to: '/admindashboard',                     icon: LayoutDashboard },
   { label: 'Manage Users',        to: '/admindashboard/manage-users',        icon: Users },
-  { label: 'Service Requests',     to: '/admindashboard/service-requests',    icon: FileText,       badgeKey: 'service' },
+  { label: 'Service Requests',    to: '/admindashboard/service-requests',    icon: FileText,       badgeKey: 'service' },
   { label: 'Worker Applications', to: '/admindashboard/worker-applications', icon: ClipboardList,  badgeKey: 'worker' },
 ];
 
@@ -73,7 +73,7 @@ const AdminSideNavigation = () => {
             <div key={to}>
               <NavLink
                 to={to}
-                end={to === '/admindashboard'}
+                end={to === '/admindashboard' || to === '/admindashboard/service-requests' || to === '/admindashboard/worker-applications'}
                 className={({ isActive }) =>
                   [
                     'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] md:text-base font-medium transition-colors',

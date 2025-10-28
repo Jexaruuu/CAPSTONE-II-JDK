@@ -347,34 +347,13 @@ exports.listApproved = async (req, res) => {
       if (d.tools_provided !== undefined) d.tools_provided = yesNo(toBoolStrict(d.tools_provided));
       return { ...it, details: d };
     });
-    const filtered = fixed.filter((it) => !isExpiredPreferredDate(it?.details?.preferred_date));
+    const gids = fixed.map(it => it.request_group_id).filter(Boolean);
+    let cancelled = [];
+    try { cancelled = await getCancelledByGroupIds(gids); } catch {}
+    const filtered = fixed.filter((it) => !isExpiredPreferredDate(it?.details?.preferred_date) && !cancelled.includes(it.request_group_id));
     return res.status(200).json({ items: filtered });
   } catch {
     return res.status(500).json({ message: 'Failed to load approved requests' });
-  }
-};
-
-exports.detailsByEmail = async (req, res) => {
-  try {
-    const email = String(req.query.email || '').trim();
-    if (!email) return res.status(400).json({ message: 'Email is required' });
-    const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
-    const items = await listDetailsByEmail(email, limit);
-    return res.status(200).json({ items });
-  } catch {
-    return res.status(500).json({ message: 'Failed to load details' });
-  }
-};
-
-exports.byGroup = async (req, res) => {
-  try {
-    const gid = String(req.params.groupId || '').trim();
-    if (!gid) return res.status(400).json({ message: 'groupId is required' });
-    const row = await getCombinedByGroupId(gid);
-    if (!row) return res.status(404).json({ message: 'Not found' });
-    return res.status(200).json(row);
-  } catch {
-    return res.status(500).json({ message: 'Failed to load request' });
   }
 };
 
@@ -412,7 +391,7 @@ exports.listCurrent = async (req, res) => {
       const d = row.details || {};
       const r = row.rate || {};
       const gid = row.details?.request_group_id || row.info?.request_group_id || row.rate?.request_group_id || '';
-      return {
+      const base = {
         id: gid,
         created_at: d.created_at || row.info?.created_at || new Date().toISOString(),
         details: {
@@ -432,13 +411,39 @@ exports.listCurrent = async (req, res) => {
           profile_picture_url: row.info?.profile_picture_url || null,
           first_name: row.info?.first_name || null,
           last_name: row.info?.last_name || null
-        },
-        status: scope === 'cancelled' ? 'cancelled' : (statusMap[gid] || statusValue)
+        }
       };
+      if (scope === 'cancelled') return { ...base, status: 'cancelled' };
+      const s = statusMap[gid] || statusValue;
+      return cancelledIds.includes(gid) ? { ...base, status: 'cancelled' } : { ...base, status: s };
     });
     return res.status(200).json({ items });
   } catch {
     return res.status(500).json({ message: 'Failed to load current requests' });
+  }
+};
+
+exports.detailsByEmail = async (req, res) => {
+  try {
+    const email = String(req.query.email || '').trim();
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
+    const items = await listDetailsByEmail(email, limit);
+    return res.status(200).json({ items });
+  } catch {
+    return res.status(500).json({ message: 'Failed to load details' });
+  }
+};
+
+exports.byGroup = async (req, res) => {
+  try {
+    const gid = String(req.params.groupId || '').trim();
+    if (!gid) return res.status(400).json({ message: 'groupId is required' });
+    const row = await getCombinedByGroupId(gid);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    return res.status(200).json(row);
+  } catch {
+    return res.status(500).json({ message: 'Failed to load request' });
   }
 };
 
