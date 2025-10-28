@@ -46,6 +46,22 @@ function TaskPill({ value }) {
   );
 }
 
+function YesNoPill({ yes }) {
+  const truthy = yes === true || yes === 1 || String(yes).toLowerCase() === "yes" || String(yes).toLowerCase() === "true";
+  const falsy = yes === false || yes === 0 || String(yes).toLowerCase() === "no" || String(yes).toLowerCase() === "false";
+  const cfg = truthy
+    ? { bg: "bg-emerald-50", text: "text-emerald-700", br: "border-emerald-200", label: "Yes" }
+    : falsy
+    ? { bg: "bg-red-50", text: "text-red-700", br: "border-red-200", label: "No" }
+    : { bg: "bg-gray-50", text: "text-gray-600", br: "border-gray-200", label: "-" };
+  return (
+    <span className={["inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide", cfg.bg, cfg.text, cfg.br].join(" ")}>
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+      {cfg.label}
+    </span>
+  );
+}
+
 function dateOnlyFrom(val) {
   if (!val) return null;
   const raw = String(val).trim();
@@ -107,6 +123,23 @@ function fmtPreferredTime(val) {
   const mm = String(min).padStart(2, "0");
   return `${h}:${mm} ${ampm}`;
 }
+const isYes = (v) => {
+  if (typeof v === "boolean") return v;
+  if (v === 1 || v === "1") return true;
+  if (v === 0 || v === "0") return false;
+  const s = String(v ?? "").trim().toLowerCase();
+  if (["yes", "y", "true", "t"].includes(s)) return true;
+  if (["no", "n", "false", "f"].includes(s)) return false;
+  return false;
+};
+const pickDetailImage = (details = {}) => {
+  const keys = ["image_url", "photo_url", "attachment_url", "image", "service_image", "service_request_image", "screenshot_url"];
+  for (const k of keys) {
+    const v = details?.[k];
+    if (typeof v === "string" && (v.startsWith("http://") || v.startsWith("https://") || v.startsWith("data:"))) return v;
+  }
+  return null;
+};
 
 export default function AdminCancelledRequests() {
   const [rows, setRows] = useState([]);
@@ -116,6 +149,7 @@ export default function AdminCancelledRequests() {
   const [viewRow, setViewRow] = useState(null);
   const [reasonRow, setReasonRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sectionOpen, setSectionOpen] = useState("all");
 
   const fetchItems = async () => {
     setLoading(true);
@@ -144,6 +178,8 @@ export default function AdminCancelledRequests() {
           preferred_date: d.preferred_date || "",
           preferred_time: d.preferred_time || "",
           barangay: i.barangay || "",
+          is_urgent: isYes(d.is_urgent) || d.is_urgent === true,
+          tools_provided: isYes(d.tools_provided) || d.tools_provided === true,
           rate_type: rate.rate_type || "",
           rate_from: rate.rate_from,
           rate_to: rate.rate_to,
@@ -176,6 +212,43 @@ export default function AdminCancelledRequests() {
     }, 400);
     return () => clearTimeout(t);
   }, [searchTerm]);
+
+  useEffect(() => {
+    const gid = viewRow?.request_group_id;
+    if (!gid) return;
+    let cancelled = false;
+    axios
+      .get(`${API_BASE}/api/clientservicerequests/by-group/${gid}`, { withCredentials: true })
+      .then((res) => {
+        if (cancelled) return;
+        const p = res?.data || {};
+        setViewRow((v) =>
+          v
+            ? {
+                ...v,
+                info: { ...v.info, ...(p.info || {}) },
+                details: { ...v.details, ...(p.details || {}) },
+                rate: { ...v.rate, ...(p.rate || {}) },
+              }
+            : v
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [viewRow?.request_group_id]);
+
+  useEffect(() => {
+    if (viewRow) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [viewRow]);
 
   const sortedRows = useMemo(() => {
     if (!sort.key) return rows;
@@ -227,6 +300,266 @@ export default function AdminCancelledRequests() {
       <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
     </section>
   );
+
+  const SectionCardRef = ({ title, children, badge }) => (
+    <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+      <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
+        <h3 className="text-base font-semibold flex items-center gap-2">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
+          {title}
+        </h3>
+        {badge || (
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="h-3 w-3 rounded-full bg-white/60" />
+            Info
+          </span>
+        )}
+      </div>
+      <div className="p-6">{children}</div>
+      <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
+    </section>
+  );
+
+  const SectionButton = ({ k, label }) => {
+    const active = sectionOpen === k;
+    return (
+      <button
+        onClick={() => setSectionOpen(k)}
+        className={["rounded-full px-3.5 py-1.5 text-sm border transition", active ? "bg-[#008cfc] text-white border-[#008cfc]" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"].join(" ")}
+      >
+        {label}
+      </button>
+    );
+  };
+
+  const renderSection = () => {
+    if (!viewRow) return null;
+    if (sectionOpen === "all") {
+      const img = pickDetailImage(viewRow?.details);
+      const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
+      return (
+        <div className="space-y-6">
+          <SectionCardRef
+            title="Personal Information"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
+                Client
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+              <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
+              <Field label="Street" value={viewRow?.info?.street || "-"} />
+              <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
+            </div>
+          </SectionCardRef>
+
+          <SectionCardRef
+            title="Service Request Details"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
+                Request
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+              <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                <Field label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
+                <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
+                <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
+                <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
+                <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
+                <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
+                <div className="sm:col-span-2">
+                  <Field
+                    label="Description"
+                    value={<span className="whitespace-pre-line text-[15px] leading-relaxed">{viewRow?.details?.service_description || viewRow?.details?.description || "-"}</span>}
+                  />
+                </div>
+              </div>
+              <div className="xl:col-span-2">
+                <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
+                  {img ? (
+                    <img
+                      src={img}
+                      alt="Service Request"
+                      className="w-full h-full object-cover"
+                      onError={({ currentTarget }) => {
+                        currentTarget.style.display = "none";
+                        const p = currentTarget.parentElement;
+                        if (p) p.innerHTML = '<div class="text-sm text-gray-500">No image available</div>';
+                      }}
+                    />
+                  ) : (
+                    <div className="text-sm text-gray-500">No image available</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </SectionCardRef>
+
+          <SectionCardRef
+            title="Service Rate"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
+                Pricing
+              </span>
+            }
+          >
+            {t.includes("by the job") ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-3xl">
+                <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+                <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+              </div>
+            ) : t.includes("hourly") ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6 max-w-4xl">
+                <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+                <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
+                <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+                <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+                <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
+                <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
+                <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+              </div>
+            )}
+          </SectionCardRef>
+        </div>
+      );
+    }
+    if (sectionOpen === "info") {
+      return (
+        <SectionCardRef
+          title="Personal Information"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
+              Client
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+            <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
+            <Field label="Street" value={viewRow?.info?.street || "-"} />
+            <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
+          </div>
+        </SectionCardRef>
+      );
+    }
+    if (sectionOpen === "details") {
+      const img = pickDetailImage(viewRow?.details);
+      return (
+        <SectionCardRef
+          title="Service Request Details"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
+              Request
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+            <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+              <Field label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
+              <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
+              <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
+              <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
+              <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
+              <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
+              <div className="sm:col-span-2">
+                <Field
+                  label="Description"
+                  value={<span className="whitespace-pre-line text-[15px] leading-relaxed">{viewRow?.details?.service_description || viewRow?.details?.description || "-"}</span>}
+                />
+              </div>
+            </div>
+            <div className="xl:col-span-2">
+              <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
+                {img ? (
+                  <img
+                    src={img}
+                    alt="Service Request"
+                    className="w-full h-full object-cover"
+                    onError={({ currentTarget }) => {
+                      currentTarget.style.display = "none";
+                      const p = currentTarget.parentElement;
+                      if (p) p.innerHTML = '<div class="text-sm text-gray-500">No image available</div>';
+                    }}
+                  />
+                ) : (
+                  <div className="text-sm text-gray-500">No image available</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </SectionCardRef>
+      );
+    }
+    if (sectionOpen === "rate") {
+      const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
+      if (t.includes("by the job")) {
+        return (
+          <SectionCardRef
+            title="Service Rate"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
+                Pricing
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-3xl">
+              <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+              <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+            </div>
+          </SectionCardRef>
+        );
+      }
+      if (t.includes("hourly")) {
+        return (
+          <SectionCardRef
+            title="Service Rate"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
+                Pricing
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6 max-w-4xl">
+              <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+              <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
+              <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
+            </div>
+          </SectionCardRef>
+        );
+      }
+      return (
+        <SectionCardRef
+          title="Service Rate"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
+              Pricing
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+            <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+            <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
+            <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
+            <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+          </div>
+        </SectionCardRef>
+      );
+    }
+    return null;
+  };
 
   const getCancelReason = (row) => {
     const d = row?.details || {};
@@ -380,6 +713,7 @@ export default function AdminCancelledRequests() {
                                 <button
                                   onClick={() => {
                                     setViewRow(u);
+                                    setSectionOpen("all");
                                   }}
                                   className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                                 >
@@ -454,18 +788,24 @@ export default function AdminCancelledRequests() {
           <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
             <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
               <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
-                <img
-                  src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture || avatarFromName(viewRow?.name_first || "User")}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                  onError={({ currentTarget }) => {
-                    currentTarget.style.display = "none";
-                    const parent = currentTarget.parentElement;
-                    if (parent) {
-                      parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${(viewRow?.name_first || "?").trim().charAt(0).toUpperCase()}</div>`;
-                    }
-                  }}
-                />
+                {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
+                  <img
+                    src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={({ currentTarget }) => {
+                      currentTarget.style.display = "none";
+                      const parent = currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${(((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1)) || "?").toUpperCase()}</div>`;
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">
+                    {(((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1)) || "?").toUpperCase()}
+                  </div>
+                )}
               </div>
 
               <div className="mt-5 text-center space-y-0.5">
@@ -486,67 +826,7 @@ export default function AdminCancelledRequests() {
             </div>
 
             <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
-              <section className="space-y-6">
-                <SectionCard
-                  title="Personal Information"
-                  badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                      Client
-                    </span>
-                  }
-                >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-                    <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
-                    <Field label="Street" value={viewRow?.info?.street || "-"} />
-                    <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
-                  </div>
-                </SectionCard>
-
-                <SectionCard
-                  title="Service Request Details"
-                  badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                      Request
-                    </span>
-                  }
-                >
-                  <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
-                    <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                      <Field label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
-                      <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
-                      <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
-                      <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
-                      <Field label="Urgent" value={<StatusPill value={String(viewRow?.details?.is_urgent || "").toLowerCase()==="yes"?"approved":"declined"} />} />
-                      <Field label="Tools Provided" value={<StatusPill value={String(viewRow?.details?.tools_provided || "").toLowerCase()==="yes"?"approved":"declined"} />} />
-                      <div className="sm:col-span-2">
-                        <Field
-                          label="Description"
-                          value={<span className="whitespace-pre-line text-[15px] leading-relaxed">{viewRow?.details?.service_description || viewRow?.details?.description || "-"}</span>}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </SectionCard>
-
-                <SectionCard
-                  title="Service Rate"
-                  badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                      Pricing
-                    </span>
-                  }
-                >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
-                    <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
-                    <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
-                    <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
-                    <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
-                  </div>
-                </SectionCard>
-              </section>
+              {renderSection()}
             </div>
 
             <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-1 gap-3 border-t border-gray-200 bg-white">
