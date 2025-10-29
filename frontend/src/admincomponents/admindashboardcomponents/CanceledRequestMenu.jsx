@@ -191,6 +191,9 @@ export default function AdminCancelledRequests() {
           created_at_raw: createdRaw,
           created_at_ts: createdTs,
           created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
+          reason_choice: r.reason_choice || null,
+          reason_other: r.reason_other || null,
+          canceled_at: r.canceled_at || null
         };
       });
       setRows(mapped);
@@ -205,7 +208,6 @@ export default function AdminCancelledRequests() {
   useEffect(() => {
     fetchItems();
   }, []);
-
   useEffect(() => {
     const t = setTimeout(() => {
       fetchItems();
@@ -588,7 +590,15 @@ export default function AdminCancelledRequests() {
     return null;
   };
 
+  const combineReason = (choice, other) => {
+    const a = String(choice || "").trim();
+    const b = String(other || "").trim();
+    if (a && b) return `${a} — ${b}`;
+    return a || b || "-";
+  };
+
   const getCancelReason = (row) => {
+    if (row?.reason_choice || row?.reason_other) return combineReason(row.reason_choice, row.reason_other);
     const d = row?.details || {};
     const i = row || {};
     return (
@@ -687,7 +697,6 @@ export default function AdminCancelledRequests() {
               </button>
             </div>
           </div>
-
           <div className="px-6 mt-3">
             <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
               {loading && <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">Loading…</div>}
@@ -923,6 +932,7 @@ export default function AdminCancelledRequests() {
                 </span>
               </div>
               <div className="mt-1 text-sm text-gray-600">Created {reasonRow?.created_at_display || "-"}</div>
+              <div className="text-xs text-gray-500">{reasonRow?.canceled_at ? `Cancelled ${fmtDateTime(reasonRow.canceled_at)}` : ""}</div>
             </div>
             <div className="p-6">
               <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
