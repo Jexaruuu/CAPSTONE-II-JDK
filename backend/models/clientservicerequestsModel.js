@@ -130,6 +130,26 @@ async function listPendingByEmail(email) {
   return Array.isArray(data) ? data : [];
 }
 
+async function getCancelledReasonsByGroupIds(groupIds) {
+  if (!Array.isArray(groupIds) || groupIds.length === 0) return {};
+  const { data, error } = await supabaseAdmin
+    .from('client_cancel_request')
+    .select('request_group_id,reason_choice,reason_other,canceled_at')
+    .in('request_group_id', groupIds);
+  if (error) throw error;
+  const m = {};
+  (data || []).forEach(x => {
+    if (x.request_group_id) {
+      m[x.request_group_id] = {
+        reason_choice: x.reason_choice || null,
+        reason_other: x.reason_other || null,
+        canceled_at: x.canceled_at || null
+      };
+    }
+  });
+  return m;
+}
+
 module.exports = {
   uploadDataUrlToBucket,
   findClientByEmail,
@@ -144,5 +164,6 @@ module.exports = {
   getCombinedByGroupId,
   getCancelledByGroupIds,
   getCancelledMapByGroupIds,
-  listPendingByEmail
+  listPendingByEmail,
+  getCancelledReasonsByGroupIds
 };

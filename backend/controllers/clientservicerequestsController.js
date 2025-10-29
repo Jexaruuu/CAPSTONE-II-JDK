@@ -10,8 +10,10 @@ const {
   getCombinedByGroupId,
   insertClientCancelRequest,
   getCancelledByGroupIds,
-  getCancelledMapByGroupIds
+  getCancelledMapByGroupIds,
+  getCancelledReasonsByGroupIds
 } = require('../models/clientservicerequestsModel');
+
 const { insertPendingRequest } = require('../models/pendingservicerequestsModel');
 const { supabaseAdmin } = require('../supabaseClient');
 
@@ -368,6 +370,7 @@ exports.listCurrent = async (req, res) => {
     const groups = details.map(d => d.request_group_id).filter(Boolean);
     const cancelledIds = await getCancelledByGroupIds(groups);
     const cancelMap = await getCancelledMapByGroupIds(groups);
+    const cancelReasonsMap = await getCancelledReasonsByGroupIds(groups);
     let targetGroups = groups;
     let statusValue = 'pending';
     if (scope === 'cancelled') {
@@ -415,9 +418,16 @@ exports.listCurrent = async (req, res) => {
           last_name: row.info?.last_name || null
         }
       };
-      if (scope === 'cancelled') return { ...base, status: 'cancelled', canceled_at: cancelMap[gid] || null };
+      if (scope === 'cancelled') {
+        const cr = cancelReasonsMap[gid] || {};
+        return { ...base, status: 'cancelled', canceled_at: cr.canceled_at || cancelMap[gid] || null, reason_choice: cr.reason_choice || null, reason_other: cr.reason_other || null };
+      }
       const s = statusMap[gid] || statusValue;
-      return cancelledIds.includes(gid) ? { ...base, status: 'cancelled', canceled_at: cancelMap[gid] || null } : { ...base, status: s };
+      if (cancelledIds.includes(gid)) {
+        const cr = cancelReasonsMap[gid] || {};
+        return { ...base, status: 'cancelled', canceled_at: cr.canceled_at || cancelMap[gid] || null, reason_choice: cr.reason_choice || null, reason_other: cr.reason_other || null };
+      }
+      return { ...base, status: s };
     });
     return res.status(200).json({ items });
   } catch {
