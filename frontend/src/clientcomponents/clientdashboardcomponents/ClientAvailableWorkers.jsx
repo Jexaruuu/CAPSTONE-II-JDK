@@ -206,7 +206,7 @@ const ClientAvailableWorkers = () => {
               <div
                 key={w.id}
                 ref={(el) => (cardRefs.current[i] = el)}
-                className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-300 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:shadow-lg"
+                className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-300 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:border-[#008cfc] hover:shadow-xl"
                 style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
               >
                 <button className="absolute top-4 right-4 h-8 w-8 rounded-full grid place-items-center hover:bg-gray-100">

@@ -1,36 +1,127 @@
 // WorkerAvailableServiceRequest.jsx
 import React, { useRef, useState, useEffect } from 'react';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
+import axios from 'axios';
+import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const avatarFromName = (name) =>
-  `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
+  `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || 'User')}`;
+
+function fmtDate(v) {
+  if (!v) return '';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return v;
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+function fmtTime(v) {
+  if (!v) return '';
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(v));
+  if (!m) return v;
+  const h = +m[1];
+  const min = m[2];
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = ((h + 11) % 12) + 1;
+  return `${h12}:${min} ${ampm}`;
+}
+function fmtRate(rate) {
+  const t = String(rate?.rate_type || '').toLowerCase();
+  const peso = (n) => `₱${Number(n).toLocaleString()}`;
+  if (t === 'fixed' && rate?.rate_value) return peso(rate.rate_value);
+  if (t === 'range' && (rate?.rate_from || rate?.rate_to)) {
+    const a = rate?.rate_from ? peso(rate.rate_from) : '';
+    const b = rate?.rate_to ? peso(rate.rate_to) : '';
+    return [a, b].filter(Boolean).join(' - ');
+  }
+  if (rate?.rate_value) return peso(rate.rate_value);
+  return '';
+}
+
+const getServiceIcon = (t) => {
+  const s = String(t || '').toLowerCase();
+  if (s.includes('electric')) return Zap;
+  if (s.includes('plumb')) return Wrench;
+  if (s.includes('wash')) return Car;
+  if (s.includes('laundry')) return Shirt;
+  return Hammer;
+};
+
+function toBool(v) {
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return v === 1;
+  const s = String(v ?? '').trim().toLowerCase();
+  if (['yes', 'y', 'true', 't', '1'].includes(s)) return true;
+  if (['no', 'n', 'false', 'f', '0'].includes(s)) return false;
+  return !!v;
+}
 
 const WorkerAvailableServiceRequest = () => {
-  const requests = [
-    { id: 1, name: 'Carlos Rivera', task: 'Fix leaking sink', image: '/clients/carlos.png' },
-    { id: 2, name: 'Liza Cruz', task: 'Rewire living room', image: '/clients/liza.png' },
-    { id: 3, name: 'Mark Tan', task: 'Build storage shelf', image: '/clients/mark.png' },
-    { id: 4, name: 'Jenna Uy', task: 'Deep house cleaning', image: '/clients/jenna.png' },
-    { id: 5, name: 'R. Santos', task: 'Car wash + waxing', image: '/clients/rsantos.png' },
-    { id: 6, name: 'A. Lim', task: 'Laundry & folding', image: '/clients/alim.png' },
-    { id: 7, name: 'P. Dela Cruz', task: 'Bathroom plumbing', image: '/clients/pdc.png' },
-  ];
+  const [items, setItems] = useState([]);
 
-  const items = requests.map((r, i) => ({
-    ...r,
-    country: ['Philippines','United States','Portugal','India'][i % 4],
-    stat1Title: 'Priority',
-    stat1Value: ['Normal','Urgent','Normal','Urgent'][i % 4],
-    stat2Title: 'Jobs Posted',
-    stat2Value: [5,12,2,18][i % 4],
-    stat3Title: 'Budget',
-    stat3Value: ['₱800','₱1,500','₱2,000','₱600'][i % 4],
-    desc:
-      'Looking for a reliable professional. Materials can be discussed. Please include availability and a brief approach.',
-    meetText: ['₱150 for 15 minutes Zoom chat','₱200 for 20 minutes Zoom chat','₱300 for 30 minutes Zoom chat','₱100 for 10 minutes Zoom chat'][i % 4]
-  }));
+  useEffect(() => {
+    let ok = true;
+    (async () => {
+      const base = API_BASE.replace(/\/+$/,'');
+      const paths = [
+        `${base}/api/admin/servicerequests`,
+        `${base}/api/admin/servicerequests/approved`,
+        `${base}/admin/servicerequests/approved`,
+        `${base}/admin/service-requests`,
+        `${base}/admin/servicerequests`
+      ];
+      let dataArr = [];
+      for (const url of paths) {
+        try {
+          const { data, status } = await axios.get(url, { params: { status: 'approved' } });
+          if (status === 200) {
+            const arr = Array.isArray(data)
+              ? data
+              : Array.isArray(data?.items)
+              ? data.items
+              : Array.isArray(data?.data)
+              ? data.data
+              : Array.isArray(data?.rows)
+              ? data.rows
+              : null;
+            if (arr) {
+              dataArr = arr;
+              break;
+            }
+          }
+        } catch {}
+      }
+      if (!ok) return;
+      const mapped = (dataArr || []).map((r, idx) => {
+        const i = r.info || {};
+        const d = r.details || {};
+        const rate = r.rate || {};
+        const name = [i.first_name, i.last_name].filter(Boolean).join(' ').trim() || 'Client';
+        const addressLine = [i.barangay, i.street, i.additional_address].filter(Boolean).join(', ');
+        return {
+          id: r.id || idx + 1,
+          request_group_id: r.request_group_id || '',
+          name,
+          image: i.profile_picture_url || avatarFromName(name),
+          barangay: i.barangay || '',
+          street: i.street || '',
+          additional_address: i.additional_address || '',
+          preferred_date: d.preferred_date || '',
+          preferred_time: d.preferred_time || '',
+          urgency: (d.is_urgent || '').toString(),
+          service_type: d.service_type || '',
+          service_task: d.service_task || '',
+          description: d.service_description || '',
+          rate_type: rate.rate_type || '',
+          price: fmtRate(rate),
+          addressLine
+        };
+      });
+      setItems(mapped);
+    })();
+    return () => { ok = false; };
+  }, []);
 
-  const displayItems = items.slice(0, 10);
+  const displayItems = items;
 
   const PER_PAGE = 3;
 
@@ -215,70 +306,80 @@ const WorkerAvailableServiceRequest = () => {
             onPointerLeave={endDrag}
             onClickCapture={onTrackClickCapture}
           >
-            {displayItems.map((req, i) => (
-              <div
-                key={req.id}
-                ref={(el) => (cardRefs.current[i] = el)}
-                className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-300 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:shadow-lg"
-                style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
-              >
-                <button className="absolute top-4 right-4 h-8 w-8 rounded-full grid place-items-center hover:bg-gray-100">
-                  <svg viewBox="0 0 24 24" className="h-5 w-5 text-gray-400"><path d="M12 21s-7.5-4.35-10-8.74C.35 9.36 2.01 6 5.2 6c1.92 0 3.09 1.02 3.8 2.06C9.71 7.02 10.88 6 12.8 6c3.19 0 4.85 3.36 3.2 6.26C19.5 16.65 12 21 12 21z" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
-                </button>
+            {displayItems.map((req, i) => {
+              const Icon = getServiceIcon(req.service_type);
+              return (
+                <div
+                  key={req.id}
+                  ref={(el) => (cardRefs.current[i] = el)}
+                  className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-300 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:border-[#008cfc] hover:shadow-xl"
+                  style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
+                >
+                  <div className="absolute top-4 right-4 h-8 w-8 rounded-lg border border-gray-400 text-[#008cfc] flex items-center justify-center select-none" aria-hidden="true">
+                    <Icon className="h-4 w-4" />
+                  </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-full overflow-hidden">
-                    <img
-                      src={req.image || avatarFromName(req.name)}
-                      alt={req.name}
-                      className="h-full w-full object-cover"
-                      onLoad={() => requestAnimationFrame(recomputePositions)}
-                      onError={({ currentTarget }) => {
-                        currentTarget.style.display = 'none';
-                        const parent = currentTarget.parentElement;
-                        if (parent) {
-                          parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-base font-semibold">${(req.name || '?').trim().charAt(0).toUpperCase()}</div>`;
-                        }
-                        requestAnimationFrame(recomputePositions);
-                      }}
-                    />
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full overflow-hidden">
+                      <img
+                        src={req.image}
+                        alt={req.name}
+                        className="h-full w-full object-cover"
+                        onLoad={() => requestAnimationFrame(recomputePositions)}
+                        onError={({ currentTarget }) => {
+                          currentTarget.style.display = 'none';
+                          const parent = currentTarget.parentElement;
+                          if (parent) {
+                            parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-base font-semibold">${(req.name || '?').trim().charAt(0).toUpperCase()}</div>`;
+                          }
+                          requestAnimationFrame(recomputePositions);
+                        }}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-lg font-semibold text-gray-900 truncate">{req.name}</div>
+                      <div className="text-sm text-gray-600 truncate">{req.addressLine}</div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-lg font-semibold text-gray-900 truncate">{req.name}</div>
-                    <div className="text-sm text-gray-600">{req.country}</div>
+
+                  <div className="mt-5 grid grid-cols-3 gap-2 text-sm">
+                    <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
+                      <div className="font-semibold text-gray-900">{fmtDate(req.preferred_date)}</div>
+                      <div className="text-gray-500 text-xs">Preferred Date</div>
+                    </div>
+                    <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
+                      <div className="font-semibold text-gray-900">{fmtTime(req.preferred_time)}</div>
+                      <div className="text-gray-500 text-xs">Preferred Time</div>
+                    </div>
+                    <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
+                      <div className="font-semibold text-gray-900">{toBool(req.urgency) ? 'Yes' : 'No'}</div>
+                      <div className="text-gray-500 text-xs">Urgency</div>
+                    </div>
                   </div>
+
+                  <div className="mt-4">
+                    <div className="text-xs uppercase tracking-wide text-gray-500">Service Type</div>
+                    <div className="font-semibold text-gray-900">{req.service_type}</div>
+                    <div className="mt-3 text-xs uppercase tracking-wide text-gray-500">Service Task</div>
+                    <div className="font-medium text-gray-900">{req.service_task}</div>
+                    <div className="mt-3 text-xs uppercase tracking-wide text-gray-500">Request Description</div>
+                    <div className="text-sm text-gray-700 leading-relaxed line-clamp-3">{req.description}</div>
+                    <div className="mt-3 text-xs uppercase tracking-wide text-gray-500">Rate</div>
+                    <div className="text-sm text-gray-900">
+                      <span className="font-medium">{req.rate_type ? req.rate_type.toUpperCase() : ''}</span>
+                      {req.price ? ` · ${req.price}` : ''}
+                    </div>
+                  </div>
+
+                  <a
+                    href={req.request_group_id ? `/worker/requests/${req.request_group_id}` : '#'}
+                    className="mt-4 w-full h-11 rounded-lg bg-[#008cfc] text-white font-medium grid place-items-center hover:bg-blue-700 transition"
+                  >
+                    View Service Request
+                  </a>
                 </div>
-
-                <div className="mt-5 grid grid-cols-3 gap-2 text-sm">
-                  <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                    <div className="font-semibold text-gray-900">{req.stat1Value}</div>
-                    <div className="text-gray-500 text-xs">{req.stat1Title}</div>
-                  </div>
-                  <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                    <div className="font-semibold text-gray-900">{req.stat2Value}</div>
-                    <div className="text-gray-500 text-xs">{req.stat2Title}</div>
-                  </div>
-                  <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                    <div className="font-semibold text-gray-900">{req.stat3Value}</div>
-                    <div className="text-gray-500 text-xs">{req.stat3Title}</div>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <div className="font-semibold text-gray-900 leading-snug line-clamp-2">{req.task}</div>
-                  <div className="mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3">{req.desc}</div>
-                </div>
-
-                <a href="#" className="mt-4 inline-flex items-center gap-2 text-sm text-[#008cfc] hover:underline">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4"><path d="M3 5h18v14H3z" fill="none" stroke="currentColor" strokeWidth="1.5"/><path d="M9 10l3 2 3-2" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
-                  {req.meetText}
-                </a>
-
-                <button className="mt-4 w-full h-11 rounded-lg border border-emerald-500 text-emerald-600 font-medium hover:bg-emerald-50 transition">
-                  Send a proposal
-                </button>
-              </div>
-            ))}
+              );
+            })}
             <div aria-hidden className="flex-shrink-0" style={{ width: `${endPad}px` }} />
           </div>
         </div>
@@ -308,7 +409,6 @@ const WorkerAvailableServiceRequest = () => {
         .drag-active { cursor: default !important; }
         .no-hand { cursor: default !important; }
         .card-border-fix::after { content: none; }
-        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
       `}</style>
     </div>

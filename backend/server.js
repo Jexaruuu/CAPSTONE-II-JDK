@@ -23,6 +23,7 @@ const adminworkerapplicationRoutes = require("./routes/adminworkerapplicationRou
 const pendingservicerequestsRoutes = require("./routes/pendingservicerequestsRoutes");
 const pendingworkerapplicationRoutes = require("./routes/pendingworkerapplicationRoutes");
 const notificationsRoutes = require("./routes/notificationsRoutes");
+const adminServiceRequestsRoutes = require('./routes/adminservicerequestsRoutes');
 
 dotenv.config();
 
@@ -99,6 +100,7 @@ app.use("/api/workerapplications",workerapplicationRoutes);
 app.use("/api/admin/workerapplications",adminworkerapplicationRoutes);
 app.use("/api/pendingservicerequests",pendingservicerequestsRoutes);
 app.use("/api/pendingworkerapplication",pendingworkerapplicationRoutes);
+app.use('/api/admin/servicerequests', adminServiceRequestsRoutes);
 
 ensureStorageBucket("user-notifications",true).catch(()=>{});
 ensureStorageBucket(process.env.SUPABASE_BUCKET_SERVICE_IMAGES || "service-request-images",true).catch(()=>{});
