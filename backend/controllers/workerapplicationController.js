@@ -54,9 +54,6 @@ exports.submitFullApplication = async (req, res) => {
       address,
       birth_date,
       age,
-      facebook,
-      instagram,
-      linkedin,
       profile_picture,
       profile_picture_name,
       service_types = [],
@@ -131,9 +128,6 @@ exports.submitFullApplication = async (req, res) => {
       barangay: (barangay ?? metadata.barangay ?? '').toString(),
       birth_date: birth_date || metadata.birth_date || null,
       age: ageVal,
-      facebook: facebook ?? metadata.facebook ?? null,
-      instagram: instagram ?? metadata.instagram ?? null,
-      linkedin: linkedin ?? metadata.linkedin ?? null,
       profile_picture_url: profileUpload.url || metadata.profile_picture_url || null,
       profile_picture_name: profileUpload.name || profile_picture_name || metadata.profile_picture_name || null
     };

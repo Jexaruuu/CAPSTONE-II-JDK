@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { compressImageFileToDataURL } from '../../utils/imageCompression';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const STORAGE_KEY = 'workerInformationForm';
 
 const clearWorkerApplicationDrafts = () => {
   try {
     localStorage.removeItem('workerInformationForm');
+  } catch {}
+  try {
     localStorage.removeItem('workerWorkInformation');
     localStorage.removeItem('workerDocuments');
     localStorage.removeItem('workerDocumentsData');
@@ -39,6 +43,12 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const [dpOpen, setDpOpen] = useState(false);
   const [dpView, setDpView] = useState(new Date());
   const dpRef = useRef(null);
+
+  const [birthLocked] = useState(true);
+  const [contactLocked] = useState(true);
+
+  const [isLoadingBack, setIsLoadingBack] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -105,32 +115,32 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   };
 
   const toYMD = (d) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-
-const toMDY = (d) => {
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const y = d.getFullYear();
-  return `${m}/${day}/${y}`;
-};
-
-const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = useMemo(() => {
-  const today = new Date();
-  const max = new Date(today.getFullYear() - 21, today.getMonth(), today.getDate());
-  const min = new Date(today.getFullYear() - 55, today.getMonth(), today.getDate());
-  return {
-    minDOB: toYMD(min),
-    maxDOB: toYMD(max),
-    minDOBDate: min,
-    maxDOBDate: max,
-    minDOBLabel: toMDY(min),
-    maxDOBLabel: toMDY(max),
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   };
-}, []);
+
+  const toMDY = (d) => {
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const y = d.getFullYear();
+    return `${m}/${day}/${y}`;
+  };
+
+  const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = useMemo(() => {
+    const today = new Date();
+    const max = new Date(today.getFullYear() - 21, today.getMonth(), today.getDate());
+    const min = new Date(today.getFullYear() - 55, today.getMonth(), today.getDate());
+    return {
+      minDOB: toYMD(min),
+      maxDOB: toYMD(max),
+      minDOBDate: min,
+      maxDOBDate: max,
+      minDOBLabel: toMDY(min),
+      maxDOBLabel: toMDY(max),
+    };
+  }, []);
 
   const birthAge = computeAge(birthDate);
   const isBirthdateValid = useMemo(() => {
@@ -248,6 +258,102 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
   ]);
 
   useEffect(() => {
+    if (!hydrated) return;
+    const normalizePhone10 = (raw) => {
+      const digits = String(raw || '').replace(/\D/g, '');
+      if (digits.startsWith('63') && digits.length === 12) return digits.slice(2);
+      if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
+      if (digits.length === 10 && digits.startsWith('9')) return digits;
+      if (digits.length === 13 && digits.startsWith('639')) return digits.slice(3);
+      return digits.slice(-10);
+    };
+    const hdr = {
+      'x-app-u': encodeURIComponent(
+        JSON.stringify({
+          r: 'worker',
+          e: localStorage.getItem('email_address') || localStorage.getItem('email') || null,
+          au: localStorage.getItem('auth_uid') || null
+        })
+      )
+    };
+    (async () => {
+      try {
+        const { data: p } = await axios.get(`${API_BASE}/api/account/me`, {
+          withCredentials: true,
+          headers: hdr
+        });
+        const dob = p?.date_of_birth || '';
+        const ph = normalizePhone10(p?.phone || p?.contact_number || '');
+        if (!birthDate && dob) {
+          const d = new Date(dob);
+          if (!isNaN(d.getTime())) {
+            const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            setBirthDate(ymd);
+            setDpView(d);
+          }
+        }
+        if (!contactNumber && ph) setContactNumber(ph);
+      } catch {}
+    })();
+  }, [hydrated, birthDate, contactNumber]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const normalizePhone10 = (raw) => {
+      const digits = String(raw || '').replace(/\D/g, '');
+      if (digits.startsWith('63') && digits.length === 12) return digits.slice(2);
+      if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
+      if (digits.length === 10 && digits.startsWith('9')) return digits;
+      if (digits.length === 13 && digits.startsWith('639')) return digits.slice(3);
+      return digits.slice(-10);
+    };
+    const hdr = {
+      'x-app-u': encodeURIComponent(
+        JSON.stringify({
+          r: 'worker',
+          e: localStorage.getItem('email_address') || localStorage.getItem('email') || null,
+          au: localStorage.getItem('auth_uid') || null
+        })
+      )
+    };
+    (async () => {
+      try {
+        const { data: w } = await axios.get(`${API_BASE}/api/workers/me`, {
+          withCredentials: true,
+          headers: hdr
+        });
+        const fn = w?.first_name || w?.firstName || '';
+        const ln = w?.last_name || w?.lastName || '';
+        const em = w?.email_address || w?.email || '';
+        const dob = w?.birth_date || w?.date_of_birth || '';
+        const ph = normalizePhone10(w?.contact_number || w?.phone || '');
+        const brgy = w?.barangay || '';
+        const st = w?.street || '';
+        const ppUrl = w?.profile_picture_url || w?.profile_picture || '';
+        const ppName = w?.profile_picture_name || '';
+        if (!nameLocked) {
+          if (!firstName && fn) setFirstName(fn);
+          if (!lastName && ln) setLastName(ln);
+        }
+        if (!emailLocked && validateEmail(em) && !email) setEmail(em);
+        if (!birthDate && dob) {
+          const d = new Date(dob);
+          if (!isNaN(d.getTime())) {
+            const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            setBirthDate(ymd);
+            setDpView(d);
+          }
+        }
+        if (!contactNumber && ph) setContactNumber(ph);
+        if (!barangay && brgy) setBarangay(brgy);
+        if (!street && st) setStreet(st);
+        if (!profilePicture && ppUrl) setProfilePicture(ppUrl);
+        if (!profilePictureName && ppName) setProfilePictureName(ppName);
+      } catch {}
+    })();
+  }, [hydrated, nameLocked, emailLocked, firstName, lastName, email, birthDate, contactNumber, barangay, street, profilePicture, profilePictureName]);
+
+  useEffect(() => {
     if (!isLoadingNext) return;
     const onPopState = () => { window.history.pushState(null, '', window.location.href); };
     window.history.pushState(null, '', window.location.href);
@@ -263,6 +369,27 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
       window.removeEventListener('keydown', blockKeys, true);
     };
   }, [isLoadingNext]);
+
+  useEffect(() => {
+    if (!isLoadingBack) return;
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    return () => { window.removeEventListener('popstate', onPopState, true); };
+  }, [isLoadingBack]);
+
+  useEffect(() => {
+    if (!isLoadingBack) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [isLoadingBack]);
 
   const proceed = () => {
     const draft = {
@@ -301,9 +428,14 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
     setTimeout(() => { proceed(); }, 2000);
   };
 
-  const onBackClick = () => {
+  const onBackClick = (e) => {
+    e.preventDefault();
     try { clearWorkerApplicationDrafts(); } catch {}
     jumpTop();
+    setIsLoadingBack(true);
+    setTimeout(() => {
+      navigate('/workerdashboard');
+    }, 2000);
   };
 
   const monthName = (d) =>
@@ -321,6 +453,7 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
   const inRange = (date) => date >= minDOBDate && date <= maxDOBDate;
 
   const openCalendar = () => {
+    if (birthLocked) return;
     if (birthDate) setDpView(new Date(birthDate));
     else setDpView(new Date(maxDOBDate));
     setDpOpen((s) => !s);
@@ -332,10 +465,10 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
-            <div className="text-lg font-semibold text-gray-900">Please fill in your details</div>
+            <div className="text-2xl md:text-3xl font-semibold text-gray-900">Please fill in your details</div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="hidden sm:block text-xs text-gray-500">Step 1 of 4</div>
+            <div className="hidden sm:block text-sm text-gray-500">Step 1 of 4</div>
             <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden">
               <div className="h-full w-1/4 bg-[#008cfc]" />
             </div>
@@ -347,13 +480,16 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <h3 className="text-xl md:text-2xl font-semibold">Personal Information</h3>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Worker</span>
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Worker
+            </span>
           </div>
 
           <div className="px-6 py-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-12 gap-y-6">
               <div className="lg:col-span-2">
-                <p className="text-sm text-gray-600 mb-6">Please fill in your personal details to proceed.</p>
+                <p className="text-base text-gray-600 mb-6">Please fill in your personal details to proceed.</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -366,7 +502,7 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                       readOnly={nameLocked}
                       aria-readonly={nameLocked}
                       title={nameLocked ? 'This name comes from your account' : undefined}
-                      className={`w-full px-4 py-3 border ${attempted && !firstName.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${nameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      className={`w-full px-4 py-3 border ${attempted && !firstName.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40 ${nameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                       required
                       aria-invalid={attempted && !firstName.trim()}
                     />
@@ -382,7 +518,7 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                       readOnly={nameLocked}
                       aria-readonly={nameLocked}
                       title={nameLocked ? 'This name comes from your account' : undefined}
-                      className={`w-full px-4 py-3 border ${attempted && !lastName.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${nameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      className={`w-full px-4 py-3 border ${attempted && !lastName.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40 ${nameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                       required
                       aria-invalid={attempted && !lastName.trim()}
                     />
@@ -390,25 +526,30 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
 
                   <div className="relative" ref={dpRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Birthdate</label>
-                    <div className={`flex items-center rounded-xl border ${attempted && (!birthDate || !isBirthdateValid) ? 'border-red-500' : 'border-gray-300'}`}>
-                     <input
-  type="text"
-  value={birthDate ? toMDY(new Date(birthDate)) : ''}
-  onFocus={openCalendar}
-  readOnly
-  placeholder="mm/dd/yyyy"
-  title={`Allowed: ${minDOBLabel} to ${maxDOBLabel} (21–55 years old)`}
-  className="w-full px-4 py-3 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-  required
-  aria-invalid={attempted && (!birthDate || !isBirthdateValid)}
-  aria-describedby="birthdate-help"
-  inputMode="none"
-/>
+                    <div className={`flex items-center rounded-xl border ${attempted && (!birthDate || !isBirthdateValid) ? 'border-red-500' : 'border-gray-300'} ${birthLocked ? 'bg-gray-100' : ''} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
+                      <input
+                        type="text"
+                        value={birthDate ? toMDY(new Date(birthDate)) : ''}
+                        onFocus={openCalendar}
+                        readOnly
+                        aria-readonly
+                        disabled={birthLocked}
+                        placeholder="mm/dd/yyyy"
+                        title={birthLocked ? 'This birthdate comes from your account' : `Allowed: ${minDOBLabel} to ${maxDOBLabel} (21–55 years old)`}
+                        className="w-full px-4 py-3 rounded-l-xl bg-transparent outline-none"
+                        required
+                        aria-invalid={attempted && (!birthDate || !isBirthdateValid)}
+                        aria-describedby="birthdate-help"
+                        inputMode="none"
+                      />
+                      <span className="h-6 w-px bg-gray-200 mr-1" />
                       <button
                         type="button"
                         onClick={openCalendar}
-                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                        disabled={birthLocked}
+                        className={`px-3 pr-4 ${birthLocked ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:text-gray-800'}`}
                         aria-label="Open calendar"
+                        title={birthLocked ? 'Disabled' : 'Open calendar'}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" />
@@ -416,14 +557,14 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                         </svg>
                       </button>
                     </div>
-                   <p id="birthdate-help" className="text-xs text-gray-500 mt-1">
-  Must be between <span className="font-medium">{minDOBLabel}</span> and <span className="font-medium">{maxDOBLabel}</span> (21–55 yrs).
-</p>
+                    <p id="birthdate-help" className="text-xs text-gray-500 mt-1">
+                      Must be between <span className="font-medium">{minDOBLabel}</span> and <span className="font-medium">{maxDOBLabel}</span> (21–55 yrs).
+                    </p>
                     {attempted && (!birthDate || !isBirthdateValid) && (
                       <p className="text-xs text-red-600 mt-1">Birthdate must make you between 21 and 55 years old.</p>
                     )}
 
-                    {dpOpen && (
+                    {dpOpen && !birthLocked && (
                       <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-3">
                         <div className="flex items-center justify-between px-2 pb-2">
                           <button
@@ -537,24 +678,29 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number</label>
-                    <div className={`flex items-center border rounded-xl ${attempted && !isContactValid ? 'border-red-500' : 'border-gray-300'}`}>
-                      <div className="w-8 h-5 mr-2 rounded-md">
+                    <div className={`flex items-center rounded-xl border ${attempted && !isContactValid ? 'border-red-500' : 'border-gray-300'} ${contactLocked ? 'bg-gray-100' : ''} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
+                      <div className="w-8 h-5 ml-3 mr-2 rounded-md">
                         <img
                           src="philippines.png"
                           alt="Philippine Flag"
-                          className="w-full h-full object-contain rounded-md ml-1"
+                          className="w-full h-full object-contain rounded-md"
                         />
                       </div>
-                      <span className="text-gray-700 text-sm mr-2">+63</span>
+                      <span className="text-gray-700 text-sm mr-3">+63</span>
+                      <span className="h-6 w-px bg-gray-200 mr-2" />
                       <input
                         type="text"
                         value={contactNumber}
                         onChange={(e) => {
+                          if (contactLocked) return;
                           const v = e.target.value.replace(/\D/g, '').slice(0, 10);
                           setContactNumber(v);
                         }}
                         placeholder="9XXXXXXXXX"
-                        className="w-full px-4 py-3 border-l border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-r-xl"
+                        readOnly={contactLocked}
+                        aria-readonly={contactLocked}
+                        title={contactLocked ? 'This number comes from your account' : undefined}
+                        className={`w-full px-4 py-3 bg-transparent outline-none rounded-r-xl ${contactLocked ? 'cursor-not-allowed' : ''}`}
                         required
                         aria-invalid={attempted && !isContactValid}
                       />
@@ -574,7 +720,7 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                       readOnly={emailLocked}
                       aria-readonly={emailLocked}
                       title={emailLocked ? 'This email comes from your account' : undefined}
-                      className={`w-full px-4 py-3 border ${attempted && !validateEmail(email) ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${emailLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      className={`w-full px-4 py-3 border ${attempted && !validateEmail(email) ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40 ${emailLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                       required
                       aria-invalid={attempted && !validateEmail(email)}
                     />
@@ -589,7 +735,7 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                       <button
                         type="button"
                         onClick={toggleDropdown}
-                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
                         aria-expanded={showDropdown}
                         aria-haspopup="listbox"
                       >
@@ -627,6 +773,7 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                           ))}
                         </div>
                         <div className="flex items-center justify-between mt-2 px-2">
+                          <span className="text-xs text-gray-400">&nbsp;</span>
                           <button
                             type="button"
                             onClick={() => { setBarangay(''); setShowDropdown(false); }}
@@ -634,7 +781,6 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                           >
                             Clear
                           </button>
-                          <span className="text-xs text-gray-400">&nbsp;</span>
                         </div>
                       </div>
                     )}
@@ -651,7 +797,7 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                       value={street}
                       onChange={(e) => setStreet(e.target.value)}
                       placeholder="House No. and Street"
-                      className={`w-full px-4 py-3 border ${attempted && !street.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      className={`w-full px-4 py-3 border ${attempted && !street.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40`}
                       required
                       aria-invalid={attempted && !street.trim()}
                     />
@@ -660,8 +806,8 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
               </div>
 
               <div className="lg:col-span-1">
-                <div className="text-base font-semibold mb-3 text-center">Worker Profile Picture</div>
-                <p className="text-sm text-gray-600 text-center mb-5">Upload your picture here.</p>
+                <div className="text-xl md:text-2xl font-semibold mb-3 text-center">Worker Profile Picture</div>
+                <p className="text-base text-gray-600 text-center mb-5">Upload your picture here.</p>
                 <div className="flex flex-col items-center gap-5">
                   {!profilePicture ? (
                     <div className={`w-36 h-36 md:w-40 md:h-40 rounded-full grid place-items-center ${attempted && !profilePicture ? 'bg-red-200' : 'bg-gray-200'}`}>
@@ -686,7 +832,7 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition w-full"
+                      className="rounded-xl bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition w-full"
                     >
                       Choose Photo
                     </button>
@@ -730,14 +876,15 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Loading next step"
+          aria-label="Preparing Step 2"
           tabIndex={-1}
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
-          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
@@ -767,6 +914,54 @@ const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = use
             </div>
             <div className="mt-6 text-center">
               <div className="text-base font-semibold text-gray-900">Preparing Step 2</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLoadingBack && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Going back to Dashboard"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-lg font-semibold text-gray-900">Going back to Dashboard</div>
               <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
             </div>
           </div>

@@ -73,6 +73,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   const navigate = useNavigate();
   const [logoBroken, setLogoBroken] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [requestGroupId, setRequestGroupId] = useState(null);
@@ -136,7 +137,7 @@ const WorkerReviewPost = ({ handleBack }) => {
     <div className="inline-flex items-center gap-2">
       <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
       <span className="text-gray-700 text-sm">+63</span>
-      <span className={`text-[15px] leading-6 ${contactLocal10 ? 'text-gray-900' : 'text-gray-400'}`}>
+      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-[#008cfc] font-medium' : 'text-gray-400'}`}>
         {contactLocal10 || '9XXXXXXXXX'}
       </span>
     </div>
@@ -153,11 +154,11 @@ const WorkerReviewPost = ({ handleBack }) => {
     const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
       <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-        <span className="text-sm font-semibold text-black">{labelText}</span>
+        <span className="font-semibold text-gray-700">{labelText}</span>
         {isElement ? (
-          <div className="text-[15px] leading-6 text-gray-900">{display}</div>
+          <div className="text-base md:text-lg">{display}</div>
         ) : (
-          <span className="text-[15px] leading-6 text-gray-900">{display}</span>
+          <span className="text-base md:text-lg font-medium text-[#008cfc]">{display}</span>
         )}
       </div>
     );
@@ -165,8 +166,11 @@ const WorkerReviewPost = ({ handleBack }) => {
 
   const handleBackClick = () => {
     jumpTop();
-    if (typeof handleBack === 'function') handleBack();
-    else navigate(-1);
+    setIsLoadingBack(true);
+    setTimeout(() => {
+      if (typeof handleBack === 'function') handleBack();
+      else navigate(-1);
+    }, 2000);
   };
 
   const handleConfirm = async () => {
@@ -185,9 +189,6 @@ const WorkerReviewPost = ({ handleBack }) => {
         street: street?.trim() || undefined,
         birth_date: birth_date || undefined,
         age: toNum(age),
-        facebook: savedInfo.facebook || undefined,
-        instagram: savedInfo.instagram || undefined,
-        linkedin: savedInfo.linkedin || undefined,
         profile_picture: typeof profile_picture === 'string' ? profile_picture : undefined,
         profile_picture_name: profile_picture_name || undefined,
         service_types: onlyStrings(service_types),
@@ -250,7 +251,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   };
 
   useEffect(() => {
-    const lock = isSubmitting || showSuccess;
+    const lock = isSubmitting || showSuccess || isLoadingBack;
     if (!lock) return;
     const onPopState = () => { window.history.pushState(null, '', window.location.href); };
     window.history.pushState(null, '', window.location.href);
@@ -269,35 +270,40 @@ const WorkerReviewPost = ({ handleBack }) => {
       body.style.overflow = prevBodyOverflow || '';
       window.removeEventListener('keydown', blockKeys, true);
     };
-  }, [isSubmitting, showSuccess]);
+  }, [isSubmitting, showSuccess, isLoadingBack]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
-        <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
+        <div className="mx-auto w-full max-w-[1420px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
-            <div className="text-lg font-semibold text-gray-900">Review Worker Application</div>
+            <div className="h-9 w-9 grid place-items-center rounded-xl border border-blue-100 bg-white shadow-sm">
+              <img src="/jdklogo.png" alt="" className="h-6 w-6 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+            </div>
+            <div className="text-2xl md:text-3xl font-semibold text-gray-900">Review Worker Application</div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:block text-xs text-gray-500">Step 6 of 6</div>
-            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:block text-sm text-gray-500 tracking-wide">Step 6 of 6</div>
+            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden ring-1 ring-white">
               <div className="h-full w-full bg-[#008cfc]" />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[1520px] px-6">
+      <div className="mx-auto w-full max-w-[1420px] px-6">
         <div className="space-y-6 mt-5">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-              <h3 className="text-xl md:text-2xl font-semibold">Personal Information</h3>
-              <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Worker</span>
+          <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
+              <h3 className="text-xl md:text-[22px] font-semibold">Personal Information</h3>
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
+                Worker
+              </span>
             </div>
             <div className="px-6 py-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
-                <div className="text-base md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 text-base">
                   <LabelValue label="First Name" value={first_name} />
                   <LabelValue label="Last Name" value={last_name} />
                   <LabelValue label="Contact Number" value={contactDisplay} />
@@ -306,12 +312,6 @@ const WorkerReviewPost = ({ handleBack }) => {
                     label="Address"
                     value={street && barangay ? `${street}, ${barangay}` : street || barangay}
                   />
-                  <div className="md:col-span-2 pt-4">
-                    <div className="text-lg font-semibold text-gray-900 mb-2">Social Media</div>
-                  </div>
-                  <LabelValue label="Facebook" value={savedInfo.facebook || ''} emptyAs="None" />
-                  <LabelValue label="Instagram" value={savedInfo.instagram || ''} emptyAs="None" />
-                  <LabelValue label="LinkedIn" value={savedInfo.linkedin || ''} emptyAs="None" />
                 </div>
 
                 <div className="md:col-span-1 flex flex-col items-center">
@@ -336,22 +336,26 @@ const WorkerReviewPost = ({ handleBack }) => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-                  <h3 className="text-xl md:text-2xl font-semibold">Work Details</h3>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">Details</span>
+              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
+                  <h3 className="text-xl md:text-[22px] font-semibold">Work Details</h3>
+                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                    <span className="h-3 w-3 rounded-full bg-white/60" />
+                    Details
+                  </span>
                 </div>
                 <div className="px-6 py-6">
-                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
+                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                     <LabelValue label="Service Types" value={formatList(service_types)} />
+                    <LabelValue label="Years of Experience" value={years_experience} />
                     <div className="md:col-span-2">
                       <div className="text-sm font-semibold text-black mb-2">Selected Tasks</div>
                       {job_details && typeof job_details === 'object' && Object.keys(job_details).length ? (
                         <div className="space-y-2">
                           {Object.entries(job_details).map(([k, v]) => (
                             <div key={k} className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-                              <span className="text-sm font-semibold text-black">{`${k.replace(/:?\s*$/,'')}:`}</span>
-                              <span className="text-[15px] leading-6 text-gray-900">{formatList(v)}</span>
+                              <span className="font-semibold text-gray-700">{`${k.replace(/:?\s*$/,'')}:`}</span>
+                              <span className="text-base md:text-lg font-medium text-[#008cfc]">{formatList(v)}</span>
                             </div>
                           ))}
                         </div>
@@ -360,7 +364,6 @@ const WorkerReviewPost = ({ handleBack }) => {
                       )}
                     </div>
                     <LabelValue label="Tools Provided" value={tools_provided} />
-                    <LabelValue label="Years of Experience" value={years_experience} />
                     <div className="md:col-span-2">
                       <LabelValue label="Description" value={service_description || '-'} />
                     </div>
@@ -368,13 +371,16 @@ const WorkerReviewPost = ({ handleBack }) => {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-                  <h3 className="text-xl md:text-2xl font-semibold">Service Rate</h3>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100">Pricing</span>
+              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
+                  <h3 className="text-xl md:text-[22px] font-semibold">Service Rate</h3>
+                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                    <span className="h-3 w-3 rounded-full bg-white/60" />
+                    Pricing
+                  </span>
                 </div>
                 <div className="px-6 py-6">
-                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
+                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                     <LabelValue label="Rate Type" value={rate_type} />
                     {rate_type === 'Hourly Rate' ? (
                       <LabelValue
@@ -390,35 +396,38 @@ const WorkerReviewPost = ({ handleBack }) => {
             </div>
 
             <aside className="lg:col-span-1 flex flex-col">
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden h-[435.5px] flex flex-col">
-                <div className="bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] px-6 py-5 text-white">
+              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 overflow-hidden flex flex-col transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+                <div className="bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] px-6 py-5 text-white rounded-t-2xl">
                   <div className="text-base font-medium">Summary</div>
-                  <div className="text-sm text-white/90">Review everything before submitting</div>
+                  <div className="text-xs text-white/90">Review everything before submitting</div>
                 </div>
                 <div className="px-6 py-5 space-y-4 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Worker</span>
-                    <span className="text-sm font-medium text-gray-900">{first_name || '-'} {last_name || ''}</span>
+                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <span className="text-sm font-semibold text-white/80 sr-only">.</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Services</span>
-                    <span className="text-sm font-medium text-gray-900 truncate max-w-[55%] text-right">{formatList(service_types)}</span>
+                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <span className="text-sm font-semibold text-gray-700">Worker:</span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Experience</span>
-                    <span className="text-sm font-medium text-gray-900">{years_experience || '-'}</span>
+                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <span className="text-sm font-semibold text-gray-700">Services:</span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{formatList(service_types)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Tools</span>
-                    <span className="text-sm font-medium text-gray-900">{tools_provided || '-'}</span>
+                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <span className="text-sm font-semibold text-gray-700">Experience:</span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{years_experience || '-'}</span>
+                  </div>
+                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <span className="text-sm font-semibold text-gray-700">Tools:</span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{tools_provided || '-'}</span>
                   </div>
                   <div className="h-px bg-gray-100 my-2" />
-                  <div className="space-y-2">
-                    <div className="text-sm text-gray-600">Rate</div>
+                  <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">
+                    <span className="text-sm font-semibold text-gray-700">Rate:</span>
                     {rate_type === 'Hourly Rate' ? (
-                      <div className="text-lg font-semibold text-gray-900">₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-normal text-gray-500">per hour</span></div>
+                      <div className="text-lg font-semibold text-[#008cfc]">₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-normal text-[#008cfc] opacity-80">per hour</span></div>
                     ) : rate_type === 'By the Job Rate' ? (
-                      <div className="text-lg font-semibold text-gray-900">₱{rate_value ?? 0} <span className="text-sm font-normal text-gray-500">per job</span></div>
+                      <div className="text-lg font-semibold text-[#008cfc]">₱{rate_value ?? 0} <span className="text-sm font-normal text-[#008cfc] opacity-80">per job</span></div>
                     ) : (
                       <div className="text-gray-500 text-sm">No rate provided</div>
                     )}
@@ -427,20 +436,20 @@ const WorkerReviewPost = ({ handleBack }) => {
                 {submitError ? (
                   <div className="px-6 py-3 text-sm text-red-700 bg-red-50 border-t border-red-100">{submitError}</div>
                 ) : null}
-                <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3 -mt-8">
+                <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
                   <button
                     type="button"
                     onClick={handleBackClick}
-                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                   >
-                    Back : Step 5
+                    Back
                   </button>
                   <button
                     type="button"
                     onClick={handleConfirm}
-                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-blue-700 transition shadow-sm"
+                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                   >
-                    Confirm Application
+                    Confirm
                   </button>
                 </div>
               </div>
@@ -449,103 +458,6 @@ const WorkerReviewPost = ({ handleBack }) => {
 
           {false && (
             <>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="text-2xl font-semibold mb-10">Personal Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
-                  <div className="text-lg md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
-                    <LabelValue label="First Name" value={first_name} />
-                    <LabelValue label="Last Name" value={last_name} />
-                    <LabelValue label="Birthdate" value={birth_date} />
-                    <LabelValue label="Contact Number" value={contactDisplay} />
-                    <LabelValue label="Email" value={email} />
-                    <LabelValue label="Address" value={street && barangay ? `${street}, ${barangay}` : street || barangay} />
-                    <div className="hidden md:block mt-14" />
-                    <div className="md:col-span-2 pt-2 mt-7">
-                      <h4 className="text-2xl font-semibold">Social Media</h4>
-                    </div>
-                    <LabelValue label="Facebook" value={savedInfo.facebook || '-'} emptyAs="None" />
-                    <LabelValue label="Instagram" value={savedInfo.instagram || '-'} emptyAs="None" />
-                    <LabelValue label="LinkedIn" value={savedInfo.linkedin || '-'} emptyAs="None" />
-                  </div>
-                  <div className="md:col-span-1">
-                    <h4 className="text-xl font-semibold mb-2">Profile Picture</h4>
-                    {profile_picture ? (
-                      <img
-                        src={profile_picture}
-                        alt="Profile"
-                        className="w-40 h-40 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="text-[#008cfc]">-</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="text-2xl font-semibold mb-10">Work Details</h3>
-                <div className="text-lg grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
-                  <LabelValue label="Service Types" value={formatList(service_types)} />
-                  <LabelValue label="Years of Experience" value={years_experience} />
-                  <LabelValue label="Tools Provided" value={tools_provided} />
-                  <div className="md:col-span-2">
-                    <div className="flex items-start gap-2">
-                      <span className="font-bold text-gray-900 whitespace-nowrap">Description:</span>
-                      <span className="text-[#008cfc]">{service_description || '-'}</span>
-                    </div>
-                  </div>
-                  <div className="md:col-span-2">
-                    <h4 className="text-xl font-semibold mb-2">Selected Tasks</h4>
-                    <div className="text-[#008cfc]">
-                      {job_details && typeof job_details === 'object' && Object.keys(job_details).length
-                        ? Object.entries(job_details).map(([k, v]) => (
-                            <div key={k} className="mb-1">
-                              <span className="font-semibold text-gray-900 mr-1">{k}:</span>
-                              <span>{formatList(v)}</span>
-                            </div>
-                          ))
-                        : '-'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="text-2xl font-semibold mb-10">Service Rate</h3>
-                <div className="text-lg grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
-                  <LabelValue label="Rate Type" value={rate_type} />
-                  {rate_type === 'Hourly Rate' ? (
-                    <LabelValue
-                      label="Rate"
-                      value={rate_from && rate_to ? `₱${rate_from} - ₱${rate_to} per hour` : ''}
-                    />
-                  ) : (
-                    <LabelValue label="Rate" value={rate_value ? `₱${rate_value}` : ''} />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-between mt-28">
-                <button
-                  type="button"
-                  onClick={handleBackClick}
-                  className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 -mt-4"
-                >
-                  Back : Step 5
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleConfirm}
-                  className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 -mt-4"
-                >
-                  Confirm Application
-                </button>
-              </div>
-
-              {submitError && (
-                <div className="mt-6 text-red-600 text-sm">{submitError}</div>
-              )}
             </>
           )}
         </div>
@@ -560,9 +472,10 @@ const WorkerReviewPost = ({ handleBack }) => {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
-          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
@@ -590,9 +503,57 @@ const WorkerReviewPost = ({ handleBack }) => {
                 )}
               </div>
             </div>
-            <div className="mt-6 text-center">
-              <div className="text-base font-semibold text-gray-900">Submitting Application</div>
-              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            <div className="mt-6 text-center space-y-1">
+              <div className="text-lg font-semibold text-gray-900">Submitting Application</div>
+              <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLoadingBack && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Back to Step 5"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center space-y-1">
+              <div className="text-lg font-semibold text-gray-900">Back to Step 5</div>
+              <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
             </div>
           </div>
         </div>
@@ -607,8 +568,9 @@ const WorkerReviewPost = ({ handleBack }) => {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
         >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBroken ? (
@@ -635,7 +597,7 @@ const WorkerReviewPost = ({ handleBack }) => {
               <button
                 type="button"
                 onClick={handleGoDashboard}
-                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
               >
                 Go back to Dashboard
               </button>

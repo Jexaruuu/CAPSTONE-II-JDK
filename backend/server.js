@@ -87,6 +87,7 @@ app.post("/api/auth/resend",async(req,res)=>{try{const email=String((req.body||{
 app.use("/api",authRoutes);
 app.use("/api/clients",clientRoutes);
 app.use("/api/workers",workerRoutes);
+app.use("/api/worker",workerRoutes);
 app.use("/api/login",loginRoutes);
 app.use("/api/admins",adminRoutes);
 app.use("/api/admin",adminRoutes);

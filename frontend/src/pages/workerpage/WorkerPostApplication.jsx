@@ -30,8 +30,8 @@ const WorkerPost = () => {
     1: 'Step 1: Worker Information',
     2: 'Step 2: Describe Your Work',
     3: 'Step 3: Required Documents',
-    4: 'Step 5: Set Your Price Rate',
-    5: 'Step 4: Terms & Agreements',
+    4: 'Step 4: Set Your Price Rate',
+    5: 'Step 5: Terms & Agreements',
     6: 'Step 6: Review Application',
   };
 

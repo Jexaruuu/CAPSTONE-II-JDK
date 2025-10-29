@@ -663,7 +663,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     onClick={handleBackClick}
                     className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                   >
-                    Back : Step 3
+                    Back
                   </button>
                   <button
                     type="button"

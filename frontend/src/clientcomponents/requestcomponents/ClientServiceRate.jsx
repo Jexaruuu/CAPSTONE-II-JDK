@@ -285,7 +285,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
             onClick={onBackClick}
             className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
           >
-            Back : Step 2
+            Back : Service Request Details
           </button>
 
           <button

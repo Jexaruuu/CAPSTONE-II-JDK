@@ -10,7 +10,7 @@ const navItems = [
   { label: 'Dashboard',           to: '/admindashboard',                     icon: LayoutDashboard },
   { label: 'Manage Users',        to: '/admindashboard/manage-users',        icon: Users },
   { label: 'Service Requests',    to: '/admindashboard/service-requests',    icon: FileText,       badgeKey: 'service' },
-  { label: 'Worker Applications', to: '/admindashboard/worker-applications', icon: ClipboardList,  badgeKey: 'worker' },
+  { label: 'Applications', to: '/admindashboard/worker-applications', icon: ClipboardList,  badgeKey: 'worker' },
 ];
 
 const AdminSideNavigation = () => {

@@ -15,13 +15,13 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
 
-  // ------- NEW: popover states/refs (same pattern as other pages) -------
   const toolsRef = useRef(null);
   const [toolsOpen, setToolsOpen] = useState(false);
 
-  // Track which job task popover is open, by key `${jobType}-${index}`
   const [openTaskKey, setOpenTaskKey] = useState(null);
-  const taskRowRefs = useRef({}); // map of key -> ref
+  const taskRowRefs = useRef({});
+
+  const [isLoadingBack, setIsLoadingBack] = useState(false);
 
   const setTaskRowRef = (key, node) => {
     if (!taskRowRefs.current) taskRowRefs.current = {};
@@ -44,7 +44,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     return () => { document.removeEventListener('mousedown', handleGlobalClick); };
   }, [openTaskKey]);
 
-  // Simple PopList (same design language as your other pages)
   const PopList = ({
     items,
     value,
@@ -79,7 +78,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
           <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
         )}
       </div>
-      <div className="flex items-center justify-between mt-3 px-2">
+      <div className="flex items-center justify-end mt-3 px-2">
         <button
           type="button"
           onClick={() => onSelect('')}
@@ -87,11 +86,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
         >
           Clear
         </button>
-        <span className="text-xs text-gray-400">&nbsp;</span>
       </div>
     </div>
   );
-  // ---------------------------------------------------------------------
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -269,9 +266,31 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     setTimeout(() => { proceed(); }, 2000);
   };
 
+  useEffect(() => {
+    if (!isLoadingBack) return;
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    return () => { window.removeEventListener('popstate', onPopState, true); };
+  }, [isLoadingBack]);
+
+  useEffect(() => {
+    if (!isLoadingBack) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [isLoadingBack]);
+
   const onBackClick = () => {
     jumpTop();
-    handleBack?.();
+    setIsLoadingBack(true);
+    setTimeout(() => { handleBack?.(); }, 2000);
   };
 
   return (
@@ -280,10 +299,10 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
-            <div className="text-lg font-semibold text-gray-900">Tell us about your work</div>
+            <div className="text-2xl md:text-3xl font-semibold text-gray-900">Tell us about your work</div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="hidden sm:block text-xs text-gray-500">Step 2 of 4</div>
+            <div className="hidden sm:block text-sm text-gray-500">Step 2 of 4</div>
             <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden">
               <div className="h-full w-1/2 bg-[#008cfc]" />
             </div>
@@ -292,244 +311,252 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       </div>
 
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 -ml-3 mt-5">
-            <h3 className="text-xl md:text-2xl font-semibold mb-6">Type of Service</h3>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Service Type *</label>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                {serviceTypes.map((type) => (
-                  <label key={type} className="flex items-center gap-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={serviceTypesSelected.includes(type)}
-                      onChange={() => handleServiceTypeToggle(type)}
-                      className="peer sr-only"
-                    />
-                    <span
-                      className="relative h-5 w-5 rounded-md border border-gray-300 bg-white transition
-                                 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300
-                                 peer-checked:bg-[#008cfc] peer-checked:border-[#008cfc] grid place-items-center"
-                      aria-hidden="true"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-3.5 w-3.5 opacity-0 peer-checked:opacity-100 transition"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </span>
-                    <span className="text-sm font-medium text-gray-900">{type}</span>
-                  </label>
-                ))}
-              </div>
-              {attempted && serviceTypesSelected.length === 0 && (
-                <p className="text-xs text-red-600 mt-1">Select at least one service type.</p>
-              )}
-            </div>
-
-            {serviceTypesSelected.length > 0 && (
-              <div className="mb-4">
-                <h4 className="text-md font-semibold mb-2">Service Details</h4>
-                {serviceTypesSelected.map((jobType) => {
-                  const hasDetail = (jobDetails[jobType] || []).some(
-                    (v) => String(v || '').trim() !== ''
-                  );
-                  return (
-                    <div key={jobType} className="mb-5 border p-3 rounded-md bg-gray-50">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {jobType} Services
-                      </label>
-
-                      {jobDetails[jobType]?.map((task, index) => {
-                        const key = `${jobType}-${index}`;
-                        const options = jobTasks[jobType] || [];
-
-                        // original select kept but hidden (do not remove)
-                        return (
-                          <div key={index} className="mb-2" ref={(node) => setTaskRowRef(key, node)}>
-                            <select
-                              value={task}
-                              onChange={(e) => handleJobDetailChange(jobType, index, e.target.value)}
-                              className="hidden"
-                              aria-hidden="true"
-                              tabIndex={-1}
-                            >
-                              <option value="">Select a service</option>
-                              {options.map((taskOption, i) => {
-                                const isSelectedElsewhere =
-                                  jobDetails[jobType]?.includes(taskOption) && taskOption !== task;
-                                return (
-                                  <option key={i} value={taskOption} disabled={isSelectedElsewhere}>
-                                    {taskOption}
-                                  </option>
-                                );
-                              })}
-                            </select>
-
-                            {/* Custom popover trigger (same width + right icon) */}
-                            <div className="relative">
-                              <div className={`flex items-center rounded-xl border ${attempted && !task ? 'border-red-500' : 'border-gray-300'}`}>
-                                <button
-                                  type="button"
-                                  onClick={() => setOpenTaskKey((k) => (k === key ? null : key))}
-                                  className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                  {task || 'Select a service'}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setOpenTaskKey((k) => (k === key ? null : key))}
-                                  className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                                  aria-label={`Open ${jobType} service options`}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
-                                  </svg>
-                                </button>
-                              </div>
-
-                              {openTaskKey === key && (
-                                <PopList
-                                  items={options}
-                                  value={task}
-                                  fullWidth
-                                  title={`Select ${jobType} Service`}
-                                  disabledLabel={(opt) =>
-                                    jobDetails[jobType]?.includes(opt) && opt !== task
-                                  }
-                                  onSelect={(val) => {
-                                    handleJobDetailChange(jobType, index, val);
-                                    setOpenTaskKey(null);
-                                  }}
-                                />
-                              )}
-                            </div>
-
-                            {jobDetails[jobType].length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeTaskField(jobType, index)}
-                                className="mt-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-
-                      {attempted && !hasDetail && (
-                        <p className="text-xs text-red-600 mt-1">Choose at least one {jobType} service.</p>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => addTaskField(jobType)}
-                        className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-2.5"
-                      >
-                        + Add Another Task
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-5">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+            <h3 className="text-xl md:text-2xl font-semibold">Work Information</h3>
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Worker
+            </span>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 self-start mt-5">
-            <h3 className="text-xl md:text-2xl font-semibold mb-6">Service Description</h3>
+          <div className="px-6 py-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+              <div>
+                <h3 className="text-xl md:text-2xl font-semibold mb-6">Type of Service</h3>
 
-            <div className="mb-4">
-              <textarea
-                value={serviceDescription}
-                onChange={(e) => setServiceDescription(e.target.value)}
-                placeholder="Describe the service you offer"
-                className={`w-full h-[180px] px-4 py-3 border ${attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                required
-                aria-invalid={attempted && !serviceDescription.trim()}
-              />
-              {attempted && !serviceDescription.trim() && (
-                <p className="text-xs text-red-600 mt-1">Please describe your services.</p>
-              )}
-            </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Service Type *</label>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    {serviceTypes.map((type) => (
+                      <label key={type} className="flex items-center gap-3 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={serviceTypesSelected.includes(type)}
+                          onChange={() => handleServiceTypeToggle(type)}
+                          className="peer sr-only"
+                        />
+                        <span
+                          className="relative h-5 w-5 rounded-md border border-gray-300 bg-white transition
+                                     peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300
+                                     peer-checked:bg-[#008cfc] peer-checked:border-[#008cfc] grid place-items-center"
+                          aria-hidden="true"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="h-3.5 w-3.5 opacity-0 peer-checked:opacity-100 transition"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">{type}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {attempted && serviceTypesSelected.length === 0 && (
+                    <p className="text-xs text-red-600 mt-1">Select at least one service type.</p>
+                  )}
+                </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience *</label>
-              <input
-                type="number"
-                min="1"
-                max="50"
-                step="1"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={yearsExperience}
-                onChange={handleYearsChange}
-                placeholder="Enter years of experience"
-                className={`w-full px-4 py-3 border ${attempted && !isYearsValid ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                required
-                aria-invalid={attempted && !isYearsValid}
-              />
-              {attempted && !isYearsValid && (
-                <p className="text-xs text-red-600 mt-1">Enter a valid number from 1–50.</p>
-              )}
-            </div>
+                {serviceTypesSelected.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-base font-semibold mb-2">Service Details</h4>
+                    {serviceTypesSelected.map((jobType) => {
+                      const hasDetail = (jobDetails[jobType] || []).some(
+                        (v) => String(v || '').trim() !== ''
+                      );
+                      return (
+                        <div key={jobType} className="mb-5 border p-3 rounded-md bg-gray-50">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            {jobType} Services
+                          </label>
 
-            {/* Tools Provided: custom popover (same width + right icon) */}
-            <div className="mb-2 relative" ref={toolsRef}>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Do you have your own tools or equipment? *</label>
+                          {jobDetails[jobType]?.map((task, index) => {
+                            const key = `${jobType}-${index}`;
+                            const options = jobTasks[jobType] || [];
 
-              {/* Keep original select but hidden for compatibility */}
-              <select
-                value={toolsProvided}
-                onChange={(e) => setToolsProvided(e.target.value)}
-                className="hidden"
-                aria-hidden="true"
-                tabIndex={-1}
-              >
-                <option value="">Select Yes or No</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-              </select>
+                            return (
+                              <div key={index} className="mb-2" ref={(node) => setTaskRowRef(key, node)}>
+                                <select
+                                  value={task}
+                                  onChange={(e) => handleJobDetailChange(jobType, index, e.target.value)}
+                                  className="hidden"
+                                  aria-hidden="true"
+                                  tabIndex={-1}
+                                >
+                                  <option value="">Select a service</option>
+                                  {options.map((taskOption, i) => {
+                                    const isSelectedElsewhere =
+                                      jobDetails[jobType]?.includes(taskOption) && taskOption !== task;
+                                    return (
+                                      <option key={i} value={taskOption} disabled={isSelectedElsewhere}>
+                                        {taskOption}
+                                      </option>
+                                    );
+                                  })}
+                                </select>
 
-              <div className={`flex items-center rounded-xl border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'}`}>
-                <button
-                  type="button"
-                  onClick={() => setToolsOpen((s) => !s)}
-                  className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {toolsProvided || 'Select Yes or No'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setToolsOpen((s) => !s)}
-                  className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                  aria-label="Open tools provided options"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
-                  </svg>
-                </button>
+                                <div className="relative">
+                                  <div className={`flex items-center rounded-xl border ${attempted && !task ? 'border-red-500' : 'border-gray-300'}`}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenTaskKey((k) => (k === key ? null : key))}
+                                      className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                                    >
+                                      {task || 'Select a service'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenTaskKey((k) => (k === key ? null : key))}
+                                      className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                                      aria-label={`Open ${jobType} service options`}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                                      </svg>
+                                    </button>
+                                  </div>
+
+                                  {openTaskKey === key && (
+                                    <PopList
+                                      items={options}
+                                      value={task}
+                                      fullWidth
+                                      title={`Select ${jobType} Service`}
+                                      disabledLabel={(opt) =>
+                                        jobDetails[jobType]?.includes(opt) && opt !== task
+                                      }
+                                      onSelect={(val) => {
+                                        handleJobDetailChange(jobType, index, val);
+                                        setOpenTaskKey(null);
+                                      }}
+                                    />
+                                  )}
+                                </div>
+
+                                {jobDetails[jobType].length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeTaskField(jobType, index)}
+                                    className="mt-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {attempted && !hasDetail && (
+                            <p className="text-xs text-red-600 mt-1">Choose at least one {jobType} service.</p>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => addTaskField(jobType)}
+                            className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-2.5 text-sm"
+                          >
+                            + Add Another Task
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              {attempted && !toolsProvided && (
-                <p className="text-xs text-red-600 mt-1">Please choose Yes or No.</p>
-              )}
 
-              {toolsOpen && (
-                <PopList
-                  items={['Yes', 'No']}
-                  value={toolsProvided}
-                  fullWidth
-                  title="Select Tools Provided"
-                  onSelect={(v) => { setToolsProvided(v); setToolsOpen(false); }}
-                />
-              )}
+              <div ref={toolsRef}>
+                <h3 className="text-xl md:text-2xl font-semibold mb-6">Service Description</h3>
+
+                <div className="mb-4">
+                  <textarea
+                    value={serviceDescription}
+                    onChange={(e) => setServiceDescription(e.target.value)}
+                    placeholder="Describe the service you offer"
+                    className={`w-full h-[180px] px-4 py-3 border ${attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                    required
+                    aria-invalid={attempted && !serviceDescription.trim()}
+                  />
+                  {attempted && !serviceDescription.trim() && (
+                    <p className="text-xs text-red-600 mt-1">Please describe your services.</p>
+                  )}
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    step="1"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={yearsExperience}
+                    onChange={handleYearsChange}
+                    placeholder="Enter years of experience"
+                    className={`w-full px-4 py-3 border ${attempted && !isYearsValid ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                    required
+                    aria-invalid={attempted && !isYearsValid}
+                  />
+                  {attempted && !isYearsValid && (
+                    <p className="text-xs text-red-600 mt-1">Enter a valid number from 1–50.</p>
+                  )}
+                </div>
+
+                <div className="mb-2 relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Do you have your own tools or equipment? *</label>
+
+                  <select
+                    value={toolsProvided}
+                    onChange={(e) => setToolsProvided(e.target.value)}
+                    className="hidden"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                  >
+                    <option value="">Select Yes or No</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+
+                  <div className={`flex items-center rounded-xl border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'}`}>
+                    <button
+                      type="button"
+                      onClick={() => setToolsOpen((s) => !s)}
+                      className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                    >
+                      {toolsProvided || 'Select Yes or No'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setToolsOpen((s) => !s)}
+                      className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                      aria-label="Open tools provided options"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                  {attempted && !toolsProvided && (
+                    <p className="text-xs text-red-600 mt-1">Please choose Yes or No.</p>
+                  )}
+
+                  {toolsOpen && (
+                    <PopList
+                      items={['Yes', 'No']}
+                      value={toolsProvided}
+                      fullWidth
+                      title="Select Tools Provided"
+                      onSelect={(v) => { setToolsProvided(v); setToolsOpen(false); }}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -563,9 +590,10 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
         >
-          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
@@ -584,6 +612,43 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             </div>
             <div className="mt-6 text-center">
               <div className="text-base font-semibold text-gray-900">Preparing Step 3</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLoadingBack && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Back to Step 1"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-lg font-semibold text-gray-900">Back to Step 1</div>
               <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
             </div>
           </div>
