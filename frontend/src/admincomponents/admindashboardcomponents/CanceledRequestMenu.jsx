@@ -150,6 +150,7 @@ export default function AdminCancelledRequests() {
   const [reasonRow, setReasonRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [sectionOpen, setSectionOpen] = useState("all");
+  const [serviceFilter, setServiceFilter] = useState("all");
 
   const fetchItems = async () => {
     setLoading(true);
@@ -250,19 +251,45 @@ export default function AdminCancelledRequests() {
     };
   }, [viewRow]);
 
+  const filteredRows = useMemo(() => {
+    if (serviceFilter === "all") return rows;
+    const f = serviceFilter.toLowerCase();
+    return rows.filter((r) => String(r.service_type || "").toLowerCase() === f);
+  }, [rows, serviceFilter]);
+
+  const serviceCounts = useMemo(() => {
+    const counts = {
+      all: rows.length,
+      "Car Washing": 0,
+      Carpentry: 0,
+      "Electrical Works": 0,
+      Laundry: 0,
+      Plumbing: 0,
+    };
+    for (const r of rows) {
+      const t = String(r.service_type || "").toLowerCase();
+      if (t === "car washing") counts["Car Washing"]++;
+      else if (t === "carpentry") counts["Carpentry"]++;
+      else if (t === "electrical works") counts["Electrical Works"]++;
+      else if (t === "laundry") counts["Laundry"]++;
+      else if (t === "plumbing") counts["Plumbing"]++;
+    }
+    return counts;
+  }, [rows]);
+
   const sortedRows = useMemo(() => {
-    if (!sort.key) return rows;
+    if (!sort.key) return filteredRows;
     if (sort.key === "created_at_ts") {
       const dir = sort.dir === "asc" ? 1 : -1;
-      return [...rows].sort((a, b) => (a.created_at_ts - b.created_at_ts) * dir);
+      return [...filteredRows].sort((a, b) => (a.created_at_ts - b.created_at_ts) * dir);
     }
     const dir = sort.dir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
+    return [...filteredRows].sort((a, b) => {
       const av = String(a[sort.key] ?? "").toLowerCase();
       const bv = String(b[sort.key] ?? "").toLowerCase();
       return av < bv ? -1 * dir : av > bv ? 1 * dir : 0;
     });
-  }, [rows, sort]);
+  }, [filteredRows, sort]);
 
   const toggleSort = (key) => setSort((prev) => (prev.key !== key ? { key, dir: "asc" } : { key, dir: prev.dir === "asc" ? "desc" : "asc" }));
 
@@ -577,6 +604,15 @@ export default function AdminCancelledRequests() {
     );
   };
 
+  const serviceTabs = [
+    { key: "all", label: "All" },
+    { key: "Car Washing", label: "Car Washing" },
+    { key: "Carpentry", label: "Carpentry" },
+    { key: "Electrical Works", label: "Electrical Works" },
+    { key: "Laundry", label: "Laundry" },
+    { key: "Plumbing", label: "Plumbing" },
+  ];
+
   return (
     <main className="p-6">
       <div className="mb-4">
@@ -587,7 +623,39 @@ export default function AdminCancelledRequests() {
       <section className="mt-6">
         <div className="-mx-6">
           <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col gap-2"></div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-gray-700">Filter</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {serviceTabs.map((t) => {
+                  const active = serviceFilter === t.key;
+                  const count =
+                    t.key === "all"
+                      ? serviceCounts.all
+                      : serviceCounts[t.key] ?? 0;
+                  return (
+                    <button
+                      key={t.key}
+                      onClick={() => {
+                        setServiceFilter(t.key);
+                        setCurrentPage(1);
+                      }}
+                      className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                        active ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <span>{t.label}</span>
+                      <span
+                        className={`inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold ${
+                          active ? "bg-white/20" : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="flex items-center gap-2">
               <div className="relative">
