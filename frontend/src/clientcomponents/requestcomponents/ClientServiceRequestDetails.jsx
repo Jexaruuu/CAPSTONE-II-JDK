@@ -27,6 +27,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const [hydrated, setHydrated] = useState(false);
   const dropdownRef = useRef(null);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
+  const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const fileRef = useRef(null);
 
@@ -354,6 +355,27 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     };
   }, [isLoadingNext]);
 
+  useEffect(() => {
+    if (!isLoadingBack) return;
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    return () => { window.removeEventListener('popstate', onPopState, true); };
+  }, [isLoadingBack]);
+
+  useEffect(() => {
+    if (!isLoadingBack) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [isLoadingBack]);
+
   const onNextClick = () => {
     setAttempted(true);
     if (isFormValid) {
@@ -362,6 +384,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       setIsLoadingNext(true);
       setTimeout(() => { handleNext(); }, 2000);
     }
+  };
+
+  const onBackClick = () => {
+    localStorage.setItem(PRESERVE_IMAGE_FLAG, '1');
+    jumpTop();
+    setIsLoadingBack(true);
+    setTimeout(() => { handleBack(); }, 2000);
   };
 
   const toYMD = (d) => {
@@ -990,7 +1019,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         <div className="flex flex-col sm:flex-row justify-between gap-3">
           <button
             type="button"
-            onClick={() => { localStorage.setItem(PRESERVE_IMAGE_FLAG, '1'); jumpTop(); handleBack(); }}
+            onClick={onBackClick}
             className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
           >
             Back : Step 1
@@ -1039,6 +1068,43 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
             </div>
             <div className="mt-6 text-center">
               <div className="text-lg font-semibold text-gray-900">Preparing Step 3</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLoadingBack && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Back to Step 1"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-lg font-semibold text-gray-900">Back to Step 1</div>
               <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
             </div>
           </div>

@@ -11,6 +11,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const [attempted, setAttempted] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
+  const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
 
   useEffect(() => {
@@ -99,6 +100,31 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
     };
   }, [isLoadingNext]);
 
+  useEffect(() => {
+    if (!isLoadingBack) return;
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+    };
+  }, [isLoadingBack]);
+
+  useEffect(() => {
+    if (!isLoadingBack) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [isLoadingBack]);
+
   const handleReviewClick = () => {
     setAttempted(true);
     if (!isFormValid) return;
@@ -112,6 +138,14 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
           state: { title, rate_type: rateType, rate_from: rateFrom, rate_to: rateTo, rate_value: rateValue },
         });
       }
+    }, 2000);
+  };
+
+  const onBackClick = () => {
+    jumpTop();
+    setIsLoadingBack(true);
+    setTimeout(() => {
+      if (typeof handleBack === 'function') handleBack();
     }, 2000);
   };
 
@@ -224,7 +258,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
 
             {rateType === 'By the Job Rate' && (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Enter the Rate</label>
+                <label className="block text sm font-medium text-gray-700 mb-2">Enter the Rate</label>
                 <div className={`relative rounded-xl border ${attempted && !isJobValid() ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₱</span>
                   <input
@@ -248,7 +282,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         <div className="flex flex-col sm:flex-row justify-between gap-3">
           <button
             type="button"
-            onClick={() => { jumpTop(); handleBack(); }}
+            onClick={onBackClick}
             className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
           >
             Back : Step 2
@@ -277,7 +311,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
               <div
@@ -308,6 +342,54 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
             </div>
             <div className="mt-6 text-center">
               <div className="text-lg font-semibold text-gray-900">Preparing Step 4</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLoadingBack && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Back to Step 2"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-lg font-semibold text-gray-900">Back to Step 2</div>
               <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
             </div>
           </div>
