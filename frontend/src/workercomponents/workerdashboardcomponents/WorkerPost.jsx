@@ -77,6 +77,25 @@ function toBoolStrict(v) {
   return null;
 }
 
+function timeAgo(input) {
+  if (!input) return '';
+  const d = new Date(input);
+  if (isNaN(d)) return '';
+  const ms = Date.now() - d.getTime();
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 45) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} minute${m === 1 ? '' : 's'}`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? '' : 's'}`;
+  const dys = Math.floor(h / 24);
+  if (dys < 30) return `${dys} day${dys === 1 ? '' : 's'}`;
+  const mo = Math.floor(dys / 30);
+  if (mo < 12) return `${mo} month${mo === 1 ? '' : 's'}`;
+  const y = Math.floor(mo / 12);
+  return `${y} year${y === 1 ? '' : 's'}`;
+}
+
 function WorkerPost() {
   const [loading, setLoading] = useState(true);
   const [approved, setApproved] = useState([]);
@@ -87,6 +106,8 @@ function WorkerPost() {
 
   const [workerFirstName, setWorkerFirstName] = useState('');
   const [workerGender, setWorkerGender] = useState('');
+
+  const [currentApp, setCurrentApp] = useState(null);
 
   const PER_PAGE = 3;
 
@@ -182,50 +203,67 @@ function WorkerPost() {
     if (gender) setWorkerGender(gender);
   }, []);
 
-  const FETCH_APPLICATIONS = false;
+  const FETCH_APPLICATIONS = true;
 
   useEffect(() => {
-    if (!FETCH_APPLICATIONS) {
-      setLoading(false);
-      return;
-    }
     const email = getWorkerEmail();
     const workerId = getWorkerId();
-    if (!email && !workerId) {
-      setLoading(false);
-      return;
-    }
-    axios
-      .get(`${API_BASE}/api/workerapplications/approved`, {
-        params: { email, worker_id: workerId, limit: 10 },
-        withCredentials: true
-      })
-      .then((res) => {
-        const items = Array.isArray(res?.data?.items) ? res.data.items : [];
-        const normalized = items.map((it) => {
+    const load = async () => {
+      try {
+        if (!FETCH_APPLICATIONS) {
+          setLoading(false);
+          return;
+        }
+        if (!email && !workerId) {
+          setLoading(false);
+          return;
+        }
+        const a1 = axios.get(`${API_BASE}/api/workerapplications/approved`, {
+          params: { email, worker_id: workerId, limit: 10 },
+          withCredentials: true
+        });
+        const a2 = axios.get(`${API_BASE}/api/admin/workerapplications`, {
+          params: { status: 'pending', q: email || '' },
+          withCredentials: true
+        });
+        const [rApproved, rPending] = await Promise.allSettled([a1, a2]);
+        const itemsApproved = rApproved.status === 'fulfilled' ? (Array.isArray(rApproved.value?.data?.items) ? rApproved.value.data.items : []) : [];
+        const itemsPending = rPending.status === 'fulfilled' ? (Array.isArray(rPending.value?.data?.items) ? rPending.value.data.items : []) : [];
+        const merged = [...itemsApproved, ...itemsPending].filter(Boolean);
+        merged.sort((a, b) => new Date(b?.created_at || 0) - new Date(a?.created_at || 0));
+        const pick = merged.find(it => String(it?.status || '').toLowerCase() !== 'declined') || null;
+        if (pick) {
+          const d0 = { ...(pick.work || pick.details || {}) };
+          const t = toBoolStrict(d0.tools_provided);
+          if (t !== null) d0.tools_provided = t ? 'Yes' : 'No';
+          const normalized = { ...pick, details: d0, info: pick.info || pick.details || {} };
+          setCurrentApp(normalized);
+          if (!workerFirstName) {
+            const fn = normalized?.info?.first_name || normalized?.details?.first_name || normalized?.info?.firstname || normalized?.details?.firstname || '';
+            if (fn) setWorkerFirstName(String(fn).trim());
+          }
+          if (!workerGender) {
+            const g = normalized?.info?.gender || normalized?.details?.gender || normalized?.info?.sex || normalized?.details?.sex || '';
+            if (g) setWorkerGender(String(g).trim());
+          }
+        } else {
+          setCurrentApp(null);
+        }
+        setApproved(itemsApproved.map((it) => {
           const details = { ...(it.work || it.details || {}) };
           const t = toBoolStrict(details.tools_provided);
           if (t !== null) details.tools_provided = t ? 'Yes' : 'No';
           return { ...it, details };
-        });
-        setApproved(normalized);
+        }));
         setCurrent(0);
-        if (normalized.length) {
-          const first = normalized[0];
-          const fn =
-            first?.info?.first_name ||
-            first?.details?.first_name ||
-            first?.info?.firstname ||
-            first?.details?.firstname ||
-            '';
-          const g =
-            first?.info?.gender || first?.details?.gender || first?.info?.sex || first?.details?.sex || '';
-          setWorkerFirstName((prev) => prev || (fn ? String(fn).trim() : ''));
-          setWorkerGender((prev) => prev || (g ? String(g).trim() : ''));
-        }
-      })
-      .catch(() => setApproved([]))
-      .finally(() => setLoading(false));
+      } catch {
+        setCurrentApp(null);
+        setApproved([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
   useEffect(() => {
@@ -245,8 +283,6 @@ function WorkerPost() {
     const id = setInterval(() => setDotStep((s) => (s + 1) % 4), 350);
     return () => clearInterval(id);
   }, []);
-
-  const hasApproved = false;
 
   const totalSlides = Math.max(1, Math.ceil(approved.length / PER_PAGE));
 
@@ -353,7 +389,7 @@ function WorkerPost() {
 
   const onDragPointerLeave = () => {
     if (!isPointerDownRef.current) return;
-    isPointerDownRefRef = false;
+    isPointerDownRef.current = false;
     const wrap = trackRef.current;
     if (wrap) wrap.classList.remove('drag-active');
     pointerIdRef.current = null;
@@ -408,6 +444,20 @@ function WorkerPost() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const hasCurrent = !!currentApp;
+  const statusLower = String(currentApp?.status || '').toLowerCase();
+  const isPending = statusLower === 'pending';
+  const isApproved = statusLower === 'approved';
+  const createdAt = currentApp?.created_at || '';
+  const createdAgo = createdAt ? timeAgo(createdAt) : '';
+
+  const profileUrl = useMemo(() => {
+    const u = currentApp?.info?.profile_picture_url || '';
+    if (u) return u;
+    const name = capFirst || 'Worker';
+    return `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name)}`;
+  }, [currentApp, capFirst]);
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">
@@ -429,8 +479,8 @@ function WorkerPost() {
 
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-2xl font-semibold">Work Application Post</h3>
-          {hasApproved && (
+          <h3 className="text-2xl font-semibold">{hasCurrent ? 'Current Work Application' : 'Work Application Post'}</h3>
+          {false && (
             <Link
               to="/workerpostapplication"
               onClick={handleBecomeWorkerClick}
@@ -441,7 +491,129 @@ function WorkerPost() {
           )}
         </div>
 
-        {!hasApproved && (
+        {hasCurrent ? (
+          <div className="bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300 hover:ring-2 hover:shadow-xl hover:ring-inset hover:border-[#008cfc] hover:ring-[#008cfc]">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4 min-w-0">
+                <div className="shrink-0">
+                  <img
+                    src={profileUrl}
+                    alt=""
+                    className="w-20 h-20 rounded-full object-cover border border-blue-300"
+                    onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(capFirst || 'Worker')}`; }}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xl md:text-2xl font-semibold truncate">
+                    <span className="text-gray-700">Service Type:</span>{' '}
+                    <span className="text-[#008cfc]">{buildServiceType(currentApp) || 'Service'}</span>
+                  </div>
+                  <div className="mt-1 text-base md:text-lg truncate">
+                    <span className="font-semibold">Work Description:</span> {currentApp?.details?.work_description || '-'}
+                  </div>
+                  <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Submitted ${createdAgo} ago by You` : ''}</div>
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <span className="text-gray-700 font-semibold">Location:</span>
+                        <span className="text-[#008cfc] font-medium">{buildLocation(currentApp) || '-'}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <span className="text-gray-700 font-semibold">Years of Experience:</span>
+                        <span className="text-[#008cfc] font-medium">
+                          {currentApp?.details?.years_experience !== undefined && currentApp?.details?.years_experience !== null && currentApp?.details?.years_experience !== ''
+                            ? String(currentApp.details.years_experience)
+                            : '-'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <span className="text-gray-700 font-semibold">Tools Provided:</span>
+                        <span className="text-[#008cfc] font-medium">
+                          {typeof currentApp?.details?.tools_provided === 'boolean'
+                            ? currentApp.details.tools_provided ? 'Yes' : 'No'
+                            : (String(currentApp?.details?.tools_provided || '').trim() || '-')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 md:pl-10">
+                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <span className="text-gray-700 font-semibold">Rate Type:</span>
+                        <span className="text-[#008cfc] font-medium">{getRateType(currentApp) || '-'}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <span className="text-gray-700 font-semibold">Service Rate:</span>
+                        <span className="text-[#008cfc] font-medium">
+                          {(() => {
+                            const d = currentApp?.rate || currentApp?.details || {};
+                            const t = String(d?.rate_type || '').toLowerCase();
+                            const from = d?.rate_from;
+                            const to = d?.rate_to;
+                            const val = d?.rate_value;
+                            const peso = (v) => {
+                              if (v === null || v === undefined) return '';
+                              const s = String(v).trim();
+                              if (!s) return '';
+                              if (/₱|php/i.test(s)) return s;
+                              const n = parseFloat(s.replace(/,/g, ''));
+                              if (!isNaN(n)) return `₱${n.toLocaleString()}`;
+                              return `₱${s}`;
+                            };
+                            if (t.includes('job') || t.includes('fixed')) return val ? `${peso(val)}` : '-';
+                            if (t.includes('hour') || t.includes('range')) return from || to ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}` : '-';
+                            if (val) return peso(val);
+                            if (from || to) return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
+                            return '-';
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {isApproved && (
+                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                    Approved Application
+                  </span>
+                )}
+                {isPending && (
+                  <span className="relative inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+                    <span className="relative inline-flex">
+                      <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
+                    </span>
+                    Pending
+                  </span>
+                )}
+                <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
+                  {(() => {
+                    const Icon = getServiceIcon(buildServiceType(currentApp) || currentApp?.details?.work_description || '');
+                    return <Icon className="h-5 w-5" />;
+                  })()}
+                </div>
+              </div>
+            </div>
+            <div className="-mt-9 flex justify-end gap-2">
+              <Link
+                to={`/workerpostapplication`}
+                onClick={(e) => { e.preventDefault(); navigate('/workerpostapplication'); }}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
+                View
+              </Link>
+              {!isPending && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/workerpostapplication')}
+                  className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+                >
+                  Edit Application
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
           <div className="bg-white border border-gray-200 rounded-lg p-6 text-center shadow-sm">
             <div className="flex justify-center mb-4">
               <img src="/Resume.png" alt="Resume" className="w-20 h-20 object-contain" />
@@ -454,7 +626,7 @@ function WorkerPost() {
             <Link
               to="/workerpostapplication"
               onClick={handleBecomeWorkerClick}
-              className="inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition"
+              className={`inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition ${hasCurrent ? 'pointer-events-none opacity-50' : ''}`}
             >
               + Become a worker
             </Link>
@@ -462,7 +634,7 @@ function WorkerPost() {
         )}
       </div>
 
-      {SHOW_CAROUSEL && hasApproved && (
+      {SHOW_CAROUSEL && approved.length > 0 && (
         <div className="mb-8">
           <div className="relative w-full flex justify-center items-center">
             <button

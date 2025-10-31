@@ -315,7 +315,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                 </div>
 
                 <div className="md:col-span-1 flex flex-col items-center">
-                  <div className="text-sm font-semibold text-black mb-3">Profile Picture</div>
+                  <div className="text-sm font-semibold text-black mb-3">Worker Profile Picture</div>
                   {profile_picture ? (
                     <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
                       <img
