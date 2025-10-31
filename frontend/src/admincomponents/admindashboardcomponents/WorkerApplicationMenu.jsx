@@ -8,6 +8,13 @@ const ENABLE_SELECTION = false;
 const BOLD_FIRST_NAME = false;
 const ACTION_ALIGN_RIGHT = false;
 
+const REASONS_ADMIN = [
+  "Incomplete details",
+  "Invalid schedule",
+  "Outside service area",
+  "Pricing mismatch"
+];
+
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
@@ -22,7 +29,7 @@ function StatusPill({ value }) {
   return (
     <span
       className={[
-        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
         cfg.bg,
         cfg.text,
         cfg.br,
@@ -57,6 +64,18 @@ function ServiceTypePill({ value }) {
   );
 }
 
+function ServiceTypesInline({ list }) {
+  const arr = Array.isArray(list) ? list.filter(Boolean) : [];
+  if (arr.length === 0) return <span>-</span>;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {arr.map((s, i) => (
+        <ServiceTypePill key={`${s}-${i}`} value={s} />
+      ))}
+    </div>
+  );
+}
+
 const Field = ({ label, value }) => (
   <div className="text-left">
     <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">{label}</div>
@@ -65,18 +84,64 @@ const Field = ({ label, value }) => (
 );
 
 const SectionCard = ({ title, children, badge }) => (
-  <section className="relative rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-lg transition-all duration-200 ring-1 ring-gray-100 hover:ring-blue-100">
-    <div className="px-6 pt-5 pb-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-2xl flex items-center justify-between">
-      <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-        <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+  <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+    <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
+      <h3 className="text-base font-semibold flex items-center gap-2">
+        <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
         {title}
       </h3>
-      {badge || null}
+      {badge || (
+        <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+          <span className="h-3 w-3 rounded-full bg-white/60" />
+          Info
+        </span>
+      )}
     </div>
     <div className="p-6">{children}</div>
     <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
   </section>
 );
+
+function parseDateTime(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  return isNaN(d) ? null : d;
+}
+function fmtDateTime(val) {
+  const d = parseDateTime(val);
+  return d ? d.toLocaleString() : "";
+}
+
+function resolveDoc(docs, keys, fuzzy) {
+  if (!docs) return null;
+  for (const k of keys || []) {
+    if (docs[k]) return docs[k];
+  }
+  const allKeys = Object.keys(docs || {});
+  if (!allKeys.length || !fuzzy) return null;
+  for (const k of allKeys) {
+    const lk = k.toLowerCase();
+    if (fuzzy.all && fuzzy.all.length && !fuzzy.all.every((s) => lk.includes(s))) continue;
+    if (fuzzy.any && fuzzy.any.length && !fuzzy.any.some((s) => lk.includes(s))) continue;
+    return docs[k];
+  }
+  return null;
+}
+
+function toDocUrl(v) {
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  if (Array.isArray(v) && v.length > 0) {
+    const first = v[0];
+    if (typeof first === "string") return first;
+    if (first && typeof first === "object" && first.url) return first.url;
+  }
+  if (typeof v === "object") {
+    if (v.url) return v.url;
+    if (v.link) return v.link;
+  }
+  return "";
+}
 
 export default function WorkerApplicationMenu() {
   const [rows, setRows] = useState([]);
@@ -89,6 +154,17 @@ export default function WorkerApplicationMenu() {
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0, total: 0 });
+  const [showDocs, setShowDocs] = useState(false);
+
+  const [showDecline, setShowDecline] = useState(false);
+  const [declineTarget, setDeclineTarget] = useState(null);
+  const [declineReason, setDeclineReason] = useState("");
+  const [declineOther, setDeclineOther] = useState("");
+  const [declineErr, setDeclineErr] = useState("");
+  const [submittingDecline, setSubmittingDecline] = useState(false);
+
+  const [showReason, setShowReason] = useState(false);
+  const [reasonTarget, setReasonTarget] = useState(null);
 
   const fetchCounts = async () => {
     try {
@@ -122,6 +198,8 @@ export default function WorkerApplicationMenu() {
         const w = r.work || {};
         const rate = r.rate || {};
         const st = Array.isArray(w.service_types) ? w.service_types : [];
+        const createdRaw = r.created_at || r.createdAt || i.created_at || i.createdAt || null;
+        const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
         return {
           id: r.id,
           request_group_id: r.request_group_id,
@@ -130,11 +208,13 @@ export default function WorkerApplicationMenu() {
           name_last: i.last_name || "",
           email: r.email_address || i.email_address || "",
           barangay: i.barangay || "",
+          additional_address: i.additional_address || i.street || "",
           age: i.age ?? null,
           years_experience: w.years_experience ?? "",
           tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
           service_types: st,
           primary_service: st[0] || "",
+          service_types_lex: st.join(", "),
           rate_type: rate.rate_type || "",
           rate_from: rate.rate_from,
           rate_to: rate_toNumber(rate.rate_to),
@@ -142,6 +222,14 @@ export default function WorkerApplicationMenu() {
           info: i,
           work: w,
           rate,
+          docs: r.docs || {},
+          created_at_raw: createdRaw,
+          created_at_ts: createdTs,
+          created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
+          profile_picture_url: i.profile_picture_url || null,
+          reason_choice: r.reason_choice || r.decline_reason_choice || null,
+          reason_other: r.reason_other || r.decline_reason_other || null,
+          decision_reason: r.decision_reason || r.reason || null,
         };
       });
 
@@ -186,12 +274,29 @@ export default function WorkerApplicationMenu() {
   useEffect(() => {
     const t = setTimeout(() => {
       fetchItems(filter, searchTerm);
+      setCurrentPage(1);
     }, 400);
-    return () => clearInterval(t);
+    return () => clearTimeout(t);
   }, [filter, searchTerm]);
+
+  useEffect(() => {
+    if (viewRow) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      setShowDocs(false);
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [viewRow]);
 
   const sortedRows = useMemo(() => {
     if (!sort.key) return rows;
+    if (sort.key === "created_at_ts") {
+      const dir = sort.dir === "asc" ? 1 : -1;
+      return [...rows].sort((a, b) => (a.created_at_ts - b.created_at_ts) * dir);
+    }
     const dir = sort.dir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
       const av = String(a[sort.key] ?? "").toLowerCase();
@@ -235,11 +340,22 @@ export default function WorkerApplicationMenu() {
     }
   };
 
-  const decline = async (id) => {
+  const decline = async (id, payload = null) => {
     setLoadError("");
     try {
-      await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/decline`, {}, { withCredentials: true });
-      setRows((r) => r.map((x) => (x.id === id ? { ...x, status: "declined" } : x)));
+      await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/decline`, payload || {}, { withCredentials: true });
+      setRows((r) =>
+        r.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                status: "declined",
+                reason_choice: payload?.reason_choice ?? x.reason_choice ?? null,
+                reason_other: payload?.reason_other ?? x.reason_other ?? null,
+              }
+            : x
+        )
+      );
       setSelected((s) => {
         const n = new Set(s);
         n.delete(id);
@@ -248,7 +364,55 @@ export default function WorkerApplicationMenu() {
       setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
     } catch (err) {
       setLoadError(err?.response?.data?.message || err?.message || "Failed to decline");
+      throw err;
     }
+  };
+
+  const openDeclineModal = (row) => {
+    setDeclineErr("");
+    setDeclineReason("");
+    setDeclineOther("");
+    setDeclineTarget(row);
+    setShowDecline(true);
+  };
+
+  const submitDecline = async () => {
+    const other = declineOther.trim();
+    if (!declineReason && !other) {
+      setDeclineErr("Please select a reason or write one.");
+      return;
+    }
+    setDeclineErr("");
+    setShowDecline(false);
+    await new Promise((r) => setTimeout(r, 30));
+    setSubmittingDecline(true);
+    try {
+      await decline(declineTarget.id, { reason_choice: declineReason || null, reason_other: other || null });
+      setDeclineTarget(null);
+      fetchCounts();
+      fetchItems(filter, searchTerm);
+    } catch (e) {
+      setDeclineErr(e?.response?.data?.message || "Failed to decline. Try again.");
+      setShowDecline(true);
+    } finally {
+      setSubmittingDecline(false);
+    }
+  };
+
+  const openReasonModal = (row) => {
+    setReasonTarget(row);
+    setShowReason(true);
+  };
+
+  const getReasonText = (row) => {
+    const parts = [];
+    const rc = row?.reason_choice;
+    const ro = row?.reason_other;
+    if (rc) parts.push(rc);
+    if (ro) parts.push(ro);
+    const fb = row?.decision_reason;
+    if (!parts.length && fb) parts.push(fb);
+    return parts.join(" — ") || "No reason provided.";
   };
 
   const tabs = [
@@ -258,7 +422,24 @@ export default function WorkerApplicationMenu() {
     { key: "declined", label: "Declined", count: counts.declined },
   ];
 
-  const COLSPAN = ENABLE_SELECTION ? 7 : 6;
+  const COLSPAN = ENABLE_SELECTION ? 8 : 7;
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 7;
+
+  const totalPages = useMemo(() => {
+    const t = Math.ceil(sortedRows.length / pageSize);
+    return t > 0 ? t : 1;
+  }, [sortedRows.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1);
+  }, [totalPages]);
+
+  const pageRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, currentPage]);
 
   return (
     <main className="p-6">
@@ -323,6 +504,7 @@ export default function WorkerApplicationMenu() {
                 onClick={() => {
                   fetchCounts();
                   fetchItems(filter, searchTerm);
+                  setCurrentPage(1);
                 }}
                 className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
               >
@@ -383,8 +565,23 @@ export default function WorkerApplicationMenu() {
                         <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">
                           Email
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">
-                          Primary Service
+                        <th
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 w-[360px]"
+                          onClick={() => toggleSort("service_types_lex")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Service Type
+                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                          </span>
+                        </th>
+                        <th
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap min-w-[210px]"
+                          onClick={() => toggleSort("created_at_ts")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Created At
+                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                          </span>
                         </th>
                         <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">
                           Status
@@ -396,8 +593,9 @@ export default function WorkerApplicationMenu() {
                     </thead>
 
                     <tbody className="text-sm text-gray-800 font-semibold">
-                      {sortedRows.map((u, idx) => {
-                        const disableActions = u.status === "approved" || u.status === "declined";
+                      {pageRows.map((u, idx) => {
+                        const isDeclined = String(u.status).toLowerCase() === "declined";
+                        const disableActions = u.status === "approved" || isDeclined;
                         return (
                           <tr
                             key={u.id}
@@ -416,28 +614,9 @@ export default function WorkerApplicationMenu() {
                             )}
 
                             <td className="px-4 py-4 border border-gray-200">
-                              <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 ring-1 ring-gray-300">
-                                  <img
-                                    src={avatarFromName(`${u.name_first} ${u.name_last}`.trim())}
-                                    alt={`${u.name_first} ${u.name_last}`}
-                                    className="h-full w-full object-cover"
-                                    onError={({ currentTarget }) => {
-                                      currentTarget.style.display = "none";
-                                      const parent = currentTarget.parentElement;
-                                      if (parent) {
-                                        parent.innerHTML = `<div class="h-9 w-9 grid place-items-center bg-blue-100 text-blue-700 text-xs font-semibold">${(u.name_first || "?")
-                                          .trim()
-                                          .charAt(0)
-                                          .toUpperCase()}</div>`;
-                                      }
-                                    }}
-                                  />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
-                                    {u.name_first || "-"}
-                                  </div>
+                              <div className="min-w-0">
+                                <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
+                                  {u.name_first || "-"}
                                 </div>
                               </div>
                             </td>
@@ -446,8 +625,13 @@ export default function WorkerApplicationMenu() {
                             <td className="px-4 py-4 border border-gray-200">
                               <div className="truncate">{u.email || "-"}</div>
                             </td>
-                            <td className="px-4 py-4 border border-gray-200">
-                              <ServiceTypePill value={u.primary_service} />
+                            <td className="px-4 py-4 border border-gray-200 w-[360px] align-top">
+                              <div className="max-w-[360px]">
+                                <ServiceTypesInline list={u.service_types} />
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 border border-gray-200 whitespace-nowrap min-w-[210px]">
+                              {u.created_at_display || "-"}
                             </td>
                             <td className="px-4 py-4 border border-gray-200">
                               <StatusPill value={u.status} />
@@ -461,27 +645,38 @@ export default function WorkerApplicationMenu() {
                                 >
                                   View
                                 </button>
-                                <button
-                                  onClick={() => decline(u.id)}
-                                  className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={disableActions}
-                                >
-                                  Decline
-                                </button>
-                                <button
-                                  onClick={() => approve(u.id)}
-                                  className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={disableActions}
-                                >
-                                  Approve
-                                </button>
+                                {isDeclined ? (
+                                  <button
+                                    onClick={() => openReasonModal(u)}
+                                    className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                                  >
+                                    Reason
+                                  </button>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => openDeclineModal(u)}
+                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      disabled={disableActions}
+                                    >
+                                      Decline
+                                    </button>
+                                    <button
+                                      onClick={() => approve(u.id)}
+                                      className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      disabled={disableActions}
+                                    >
+                                      Approve
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </td>
                           </tr>
                         );
                       })}
 
-                      {!loading && !loadError && sortedRows.length === 0 && (
+                      {!loading && !loadError && pageRows.length === 0 && (
                         <tr>
                           <td colSpan={COLSPAN} className="px-4 py-16 text-center text-gray-500 border border-gray-200">
                             No applications found.
@@ -506,6 +701,44 @@ export default function WorkerApplicationMenu() {
                   </div>
                 </div>
               )}
+
+              {!loading && !loadError && sortedRows.length > 0 && (
+                <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
+                  <nav className="flex items-center gap-2">
+                    <button
+                      className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                      disabled={currentPage <= 1}
+                      aria-label="Previous page"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    >
+                      ‹
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        className={[
+                          "h-9 min-w-9 px-3 rounded-md border",
+                          p === currentPage
+                            ? "border-[#008cfc] bg-[#008cfc] text-white"
+                            : "border-gray-300 text-gray-700 hover:bg-gray-50",
+                        ].join(" ")}
+                        aria-current={p === currentPage ? "page" : undefined}
+                        onClick={() => setCurrentPage(p)}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                    <button
+                      className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                      disabled={currentPage >= totalPages}
+                      aria-label="Next page"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    >
+                      ›
+                    </button>
+                  </nav>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -524,12 +757,18 @@ export default function WorkerApplicationMenu() {
             <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
               <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
                 <img
-                  src={avatarFromName(`${viewRow.name_first} ${viewRow.name_last}`.trim())}
+                  src={(viewRow?.profile_picture_url && String(viewRow.profile_picture_url).startsWith("http")) ? viewRow.profile_picture_url : avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim())}
                   alt="Avatar"
                   className="w-full h-full object-cover"
+                  data-fallback="primary"
                   onError={({ currentTarget }) => {
-                    currentTarget.style.display = "none";
                     const parent = currentTarget.parentElement;
+                    if (currentTarget.dataset.fallback === "primary") {
+                      currentTarget.dataset.fallback = "dice";
+                      currentTarget.src = avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim());
+                      return;
+                    }
+                    currentTarget.style.display = "none";
                     if (parent) {
                       parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1) || "?").toUpperCase()}</div>`;
                     }
@@ -544,9 +783,9 @@ export default function WorkerApplicationMenu() {
                 <div className="text-sm text-gray-600">{viewRow.email || "-"}</div>
               </div>
 
-              <div className="mt-3 flex items-center justify-center gap-3">
+              <div className="mt-3 flex items-center justify-center gap-3 flex-wrap">
                 <div className="text-sm text-gray-600">
-                  Primary Service <span className="font-semibold text-gray-900">{viewRow.primary_service || "-"}</span>
+                  Created <span className="font-semibold text-[#008cfc]">{viewRow.created_at_display || "-"}</span>
                 </div>
                 <StatusPill value={viewRow.status} />
               </div>
@@ -557,58 +796,40 @@ export default function WorkerApplicationMenu() {
                 <SectionCard
                   title="Personal Information"
                   badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                      <span className="h-3 w-3 rounded-full bg-white/60" />
                       Worker
                     </span>
                   }
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
-                    <Field label="First Name" value={viewRow?.name_first || "-"} />
-                    <Field label="Last Name" value={viewRow?.name_last || "-"} />
-                    <Field label="Email" value={viewRow?.email || "-"} />
-                    <Field label="Barangay" value={viewRow?.barangay || "-"} />
                     <Field label="Age" value={viewRow?.age ?? "-"} />
+                    <Field label="Barangay" value={viewRow?.barangay || "-"} />
+                    <Field label="Additional Address" value={viewRow?.additional_address || "-"} />
                   </div>
                 </SectionCard>
 
                 <SectionCard
                   title="Work Details"
                   badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                      <span className="h-3 w-3 rounded-full bg-white/60" />
                       Experience
                     </span>
                   }
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-                    <Field label="Primary Service" value={<ServiceTypePill value={viewRow?.primary_service} />} />
+                    <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types} />} />
                     <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
                     <Field label="Tools Provided" value={viewRow?.tools_provided ? "Yes" : "No"} />
                   </div>
                 </SectionCard>
 
                 <SectionCard
-                  title="Service Types"
-                  badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-purple-50 text-purple-700 border-purple-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                      Skills
-                    </span>
-                  }
-                >
-                  <div className="text-[15px] font-semibold text-gray-900">
-                    {Array.isArray(viewRow.service_types) && viewRow.service_types.length
-                      ? viewRow.service_types.join(", ")
-                      : "-"}
-                  </div>
-                </SectionCard>
-
-                <SectionCard
                   title="Service Rate"
                   badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                      <span className="h-3 w-3 rounded-full bg-white/60" />
                       Pricing
                     </span>
                   }
@@ -636,7 +857,7 @@ export default function WorkerApplicationMenu() {
               </div>
             </div>
 
-            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-gray-200 bg-white">
+            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 bg-white">
               <button
                 type="button"
                 onClick={() => { setViewRow(null); }}
@@ -646,38 +867,241 @@ export default function WorkerApplicationMenu() {
               </button>
               <button
                 type="button"
-                onClick={async () => {
-                  try {
-                    await axios.post(`${API_BASE}/api/admin/workerapplications/${viewRow.id}/decline`, {}, { withCredentials: true });
-                    setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "declined" } : x)));
-                    setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
-                    setViewRow(null);
-                  } catch (err) {
-                    setLoadError(err?.response?.data?.message || err?.message || "Failed to decline");
-                  }
-                }}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={viewRow.status === "declined" || viewRow.status === "approved"}
+                onClick={() => setShowDocs(true)}
+                className="w-full inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                Decline
+                View Documents
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewRow && showDocs && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="View documents"
+          tabIndex={-1}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDocs(false)} />
+          <div className="relative w-full max-w-[900px] max-h-[80vh] overflow-hidden rounded-2xl border border-gray-300 bg-white shadow-2xl">
+            <div className="px-6 py-4 border-b bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white">
+              <div className="text-base font-semibold">Documents</div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[65vh] [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+              {viewRow && viewRow.docs && Object.keys(viewRow.docs).length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[
+                    { label: "Primary ID (Front)", keys: ["primary_id_front", "primaryIdFront", "primary_front", "primary_front_id", "primary_id_front_url", "primary_front_url"] },
+                    { label: "Primary ID (Back)", keys: ["primary_id_back", "primaryIdBack", "primary_back", "primary_back_id", "primary_id_back_url", "primary_back_url"] },
+                    { label: "Secondary ID", keys: ["secondary_id", "secondaryId", "secondary_id_url"] },
+                    { label: "NBI/Police Clearance", keys: ["nbi_police_clearance", "nbi_clearance", "police_clearance", "nbi", "police"] },
+                    { label: "Proof of Address", keys: ["proof_of_address","proofOfAddress","address_proof","proof_address","billing_proof","utility_bill","proof_of_residence","proofOfResidence","residence_proof","residency_proof","barangay_clearance","barangay_certificate","electric_bill","water_bill","meralco_bill"], fuzzy: { any: ["address","residence","residency","billing","utility","bill","proof","poa","barangay","clearance"] } },
+                    { label: "Medical Certificate", keys: ["medical_certificate", "med_cert"], fuzzy: { any: ["medical", "med_cert", "medcert", "health", "fit_to_work", "fit-to-work", "fit2work", "med"] } },
+                    { label: "Certificates", keys: ["certificates", "training_certificates", "certs"] },
+                  ].map((cfg) => {
+                    const d = viewRow.docs || {};
+                    const found = resolveDoc(d, cfg.keys, cfg.fuzzy);
+                    const url = toDocUrl(found);
+                    const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(url);
+                    return (
+                      <div key={cfg.label} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <div className="p-3">
+                          {isImg && url ? (
+                            <img src={url} alt={cfg.label} className="w-full h-40 object-contain" />
+                          ) : (
+                            <div className="text-sm text-gray-500 h-40 grid place-items-center">{url ? "Preview not available" : "No document"}</div>
+                          )}
+                        </div>
+                        <div className="p-3 border-t flex items-center justify-between">
+                          <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                            <span className="h-2 w-2 rounded-full bg-gray-500/70" />
+                            {cfg.label}
+                          </div>
+                          {url ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                            >
+                              Open
+                            </a>
+                          ) : (
+                            <span className="text-sm text-gray-400">No link</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center text-gray-600">No documents.</div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t bg-white">
+              <button
+                onClick={() => setShowDocs(false)}
+                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDecline && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Decline worker application"
+          tabIndex={-1}
+          autoFocus
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingDecline && setShowDecline(false)} />
+          <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
+              <div className="text-xl font-semibold">Decline Application</div>
+              <div className="text-xs opacity-90">Select reason for declining</div>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-1 gap-2">
+                {REASONS_ADMIN.map((r) => (
+                  <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${declineReason===r?'border-red-500 ring-1 ring-red-300 bg-red-50':'border-gray-200 hover:bg-gray-50'}`}>
+                    <input
+                      type="radio"
+                      name="decline-reason"
+                      className="h-4 w-4"
+                      checked={declineReason === r}
+                      onChange={() => setDeclineReason((curr) => (curr === r ? "" : r))}
+                      disabled={submittingDecline}
+                    />
+                    <span className="text-sm md:text-base">{r}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-sm font-semibold text-gray-700">Other</div>
+                <textarea
+                  value={declineOther}
+                  onChange={(e) => setDeclineOther(e.target.value)}
+                  disabled={submittingDecline}
+                  placeholder="Type other reason here"
+                  className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                />
+              </div>
+
+              {declineErr ? <div className="text-sm text-red-700">{declineErr}</div> : null}
+            </div>
+            <div className="px-6 py-4 border-top border-t border-gray-100 flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => !submittingDecline && setShowDecline(false)}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+                disabled={submittingDecline}
+              >
+                Back
               </button>
               <button
                 type="button"
-                onClick={async () => {
-                  try {
-                    await axios.post(`${API_BASE}/api/admin/workerapplications/${viewRow.id}/approve`, {}, { withCredentials: true });
-                    setRows((r) => r.map((x) => (x.id === viewRow.id ? { ...x, status: "approved" } : x)));
-                    setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
-                    setViewRow(null);
-                  } catch (err) {
-                    setLoadError(err?.response?.data?.message || err?.message || "Failed to approve");
-                  }
-                }}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={viewRow.status === "approved" || viewRow.status === "declined"}
+                onClick={submitDecline}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                disabled={submittingDecline}
               >
-                Approve
+                {submittingDecline ? "Submitting..." : "Confirm Decline"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReason && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Decline reason (worker application)"
+          tabIndex={-1}
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
+          <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
+                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                  {Array.isArray(reasonTarget?.service_types) && reasonTarget?.service_types.length ? reasonTarget.service_types[0] : "Application"}
+                </span>
+              </div>
+              <div className="mt-1 text-sm text-gray-600">Created {reasonTarget?.created_at_display || "-"}</div>
+            </div>
+            <div className="p-6">
+              <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
+                <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">Reason</div>
+                <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
+                  {getReasonText(reasonTarget)}
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-red-200 bg-white p-4">
+                  <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Worker</div>
+                  <div className="mt-1 text-[15px] font-semibold text-gray-900">
+                    {[reasonTarget?.name_first, reasonTarget?.name_last].filter(Boolean).join(" ") || "-"}
+                  </div>
+                  <div className="text-sm text-gray-600">{reasonTarget?.email || "-"}</div>
+                </div>
+                <div className="rounded-xl border border-red-200 bg-white p-4">
+                  <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service</div>
+                  <div className="mt-1 text-[15px] font-semibold text-gray-900">
+                    {Array.isArray(reasonTarget?.service_types) && reasonTarget?.service_types.length
+                      ? reasonTarget.service_types.join(", ")
+                      : "-"}
+                  </div>
+                  <div className="text-sm text-gray-600">{reasonTarget?.barangay || "-"}</div>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
+              <button
+                type="button"
+                onClick={() => { setShowReason(false); }}
+                className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {submittingDecline && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Please wait a moment"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#008cfc22", borderTopColor: "#008cfc", borderRadius: "9999px" }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+            </div>
+            <div className="mt-6 text-center space-y-1">
+              <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
+              <div className="text-sm text-gray-600 animate-pulse">Submitting decline</div>
             </div>
           </div>
         </div>

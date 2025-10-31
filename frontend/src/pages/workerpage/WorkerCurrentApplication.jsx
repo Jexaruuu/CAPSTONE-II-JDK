@@ -86,67 +86,111 @@ export default function WorkerCurrentApplication() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 5;
   const navigate = useNavigate();
+
+  const fetchItems = async () => {
+    setLoading(true);
+    try {
+      const { data } = await axios.get(
+        `${API_BASE}/api/worker/applications?scope=current`,
+        { withCredentials: true }
+      );
+      const arr = Array.isArray(data) ? data : data?.items || [];
+      const normalized = arr.map((r, i) => ({
+        id: r.id ?? `${i}`,
+        title: r.title ?? "Untitled application",
+        status: String(r.status || "draft").toLowerCase(),
+        created_at: r.created_at || new Date().toISOString(),
+        updated_at: r.updated_at || r.created_at || new Date().toISOString(),
+        saved_at: r.saved_at,
+      }));
+      setItems(
+        normalized.sort(
+          (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        )
+      );
+    } catch {
+      setItems([
+        {
+          id: "draft-1",
+          title: "House Cleaning — South District",
+          status: "draft",
+          created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
+          saved_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString(),
+          updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString(),
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
-      try {
-        const { data } = await axios.get(
-          `${API_BASE}/api/worker/applications?scope=current`,
-          { withCredentials: true }
-        );
-        if (!cancelled) {
-          const arr = Array.isArray(data) ? data : data?.items || [];
-          const normalized = arr.map((r, i) => ({
-            id: r.id ?? `${i}`,
-            title: r.title ?? "Untitled application",
-            status: (r.status || "draft").toLowerCase(),
-            created_at: r.created_at || new Date().toISOString(),
-            updated_at: r.updated_at || r.created_at || new Date().toISOString(),
-            saved_at: r.saved_at,
-          }));
-          setItems(
-            normalized.sort(
-              (a, b) =>
-                new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-            )
-          );
-        }
-      } catch {
-        if (!cancelled) {
-          setItems([
-            {
-              id: "draft-1",
-              title: "House Cleaning — South District",
-              status: "draft",
-              created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
-              saved_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString(),
-              updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString(),
-            },
-          ]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      if (!cancelled) await fetchItems();
     })();
     return () => {
       cancelled = true;
     };
   }, []);
 
+  const filteredByStatus = useMemo(() => {
+    if (statusFilter === "all") return items;
+    const key = String(statusFilter).toLowerCase();
+    return items.filter((i) => String(i.status || "").toLowerCase() === key);
+  }, [items, statusFilter]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((i) => i.title.toLowerCase().includes(q));
-  }, [items, query]);
+    if (!q) return filteredByStatus;
+    return filteredByStatus.filter((i) => i.title.toLowerCase().includes(q));
+  }, [filteredByStatus, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, statusFilter]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
+
+  const pages = useMemo(() => {
+    const t = totalPages;
+    const p = page;
+    const out = [];
+    if (t <= 7) {
+      for (let i = 1; i <= t; i++) out.push(i);
+    } else {
+      out.push(1);
+      if (p > 4) out.push("…");
+      const start = Math.max(2, p - 1);
+      const end = Math.min(t - 1, p + 1);
+      for (let i = start; i <= end; i++) out.push(i);
+      if (p < t - 3) out.push("…");
+      out.push(t);
+    }
+    return out;
+  }, [totalPages, page]);
 
   const onEdit = (item) => {
     navigate(`/workerpostapplication?id=${encodeURIComponent(item.id)}`);
   };
 
   const onOpenMenu = () => {};
+
+  const onRefresh = async () => {
+    await fetchItems();
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white via-[#F7FBFF] to-white">
@@ -160,25 +204,67 @@ export default function WorkerCurrentApplication() {
         </header>
 
         <div className="mx-auto w-full max-w-[1525px] px-6 mt-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="flex-1 sm:w-auto">
-                <div className="flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
-                  <span className="text-gray-500 text-lg">🔍︎</span>
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search applications"
-                    className="border-none outline-none text-black w-full sm:w-64 md:w-80 h-full placeholder:text-gray-400 bg-transparent"
-                  />
-                </div>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-gray-700">Filter</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("all")}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "all" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter((v) => (v === "pending" ? "all" : "pending"))}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "pending" ? "border-yellow-500 bg-yellow-500 text-white hover:bg-yellow-600" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  Pending Applications
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter((v) => (v === "approved" ? "all" : "approved"))}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "approved" ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  Approved Applications
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter((v) => (v === "declined" ? "all" : "declined"))}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "declined" ? "border-red-600 bg-red-600 text-white hover:bg-red-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  Declined Applications
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter((v) => (v === "cancelled" ? "all" : "cancelled"))}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "cancelled" ? "border-orange-600 bg-orange-600 text-white hover:bg-orange-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  Canceled Applications
+                </button>
+              </div>
+            </div>
+
+            <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
+              <div className="mt-7 flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
+                <span className="text-gray-500 text-lg">🔍︎</span>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search applications"
+                  className="border-none outline-none text-black w-full sm:w-64 md:w-80 h-full placeholder:text-gray-400 bg-transparent"
+                />
               </div>
               <button
                 type="button"
-                className="inline-flex items-center gap-2 h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 hover:bg-gray-50"
+                onClick={onRefresh}
+                disabled={loading}
+                className="mt-6 inline-flex items-center gap-2 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50 disabled:opacity-50"
+                title="Refresh"
+                aria-label="Refresh"
               >
-                <span className="-ml-0.5">⚙️</span>
-                Filters
+                ⟳ Refresh
               </button>
             </div>
           </div>
@@ -191,12 +277,12 @@ export default function WorkerCurrentApplication() {
               <div className="mt-3 h-3 w-40 bg-gray-200 rounded" />
               <div className="mt-5 h-3 w-52 bg-gray-200 rounded" />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : paginated.length === 0 ? (
             <div className="rounded-2xl border border-gray-200 bg-white p-8 text-gray-600">
               No applications found.
             </div>
           ) : (
-            filtered.map((item) => (
+            paginated.map((item) => (
               <Card
                 key={item.id}
                 item={item}
@@ -215,20 +301,34 @@ export default function WorkerCurrentApplication() {
               <nav className="flex items-center gap-2">
                 <button
                   className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                  disabled
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   aria-label="Previous page"
                 >
                   ‹
                 </button>
-                <button
-                  className="h-9 min-w-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white"
-                  aria-current="page"
-                >
-                  1
-                </button>
+                {pages.map((p, idx) =>
+                  typeof p === "number" ? (
+                    <button
+                      key={`${p}-${idx}`}
+                      onClick={() => setPage(p)}
+                      className={`h-9 min-w-9 px-3 rounded-md border text-sm ${
+                        p === page
+                          ? "border-[#008cfc] bg-[#008cfc] text-white"
+                          : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                      }`}
+                      aria-current={p === page ? "page" : undefined}
+                    >
+                      {p}
+                    </button>
+                  ) : (
+                    <span key={`dots-${idx}`} className="px-1 text-gray-500 select-none">…</span>
+                  )
+                )}
                 <button
                   className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                  disabled
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   aria-label="Next page"
                 >
                   ›

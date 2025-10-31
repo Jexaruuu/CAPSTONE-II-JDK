@@ -226,7 +226,8 @@ exports.submitFullApplication = async (req, res) => {
       birth_date: infoRow.birth_date,
       age: infoRow.age,
       profile_picture_url: infoRow.profile_picture_url,
-      profile_picture_name: infoRow.profile_picture_name
+      profile_picture_name: infoRow.profile_picture_name,
+      additional_address: infoRow.street
     };
 
     const pendingWork = {

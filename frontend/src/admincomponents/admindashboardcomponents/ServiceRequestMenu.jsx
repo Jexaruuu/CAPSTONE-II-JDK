@@ -256,7 +256,7 @@ export default function AdminServiceRequests() {
       });
       const s = summarizeCounts(filtered);
       setCounts({ pending: s.pending, approved: s.approved, declined: s.declined, canceled: 0, total: s.total });
-      setExpiredCount(s.expired);
+      setExpiredCount(filtered.filter(it => isExpired(it?.details?.preferred_date)).length);
     } catch {}
   };
 
@@ -321,6 +321,8 @@ export default function AdminServiceRequests() {
         return s !== "canceled" && s !== "cancelled";
       });
 
+      setExpiredCount(withoutCancelled.filter(r => r._expired).length);
+
       let finalRows;
       if (statusArg === "expired") {
         finalRows = withoutCancelled.filter((r) => r._expired);
@@ -334,7 +336,7 @@ export default function AdminServiceRequests() {
 
       if (!params.status) {
         const s = summarizeCounts(withoutCancelled);
-        setExpiredCount(s.expired);
+        setExpiredCount(withoutCancelled.filter(r => r._expired).length);
         setCounts({ pending: s.pending, approved: s.approved, declined: s.declined, canceled: 0, total: s.total });
       }
     } catch (err) {
@@ -370,7 +372,7 @@ export default function AdminServiceRequests() {
       fetchItems(filter, searchTerm);
       setCurrentPage(1);
     }, 400);
-    return () => clearInterval(t);
+    return () => clearTimeout(t);
   }, [filter, searchTerm]);
 
   useEffect(() => {
