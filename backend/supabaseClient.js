@@ -3,7 +3,11 @@ const { createClient } = require("@supabase/supabase-js");
 
 const supabaseUrl = process.env.SUPABASE_URL || "https://uoyzcboehvwxcadrqqfq.supabase.co";
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "";
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const supabaseServiceKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  process.env.SUPABASE_SECRET ||
+  "";
 
 const DEV_AUTOCONFIRM = (process.env.DEV_AUTOCONFIRM || "false") === "true";
 const FALLBACK_AUTOCONFIRM = (process.env.FALLBACK_AUTOCONFIRM || "false") === "true";
@@ -43,7 +47,8 @@ async function createSupabaseAuthUser(email, password, metadata = {}) {
         return { user: data.user, error: null, autoConfirmed: true, usedFallback: true };
       } catch (e2) {
         e2.originalError = err;
-        return { user: null, error: e2 };      }
+        return { user: null, error: e2 };
+      }
     }
     return { user: null, error: err };
   }

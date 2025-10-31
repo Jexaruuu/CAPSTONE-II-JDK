@@ -8,7 +8,7 @@ function likeTerm(q) {
 async function listApplications({ status = "", q = "", limit = 500 }) {
   let query = supabaseAdmin
     .from("wa_pending")
-    .select("id, request_group_id, status, created_at, email_address, info, work, rate, docs")
+    .select("id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, docs, reason_choice, reason_other, decision_reason")
     .order("created_at", { ascending: false })
     .limit(Math.min(Math.max(parseInt(limit || 500, 10), 1), 1000));
   if (status && status !== "all") query = query.eq("status", status);
@@ -47,7 +47,7 @@ async function countAllStatuses() {
   return { pending, approved, declined, total };
 }
 
-async function markStatus(id, status) {
+async function markStatus(id, status, extra = {}) {
   const idKey = Number.isFinite(Number(id)) ? Number(id) : id;
 
   const { data: existing, error: getErr } = await supabaseAdmin
@@ -61,16 +61,24 @@ async function markStatus(id, status) {
     e.status = 404;
     throw e;
   }
-  if (existing.status === status) return existing;
+  if (existing.status === status && !extra) return existing;
+
+  const update = { status };
+  if (status === "declined") {
+    update.decided_at = extra.decided_at || new Date().toISOString();
+    update.reason_choice = extra.reason_choice ?? null;
+    update.reason_other = extra.reason_other ?? null;
+    update.decision_reason = extra.decision_reason ?? ([extra.reason_choice, extra.reason_other].filter(Boolean).join(" — ") || null);
+  }
 
   const { data, error } = await supabaseAdmin
     .from("wa_pending")
-    .update({ status })
+    .update(update)
     .eq("id", idKey)
-    .select("id, status, request_group_id")
+    .select("id, status, request_group_id, decided_at, reason_choice, reason_other, decision_reason")
     .maybeSingle();
   if (error) throw error;
-  return data || { id: existing.id, status, request_group_id: existing.request_group_id };
+  return data || { id: existing.id, status, request_group_id: existing.request_group_id, decided_at: update.decided_at, reason_choice: update.reason_choice, reason_other: update.reason_other, decision_reason: update.decision_reason };
 }
 
 module.exports = {

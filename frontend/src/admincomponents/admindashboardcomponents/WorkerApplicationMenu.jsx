@@ -10,9 +10,9 @@ const ACTION_ALIGN_RIGHT = false;
 
 const REASONS_ADMIN = [
   "Incomplete details",
-  "Invalid schedule",
+  "Not clear documents",
   "Outside service area",
-  "Pricing mismatch"
+  "Pricing too high"
 ];
 
 const avatarFromName = (name) =>
@@ -166,6 +166,15 @@ export default function WorkerApplicationMenu() {
   const [showReason, setShowReason] = useState(false);
   const [reasonTarget, setReasonTarget] = useState(null);
 
+  const [submittingConfirmCancel, setSubmittingConfirmCancel] = useState(false);
+  const [showConfirmCancelSuccess, setShowConfirmCancelSuccess] = useState(false);
+  const prevSubmittingRef = useRef(submittingConfirmCancel);
+
+  const [showDeclineLoading, setShowDeclineLoading] = useState(false);
+  const [showDeclineSuccess, setShowDeclineSuccess] = useState(false);
+  const [logoBrokenDecline, setLogoBrokenDecline] = useState(false);
+  const [logoBrokenDecline2, setLogoBrokenDecline2] = useState(false);
+
   const fetchCounts = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/admin/workerapplications/count`, { withCredentials: true });
@@ -194,44 +203,46 @@ export default function WorkerApplicationMenu() {
 
       const items = Array.isArray(res?.data?.items) ? res.data.items : [];
       const mapped = items.map((r) => {
-        const i = r.info || {};
-        const w = r.work || {};
-        const rate = r.rate || {};
-        const st = Array.isArray(w.service_types) ? w.service_types : [];
-        const createdRaw = r.created_at || r.createdAt || i.created_at || i.createdAt || null;
-        const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
-        return {
-          id: r.id,
-          request_group_id: r.request_group_id,
-          status: r.status || "pending",
-          name_first: i.first_name || "",
-          name_last: i.last_name || "",
-          email: r.email_address || i.email_address || "",
-          barangay: i.barangay || "",
-          additional_address: i.additional_address || i.street || "",
-          age: i.age ?? null,
-          years_experience: w.years_experience ?? "",
-          tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
-          service_types: st,
-          primary_service: st[0] || "",
-          service_types_lex: st.join(", "),
-          rate_type: rate.rate_type || "",
-          rate_from: rate.rate_from,
-          rate_to: rate_toNumber(rate.rate_to),
-          rate_value: rate_toNumber(rate.rate_value),
-          info: i,
-          work: w,
-          rate,
-          docs: r.docs || {},
-          created_at_raw: createdRaw,
-          created_at_ts: createdTs,
-          created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
-          profile_picture_url: i.profile_picture_url || null,
-          reason_choice: r.reason_choice || r.decline_reason_choice || null,
-          reason_other: r.reason_other || r.decline_reason_other || null,
-          decision_reason: r.decision_reason || r.reason || null,
-        };
-      });
+  const i = r.info || {};
+  const w = r.work || {};
+  const rate = r.rate || {};
+  const st = Array.isArray(w.service_types) ? w.service_types : [];
+  const createdRaw = r.created_at || r.createdAt || i.created_at || i.createdAt || null;
+  const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
+  return {
+    id: r.id,
+    request_group_id: r.request_group_id,
+    status: r.status || "pending",
+    name_first: i.first_name || "",
+    name_last: i.last_name || "",
+    email: r.email_address || i.email_address || "",
+    barangay: i.barangay || "",
+    additional_address: i.additional_address || i.street || "",
+    age: i.age ?? null,
+    years_experience: w.years_experience ?? "",
+    tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
+    service_types: st,
+    primary_service: st[0] || "",
+    service_types_lex: st.join(", "),
+    rate_type: rate.rate_type || "",
+    rate_from: rate.rate_from,
+    rate_to: rate_toNumber(rate.rate_to),
+    rate_value: rate_toNumber(rate.rate_value),
+    info: i,
+    work: w,
+    rate,
+    docs: r.docs || {},
+    created_at_raw: createdRaw,
+    created_at_ts: createdTs,
+    created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
+    profile_picture_url: i.profile_picture_url || null,
+    reason_choice: r.reason_choice || r.decline_reason_choice || null,
+    reason_other: r.reason_other || r.decline_reason_other || null,
+    decision_reason: r.decision_reason || r.reason || null,
+    decided_at_raw: r.decided_at || null,
+    decided_at_display: r.decided_at ? fmtDateTime(r.decided_at) : (r.decided_at_display || "")
+  };
+});
 
       setRows(mapped);
 
@@ -291,6 +302,29 @@ export default function WorkerApplicationMenu() {
     };
   }, [viewRow]);
 
+  useEffect(() => {
+    if (showConfirmCancelSuccess) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+  }, [showConfirmCancelSuccess]);
+
+  useEffect(() => {
+    if (prevSubmittingRef.current && !submittingConfirmCancel) {
+      setShowConfirmCancelSuccess(true);
+    }
+    prevSubmittingRef.current = submittingConfirmCancel;
+  }, [submittingConfirmCancel]);
+
+  useEffect(() => {
+    if (showDeclineLoading || showDeclineSuccess) {
+      document.body.style.overflow = "hidden";
+    } else if (!viewRow && !showConfirmCancelSuccess) {
+      document.body.style.overflow = "";
+    }
+  }, [showDeclineLoading, showDeclineSuccess, viewRow, showConfirmCancelSuccess]);
+
   const sortedRows = useMemo(() => {
     if (!sort.key) return rows;
     if (sort.key === "created_at_ts") {
@@ -340,33 +374,37 @@ export default function WorkerApplicationMenu() {
     }
   };
 
-  const decline = async (id, payload = null) => {
-    setLoadError("");
-    try {
-      await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/decline`, payload || {}, { withCredentials: true });
-      setRows((r) =>
-        r.map((x) =>
-          x.id === id
-            ? {
-                ...x,
-                status: "declined",
-                reason_choice: payload?.reason_choice ?? x.reason_choice ?? null,
-                reason_other: payload?.reason_other ?? x.reason_other ?? null,
-              }
-            : x
-        )
-      );
-      setSelected((s) => {
-        const n = new Set(s);
-        n.delete(id);
-        return n;
-      });
-      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
-    } catch (err) {
-      setLoadError(err?.response?.data?.message || err?.message || "Failed to decline");
-      throw err;
-    }
-  };
+ const decline = async (id, payload = null) => {
+  setLoadError("");
+  try {
+    const res = await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/decline`, payload || {}, { withCredentials: true });
+    const d = res?.data || {};
+    setRows((r) =>
+      r.map((x) =>
+        x.id === id
+          ? {
+              ...x,
+              status: "declined",
+              reason_choice: d.reason_choice ?? payload?.reason_choice ?? x.reason_choice ?? null,
+              reason_other: d.reason_other ?? payload?.reason_other ?? x.reason_other ?? null,
+              decision_reason: d.decision_reason ?? x.decision_reason ?? null,
+              decided_at_raw: d.decided_at || x.decided_at_raw || null,
+              decided_at_display: d.decided_at ? fmtDateTime(d.decided_at) : (x.decided_at_display || "")
+            }
+          : x
+      )
+    );
+    setSelected((s) => {
+      const n = new Set(s);
+      n.delete(id);
+      return n;
+    });
+    setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
+  } catch (err) {
+    setLoadError(err?.response?.data?.message || err?.message || "Failed to decline");
+    throw err;
+  }
+};
 
   const openDeclineModal = (row) => {
     setDeclineErr("");
@@ -385,15 +423,18 @@ export default function WorkerApplicationMenu() {
     setDeclineErr("");
     setShowDecline(false);
     await new Promise((r) => setTimeout(r, 30));
+    setShowDeclineLoading(true);
     setSubmittingDecline(true);
     try {
       await decline(declineTarget.id, { reason_choice: declineReason || null, reason_other: other || null });
       setDeclineTarget(null);
-      fetchCounts();
-      fetchItems(filter, searchTerm);
+      await Promise.all([fetchCounts(), fetchItems(filter, searchTerm)]);
+      setShowDeclineLoading(false);
+      setShowDeclineSuccess(true);
     } catch (e) {
       setDeclineErr(e?.response?.data?.message || "Failed to decline. Try again.");
       setShowDecline(true);
+      setShowDeclineLoading(false);
     } finally {
       setSubmittingDecline(false);
     }
@@ -625,7 +666,7 @@ export default function WorkerApplicationMenu() {
                             <td className="px-4 py-4 border border-gray-200">
                               <div className="truncate">{u.email || "-"}</div>
                             </td>
-                            <td className="px-4 py-4 border border-gray-200 w-[360px] align-top">
+                            <td className="px-4 py-4 border border-gray-200 w-[360px]" align="top">
                               <div className="max-w-[360px]">
                                 <ServiceTypesInline list={u.service_types} />
                               </div>
@@ -783,7 +824,7 @@ export default function WorkerApplicationMenu() {
                 <div className="text-sm text-gray-600">{viewRow.email || "-"}</div>
               </div>
 
-              <div className="mt-3 flex items-center justify-center gap-3 flex-wrap">
+              <div className="mt-3 flex items中心 justify-center gap-3 flex-wrap">
                 <div className="text-sm text-gray-600">
                   Created <span className="font-semibold text-[#008cfc]">{viewRow.created_at_display || "-"}</span>
                 </div>
@@ -1030,16 +1071,17 @@ export default function WorkerApplicationMenu() {
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
           <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
-                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
-                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                  {Array.isArray(reasonTarget?.service_types) && reasonTarget?.service_types.length ? reasonTarget.service_types[0] : "Application"}
-                </span>
-              </div>
-              <div className="mt-1 text-sm text-gray-600">Created {reasonTarget?.created_at_display || "-"}</div>
-            </div>
+           <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
+  <div className="flex items-center justify-between">
+    <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
+    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+      {Array.isArray(reasonTarget?.service_types) && reasonTarget?.service_types.length ? reasonTarget.service_types[0] : "Application"}
+    </span>
+  </div>
+  <div className="mt-1 text-sm text-gray-600">Created {reasonTarget?.created_at_display || "-"}</div>
+  <div className="text-sm text-gray-600">Decided {reasonTarget?.decided_at_display || "-"}</div>
+</div>
             <div className="p-6">
               <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
                 <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">Reason</div>
@@ -1062,7 +1104,6 @@ export default function WorkerApplicationMenu() {
                       ? reasonTarget.service_types.join(", ")
                       : "-"}
                   </div>
-                  <div className="text-sm text-gray-600">{reasonTarget?.barangay || "-"}</div>
                 </div>
               </div>
             </div>
@@ -1079,7 +1120,7 @@ export default function WorkerApplicationMenu() {
         </div>
       )}
 
-      {submittingDecline && (
+      {submittingDecline && !showDeclineLoading && (
         <div
           role="dialog"
           aria-modal="true"
@@ -1102,6 +1143,171 @@ export default function WorkerApplicationMenu() {
             <div className="mt-6 text-center space-y-1">
               <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
               <div className="text-sm text-gray-600 animate-pulse">Submitting decline</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {submittingConfirmCancel && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Please wait a moment"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#008cfc22", borderTopColor: "#008cfc", borderRadius: "9999px" }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+            </div>
+            <div className="mt-6 text-center space-y-1">
+              <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
+              <div className="text-sm text-gray-600 animate-pulse">Confirming cancel</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConfirmCancelSuccess && !submittingConfirmCancel && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Cancel Request Successful"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              <img
+                src="/jdklogo.png"
+                alt="JDK Homecare Logo"
+                className="w-16 h-16 object-contain"
+                onError={({ currentTarget }) => {
+                  currentTarget.style.display = "none";
+                  const p = currentTarget.parentElement;
+                  if (p) p.innerHTML = '<div class="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center"><span class="font-bold text-[#008cfc]">JDK</span></div>';
+                }}
+              />
+            </div>
+
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Cancel Request Successful</div>
+              <div className="text-sm text-gray-600">The request was canceled successfully.</div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConfirmCancelSuccess(false);
+                  fetchCounts();
+                  fetchItems(filter, searchTerm);
+                }}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeclineLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBrokenDecline ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBrokenDecline(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900">Please wait a moment</div>
+              <div className="text-sm text-gray-500 animate-pulse">Submitting decline</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeclineSuccess && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Application declined successfully"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBrokenDecline2 ? (
+                <img
+                  src="/jdklogo.png"
+                  alt="JDK Homecare Logo"
+                  className="w-16 h-16 object-contain"
+                  onError={() => setLogoBrokenDecline2(true)}
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Application Declined Successfully</div>
+              <div className="text-sm text-gray-600">The application has been declined.</div>
+            </div>
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setShowDeclineSuccess(false)}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>

@@ -31,7 +31,8 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 const rawAllowed = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
-const wcToReg = pat => new RegExp("^" + pat.trim().replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
+const escapeRegex = s => s.replace(/[-/\\^$+?.()|[\]{}]/g, "\\$&");
+const wcToReg = pat => new RegExp("^" + escapeRegex(pat.trim()).replace(/\*/g, ".*") + "$");
 const allowedRegexes = rawAllowed.map(wcToReg);
 const isLocal = origin =>
   /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
@@ -106,4 +107,4 @@ app.use('/api/admin/servicerequests', adminServiceRequestsRoutes);
 ensureStorageBucket("user-notifications",true).catch(()=>{});
 ensureStorageBucket(process.env.SUPABASE_BUCKET_SERVICE_IMAGES || "service-request-images",true).catch(()=>{});
 
-app.listen(PORT,()=>{console.log(`Server running on port ${PORT}`)});
+app.listen(PORT,()=>{console.log(`Server running on port ${PORT}`);console.log("Admin key present:",!!process.env.SUPABASE_SERVICE_ROLE_KEY)});

@@ -198,6 +198,17 @@ export default function AdminServiceRequests() {
   const [showReason, setShowReason] = useState(false);
   const [reasonTarget, setReasonTarget] = useState(null);
 
+  const [showCancelSuccess, setShowCancelSuccess] = useState(false);
+  const [logoBroken2, setLogoBroken2] = useState(false);
+
+  const [showCancelLoading, setShowCancelLoading] = useState(false);
+  const [logoBrokenLoading, setLogoBrokenLoading] = useState(false);
+
+  const [showDeclineLoading, setShowDeclineLoading] = useState(false);
+  const [logoBrokenDecline, setLogoBrokenDecline] = useState(false);
+  const [showDeclineSuccess, setShowDeclineSuccess] = useState(false);
+  const [logoBrokenDecline2, setLogoBrokenDecline2] = useState(false);
+
   const isYes = (v) => {
     if (typeof v === "boolean") return v;
     if (v === 1 || v === "1") return true;
@@ -412,6 +423,49 @@ export default function AdminServiceRequests() {
     };
   }, [viewRow]);
 
+  useEffect(() => {
+    const f1 = localStorage.getItem("clientRequestJustCanceled");
+    const f2 = localStorage.getItem("clientCancelJustConfirmed");
+    if (f1 === "1" || f2 === "1") {
+      setShowCancelLoading(true);
+      localStorage.removeItem("clientRequestJustCanceled");
+      localStorage.removeItem("clientCancelJustConfirmed");
+      setTimeout(() => {
+        setShowCancelLoading(false);
+        setShowCancelSuccess(true);
+      }, 1400);
+    }
+    const onCanceled = () => {
+      setShowCancelLoading(true);
+      setTimeout(() => {
+        setShowCancelLoading(false);
+        setShowCancelSuccess(true);
+      }, 1400);
+    };
+    window.addEventListener("client-request-canceled", onCanceled);
+    return () => {
+      window.removeEventListener("client-request-canceled", onCanceled);
+    };
+  }, []);
+
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    if (showCancelSuccess || submittingDecline || showCancelLoading || showDeclineLoading || showDeclineSuccess) {
+      html.style.overflow = "hidden";
+      body.style.overflow = "hidden";
+    } else {
+      html.style.overflow = prevHtml || "";
+      body.style.overflow = prevBody || "";
+    }
+    return () => {
+      html.style.overflow = prevHtml || "";
+      body.style.overflow = prevBody || "";
+    };
+  }, [showCancelSuccess, submittingDecline, showCancelLoading, showDeclineLoading, showDeclineSuccess]);
+
   const sortedRows = useMemo(() => {
     if (!sort.key) return rows;
     if (sort.key === "created_at_ts") {
@@ -501,14 +555,18 @@ export default function AdminServiceRequests() {
     setDeclineErr("");
     setShowDecline(false);
     await new Promise((r) => setTimeout(r, 30));
+    setShowDeclineLoading(true);
     setSubmittingDecline(true);
     try {
       await decline(declineTarget.id, { reason_choice: declineReason || null, reason_other: other || null });
       setDeclineTarget(null);
       fetchItems(filter, searchTerm);
+      setShowDeclineLoading(false);
+      setShowDeclineSuccess(true);
     } catch (e) {
       setDeclineErr(e?.response?.data?.message || "Failed to decline. Try again.");
       setShowDecline(true);
+      setShowDeclineLoading(false);
     } finally {
       setSubmittingDecline(false);
     }
@@ -535,7 +593,6 @@ export default function AdminServiceRequests() {
     { key: "pending", label: "Pending", count: counts.pending },
     { key: "approved", label: "Approved", count: counts.approved },
     { key: "declined", label: "Declined", count: counts.declined },
-    { key: "canceled", label: "Canceled", count: counts.canceled },
     { key: "expired", label: "Expired", count: expiredCount },
   ];
 
@@ -872,7 +929,6 @@ export default function AdminServiceRequests() {
                   { key: "pending", label: "Pending", count: counts.pending },
                   { key: "approved", label: "Approved", count: counts.approved },
                   { key: "declined", label: "Declined", count: counts.declined },
-                  { key: "canceled", label: "Canceled", count: counts.canceled },
                   { key: "expired", label: "Expired", count: expiredCount },
                 ].map((t) => {
                   const active = filter === t.key;
@@ -1401,7 +1457,7 @@ export default function AdminServiceRequests() {
         </div>
       )}
 
-      {submittingDecline && (
+      {submittingDecline && !showDeclineLoading && (
         <div
           role="dialog"
           aria-modal="true"
@@ -1424,6 +1480,184 @@ export default function AdminServiceRequests() {
             <div className="mt-6 text-center space-y-1">
               <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
               <div className="text-sm text-gray-600 animate-pulse">Submitting decline</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBrokenLoading ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBrokenLoading(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900">Please wait a moment</div>
+              <div className="text-sm text-gray-500 animate-pulse">Processing cancel request</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelSuccess && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Cancel request successful"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken2 ? (
+                <img
+                  src="/jdklogo.png"
+                  alt="JDK Homecare Logo"
+                  className="w-16 h-16 object-contain"
+                  onError={() => setLogoBroken2(true)}
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Cancel Request Successful</div>
+              <div className="text-sm text-gray-600">The service request has been canceled.</div>
+            </div>
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setShowCancelSuccess(false)}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeclineLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBrokenDecline ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBrokenDecline(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900">Please wait a moment</div>
+              <div className="text-sm text-gray-500 animate-pulse">Submitting decline</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeclineSuccess && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Request declined successfully"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBrokenDecline2 ? (
+                <img
+                  src="/jdklogo.png"
+                  alt="JDK Homecare Logo"
+                  className="w-16 h-16 object-contain"
+                  onError={() => setLogoBrokenDecline2(true)}
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Request Declined Successfully</div>
+              <div className="text-sm text-gray-600">The service request has been declined.</div>
+            </div>
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setShowDeclineSuccess(false)}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>
