@@ -95,12 +95,17 @@ async function hydrate(baseRows) {
   const infoMap = toMap(infos);
   const detMap  = toMap(details);
   const rateMap = toMap(rates);
+  const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
 
   return baseRows.map(r => {
     const d0 = detMap.get(r.request_group_id) || {};
     const d = { ...d0 };
     if (d.is_urgent !== undefined) d.is_urgent = yesNo(toBoolStrict(d.is_urgent));
     if (d.tools_provided !== undefined) d.tools_provided = yesNo(toBoolStrict(d.tools_provided));
+    if (!d.image_url && d.image_name) {
+      const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(d.image_name);
+      d.image_url = pub?.publicUrl || null;
+    }
     return {
       id: r.id,
       request_group_id: r.request_group_id,

@@ -348,6 +348,11 @@ exports.listApproved = async (req, res) => {
       const d = { ...(it.details || {}) };
       if (d.is_urgent !== undefined) d.is_urgent = yesNo(toBoolStrict(d.is_urgent));
       if (d.tools_provided !== undefined) d.tools_provided = yesNo(toBoolStrict(d.tools_provided));
+      if (!d.image_url && d.image_name) {
+        const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
+        const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(d.image_name);
+        d.image_url = pub?.publicUrl || null;
+      }
       return { ...it, details: d };
     });
     const gids = fixed.map(it => it.request_group_id).filter(Boolean);
@@ -391,9 +396,14 @@ exports.listCurrent = async (req, res) => {
         statusMap[r.request_group_id] = String(r.status || 'pending').toLowerCase();
       });
     }
+    const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
     const combined = await Promise.all(targetGroups.map(g => getCombinedByGroupId(g)));
     const items = combined.filter(Boolean).map(row => {
       const d = row.details || {};
+      if (!d.image_url && d.image_name) {
+        const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(d.image_name);
+        d.image_url = pub?.publicUrl || null;
+      }
       const r = row.rate || {};
       const gid = row.details?.request_group_id || row.info?.request_group_id || row.rate?.request_group_id || '';
       const base = {
@@ -404,7 +414,10 @@ exports.listCurrent = async (req, res) => {
           service_task: d.service_task || '',
           preferred_date: d.preferred_date || '',
           preferred_time: d.preferred_time || '',
-          is_urgent: d.is_urgent || ''
+          is_urgent: d.is_urgent || '',
+          image_url: d.image_url || null,
+          image_name: d.image_name || null,
+          service_description: d.service_description || ''
         },
         rate: {
           rate_type: r.rate_type || '',
@@ -453,6 +466,12 @@ exports.byGroup = async (req, res) => {
     if (!gid) return res.status(400).json({ message: 'groupId is required' });
     const row = await getCombinedByGroupId(gid);
     if (!row) return res.status(404).json({ message: 'Not found' });
+    const d = row.details || {};
+    if (!d.image_url && d.image_name) {
+      const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
+      const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(d.image_name);
+      row.details = { ...d, image_url: pub?.publicUrl || null };
+    }
     return res.status(200).json(row);
   } catch {
     return res.status(500).json({ message: 'Failed to load request' });
