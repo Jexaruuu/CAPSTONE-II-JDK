@@ -9,7 +9,7 @@ const {
   findWorkerByEmail,
   findWorkerById
 } = require('../models/workerapplicationModel');
-const { supabaseAdmin, ensureStorageBucket } = require('../supabaseClient');
+const { supabaseAdmin, ensureStorageBucket, getSupabaseAdmin } = require('../supabaseClient');
 
 function dateOnlyFrom(input) {
   if (!input) return null;
@@ -23,7 +23,7 @@ function dateOnlyFrom(input) {
 }
 function friendlyError(err) {
   const raw = err?.message || String(err);
-  if (/row-level security/i.test(raw)) return 'Server is not using service-role for a write. Check service key env and restart the server.';
+  if (/row-level security/i.test(raw)) return 'Service role key missing on server';
   if (/bucket/i.test(raw) && /not.*found/i.test(raw)) return 'Storage bucket missing.';
   if (/worker_information|worker_work_information|worker_rate|worker_required_documents|wa_pending/i.test(raw)) return `Database error: ${raw}`;
   return raw;
@@ -40,7 +40,7 @@ function ageFromBirthDate(birth_date) {
 
 exports.submitFullApplication = async (req, res) => {
   try {
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(500).json({ message: 'Service role key missing on server' });
+    try { getSupabaseAdmin(); } catch (e) { return res.status(500).json({ message: e.message || 'Service role key missing on server' }); }
     await ensureStorageBucket('wa-attachments', true);
 
     const {

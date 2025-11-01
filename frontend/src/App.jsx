@@ -1,3 +1,4 @@
+// App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 
@@ -31,6 +32,7 @@ import WorkerNotifications from './pages/workerpage/WorkerNotifications';
 import WorkerCurrentApplication from './pages/workerpage/WorkerCurrentApplication';
 import WorkerCompletedWorks from './pages/workerpage/WorkerCompletedWorks';
 import WorkerFindAvailableClient from './pages/workerpage/WorkerFindAvailableClient';
+import WorkerViewApplication from './pages/workerpage/WorkerViewApplication';
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
 import AdminSignup from './pages/signuppage/AdminSignup';
@@ -238,6 +240,16 @@ const App = () => {
             <ProtectedRoute>
               <WorkerOnlyRoute>
                 <WorkerCurrentApplication />
+              </WorkerOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/current-work-post/:id"
+          element={
+            <ProtectedRoute>
+              <WorkerOnlyRoute>
+                <WorkerViewApplication />
               </WorkerOnlyRoute>
             </ProtectedRoute>
           }

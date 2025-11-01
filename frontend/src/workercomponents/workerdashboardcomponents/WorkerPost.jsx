@@ -1,3 +1,4 @@
+// WorkerPost.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
@@ -458,6 +459,26 @@ function WorkerPost() {
     return `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name)}`;
   }, [currentApp, capFirst]);
 
+  const getGroupId = (it) => {
+    const g =
+      it?.application_group_id ??
+      it?.group_id ??
+      it?.groupId ??
+      it?.group ??
+      it?.request_group_id ??
+      it?.id;
+    return g ? String(g) : '';
+  };
+
+  const handleView = (item) => {
+    const gid = getGroupId(item);
+    if (gid) {
+      navigate(`/current-work-post/${encodeURIComponent(gid)}`);
+    } else {
+      navigate('/workerpostapplication');
+    }
+  };
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">
@@ -595,13 +616,13 @@ function WorkerPost() {
               </div>
             </div>
             <div className="-mt-9 flex justify-end gap-2">
-              <Link
-                to={`/workerpostapplication`}
-                onClick={(e) => { e.preventDefault(); navigate('/workerpostapplication'); }}
+              <button
+                type="button"
+                onClick={() => handleView(currentApp)}
                 className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
               >
                 View
-              </Link>
+              </button>
               {!isPending && (
                 <button
                   type="button"
@@ -695,6 +716,7 @@ function WorkerPost() {
                       <div className="mt-auto pt-4 flex items-center justify-between">
                         <button
                           type="button"
+                          onClick={() => handleView(item)}
                           className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition !h-11"
                         >
                           View details
