@@ -1,4 +1,3 @@
-// WorkerViewApplication.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -120,7 +119,7 @@ const WorkerViewApplication = () => {
   const infoR = fx.info || {};
   const workR = fx.work || {};
   const rateR = fx.rate || {};
-  const docsR = Array.isArray(fx.documents) ? fx.documents : [];
+  const docsR = Array.isArray(fx.documents) ? fx.documents : (fx.docs || []);
 
   const first_name = infoR.first_name ?? s.first_name ?? savedInfo.firstName;
   const last_name = infoR.last_name ?? s.last_name ?? savedInfo.lastName;

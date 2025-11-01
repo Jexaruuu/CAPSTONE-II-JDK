@@ -300,3 +300,21 @@ exports.listApproved = async (req, res) => {
     return res.status(500).json({ message: 'Failed to load approved applications' });
   }
 };
+
+exports.getByGroup = async (req, res) => {
+  try {
+    const gid = String(req.params.id || '').trim();
+    if (!gid) return res.status(400).json({ message: 'Missing id' });
+    const { data, error } = await supabaseAdmin
+      .from('wa_pending')
+      .select('id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, docs, reason_choice, reason_other, decision_reason')
+      .eq('request_group_id', gid)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ message: 'Application not found' });
+    return res.status(200).json(data);
+  } catch {
+    return res.status(500).json({ message: 'Failed to load application' });
+  }
+};
