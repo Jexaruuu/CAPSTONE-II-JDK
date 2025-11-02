@@ -9,12 +9,13 @@ const avatarFromName = (name) =>
 
 function StatusPill({ value }) {
   const v = String(value || "").toLowerCase();
+  const isCancelled = v === "cancelled" || v === "canceled";
   const cfg =
     v === "approved"
       ? { bg: "bg-emerald-50", text: "text-emerald-700", br: "border-emerald-200", label: "Approved" }
       : v === "declined"
       ? { bg: "bg-red-50", text: "text-red-700", br: "border-red-200", label: "Declined" }
-      : v === "cancelled"
+      : isCancelled
       ? { bg: "bg-orange-50", text: "text-orange-700", br: "border-orange-200", label: "Cancelled" }
       : v === "expired"
       ? { bg: "bg-gray-50", text: "text-gray-600", br: "border-gray-200", label: "Expired" }
@@ -116,7 +117,7 @@ export default function CanceledApplicationMenu() {
     setLoading(true);
     setLoadError("");
     try {
-      const params = { status: "cancelled" };
+      const params = { status: "canceled" };
       if (searchTerm && searchTerm.trim()) params.q = searchTerm.trim();
       const res = await axios.get(`${API_BASE}/api/admin/workerapplications`, { params, withCredentials: true });
       const items = Array.isArray(res?.data?.items) ? res.data.items : [];
@@ -136,12 +137,12 @@ export default function CanceledApplicationMenu() {
         const taskOrRole = firstNonEmpty(w.primary_task, w.role, r.task, r.position) || "";
         return {
           id: r.id,
-          status: "cancelled",
+          status: "canceled",
           ui_status: "cancelled",
           name_first: i.first_name || r.first_name || "",
           name_last: i.last_name || r.last_name || "",
           email: i.email_address || i.email || r.email || "",
-          primary_service,
+          primary_service: primaryService,
           task_or_role: taskOrRole,
           years_experience: w.years_experience ?? w.experience_years ?? r.years_experience,
           tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
@@ -177,6 +178,11 @@ export default function CanceledApplicationMenu() {
     }, 400);
     return () => clearTimeout(t);
   }, [searchTerm]);
+  useEffect(() => {
+    const onCancelled = () => fetchItems();
+    window.addEventListener("worker-application-cancelled", onCancelled);
+    return () => window.removeEventListener("worker-application-cancelled", onCancelled);
+  }, []);
 
   useEffect(() => {
     if (viewRow) document.body.style.overflow = "hidden";
@@ -265,7 +271,7 @@ export default function CanceledApplicationMenu() {
 
   const SectionCardRef = ({ title, children, badge }) => (
     <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
-      <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
+      <div className="px-6 py-5 rounded-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
         <h3 className="text-base font-semibold flex items-center gap-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
           {title}
@@ -835,7 +841,10 @@ export default function CanceledApplicationMenu() {
               <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
                 <div className="text-[11px] font-semibold tracking-widest text-orange-700 uppercase">Reason</div>
                 <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
-                  {getCancelReason(reasonRow)}
+                  {(() => {
+                    if (reasonRow?.reason_choice || reasonRow?.reason_other) return [reasonRow.reason_choice, reasonRow.reason_other].filter(Boolean).join(" — ") || "-";
+                    return "-";
+                  })()}
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">

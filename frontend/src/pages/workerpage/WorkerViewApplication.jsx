@@ -1,3 +1,4 @@
+// WorkerViewApplication.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -10,7 +11,6 @@ const GLOBAL_DESC_KEY = 'workerApplicationDescription';
 
 const REASONS = [
   'Change of plans',
-  'Accepted another job',
   'Schedule conflict',
   'Rate not suitable',
   'Applied by mistake'
@@ -130,11 +130,40 @@ const WorkerViewApplication = () => {
   const additional_address = infoR.additional_address ?? s.additional_address ?? savedInfo.additionalAddress;
   const profile_picture = infoR.profile_picture_url ?? s.profile_picture ?? savedInfo.profilePicture;
 
+  const selectedTasksFromJobDetails = (() => {
+    const jd = workR.job_details;
+    if (!jd) return undefined;
+    if (Array.isArray(jd)) return jd;
+    if (typeof jd === 'string') return [jd];
+    if (typeof jd === 'object') {
+      const out = [];
+      for (const v of Object.values(jd)) {
+        if (Array.isArray(v)) out.push(...v.map(String));
+        else if (typeof v === 'string') out.push(v);
+      }
+      return out.length ? out : undefined;
+    }
+    return undefined;
+  })();
+
   const service_types = workR.service_types ?? s.service_types ?? savedWork.serviceTypes;
-  const service_tasks = workR.service_tasks ?? s.service_tasks ?? savedWork.serviceTasks;
+  const service_tasks =
+    workR.service_tasks ??
+    workR.selected_tasks ??
+    workR.selected_task ??
+    selectedTasksFromJobDetails ??
+    s.service_tasks ??
+    savedWork.serviceTasks;
+
   const years_experience = workR.years_experience ?? s.years_experience ?? savedWork.yearsExperience;
   const tools_provided = workR.tools_provided ?? s.tools_provided ?? savedWork.toolsProvided;
-  const application_description = workR.description ?? s.description ?? savedWork.description;
+
+  const application_description =
+    workR.description ??
+    workR.work_description ??
+    workR.job_details?.description ??
+    s.description ??
+    savedWork.description;
 
   const inferredRateType = rateR.rate_type ?? s.rate_type ?? savedRate.rateType;
   const rate_type = (() => {
@@ -353,11 +382,8 @@ const WorkerViewApplication = () => {
                     <LabelValue label="Last Name" value={last_name} />
                     <LabelValue label="Contact Number" value={contactDisplay} />
                     <LabelValue label="Email" value={email} />
-                    <LabelValue
-                      label="Address"
-                      value={(street || barangay) ? `${street || ''}${barangay ? (street ? ', ' : '') + barangay : ''}` : '-'}
-                    />
-                    <LabelValue label="Additional Address" value={additional_address} />
+                    <LabelValue label="Address" value={barangay || '-'} />
+                    <LabelValue label="Additional Address" value={additional_address || street || '-'} />
                     <div className="hidden md:block" />
                   </div>
 
@@ -499,7 +525,7 @@ const WorkerViewApplication = () => {
                         onClick={handleCancel}
                         className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-orange-300 text-orange-600 hover:bg-orange-50"
                       >
-                        Cancel
+                        Cancel Application
                       </button>
                     </div>
                   </div>

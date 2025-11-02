@@ -536,7 +536,7 @@ function WorkerPost() {
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Location:</span>
+                        <span className="text-gray-700 font-semibold">Address:</span>
                         <span className="text-[#008cfc] font-medium">{buildLocation(currentApp) || '-'}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">

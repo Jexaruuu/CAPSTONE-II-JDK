@@ -8,27 +8,35 @@ function cleanStr(s) {
   return String(s || "").trim();
 }
 
-exports.list = async (req, res) => {
+function normalizeStatus(s) {
+  const t = cleanStr(s).toLowerCase();
+  const map = { canceled: "cancelled" };
+  const v = map[t] || t;
+  const allowed = new Set(["pending", "approved", "declined", "cancelled", "expired", ""]);
+  return allowed.has(v) ? v : "";
+}
+
+async function list(req, res) {
   try {
-    const status = cleanStr(req.query.status || "");
+    const status = normalizeStatus(req.query.status || "");
     const q = cleanStr(req.query.q || "");
     const items = await listApplications({ status, q, limit: 500 });
     return res.status(200).json({ items });
   } catch (err) {
     return res.status(500).json({ message: err?.message || "Failed to load applications" });
   }
-};
+}
 
-exports.count = async (_req, res) => {
+async function count(_req, res) {
   try {
     const c = await countAllStatuses();
     return res.status(200).json(c);
   } catch (err) {
     return res.status(500).json({ message: err?.message || "Failed to load counts" });
   }
-};
+}
 
-exports.approve = async (req, res) => {
+async function approve(req, res) {
   try {
     const id = req.params.id;
     if (!id) return res.status(400).json({ message: "Missing id" });
@@ -38,9 +46,9 @@ exports.approve = async (req, res) => {
     const code = err?.status || 400;
     return res.status(code).json({ message: err?.message || "Failed to approve" });
   }
-};
+}
 
-exports.decline = async (req, res) => {
+async function decline(req, res) {
   try {
     const id = req.params.id;
     if (!id) return res.status(400).json({ message: "Missing id" });
@@ -63,4 +71,6 @@ exports.decline = async (req, res) => {
     const code = err?.status || 400;
     return res.status(code).json({ message: err?.message || "Failed to decline" });
   }
-};
+}
+
+module.exports = { list, count, approve, decline };

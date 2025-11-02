@@ -318,3 +318,60 @@ exports.getByGroup = async (req, res) => {
     return res.status(500).json({ message: 'Failed to load application' });
   }
 };
+
+exports.cancel = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const gid = String(body.application_group_id || '').trim();
+    const reason_choice = String(body.reason_choice || '').trim() || null;
+    const reason_other = String(body.reason_other || '').trim() || null;
+    const worker_id = body.worker_id ? Number(body.worker_id) : null;
+    const email_address = String(body.email_address || '').trim() || null;
+    if (!gid) return res.status(400).json({ message: 'Missing application_group_id' });
+
+    const { data: existing, error: getErr } = await supabaseAdmin
+      .from('wa_pending')
+      .select('id, request_group_id, status, email_address, info')
+      .eq('request_group_id', gid)
+      .maybeSingle();
+    if (getErr) throw getErr;
+    if (!existing) return res.status(404).json({ message: 'Application not found' });
+
+    const upd = {
+      status: 'cancelled',
+      reason_choice,
+      reason_other
+    };
+    const { data: updated, error: upErr } = await supabaseAdmin
+      .from('wa_pending')
+      .update(upd)
+      .eq('id', existing.id)
+      .select('id, request_group_id, status, reason_choice, reason_other')
+      .maybeSingle();
+    if (upErr) throw upErr;
+
+    const canceled_at = new Date().toISOString();
+    const { error: insErr } = await supabaseAdmin
+      .from('worker_cancel_application')
+      .insert([{
+        request_group_id: gid,
+        worker_id: worker_id || null,
+        email_address: email_address || existing.email_address || null,
+        reason_choice,
+        reason_other,
+        canceled_at
+      }]);
+    if (insErr) throw insErr;
+
+    return res.status(200).json({
+      id: updated?.id || existing.id,
+      request_group_id: gid,
+      status: 'cancelled',
+      canceled_at,
+      reason_choice,
+      reason_other
+    });
+  } catch (err) {
+    return res.status(500).json({ message: friendlyError(err) });
+  }
+};

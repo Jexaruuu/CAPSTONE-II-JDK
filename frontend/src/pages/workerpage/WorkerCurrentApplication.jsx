@@ -363,6 +363,26 @@ export default function WorkerCurrentApplication() {
     setShowReason(true);
   };
 
+  const buildServiceTypeList = (work) => {
+    const arr = Array.isArray(work?.service_types) ? work.service_types.filter(Boolean) : [];
+    return arr.length ? arr.join(", ") : "-";
+  };
+
+  const buildServiceTasks = (work) => {
+    const jd = work?.job_details;
+    const set = new Set();
+    if (Array.isArray(jd)) {
+      jd.forEach(v => { if (v) set.add(String(v)); });
+    } else if (jd && typeof jd === "object") {
+      Object.values(jd).forEach(v => {
+        if (Array.isArray(v)) v.forEach(x => { if (x) set.add(String(x)); });
+        else if (v) set.add(String(v));
+      });
+    }
+    const out = Array.from(set);
+    return out.length ? out.join(", ") : "-";
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white via-[#F7FBFF] to-white">
       <WorkerNavigation />
@@ -528,6 +548,8 @@ export default function WorkerCurrentApplication() {
             const closeHover = isCancel ? "hover:bg-orange-50" : "hover:bg-red-50";
             const title = isCancel ? "Cancel Reason" : "Decline Reason";
             const work = reasonTarget?.work || {};
+            const serviceTypesText = buildServiceTypeList(work);
+            const serviceTasksText = buildServiceTasks(work);
             return (
               <div
                 role="dialog"
@@ -559,21 +581,15 @@ export default function WorkerCurrentApplication() {
                     </div>
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="rounded-xl border border-gray-200 bg-white p-4">
-                        <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Work Description</div>
+                        <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service Type</div>
                         <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                          {work?.work_description || "-"}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {(Array.isArray(work?.service_types) && work.service_types[0]) || "-"}
+                          {serviceTypesText}
                         </div>
                       </div>
                       <div className="rounded-xl border border-gray-200 bg-white p-4">
-                        <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Preferred Schedule</div>
+                        <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service Task</div>
                         <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                          {work?.preferred_date ? formatDate(work.preferred_date) : "-"}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {work?.preferred_time ? formatTime12(work.preferred_time) : "-"}
+                          {serviceTasksText}
                         </div>
                       </div>
                     </div>
@@ -600,7 +616,7 @@ export default function WorkerCurrentApplication() {
           aria-modal="true"
           aria-label="Opening application"
           tabIndex={-1}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex itemscenter justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
