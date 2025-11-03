@@ -479,7 +479,7 @@ const serviceCounts = useMemo(() => {
             <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
               <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
                 <Field label="Primary Service" value={<ServiceTypePill value={viewRow?.primary_service} />} />
-                <Field label="Task/Role" value={<TaskPill value={viewRow?.task_or_role} />} />
+                <Field label="Task" value={<TaskPill value={viewRow?.task_or_role} />} />
                 <Field label="Years of Experience" value={viewRow?.years_experience ?? "-"} />
                 <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
                 <Field label="Has Certifications" value={<YesNoPill yes={viewRow?.has_certifications} />} />
@@ -572,7 +572,7 @@ const serviceCounts = useMemo(() => {
           <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
             <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
               <Field label="Primary Service" value={<ServiceTypePill value={viewRow?.primary_service} />} />
-              <Field label="Task/Role" value={<TaskPill value={viewRow?.task_or_role} />} />
+              <Field label="Task" value={<TaskPill value={viewRow?.task_or_role} />} />
               <Field label="Years of Experience" value={viewRow?.years_experience ?? "-"} />
               <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
               <Field label="Has Certifications" value={<YesNoPill yes={viewRow?.has_certifications} />} />
@@ -745,7 +745,7 @@ const serviceCounts = useMemo(() => {
                           onClick={() => toggleSort("task_or_role")}
                         >
                           <span className="inline-flex items-center gap-1">
-                            Task/Role
+                            Task
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>

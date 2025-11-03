@@ -64,6 +64,23 @@ function ServiceTypePill({ value }) {
   );
 }
 
+function TaskPill({ value }) {
+  return (
+    <span
+      className={[
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
+        "bg-gray-100",
+        "text-gray-700",
+        "border-gray-300",
+      ].join(" ")}
+      title={value || "-"}
+    >
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+      {value || "-"}
+    </span>
+  );
+}
+
 function ServiceTypesInline({ list }) {
   const arr = Array.isArray(list) ? list.filter(Boolean) : [];
   if (arr.length === 0) return <span>-</span>;
@@ -143,6 +160,82 @@ function toDocUrl(v) {
   return "";
 }
 
+const firstNonEmpty = (...vals) => vals.find((x) => String(x || "").trim().length > 0) || "";
+
+function extractTaskFromJobDetails(job_details, primaryService) {
+  const grab = (obj) =>
+    firstNonEmpty(
+      obj.task,
+      obj.role,
+      obj.task_role,
+      obj.service_task,
+      obj.position,
+      obj.title,
+      typeof obj.name === "string" ? obj.name : ""
+    );
+
+  if (!job_details) return "";
+
+  if (typeof job_details === "string") return job_details;
+
+  if (Array.isArray(job_details)) {
+    const fromService = job_details
+      .map((it) => (typeof it === "object" && it ? it : {}))
+      .filter((it) => !primaryService || String(it.service || it.service_type || it.category || "").toLowerCase() === String(primaryService).toLowerCase())
+      .map((it) => {
+        const direct = grab(it);
+        if (direct) return direct;
+        if (Array.isArray(it.tasks)) {
+          const t = it.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+          if (t) return t;
+        }
+        return "";
+      })
+      .filter(Boolean)[0];
+    if (fromService) return fromService;
+
+    const any = job_details
+      .map((it) => {
+        if (typeof it === "string") return it;
+        if (typeof it === "object" && it) {
+          const direct = grab(it);
+          if (direct) return direct;
+          if (Array.isArray(it.tasks)) {
+            const t = it.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+            if (t) return t;
+          }
+        }
+        return "";
+      })
+      .filter(Boolean)[0];
+    return any || "";
+  }
+
+  if (typeof job_details === "object") {
+    if (primaryService && job_details[primaryService]) {
+      const scoped = job_details[primaryService];
+      if (typeof scoped === "string") return scoped;
+      if (Array.isArray(scoped)) return extractTaskFromJobDetails(scoped, "");
+      if (typeof scoped === "object") {
+        const direct = grab(scoped);
+        if (direct) return direct;
+        if (Array.isArray(scoped.tasks)) {
+          const t = scoped.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+          if (t) return t;
+        }
+      }
+    }
+    const direct = grab(job_details);
+    if (direct) return direct;
+    if (Array.isArray(job_details.tasks)) {
+      const t = job_details.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+      if (t) return t;
+    }
+  }
+
+  return "";
+}
+
 export default function WorkerApplicationMenu() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -209,6 +302,9 @@ export default function WorkerApplicationMenu() {
         const createdRaw = r.created_at || r.createdAt || i.created_at || i.createdAt || null;
         const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
         const s = String(r.status ?? "").trim().toLowerCase();
+        const primaryService = st[0] || "";
+        const taskFromDetails = extractTaskFromJobDetails(w.job_details, primaryService);
+        const taskOrRole = firstNonEmpty(w.primary_task, w.role, taskFromDetails, w.work_description);
         return {
           id: r.id,
           request_group_id: r.request_group_id,
@@ -222,8 +318,9 @@ export default function WorkerApplicationMenu() {
           years_experience: w.years_experience ?? "",
           tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
           service_types: st,
-          primary_service: st[0] || "",
+          primary_service: primaryService,
           service_types_lex: st.join(", "),
+          task_or_role: taskOrRole || "",
           rate_type: rate.rate_type || "",
           rate_from: rate.rate_from,
           rate_to: rate_toNumber(rate.rate_to),
@@ -465,7 +562,7 @@ export default function WorkerApplicationMenu() {
     { key: "declined", label: "Declined", count: counts.declined },
   ];
 
-  const COLSPAN = ENABLE_SELECTION ? 8 : 7;
+  const COLSPAN = ENABLE_SELECTION ? 9 : 8;
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 7;
@@ -609,11 +706,20 @@ export default function WorkerApplicationMenu() {
                           Email
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 w-[360px]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 w=[360px]"
                           onClick={() => toggleSort("service_types_lex")}
                         >
                           <span className="inline-flex items-center gap-1">
                             Service Type
+                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                          </span>
+                        </th>
+                        <th
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
+                          onClick={() => toggleSort("task_or_role")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Task
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
@@ -672,6 +778,9 @@ export default function WorkerApplicationMenu() {
                               <div className="max-w-[360px]">
                                 <ServiceTypesInline list={u.service_types} />
                               </div>
+                            </td>
+                            <td className="px-4 py-4 border border-gray-200">
+                              <TaskPill value={u.task_or_role} />
                             </td>
                             <td className="px-4 py-4 border border-gray-200 whitespace-nowrap min-w-[210px]">
                               {u.created_at_display || "-"}
