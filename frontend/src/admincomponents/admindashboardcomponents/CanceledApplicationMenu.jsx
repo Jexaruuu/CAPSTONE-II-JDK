@@ -102,6 +102,98 @@ const isYes = (v) => {
   return false;
 };
 
+function isObj(x) {
+  return x && typeof x === "object" && !Array.isArray(x);
+}
+function pickFirstString(val) {
+  if (typeof val === "string") return val;
+  if (Array.isArray(val)) return val.map((v) => (typeof v === "string" ? v : "")).filter(Boolean)[0] || "";
+  if (isObj(val)) {
+    for (const k of Object.keys(val)) {
+      const v = val[k];
+      if (typeof v === "string" && v.trim()) return v;
+      if (isObj(v)) {
+        const deep = pickFirstString(v);
+        if (deep) return deep;
+      }
+    }
+  }
+  return "";
+}
+function extractTaskFromJobDetails(job_details, primaryService) {
+  const grab = (obj) =>
+    firstNonEmpty(
+      obj.task,
+      obj.role,
+      obj.task_role,
+      obj.service_task,
+      obj.position,
+      obj.title,
+      typeof obj.name === "string" ? obj.name : ""
+    );
+
+  if (!job_details) return "";
+
+  if (typeof job_details === "string") return job_details;
+
+  if (Array.isArray(job_details)) {
+    const fromService = job_details
+      .map((it) => (typeof it === "object" && it ? it : {}))
+      .filter((it) => !primaryService || String(it.service || it.service_type || it.category || "").toLowerCase() === String(primaryService).toLowerCase())
+      .map((it) => {
+        const direct = grab(it);
+        if (direct) return direct;
+        if (Array.isArray(it.tasks)) {
+          const t = it.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+          if (t) return t;
+        }
+        return "";
+      })
+      .filter(Boolean)[0];
+    if (fromService) return fromService;
+
+    const any = job_details
+      .map((it) => {
+        if (typeof it === "string") return it;
+        if (typeof it === "object" && it) {
+          const direct = grab(it);
+          if (direct) return direct;
+          if (Array.isArray(it.tasks)) {
+            const t = it.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+            if (t) return t;
+          }
+        }
+        return "";
+      })
+      .filter(Boolean)[0];
+    return any || "";
+  }
+
+  if (typeof job_details === "object") {
+    if (primaryService && job_details[primaryService]) {
+      const scoped = job_details[primaryService];
+      if (typeof scoped === "string") return scoped;
+      if (Array.isArray(scoped)) return extractTaskFromJobDetails(scoped, "");
+      if (typeof scoped === "object") {
+        const direct = grab(scoped);
+        if (direct) return direct;
+        if (Array.isArray(scoped.tasks)) {
+          const t = scoped.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+          if (t) return t;
+        }
+      }
+    }
+    const direct = grab(job_details);
+    if (direct) return direct;
+    if (Array.isArray(job_details.tasks)) {
+      const t = job_details.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+      if (t) return t;
+    }
+  }
+
+  return "";
+}
+
 export default function CanceledApplicationMenu() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -134,7 +226,15 @@ export default function CanceledApplicationMenu() {
             Array.isArray(w.service_types) ? w.service_types[0] : "",
             r.service_type
           ) || "";
-        const taskOrRole = firstNonEmpty(w.primary_task, w.role, r.task, r.position) || "";
+        const taskFromDetails = extractTaskFromJobDetails(w.job_details, primaryService);
+        const taskOrRole = firstNonEmpty(
+          w.primary_task,
+          w.role,
+          r.task,
+          r.position,
+          taskFromDetails,
+          w.work_description
+        );
         return {
           id: r.id,
           status: "canceled",
@@ -192,31 +292,39 @@ export default function CanceledApplicationMenu() {
     };
   }, [viewRow]);
 
-  const filteredRows = useMemo(() => {
-    if (serviceFilter === "all") return rows;
-    const f = serviceFilter.toLowerCase();
-    return rows.filter((r) => String(r.primary_service || "").toLowerCase() === f);
-  }, [rows, serviceFilter]);
+const categoryMap = (service) => {
+  const s = String(service || "").trim().toLowerCase();
+  if (s === "car washing" || s === "carwasher" || s === "car washer" || /car\s*wash/.test(s)) return "carwasher";
+  if (s === "carpentry" || s === "carpenter") return "carpenter";
+  if (s === "electrical works" || s === "electrical work" || s === "electrician" || /electric/.test(s)) return "electrician";
+  if (s === "laundry" || /laund/.test(s)) return "laundry";
+  if (s === "plumbing" || s === "plumber") return "plumber";
+  return "";
+};
 
-  const serviceCounts = useMemo(() => {
-    const counts = {
-      all: rows.length,
-      "Car Washing": 0,
-      Carpentry: 0,
-      "Electrical Works": 0,
-      Laundry: 0,
-      Plumbing: 0
-    };
-    for (const r of rows) {
-      const t = String(r.primary_service || "").toLowerCase();
-      if (t === "car washing") counts["Car Washing"]++;
-      else if (t === "carpentry") counts["Carpentry"]++;
-      else if (t === "electrical works") counts["Electrical Works"]++;
-      else if (t === "laundry") counts["Laundry"]++;
-      else if (t === "plumbing") counts["Plumbing"]++;
-    }
-    return counts;
-  }, [rows]);
+const filteredRows = useMemo(() => {
+  if (serviceFilter === "all") return rows;
+  return rows.filter((r) => {
+    const cand =
+      r.primary_service ||
+      (Array.isArray(r.work?.service_types) ? r.work.service_types[0] : "") ||
+      r.task_or_role;
+    return categoryMap(cand) === serviceFilter;
+  });
+}, [rows, serviceFilter]);
+
+const serviceCounts = useMemo(() => {
+  const counts = { all: rows.length, carwasher: 0, carpenter: 0, electrician: 0, laundry: 0, plumber: 0 };
+  for (const r of rows) {
+    const cand =
+      r.primary_service ||
+      (Array.isArray(r.work?.service_types) ? r.work.service_types[0] : "") ||
+      r.task_or_role;
+    const k = categoryMap(cand);
+    if (k && counts[k] !== undefined) counts[k]++;
+  }
+  return counts;
+}, [rows]);
 
   const sortedRows = useMemo(() => {
     if (!sort.key) return filteredRows;
@@ -326,11 +434,11 @@ export default function CanceledApplicationMenu() {
 
   const serviceTabs = [
     { key: "all", label: "All" },
-    { key: "Car Washing", label: "Car Washing" },
-    { key: "Carpentry", label: "Carpentry" },
-    { key: "Electrical Works", label: "Electrical Works" },
-    { key: "Laundry", label: "Laundry" },
-    { key: "Plumbing", label: "Plumbing" }
+    { key: "carwasher", label: "Carwasher" },
+    { key: "carpenter", label: "Carpenter" },
+    { key: "electrician", label: "Electrician" },
+    { key: "laundry", label: "Laundry" },
+    { key: "plumber", label: "Plumber" }
   ];
 
   const renderSection = () => {
@@ -535,7 +643,10 @@ export default function CanceledApplicationMenu() {
               <div className="flex items-center gap-2 flex-wrap">
                 {serviceTabs.map((t) => {
                   const active = serviceFilter === t.key;
-                  const count = t.key === "all" ? serviceCounts.all : serviceCounts[t.key] ?? 0;
+                  const count =
+                    t.key === "all"
+                      ? serviceCounts.all
+                      : serviceCounts[t.key] ?? 0;
                   return (
                     <button
                       key={t.key}
