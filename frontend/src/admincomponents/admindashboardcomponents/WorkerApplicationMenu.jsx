@@ -876,14 +876,14 @@ export default function WorkerApplicationMenu() {
           <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium text-gray-700">Filter</span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {tabs.map((t) => {
                   const active = filter === t.key;
                   return (
                     <button
                       key={t.key}
                       onClick={() => setFilter(t.key)}
-                      className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                      className={`inline-flex items-center gap-2 h-10 rounded-full border px-3 text-sm transition ${
                         active
                           ? "border-[#008cfc] bg-[#008cfc] text-white"
                           : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
@@ -1214,25 +1214,10 @@ export default function WorkerApplicationMenu() {
 
             <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
               <div className="mb-5 flex items-center justify-center gap-2 flex-wrap">
-                {[
-                  { key: "all", label: "All" },
-                  { key: "info", label: "Personal Information" },
-                  { key: "work", label: "Work Details" },
-                  { key: "rate", label: "Service Rate" },
-                ].map((t) => {
-                  const active = sectionOpen === t.key;
-                  return (
-                    <button
-                      key={t.key}
-                      onClick={() => setSectionOpen(t.key)}
-                      className={`inline-flex items-center gap-2 h-10 rounded-full border px-3 text-sm ${
-                        active ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      <span>{t.label}</span>
-                    </button>
-                  );
-                })}
+                <SectionButton k="all" label="All" />
+                <SectionButton k="info" label="Personal Information" />
+                <SectionButton k="work" label="Work Details" />
+                <SectionButton k="rate" label="Service Rate" />
               </div>
               {renderSection()}
             </div>

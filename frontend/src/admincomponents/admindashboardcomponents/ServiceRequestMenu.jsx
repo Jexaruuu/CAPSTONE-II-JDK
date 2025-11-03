@@ -1319,6 +1319,12 @@ export default function AdminServiceRequests() {
             </div>
 
             <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
+              <div className="mb-4 flex items-center justify-center gap-2">
+                <SectionButton k="all" label="All" />
+                <SectionButton k="info" label="Personal Information" />
+                <SectionButton k="details" label="Service Request Details" />
+                <SectionButton k="rate" label="Service Rate" />
+              </div>
               {renderSection()}
             </div>
 

@@ -253,28 +253,26 @@ export default function AdminCancelledRequests() {
     };
   }, [viewRow]);
 
+  const categoryMap = (service) => {
+    const s = String(service || "").trim().toLowerCase();
+    if (s === "car washing" || s === "carwasher" || s === "car washer" || /car\s*wash/.test(s)) return "carwasher";
+    if (s === "carpentry" || s === "carpenter") return "carpenter";
+    if (s === "electrical works" || s === "electrical work" || s === "electrician" || /electric/.test(s)) return "electrician";
+    if (s === "laundry" || /laund/.test(s)) return "laundry";
+    if (s === "plumbing" || s === "plumber") return "plumber";
+    return "";
+  };
+
   const filteredRows = useMemo(() => {
     if (serviceFilter === "all") return rows;
-    const f = serviceFilter.toLowerCase();
-    return rows.filter((r) => String(r.service_type || "").toLowerCase() === f);
+    return rows.filter((r) => categoryMap(r.service_type) === serviceFilter);
   }, [rows, serviceFilter]);
 
   const serviceCounts = useMemo(() => {
-    const counts = {
-      all: rows.length,
-      "Car Washing": 0,
-      Carpentry: 0,
-      "Electrical Works": 0,
-      Laundry: 0,
-      Plumbing: 0,
-    };
+    const counts = { all: rows.length, carwasher: 0, carpenter: 0, electrician: 0, laundry: 0, plumber: 0 };
     for (const r of rows) {
-      const t = String(r.service_type || "").toLowerCase();
-      if (t === "car washing") counts["Car Washing"]++;
-      else if (t === "carpentry") counts["Carpentry"]++;
-      else if (t === "electrical works") counts["Electrical Works"]++;
-      else if (t === "laundry") counts["Laundry"]++;
-      else if (t === "plumbing") counts["Plumbing"]++;
+      const k = categoryMap(r.service_type);
+      if (k && counts[k] !== undefined) counts[k]++;
     }
     return counts;
   }, [rows]);
@@ -616,11 +614,11 @@ export default function AdminCancelledRequests() {
 
   const serviceTabs = [
     { key: "all", label: "All" },
-    { key: "Car Washing", label: "Car Washing" },
-    { key: "Carpentry", label: "Carpentry" },
-    { key: "Electrical Works", label: "Electrical Works" },
-    { key: "Laundry", label: "Laundry" },
-    { key: "Plumbing", label: "Plumbing" },
+    { key: "carwasher", label: "Carwasher" },
+    { key: "carpenter", label: "Carpenter" },
+    { key: "electrician", label: "Electrician" },
+    { key: "laundry", label: "Laundry" },
+    { key: "plumber", label: "Plumber" },
   ];
 
   return (
@@ -903,6 +901,12 @@ export default function AdminCancelledRequests() {
             </div>
 
             <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
+              <div className="mb-4 flex items-center justify-center gap-2">
+                <SectionButton k="all" label="All" />
+                <SectionButton k="info" label="Personal Information" />
+                <SectionButton k="details" label="Service Request Details" />
+                <SectionButton k="rate" label="Service Rate" />
+              </div>
               {renderSection()}
             </div>
 
