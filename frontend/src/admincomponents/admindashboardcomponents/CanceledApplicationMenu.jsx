@@ -63,12 +63,44 @@ function YesNoPill({ yes }) {
   );
 }
 
+function resolveDoc(docs, keys, fuzzy) {
+  if (!docs) return null;
+  for (const k of keys || []) {
+    if (docs[k]) return docs[k];
+  }
+  const all = Object.keys(docs || {});
+  if (!all.length || !fuzzy) return null;
+  for (const k of all) {
+    const lk = k.toLowerCase();
+    const allOk = !fuzzy.all || !fuzzy.all.length || fuzzy.all.every((s) => lk.includes(s));
+    const anyOk = !fuzzy.any || !fuzzy.any.length || fuzzy.any.some((s) => lk.includes(s));
+    if (allOk && anyOk) return docs[k];
+  }
+  return null;
+}
+
+function toDocUrl(v) {
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  if (Array.isArray(v) && v.length > 0) {
+    const first = v[0];
+    if (typeof first === "string") return first;
+    if (first && typeof first === "object" && first.url) return first.url;
+  }
+  if (typeof v === "object") {
+    if (v.url) return v.url;
+    if (v.link) return v.link;
+  }
+  return "";
+}
+
 function dateOnlyFrom(val) {
   if (!val) return null;
   const raw = String(val).trim();
   const token = raw.split("T")[0].split(" ")[0];
   let m;
   if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(token))) return new Date(+m[1], +m[2] - 1, +m[3]);
+  if ((m = /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/.exec(token))) return new Date(+m[1], +m[2] - 1, +m[3]);
   if ((m = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(token))) return new Date(+m[3], +m[1] - 1, +m[2]);
   const d = new Date(raw);
   return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -194,6 +226,60 @@ function extractTaskFromJobDetails(job_details, primaryService) {
   return "";
 }
 
+function fmtMoney(v) {
+  if (v === null || v === undefined || v === "") return "-";
+  const n = Number(String(v).toString().replace(/[^0-9.-]/g, ""));
+  if (isNaN(n)) return String(v);
+  return `₱${n.toLocaleString()}`;
+}
+
+function rate_toNumber(x) {
+  return x === null || x === undefined || x === "" ? null : Number(x);
+}
+function peso(val) {
+  if (val === null || val === undefined || val === "") return "-";
+  const n = Number(val);
+  if (!isNaN(n)) {
+    try {
+      return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(n);
+    } catch {
+      return `₱${n}`;
+    }
+  }
+  return `₱${val}`;
+}
+function normalizeLocalPH10(v) {
+  let d = String(v || "").replace(/\D/g, "");
+  if (d.startsWith("63")) d = d.slice(2);
+  if (d.startsWith("0")) d = d.slice(1);
+  if (d.length > 10) d = d.slice(-10);
+  if (d.length === 10 && d[0] === "9") return d;
+  return "";
+}
+function ContactDisplay({ number }) {
+  const local10 = normalizeLocalPH10(number);
+  return (
+    <div className="inline-flex items-center gap-2">
+      <img src="/philippines.png" alt="PH" className="h-4 w-6 rounded-sm object-cover" />
+      <span className="text-gray-700 text-sm">+63</span>
+      <span className={`text-[15px] font-semibold ${local10 ? "text-black-500" : "text-gray-400"}`}>
+        {local10 || "9XXXXXXXXX"}
+      </span>
+    </div>
+  );
+}
+function ServiceTypesInline({ list }) {
+  const arr = Array.isArray(list) ? list.filter(Boolean) : [];
+  if (arr.length === 0) return <span>-</span>;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {arr.map((s, i) => (
+        <ServiceTypePill key={`${s}-${i}`} value={s} />
+      ))}
+    </div>
+  );
+}
+
 export default function CanceledApplicationMenu() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -204,6 +290,7 @@ export default function CanceledApplicationMenu() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sectionOpen, setSectionOpen] = useState("all");
   const [serviceFilter, setServiceFilter] = useState("all");
+  const [showDocs, setShowDocs] = useState(false);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -217,13 +304,15 @@ export default function CanceledApplicationMenu() {
         const i = r.info || {};
         const w = r.work || {};
         const d = r.documents || r.docs || {};
+        const rate = r.rate || w.rate || {};
         const createdRaw = r.created_at || r.createdAt || i.created_at || w.created_at || null;
         const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
+        const serviceTypes = toArray(w.service_types).filter(Boolean);
         const primaryService =
           firstNonEmpty(
             w.primary_service,
             w.service_type,
-            Array.isArray(w.service_types) ? w.service_types[0] : "",
+            serviceTypes[0],
             r.service_type
           ) || "";
         const taskFromDetails = extractTaskFromJobDetails(w.job_details, primaryService);
@@ -235,28 +324,51 @@ export default function CanceledApplicationMenu() {
           taskFromDetails,
           w.work_description
         );
+        const rate_type = firstNonEmpty(rate.rate_type, w.rate_type, w.payment_type, w.billing_type);
+        const rate_from = firstNonEmpty(rate.rate_from, w.rate_from, w.hourly_from, w.hourly_rate, w.rate_per_hour, w.rate_min, w.minimum_rate);
+        const rate_to = firstNonEmpty(rate.rate_to, w.rate_to, w.hourly_to, w.rate_max);
+        const rate_value = firstNonEmpty(rate.rate_value, w.rate_value, w.daily_rate, w.rate_per_day);
+        const dob = firstNonEmpty(
+          i.date_of_birth,
+          i.dob,
+          i.birthdate,
+          i.birth_date,
+          r.date_of_birth,
+          r.dob,
+          r.birthdate,
+          r.birth_date,
+          w.date_of_birth,
+          w.dob,
+          w.birthdate,
+          w.birth_date
+        );
+        const infoNormalized = { ...i, date_of_birth: dob || i.date_of_birth };
+
         return {
           id: r.id,
           status: "canceled",
           ui_status: "cancelled",
-          name_first: i.first_name || r.first_name || "",
-          name_last: i.last_name || r.last_name || "",
-          email: i.email_address || i.email || r.email || "",
+          name_first: infoNormalized.first_name || r.first_name || "",
+          name_last: infoNormalized.last_name || r.last_name || "",
+          email: infoNormalized.email_address || infoNormalized.email || r.email || "",
+          info: infoNormalized,
+          work: w,
+          rate: { rate_type, rate_from, rate_to, rate_value },
+          documents: d,
+          service_types: serviceTypes,
           primary_service: primaryService,
           task_or_role: taskOrRole,
           years_experience: w.years_experience ?? w.experience_years ?? r.years_experience,
           tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
           has_certifications: isYes(w.has_certifications) || w.has_certifications === true || isYes(w.certified),
-          info: i,
-          work: w,
-          documents: d,
+          service_description: w.work_description || w.description || "",
           created_at_raw: createdRaw,
           created_at_ts: createdTs,
           created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
           reason_choice: r.reason_choice || null,
           reason_other: r.reason_other || null,
           canceled_at: r.canceled_at || r.cancelled_at || null,
-          profile_picture: i.profile_picture_url || i.profile_picture || r.profile_picture || ""
+          profile_picture: infoNormalized.profile_picture_url || infoNormalized.profile_picture || r.profile_picture || ""
         };
       });
       setRows(mapped);
@@ -292,39 +404,39 @@ export default function CanceledApplicationMenu() {
     };
   }, [viewRow]);
 
-const categoryMap = (service) => {
-  const s = String(service || "").trim().toLowerCase();
-  if (s === "car washing" || s === "carwasher" || s === "car washer" || /car\s*wash/.test(s)) return "carwasher";
-  if (s === "carpentry" || s === "carpenter") return "carpenter";
-  if (s === "electrical works" || s === "electrical work" || s === "electrician" || /electric/.test(s)) return "electrician";
-  if (s === "laundry" || /laund/.test(s)) return "laundry";
-  if (s === "plumbing" || s === "plumber") return "plumber";
-  return "";
-};
+  const categoryMap = (service) => {
+    const s = String(service || "").trim().toLowerCase();
+    if (s === "car washing" || s === "carwasher" || s === "car washer" || /car\s*wash/.test(s)) return "carwasher";
+    if (s === "carpentry" || s === "carpenter") return "carpenter";
+    if (s === "electrical works" || s === "electrical work" || s === "electrician" || /electric/.test(s)) return "electrician";
+    if (s === "laundry" || /laund/.test(s)) return "laundry";
+    if (s === "plumbing" || s === "plumber") return "plumber";
+    return "";
+  };
 
-const filteredRows = useMemo(() => {
-  if (serviceFilter === "all") return rows;
-  return rows.filter((r) => {
-    const cand =
-      r.primary_service ||
-      (Array.isArray(r.work?.service_types) ? r.work.service_types[0] : "") ||
-      r.task_or_role;
-    return categoryMap(cand) === serviceFilter;
-  });
-}, [rows, serviceFilter]);
+  const filteredRows = useMemo(() => {
+    if (serviceFilter === "all") return rows;
+    return rows.filter((r) => {
+      const cand =
+        r.primary_service ||
+        (Array.isArray(r.work?.service_types) ? r.work.service_types[0] : "") ||
+        r.task_or_role;
+      return categoryMap(cand) === serviceFilter;
+    });
+  }, [rows, serviceFilter]);
 
-const serviceCounts = useMemo(() => {
-  const counts = { all: rows.length, carwasher: 0, carpenter: 0, electrician: 0, laundry: 0, plumber: 0 };
-  for (const r of rows) {
-    const cand =
-      r.primary_service ||
-      (Array.isArray(r.work?.service_types) ? r.work.service_types[0] : "") ||
-      r.task_or_role;
-    const k = categoryMap(cand);
-    if (k && counts[k] !== undefined) counts[k]++;
-  }
-  return counts;
-}, [rows]);
+  const serviceCounts = useMemo(() => {
+    const counts = { all: rows.length, carwasher: 0, carpenter: 0, electrician: 0, laundry: 0, plumber: 0 };
+    for (const r of rows) {
+      const cand =
+        r.primary_service ||
+        (Array.isArray(r.work?.service_types) ? r.work.service_types[0] : "") ||
+        r.task_or_role;
+      const k = categoryMap(cand);
+      if (k && counts[k] !== undefined) counts[k]++;
+    }
+    return counts;
+  }, [rows]);
 
   const sortedRows = useMemo(() => {
     if (!sort.key) return filteredRows;
@@ -364,20 +476,6 @@ const serviceCounts = useMemo(() => {
   );
 
   const SectionCard = ({ title, children, badge }) => (
-    <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
-      <div className="px-6 pt-5 pb-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-2xl flex items-center justify-between">
-        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500"></span>
-          {title}
-        </h3>
-        {badge || null}
-      </div>
-      <div className="p-6">{children}</div>
-      <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
-    </section>
-  );
-
-  const SectionCardRef = ({ title, children, badge }) => (
     <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
       <div className="px-6 py-5 rounded-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
         <h3 className="text-base font-semibold flex items-center gap-2">
@@ -441,189 +539,155 @@ const serviceCounts = useMemo(() => {
     { key: "plumber", label: "Plumber" }
   ];
 
+  const renderServiceRateSection = () => {
+    if (!viewRow) return null;
+    const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
+    if (t.includes("by the job")) {
+      return (
+        <SectionCard
+          title="Service Rate"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
+              Pricing
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-3xl">
+            <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+            <Field label="Rate Value" value={peso(rate_toNumber(viewRow?.rate?.rate_value))} />
+          </div>
+        </SectionCard>
+      );
+    }
+    if (t.includes("hourly")) {
+      return (
+        <SectionCard
+          title="Service Rate"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
+              Pricing
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6 max-w-4xl">
+            <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+            <Field label="Rate From" value={peso(rate_toNumber(viewRow?.rate?.rate_from))} />
+            <Field label="Rate To" value={peso(rate_toNumber(viewRow?.rate?.rate_to))} />
+          </div>
+        </SectionCard>
+      );
+    }
+    return (
+      <SectionCard
+        title="Service Rate"
+        badge={
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="h-3 w-3 rounded-full bg-white/60" />
+            Pricing
+          </span>
+        }
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+          <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+          <Field label="Rate From" value={peso(rate_toNumber(viewRow?.rate?.rate_from))} />
+          <Field label="Rate To" value={peso(rate_toNumber(viewRow?.rate?.rate_to))} />
+          <Field label="Rate Value" value={peso(rate_toNumber(viewRow?.rate?.rate_value))} />
+        </div>
+      </SectionCard>
+    );
+  };
+
   const renderSection = () => {
     if (!viewRow) return null;
     if (sectionOpen === "all") {
       return (
         <div className="space-y-6">
-          <SectionCardRef
+          <SectionCard
             title="Personal Information"
             badge={
               <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 <span className="h-3 w-3 rounded-full bg-white/60" />
-                Applicant
+                Worker
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+              <Field label="Date of Birth" value={fmtMMDDYYYY(viewRow?.info?.date_of_birth)} />
+              <Field label="Age" value={viewRow?.info?.age ?? "-"} />
+              <Field label="Contact Number:" value={<ContactDisplay number={viewRow?.info?.contact_number} />} />
+              <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
+              <Field label="Additional Address" value={viewRow?.info?.additional_address || viewRow?.info?.street || "-"} />
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Work Details"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
+                Experience
               </span>
             }
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-              <Field label="First Name" value={viewRow?.name_first || "-"} />
-              <Field label="Last Name" value={viewRow?.name_last || "-"} />
-              <Field label="Email" value={viewRow?.email || "-"} />
-              <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
-              <Field label="Street" value={viewRow?.info?.street || "-"} />
-              <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
-              <Field label="Birth Date" value={fmtMMDDYYYY(viewRow?.info?.date_of_birth)} />
-              <Field label="Contact Number" value={viewRow?.info?.contact_number || "-"} />
+              <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types?.length ? viewRow.service_types : toArray(viewRow?.work?.service_types)} />} />
+              <Field label="Service Task(s)" value={<TaskPill value={viewRow?.task_or_role} />} />
+              <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
+              <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
+              <Field label="Service Description" value={viewRow?.service_description || "-"} />
             </div>
-          </SectionCardRef>
+          </SectionCard>
 
-          <SectionCardRef
-            title="Work Information"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full bg-white/60" />
-                Work
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
-              <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                <Field label="Primary Service" value={<ServiceTypePill value={viewRow?.primary_service} />} />
-                <Field label="Task" value={<TaskPill value={viewRow?.task_or_role} />} />
-                <Field label="Years of Experience" value={viewRow?.years_experience ?? "-"} />
-                <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
-                <Field label="Has Certifications" value={<YesNoPill yes={viewRow?.has_certifications} />} />
-                <div className="sm:col-span-2">
-                  <Field
-                    label="Other Services"
-                    value={
-                      <span className="text-[15px] leading-relaxed">
-                        {toArray(viewRow?.work?.service_types).filter(Boolean).join(", ") || "-"}
-                      </span>
-                    }
-                  />
-                </div>
-              </div>
-              <div className="xl:col-span-2">
-                <div className="aspect-square w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
-                  {viewRow?.profile_picture ? (
-                    <img
-                      src={viewRow.profile_picture}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                      onError={({ currentTarget }) => {
-                        currentTarget.style.display = "none";
-                        const p = currentTarget.parentElement;
-                        if (p) p.innerHTML = '<div class="text-sm text-gray-500">No image available</div>';
-                      }}
-                    />
-                  ) : (
-                    <div className="text-sm text-gray-500">No image available</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </SectionCardRef>
-
-          <SectionCardRef
-            title="Documents"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full bg-white/60" />
-                Docs
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Field label="Gov ID" value={firstNonEmpty(viewRow?.documents?.gov_id_status, viewRow?.documents?.gov_id_url ? "Provided" : "") || "-"} />
-              <Field label="NBI / Police Clearance" value={firstNonEmpty(viewRow?.documents?.nbi_status, viewRow?.documents?.nbi_url ? "Provided" : "") || "-"} />
-              <Field label="Certificates" value={firstNonEmpty(viewRow?.documents?.cert_status, viewRow?.documents?.cert_url ? "Provided" : "") || "-"} />
-              <Field label="Other" value={firstNonEmpty(viewRow?.documents?.other_status, viewRow?.documents?.other_url ? "Provided" : "") || "-"} />
-            </div>
-          </SectionCardRef>
+          {renderServiceRateSection()}
         </div>
       );
     }
     if (sectionOpen === "info") {
       return (
-        <SectionCardRef
+        <SectionCard
           title="Personal Information"
           badge={
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               <span className="h-3 w-3 rounded-full bg-white/60" />
-              Applicant
+              Worker
             </span>
           }
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
-            <Field label="First Name" value={viewRow?.name_first || "-"} />
-            <Field label="Last Name" value={viewRow?.name_last || "-"} />
-            <Field label="Email" value={viewRow?.email || "-"} />
+            <Field label="Date of Birth" value={fmtMMDDYYYY(viewRow?.info?.date_of_birth)} />
+            <Field label="Age" value={viewRow?.info?.age ?? "-"} />
+            <Field label="Contact Number:" value={<ContactDisplay number={viewRow?.info?.contact_number} />} />
             <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
-            <Field label="Street" value={viewRow?.info?.street || "-"} />
-            <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
-            <Field label="Birth Date" value={fmtMMDDYYYY(viewRow?.info?.date_of_birth)} />
-            <Field label="Contact Number" value={viewRow?.info?.contact_number || "-"} />
+            <Field label="Additional Address" value={viewRow?.info?.additional_address || viewRow?.info?.street || "-"} />
           </div>
-        </SectionCardRef>
+        </SectionCard>
       );
     }
     if (sectionOpen === "work") {
       return (
-        <SectionCardRef
-          title="Work Information"
+        <SectionCard
+          title="Work Details"
           badge={
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               <span className="h-3 w-3 rounded-full bg-white/60" />
-              Work
+              Experience
             </span>
           }
         >
-          <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
-            <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-              <Field label="Primary Service" value={<ServiceTypePill value={viewRow?.primary_service} />} />
-              <Field label="Task" value={<TaskPill value={viewRow?.task_or_role} />} />
-              <Field label="Years of Experience" value={viewRow?.years_experience ?? "-"} />
-              <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
-              <Field label="Has Certifications" value={<YesNoPill yes={viewRow?.has_certifications} />} />
-              <div className="sm:col-span-2">
-                <Field
-                  label="Other Services"
-                  value={<span className="text-[15px] leading-relaxed">{toArray(viewRow?.work?.service_types).filter(Boolean).join(", ") || "-"}</span>}
-                />
-              </div>
-            </div>
-            <div className="xl:col-span-2">
-              <div className="aspect-square w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
-                {viewRow?.profile_picture ? (
-                  <img
-                    src={viewRow.profile_picture}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                    onError={({ currentTarget }) => {
-                      currentTarget.style.display = "none";
-                      const p = currentTarget.parentElement;
-                      if (p) p.innerHTML = '<div class="text-sm text-gray-500">No image available</div>';
-                    }}
-                  />
-                ) : (
-                  <div className="text-sm text-gray-500">No image available</div>
-                )}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+            <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types?.length ? viewRow.service_types : toArray(viewRow?.work?.service_types)} />} />
+            <Field label="Service Task(s)" value={<TaskPill value={viewRow?.task_or_role} />} />
+            <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
+            <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
+            <Field label="Service Description" value={viewRow?.service_description || "-"} />
           </div>
-        </SectionCardRef>
+        </SectionCard>
       );
     }
-    if (sectionOpen === "documents") {
-      return (
-        <SectionCardRef
-          title="Documents"
-          badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              <span className="h-3 w-3 rounded-full bg-white/60" />
-              Docs
-            </span>
-          }
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Field label="Gov ID" value={firstNonEmpty(viewRow?.documents?.gov_id_status, viewRow?.documents?.gov_id_url ? "Provided" : "") || "-"} />
-            <Field label="NBI / Police Clearance" value={firstNonEmpty(viewRow?.documents?.nbi_status, viewRow?.documents?.nbi_url ? "Provided" : "") || "-"} />
-            <Field label="Certificates" value={firstNonEmpty(viewRow?.documents?.cert_status, viewRow?.documents?.cert_url ? "Provided" : "") || "-"} />
-            <Field label="Other" value={firstNonEmpty(viewRow?.documents?.other_status, viewRow?.documents?.other_url ? "Provided" : "") || "-"} />
-          </div>
-        </SectionCardRef>
-      );
+    if (sectionOpen === "rate") {
+      return renderServiceRateSection();
     }
     return null;
   };
@@ -865,29 +929,29 @@ const serviceCounts = useMemo(() => {
       </section>
 
       {viewRow && (
-        <div role="dialog" aria-modal="true" aria-label="Application details" tabIndex={-1} className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
+        <div role="dialog" aria-modal="true" aria-label="Worker application details" tabIndex={-1} className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); setShowDocs(false); }} />
           <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
             <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
               <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
-                {viewRow?.profile_picture ? (
-                  <img
-                    src={viewRow.profile_picture}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                    onError={({ currentTarget }) => {
-                      currentTarget.style.display = "none";
-                      const parent = currentTarget.parentElement;
-                      if (parent) {
-                        parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${(((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1)) || "?").toUpperCase()}</div>`;
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">
-                    {(((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1)) || "?").toUpperCase()}
-                  </div>
-                )}
+                <img
+                  src={(viewRow?.profile_picture && String(viewRow.profile_picture).startsWith("http")) ? viewRow.profile_picture : avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim())}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                  data-fallback="primary"
+                  onError={({ currentTarget }) => {
+                    const parent = currentTarget.parentElement;
+                    if (currentTarget.dataset.fallback === "primary") {
+                      currentTarget.dataset.fallback = "dice";
+                      currentTarget.src = avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim());
+                      return;
+                    }
+                    currentTarget.style.display = "none";
+                    if (parent) {
+                      parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1) || "?").toUpperCase()}</div>`;
+                    }
+                  }}
+                />
               </div>
 
               <div className="mt-5 text-center space-y-0.5">
@@ -897,36 +961,114 @@ const serviceCounts = useMemo(() => {
                 <div className="text-sm text-gray-600">{viewRow.email || "-"}</div>
               </div>
 
-              <div className="mt-3 flex items-center justify-center gap-3">
+              <div className="mt-3 flex items-center justify-center gap-3 flex-wrap">
                 <div className="text-sm text-gray-600">
                   Created <span className="font-semibold text-[#008cfc]">{viewRow.created_at_display || "-"}</span>
                 </div>
-                <div className="flex items-center gap-1 flex-wrap">
-                  <StatusPill value="cancelled" />
-                </div>
-              </div>
-            </div>
-
-            <div className="px-6 sm:px-8 py-4 bg-white border-b border-gray-200">
-              <div className="flex items-center gap-2 flex-wrap">
-                <SectionButton k="all" label="All" />
-                <SectionButton k="info" label="Personal" />
-                <SectionButton k="work" label="Work" />
-                <SectionButton k="documents" label="Documents" />
+                <StatusPill value="cancelled" />
               </div>
             </div>
 
             <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
+              <div className="mb-4 flex items-center justify-center gap-2">
+                <SectionButton k="all" label="All" />
+                <SectionButton k="info" label="Personal Information" />
+                <SectionButton k="work" label="Work Details" />
+                <SectionButton k="rate" label="Service Rate" />
+              </div>
               {renderSection()}
             </div>
 
-            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-1 gap-3 border-t border-gray-200 bg-white">
+            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 bg-white">
               <button
                 type="button"
-                onClick={() => { setViewRow(null); }}
+                onClick={() => { setViewRow(null); setShowDocs(false); }}
                 className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
               >
                 Close
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDocs(true)}
+                className="w-full inline-flex items-center justify-center rounded-lg border border-[#008cfc] bg-[#008cfc] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0077d6]"
+              >
+                View Documents
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewRow && showDocs && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="View documents"
+          tabIndex={-1}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDocs(false)} />
+          <div className="relative w-full max-w-[900px] max-h-[80vh] overflow-hidden rounded-2xl border border-gray-300 bg-white shadow-2xl">
+            <div className="px-6 py-4 border-b bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white">
+              <div className="text-base font-semibold">Documents</div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[65vh] [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+              {viewRow && (viewRow.documents || viewRow.docs) && Object.keys(viewRow.documents || viewRow.docs).length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[
+                    { label: "Primary ID (Front)", keys: ["primary_id_front", "primaryIdFront", "primary_front", "primary_front_id", "primary_id_front_url", "primary_front_url"] },
+                    { label: "Primary ID (Back)", keys: ["primary_id_back", "primaryIdBack", "primary_back", "primary_back_id", "primary_id_back_url", "primary_back_url"] },
+                    { label: "Secondary ID", keys: ["secondary_id", "secondaryId", "secondary_id_url"] },
+                    { label: "NBI/Police Clearance", keys: ["nbi_police_clearance", "nbi_clearance", "police_clearance", "nbi", "police"] },
+                    { label: "Proof of Address", keys: ["proof_of_address","proofOfAddress","address_proof","proof_address","billing_proof","utility_bill","proof_of_residence","proofOfResidence","residence_proof","residency_proof","barangay_clearance","barangay_certificate","electric_bill","water_bill","meralco_bill"], fuzzy: { any: ["address","residence","residency","billing","utility","bill","proof","poa","barangay","clearance"] } },
+                    { label: "Medical Certificate", keys: ["medical_certificate", "med_cert"], fuzzy: { any: ["medical", "med_cert", "medcert", "health", "fit_to_work", "fit-to-work", "fit2work", "med"] } },
+                    { label: "Certificates", keys: ["certificates", "training_certificates", "certs"] },
+                  ].map((cfg) => {
+                    const d = viewRow.documents || viewRow.docs || {};
+                    const found = resolveDoc(d, cfg.keys, cfg.fuzzy);
+                    const url = toDocUrl(found);
+                    const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(url);
+                    return (
+                      <div key={cfg.label} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+                        <div className="p-3">
+                          {isImg && url ? (
+                            <img src={url} alt={cfg.label} className="w-full h-40 object-contain" />
+                          ) : (
+                            <div className="text-sm text-gray-500 h-40 grid place-items-center">{url ? "Preview not available" : "No document"}</div>
+                          )}
+                        </div>
+                        <div className="p-3 border-t flex items-center justify-between">
+                          <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                            <span className="h-2 w-2 rounded-full bg-gray-500/70" />
+                            {cfg.label}
+                          </div>
+                          {url ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                            >
+                              Open
+                            </a>
+                          ) : (
+                            <span className="text-sm text-gray-400">No link</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center text-gray-600">No documents.</div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t bg-white">
+              <button
+                onClick={() => setShowDocs(false)}
+                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+              >
+                Done
               </button>
             </div>
           </div>
