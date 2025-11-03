@@ -188,75 +188,71 @@ export default function WorkerApplicationMenu() {
     } catch {}
   };
 
-  const fetchItems = async (statusArg = filter, qArg = searchTerm) => {
+  const fetchItems = async (_statusArg = filter, qArg = searchTerm) => {
     setLoading(true);
     setLoadError("");
     try {
       const params = {};
-      if (statusArg && statusArg !== "all") params.status = statusArg;
+      if (_statusArg && _statusArg !== "all") params.status = String(_statusArg).trim().toLowerCase();
       if (qArg && qArg.trim()) params.q = qArg.trim();
-
       const res = await axios.get(`${API_BASE}/api/admin/workerapplications`, {
         params,
         withCredentials: true,
       });
-
-      const items = Array.isArray(res?.data?.items) ? res.data.items : [];
+      const rawItems = Array.isArray(res?.data?.items) ? res.data.items : [];
+      const items = rawItems.filter((r) => String(r.status || "").toLowerCase() !== "cancelled");
       const mapped = items.map((r) => {
-  const i = r.info || {};
-  const w = r.work || {};
-  const rate = r.rate || {};
-  const st = Array.isArray(w.service_types) ? w.service_types : [];
-  const createdRaw = r.created_at || r.createdAt || i.created_at || i.createdAt || null;
-  const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
-  return {
-    id: r.id,
-    request_group_id: r.request_group_id,
-    status: r.status || "pending",
-    name_first: i.first_name || "",
-    name_last: i.last_name || "",
-    email: r.email_address || i.email_address || "",
-    barangay: i.barangay || "",
-    additional_address: i.additional_address || i.street || "",
-    age: i.age ?? null,
-    years_experience: w.years_experience ?? "",
-    tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
-    service_types: st,
-    primary_service: st[0] || "",
-    service_types_lex: st.join(", "),
-    rate_type: rate.rate_type || "",
-    rate_from: rate.rate_from,
-    rate_to: rate_toNumber(rate.rate_to),
-    rate_value: rate_toNumber(rate.rate_value),
-    info: i,
-    work: w,
-    rate,
-    docs: r.docs || {},
-    created_at_raw: createdRaw,
-    created_at_ts: createdTs,
-    created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
-    profile_picture_url: i.profile_picture_url || null,
-    reason_choice: r.reason_choice || r.decline_reason_choice || null,
-    reason_other: r.reason_other || r.decline_reason_other || null,
-    decision_reason: r.decision_reason || r.reason || null,
-    decided_at_raw: r.decided_at || null,
-    decided_at_display: r.decided_at ? fmtDateTime(r.decided_at) : (r.decided_at_display || "")
-  };
-});
-
+        const i = r.info || {};
+        const w = r.work || {};
+        const rate = r.rate || {};
+        const st = Array.isArray(w.service_types) ? w.service_types : [];
+        const createdRaw = r.created_at || r.createdAt || i.created_at || i.createdAt || null;
+        const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
+        const s = String(r.status ?? "").trim().toLowerCase();
+        return {
+          id: r.id,
+          request_group_id: r.request_group_id,
+          status: s || "pending",
+          name_first: i.first_name || "",
+          name_last: i.last_name || "",
+          email: r.email_address || i.email_address || "",
+          barangay: i.barangay || "",
+          additional_address: i.additional_address || i.street || "",
+          age: i.age ?? null,
+          years_experience: w.years_experience ?? "",
+          tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
+          service_types: st,
+          primary_service: st[0] || "",
+          service_types_lex: st.join(", "),
+          rate_type: rate.rate_type || "",
+          rate_from: rate.rate_from,
+          rate_to: rate_toNumber(rate.rate_to),
+          rate_value: rate_toNumber(rate.rate_value),
+          info: i,
+          work: w,
+          rate,
+          docs: r.docs || {},
+          created_at_raw: createdRaw,
+          created_at_ts: createdTs,
+          created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
+          profile_picture_url: i.profile_picture_url || null,
+          reason_choice: r.reason_choice || r.decline_reason_choice || null,
+          reason_other: r.reason_other || r.decline_reason_other || null,
+          decision_reason: r.decision_reason || r.reason || null,
+          decided_at_raw: r.decided_at || null,
+          decided_at_display: r.decided_at ? fmtDateTime(r.decided_at) : (r.decided_at_display || "")
+        };
+      });
       setRows(mapped);
-
-      if (!params.status && !params.q) {
-        setCounts({
-          pending: mapped.filter((x) => x.status === "pending").length,
-          approved: mapped.filter((x) => x.status === "approved").length,
-          declined: mapped.filter((x) => x.status === "declined").length,
-          total: mapped.length,
-        });
-      }
+      const norm = (x) => String(x ?? "").trim().toLowerCase();
+      const pc = mapped.filter((x) => norm(x.status) === "pending").length;
+      const ac = mapped.filter((x) => norm(x.status) === "approved").length;
+      const dc = mapped.filter((x) => norm(x.status) === "declined").length;
+      setCounts({ pending: pc, approved: ac, declined: dc, total: pc + ac + dc });
     } catch (err) {
       setLoadError(err?.response?.data?.message || err?.message || "Failed to load");
       setRows([]);
+      setCounts({ pending: 0, approved: 0, declined: 0, total: 0 });
     } finally {
       setLoading(false);
     }
@@ -325,19 +321,25 @@ export default function WorkerApplicationMenu() {
     }
   }, [showDeclineLoading, showDeclineSuccess, viewRow, showConfirmCancelSuccess]);
 
+  const filteredRows = useMemo(() => {
+    const f = String(filter || "all").toLowerCase();
+    if (f === "all") return rows;
+    return rows.filter((r) => String(r.status || "").trim().toLowerCase() === f);
+  }, [rows, filter]);
+
   const sortedRows = useMemo(() => {
-    if (!sort.key) return rows;
+    if (!sort.key) return filteredRows;
     if (sort.key === "created_at_ts") {
       const dir = sort.dir === "asc" ? 1 : -1;
-      return [...rows].sort((a, b) => (a.created_at_ts - b.created_at_ts) * dir);
+      return [...filteredRows].sort((a, b) => (a.created_at_ts - b.created_at_ts) * dir);
     }
     const dir = sort.dir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
+    return [...filteredRows].sort((a, b) => {
       const av = String(a[sort.key] ?? "").toLowerCase();
       const bv = String(b[sort.key] ?? "").toLowerCase();
       return av < bv ? -1 * dir : av > bv ? 1 * dir : 0;
     });
-  }, [rows, sort]);
+  }, [filteredRows, sort]);
 
   const toggleSort = (key) =>
     setSort((prev) =>
@@ -368,43 +370,43 @@ export default function WorkerApplicationMenu() {
         n.delete(id);
         return n;
       });
-      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1 }));
+      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1, total: Math.max(0, c.pending - 1) + c.approved + 1 + c.declined }));
     } catch (err) {
       setLoadError(err?.response?.data?.message || err?.message || "Failed to approve");
     }
   };
 
- const decline = async (id, payload = null) => {
-  setLoadError("");
-  try {
-    const res = await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/decline`, payload || {}, { withCredentials: true });
-    const d = res?.data || {};
-    setRows((r) =>
-      r.map((x) =>
-        x.id === id
-          ? {
-              ...x,
-              status: "declined",
-              reason_choice: d.reason_choice ?? payload?.reason_choice ?? x.reason_choice ?? null,
-              reason_other: d.reason_other ?? payload?.reason_other ?? x.reason_other ?? null,
-              decision_reason: d.decision_reason ?? x.decision_reason ?? null,
-              decided_at_raw: d.decided_at || x.decided_at_raw || null,
-              decided_at_display: d.decided_at ? fmtDateTime(d.decided_at) : (x.decided_at_display || "")
-            }
-          : x
-      )
-    );
-    setSelected((s) => {
-      const n = new Set(s);
-      n.delete(id);
-      return n;
-    });
-    setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1 }));
-  } catch (err) {
-    setLoadError(err?.response?.data?.message || err?.message || "Failed to decline");
-    throw err;
-  }
-};
+  const decline = async (id, payload = null) => {
+    setLoadError("");
+    try {
+      const res = await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/decline`, payload || {}, { withCredentials: true });
+      const d = res?.data || {};
+      setRows((r) =>
+        r.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                status: "declined",
+                reason_choice: d.reason_choice ?? payload?.reason_choice ?? x.reason_choice ?? null,
+                reason_other: d.reason_other ?? payload?.reason_other ?? x.reason_other ?? null,
+                decision_reason: d.decision_reason ?? x.decision_reason ?? null,
+                decided_at_raw: d.decided_at || x.decided_at_raw || null,
+                decided_at_display: d.decided_at ? fmtDateTime(d.decided_at) : (x.decided_at_display || "")
+              }
+            : x
+        )
+      );
+      setSelected((s) => {
+        const n = new Set(s);
+        n.delete(id);
+        return n;
+      });
+      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1, total: Math.max(0, c.pending - 1) + c.approved + c.declined + 1 }));
+    } catch (err) {
+      setLoadError(err?.response?.data?.message || err?.message || "Failed to decline");
+      throw err;
+    }
+  };
 
   const openDeclineModal = (row) => {
     setDeclineErr("");
@@ -824,7 +826,7 @@ export default function WorkerApplicationMenu() {
                 <div className="text-sm text-gray-600">{viewRow.email || "-"}</div>
               </div>
 
-              <div className="mt-3 flex items中心 justify-center gap-3 flex-wrap">
+              <div className="mt-3 flex items-center justify-center gap-3 flex-wrap">
                 <div className="text-sm text-gray-600">
                   Created <span className="font-semibold text-[#008cfc]">{viewRow.created_at_display || "-"}</span>
                 </div>

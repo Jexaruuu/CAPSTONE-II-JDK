@@ -84,9 +84,16 @@ async function listApplications({ status = "", q = "", limit = 500 }) {
     .from("wa_pending")
     .select("id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, docs, reason_choice, reason_other, decision_reason")
     .order("created_at", { ascending: false })
-    .limit(lim);
+    .limit(lim)
+    .neq("status", "cancelled");
 
-  if (status && status !== "all") query = query.eq("status", status);
+  if (status && status !== "all") {
+    if (status === "pending") {
+      query = query.or("status.eq.pending,status.is.null,status.eq.");
+    } else {
+      query = query.eq("status", status);
+    }
+  }
 
   if (q) {
     const t = likeTerm(q);
@@ -108,8 +115,18 @@ async function listApplications({ status = "", q = "", limit = 500 }) {
 }
 
 async function countExact(filter) {
-  const q = supabaseAdmin.from("wa_pending").select("*", { count: "exact", head: true });
-  const { count, error } = filter ? await q.eq("status", filter) : await q;
+  let q = supabaseAdmin.from("wa_pending").select("*", { count: "exact", head: true });
+  if (filter === "pending") {
+    const { count, error } = await q.or("status.eq.pending,status.is.null,status.eq.");
+    if (error) throw error;
+    return count || 0;
+  }
+  if (filter) {
+    const { count, error } = await q.eq("status", filter);
+    if (error) throw error;
+    return count || 0;
+  }
+  const { count, error } = await q.neq("status", "cancelled");
   if (error) throw error;
   return count || 0;
 }

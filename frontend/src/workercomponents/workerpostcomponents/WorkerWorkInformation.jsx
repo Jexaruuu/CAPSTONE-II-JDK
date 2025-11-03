@@ -326,7 +326,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                 <h3 className="text-xl md:text-2xl font-semibold mb-6">Type of Service</h3>
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Service Type *</label>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     {serviceTypes.map((type) => (
                       <label key={type} className="flex items-center gap-3 cursor-pointer select-none">
