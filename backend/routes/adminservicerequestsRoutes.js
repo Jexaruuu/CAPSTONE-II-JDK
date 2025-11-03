@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const controller = require("../controllers/adminworkerapplicationController");
+const controller = require("../controllers/adminservicerequestsController");
 
 router.get("/", controller.list);
 router.get("/count", controller.count);
