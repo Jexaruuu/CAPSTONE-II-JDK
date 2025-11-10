@@ -55,6 +55,18 @@ function toBool(v) {
   return !!v;
 }
 
+function buildDateTime(dateStr, timeStr) {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(timeStr || ''));
+  if (m) {
+    d.setHours(Number(m[1]) || 0, Number(m[2]) || 0, 0, 0);
+  } else {
+    d.setHours(23, 59, 59, 999);
+  }
+  return d;
+}
+
 const WorkerAvailableServiceRequest = () => {
   const [items, setItems] = useState([]);
 
@@ -91,12 +103,16 @@ const WorkerAvailableServiceRequest = () => {
         } catch {}
       }
       if (!ok) return;
+      const now = Date.now();
       const mapped = (dataArr || []).map((r, idx) => {
         const i = r.info || {};
         const d = r.details || {};
         const rate = r.rate || {};
         const name = [i.first_name, i.last_name].filter(Boolean).join(' ').trim() || 'Client';
         const addressLine = [i.barangay, i.street, i.additional_address].filter(Boolean).join(', ');
+        const dt = buildDateTime(d.preferred_date || '', d.preferred_time || '');
+        const statusLower = String(r.status || '').toLowerCase();
+        const isExpired = statusLower === 'expired' || (dt && dt.getTime() < now);
         return {
           id: r.id || idx + 1,
           request_group_id: r.request_group_id || '',
@@ -113,15 +129,15 @@ const WorkerAvailableServiceRequest = () => {
           description: d.service_description || '',
           rate_type: rate.rate_type || '',
           price: fmtRate(rate),
-          addressLine
+          addressLine,
+          isExpired
         };
       });
-      setItems(mapped);
+      const active = mapped.filter((x) => !x.isExpired);
+      setItems(active);
     })();
     return () => { ok = false; };
   }, []);
-
-  const displayItems = items;
 
   const PER_PAGE = 3;
 
@@ -134,8 +150,14 @@ const WorkerAvailableServiceRequest = () => {
 
   const GAP = 24;
 
-  const [cardW, setCardW] = useState(340);
+  const [cardW, setCardW] = useState(420);
   const [endPad, setEndPad] = useState(0);
+
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 9;
+
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const displayItems = items.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE);
 
   const totalSlides = Math.max(1, Math.ceil(displayItems.length / PER_PAGE));
 
@@ -154,7 +176,7 @@ const WorkerAvailableServiceRequest = () => {
     if (!wrap || !track) return;
     const visible = wrap.clientWidth - getHPad(wrap) - getHPad(track);
     const exact = Math.floor((visible - GAP * (PER_PAGE - 1)) / PER_PAGE);
-    const clamped = Math.max(300, Math.min(520, exact));
+    const clamped = Math.max(420, Math.min(600, exact));
     setCardW(clamped);
     setEndPad(0);
   };
@@ -177,6 +199,12 @@ const WorkerAvailableServiceRequest = () => {
   useEffect(() => {
     requestAnimationFrame(recomputePositions);
   }, [displayItems.length, cardW, endPad]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ left: 0, behavior: 'auto' });
+    setCurrent(0);
+  }, [page]);
 
   const getViewSlideLefts = () => {
     const el = scrollRef.current;
@@ -276,6 +304,24 @@ const WorkerAvailableServiceRequest = () => {
     }
   };
 
+  const pages = (() => {
+    const t = totalPages;
+    const p = page;
+    const out = [];
+    if (t <= 7) {
+      for (let i = 1; i <= t; i++) out.push(i);
+    } else {
+      out.push(1);
+      if (p > 4) out.push('…');
+      const start = Math.max(2, p - 1);
+      const end = Math.min(t - 1, p + 1);
+      for (let i = start; i <= end; i++) out.push(i);
+      if (p < t - 3) out.push('…');
+      out.push(t);
+    }
+    return out;
+  })();
+
   return (
     <div className="max-w-[1525px] mx-auto px-6 -py-5 relative">
       <div className="flex justify-between items-center mb-3">
@@ -287,12 +333,12 @@ const WorkerAvailableServiceRequest = () => {
 
       {displayItems.length === 0 ? (
         <div className="w-full">
-          <div className="w-full max-w-[1425px] mx-auto bg-white border border-gray-300 rounded-2xl p-10 grid place-items-center text-center">
-            <div className="h-16 w-16 rounded-2xl border border-gray-300 grid place-items-center mb-4">
-              <Hammer className="h-8 w-8 text-[#008cfc]" />
+          <div className="bg-white border border-gray-200 rounded-lg p-6 text-center shadow-sm">
+            <div className="flex justify-center mb-4">
+              <img src="/noavailable.png" alt="No available requests" className="w-20 h-20 object-contain" />
             </div>
             <div className="text-lg font-semibold text-gray-900">No Available Service Requests</div>
-            <div className="text-sm text-gray-600 mt-1">Start by checking back later for new jobs.</div>
+            <div className="text-sm text-gray-600 mt-1">Start by checking back later for new service requests.</div>
           </div>
         </div>
       ) : (
@@ -404,15 +450,44 @@ const WorkerAvailableServiceRequest = () => {
             </button>
           </div>
 
-          <div className="mt-4 flex justify-center gap-2">
-            {Array.from({ length: totalSlides }).map((_, i) => (
+          <div className="flex items-center justify-between pt-6">
+            <div className="text-sm text-gray-600">
+              {items.length} {items.length === 1 ? 'request' : 'requests'}
+            </div>
+            <nav className="flex items-center gap-2">
               <button
-                key={i}
-                onClick={() => scrollToIndex(i)}
-                className={`h-2.5 w-2.5 rounded-full ${current === i ? 'bg-blue-600' : 'bg-gray-300'}`}
-                aria-label={`Go to slide ${i + 1}`}
-              />
-            ))}
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous page"
+              >
+                ‹
+              </button>
+              {pages.map((p, idx) =>
+                typeof p === 'number' ? (
+                  <button
+                    key={`${p}-${idx}`}
+                    onClick={() => setPage(p)}
+                    className={`h-9 min-w-9 px-3 rounded-md border text-sm ${
+                      p === page ? 'border-[#008cfc] bg-[#008cfc] text-white' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                    aria-current={p === page ? 'page' : undefined}
+                  >
+                    {p}
+                  </button>
+                ) : (
+                  <span key={`dots-${idx}`} className="px-1 text-gray-500 select-none">…</span>
+                )
+              )}
+              <button
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Next page"
+              >
+                ›
+              </button>
+            </nav>
           </div>
         </>
       )}
