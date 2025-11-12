@@ -605,7 +605,7 @@ export default function AdminServiceRequests() {
         onClick={() => setSectionOpen(k)}
         className={[
           "rounded-full px-3.5 py-1.5 text-sm border transition",
-          active ? "bg-[#008cfc] text-white border-[#008cfc]" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
+          active ? "bg-[#0b82ff] text-white border-[#0b82ff] shadow-sm" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
         ].join(" ")}
       >
         {label}
@@ -640,8 +640,8 @@ export default function AdminServiceRequests() {
   );
 
   const SectionCard = ({ title, children, badge }) => (
-    <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
-      <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
+    <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#0b82ff] hover:ring-2 hover:ring-[#0b82ff] hover:shadow-xl">
+      <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#0b82ff] to-[#4aa6ff] text-white flex items-center justify-between">
         <h3 className="text-base font-semibold flex items-center gap-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
           {title}
@@ -912,762 +912,785 @@ export default function AdminServiceRequests() {
   }, [sortedRows, currentPage]);
 
   return (
-    <main className="p-6">
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold text-gray-900">Service Requests</h1>
-        <p className="text-gray-600 mt-2">Browse, search, and manage all incoming and processed client requests.</p>
-      </div>
+    <>
+      <style>{`
+        .blue-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #0b82ff #e6f0ff;
+        }
+        .blue-scroll::-webkit-scrollbar {
+          width: 10px;
+        }
+        .blue-scroll::-webkit-scrollbar-track {
+          background: #e6f0ff;
+          border-radius: 8px;
+        }
+        .blue-scroll::-webkit-scrollbar-thumb {
+          background: #0b82ff;
+          border-radius: 8px;
+        }
+        .blue-scroll::-webkit-scrollbar-thumb:hover {
+          background: #086bd4;
+        }
+      `}</style>
 
-      <section className="mt-6">
-        <div className="-mx-6">
-          <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-gray-700">Filter</span>
-              <div className="flex items-center gap-2">
-                {[
-                  { key: "all", label: "All", count: counts.total },
-                  { key: "pending", label: "Pending", count: counts.pending },
-                  { key: "approved", label: "Approved", count: counts.approved },
-                  { key: "declined", label: "Declined", count: counts.declined },
-                  { key: "expired", label: "Expired", count: expiredCount },
-                ].map((t) => {
-                  const active = filter === t.key;
-                  return (
-                    <button
-                      key={t.key}
-                      onClick={() => setFilter(t.key)}
-                      className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
-                        active ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      <span>{t.label}</span>
-                      <span
-                        className={`inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold ${
-                          active ? "bg-white/20" : "bg-gray-100 text-gray-700"
+      <main className="p-6">
+        <div className="mb-4">
+          <h1 className="text-xl font-semibold text-gray-900">Service Requests</h1>
+          <p className="text-gray-600 mt-2">Browse, search, and manage all incoming and processed client requests.</p>
+        </div>
+
+        <section className="mt-6">
+          <div className="-mx-6">
+            <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-gray-700">Filter</span>
+                <div className="flex items-center gap-2">
+                  {[
+                    { key: "all", label: "All", count: counts.total },
+                    { key: "pending", label: "Pending", count: counts.pending },
+                    { key: "approved", label: "Approved", count: counts.approved },
+                    { key: "declined", label: "Declined", count: counts.declined },
+                    { key: "expired", label: "Expired", count: expiredCount },
+                  ].map((t) => {
+                    const active = filter === t.key;
+                    return (
+                      <button
+                        key={t.key}
+                        onClick={() => setFilter(t.key)}
+                        className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                          active ? "border-[#0b82ff] bg-[#0b82ff] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                         }`}
                       >
-                        {typeof t.count === "number" ? t.count : "—"}
-                      </span>
+                        <span>{t.label}</span>
+                        <span
+                          className={`inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold ${
+                            active ? "bg-white/20" : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {typeof t.count === "number" ? t.count : "—"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search Requests"
+                    className="mt-7 h-10 w-72 rounded-md border border-gray-300 bg-white px-3 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-label="Search requests"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="mt-3.5 absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
+                      aria-label="Clear search"
+                    >
+                      ✕
                     </button>
-                  );
-                })}
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    fetchCounts();
+                    fetchItems(filter, searchTerm);
+                    setCurrentPage(1);
+                  }}
+                  className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#0b82ff] hover:bg-blue-50"
+                >
+                  ⟳ Refresh
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search Requests"
-                  className="mt-7 h-10 w-72 rounded-md border border-gray-300 bg-white px-3 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  aria-label="Search requests"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="mt-3.5 absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
-                    aria-label="Clear search"
-                  >
-                    ✕
-                  </button>
+            <div className="px-6 mt-3">
+              <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+                {loading && (
+                  <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">
+                    Loading…
+                  </div>
                 )}
-              </div>
-              <button
-                onClick={() => {
-                  fetchCounts();
-                  fetchItems(filter, searchTerm);
-                  setCurrentPage(1);
-                }}
-                className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
-              >
-                ⟳ Refresh
-              </button>
-            </div>
-          </div>
+                {loadError && !loading && (
+                  <div className="px-4 py-3 text-sm text-red-700 bg-red-50 border-b border-red-100">
+                    {loadError}
+                  </div>
+                )}
 
-          <div className="px-6 mt-3">
-            <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-              {loading && (
-                <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">
-                  Loading…
-                </div>
-              )}
-              {loadError && !loading && (
-                <div className="px-4 py-3 text-sm text-red-700 bg-red-50 border-b border-red-100">
-                  {loadError}
-                </div>
-              )}
+                <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+                  <div className="max-h-[520px] md:max-h-[63vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+                    <table className="min-w-full border-separate border-spacing-0">
+                      <thead>
+                        <tr className="text-left text-sm text-gray-600">
+                          {ENABLE_SELECTION && (
+                            <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
+                              <input
+                                ref={headerCheckboxRef}
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                onChange={toggleSelectAll}
+                                checked={allSelected}
+                                aria-label="Select all"
+                              />
+                            </th>
+                          )}
 
-              <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
-                <div className="max-h-[520px] md:max-h-[63vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
-                  <table className="min-w-full border-separate border-spacing-0">
-                    <thead>
-                      <tr className="text-left text-sm text-gray-600">
-                        {ENABLE_SELECTION && (
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
-                            <input
-                              ref={headerCheckboxRef}
-                              type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              onChange={toggleSelectAll}
-                              checked={allSelected}
-                              aria-label="Select all"
-                            />
-                          </th>
-                        )}
-
-                        <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
-                          onClick={() => toggleSort("name_first")}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            First Name
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                          </span>
-                        </th>
-                        <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
-                          onClick={() => toggleSort("name_last")}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            Last Name
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                          </span>
-                        </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">
-                          Email
-                        </th>
-                        <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
-                          onClick={() => toggleSort("service_type")}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            Service Type
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                          </span>
-                        </th>
-                        <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
-                          onClick={() => toggleSort("service_task")}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            Task
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                          </span>
-                        </th>
-                        <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
-                          onClick={() => toggleSort("created_at_ts")}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            Created At
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                          </span>
-                        </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">
-                          Status
-                        </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody className="text-sm text-gray-800 font-semibold">
-                      {pageRows.map((u, idx) => {
-                        const sLower = String(u.status).toLowerCase();
-                        const isCanceled = sLower === "canceled" || sLower === "cancelled";
-                        const disableActions =
-                          u._expired || u.status === "approved" || u.status === "declined" || isCanceled;
-                        const isFinal = u.status === "approved" || u.status === "declined" || isCanceled;
-                        const isDeclined = sLower === "declined";
-                        const isApproved = sLower === "approved";
-                        return (
-                          <tr
-                            key={u.id}
-                            className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
+                          <th
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                            onClick={() => toggleSort("name_first")}
                           >
-                            {ENABLE_SELECTION && (
-                              <td className="px-4 py-4 border border-gray-200">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                  checked={selected.has(u.id)}
-                                  onChange={() => toggleSelectRow(u.id)}
-                                  aria-label={`Select ${u.name_first} ${u.name_last}`}
-                                />
-                              </td>
-                            )}
+                            <span className="inline-flex items-center gap-1">
+                              First Name
+                              <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                            </span>
+                          </th>
+                          <th
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                            onClick={() => toggleSort("name_last")}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              Last Name
+                              <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                            </span>
+                          </th>
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">
+                            Email
+                          </th>
+                          <th
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
+                            onClick={() => toggleSort("service_type")}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              Service Type
+                              <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                            </span>
+                          </th>
+                          <th
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
+                            onClick={() => toggleSort("service_task")}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              Task
+                              <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                            </span>
+                          </th>
+                          <th
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
+                            onClick={() => toggleSort("created_at_ts")}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              Created At
+                              <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                            </span>
+                          </th>
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">
+                            Status
+                          </th>
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
+                            Action
+                          </th>
+                        </tr>
+                      </thead>
 
-                            <td className="px-4 py-4 border border-gray-200">
-                              <div className="flex items-center gap-3">
-                                <div className="min-w-0">
-                                  <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
-                                    {u.name_first || "-"}
+                      <tbody className="text-sm text-gray-800 font-semibold">
+                        {pageRows.map((u, idx) => {
+                          const sLower = String(u.status).toLowerCase();
+                          const isCanceled = sLower === "canceled" || sLower === "cancelled";
+                          const disableActions =
+                            u._expired || u.status === "approved" || u.status === "declined" || isCanceled;
+                          const isFinal = u.status === "approved" || u.status === "declined" || isCanceled;
+                          const isDeclined = sLower === "declined";
+                          const isApproved = sLower === "approved";
+                          return (
+                            <tr
+                              key={u.id}
+                              className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
+                            >
+                              {ENABLE_SELECTION && (
+                                <td className="px-4 py-4 border border-gray-200">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    checked={selected.has(u.id)}
+                                    onChange={() => toggleSelectRow(u.id)}
+                                    aria-label={`Select ${u.name_first} ${u.name_last}`}
+                                  />
+                                </td>
+                              )}
+
+                              <td className="px-4 py-4 border border-gray-200">
+                                <div className="flex items-center gap-3">
+                                  <div className="min-w-0">
+                                    <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
+                                      {u.name_first || "-"}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            </td>
+                              </td>
 
-                            <td className="px-4 py-4 border border-gray-200">{u.name_last || "-"}</td>
-                            <td className="px-4 py-4 border border-gray-200">
-                              <div className="truncate">{u.email || "-"}</div>
-                            </td>
-                            <td className="px-4 py-4 border border-gray-200">
-                              <ServiceTypePill value={u.service_type} />
-                            </td>
-                            <td className="px-4 py-4 border border-gray-200">
-                              <TaskPill value={u.service_task} />
-                            </td>
-                            <td className="px-4 py-4 border border-gray-200">
-                              {u.created_at_display || "-"}
-                            </td>
-                            <td className="px-4 py-4 border border-gray-200">
-                              <div className="flex items-center gap-1 flex-wrap">
-                                {u._expired ? (
-                                  isFinal ? (
-                                    isCanceled ? (
-                                      <StatusPill value="canceled" />
+                              <td className="px-4 py-4 border border-gray-200">{u.name_last || "-"}</td>
+                              <td className="px-4 py-4 border border-gray-200">
+                                <div className="truncate">{u.email || "-"}</div>
+                              </td>
+                              <td className="px-4 py-4 border border-gray-200">
+                                <ServiceTypePill value={u.service_type} />
+                              </td>
+                              <td className="px-4 py-4 border border-gray-200">
+                                <TaskPill value={u.service_task} />
+                              </td>
+                              <td className="px-4 py-4 border border-gray-200">
+                                {u.created_at_display || "-"}
+                              </td>
+                              <td className="px-4 py-4 border border-gray-200">
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {u._expired ? (
+                                    isFinal ? (
+                                      isCanceled ? (
+                                        <StatusPill value="canceled" />
+                                      ) : (
+                                        <>
+                                          <StatusPill value={u.status} />
+                                          <StatusPill value="expired" />
+                                        </>
+                                      )
                                     ) : (
-                                      <>
-                                        <StatusPill value={u.status} />
-                                        <StatusPill value="expired" />
-                                      </>
+                                      <StatusPill value="expired" />
                                     )
                                   ) : (
-                                    <StatusPill value="expired" />
-                                  )
-                                ) : (
-                                  <StatusPill value={u.ui_status} />
-                                )}
-                              </div>
-                            </td>
+                                    <StatusPill value={u.ui_status} />
+                                  )}
+                                </div>
+                              </td>
 
-                            <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}>
-                              <div className="inline-flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    setViewRow(u);
-                                    setSectionOpen("all");
-                                  }}
-                                  className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
-                                >
-                                  View
-                                </button>
-                                {isDeclined ? (
+                              <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}>
+                                <div className="inline-flex gap-2">
                                   <button
-                                    onClick={() => openReasonModal(u)}
-                                    className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                                    onClick={() => {
+                                      setViewRow(u);
+                                      setSectionOpen("all");
+                                    }}
+                                    className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                                   >
-                                    Reason
+                                    View
                                   </button>
-                                ) : isApproved ? null : (
-                                  <>
+                                  {isDeclined ? (
                                     <button
-                                      onClick={() => openDeclineModal(u)}
-                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      disabled={disableActions}
+                                      onClick={() => openReasonModal(u)}
+                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
                                     >
-                                      Decline
+                                      Reason
                                     </button>
-                                    <button
-                                      onClick={() => approve(u.id)}
-                                      className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      disabled={disableActions}
-                                    >
-                                      Approve
-                                    </button>
-                                  </>
-                                )}
-                              </div>
+                                  ) : isApproved ? null : (
+                                    <>
+                                      <button
+                                        onClick={() => openDeclineModal(u)}
+                                        className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled={disableActions}
+                                      >
+                                        Decline
+                                      </button>
+                                      <button
+                                        onClick={() => approve(u.id)}
+                                        className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled={disableActions}
+                                      >
+                                        Approve
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+
+                        {!loading && !loadError && pageRows.length === 0 && (
+                          <tr>
+                            <td colSpan={COLSPAN} className="px-4 py-16 text-center text-gray-500 border border-gray-200">
+                              No requests found.
                             </td>
                           </tr>
-                        );
-                      })}
-
-                      {!loading && !loadError && pageRows.length === 0 && (
-                        <tr>
-                          <td colSpan={COLSPAN} className="px-4 py-16 text-center text-gray-500 border border-gray-200">
-                            No requests found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {ENABLE_SELECTION && selected.size > 0 && (
-                <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 text-sm">
-                  <div className="text-gray-700">{selected.size} selected</div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50"
-                      onClick={() => setSelected(new Set())}
-                    >
-                      Clear
-                    </button>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              )}
 
-              {!loading && !loadError && sortedRows.length > 0 && (
-                <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
-                  <nav className="flex items-center gap-2">
-                    <button
-                      className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                      disabled={currentPage <= 1}
-                      aria-label="Previous page"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    >
-                      ‹
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                {ENABLE_SELECTION && selected.size > 0 && (
+                  <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 text-sm">
+                    <div className="text-gray-700">{selected.size} selected</div>
+                    <div className="flex items-center gap-2">
                       <button
-                        key={p}
-                        className={[
-                          "h-9 min-w-9 px-3 rounded-md border",
-                          p === currentPage
-                            ? "border-[#008cfc] bg-[#008cfc] text-white"
-                            : "border-gray-300 text-gray-700 hover:bg-gray-50",
-                        ].join(" ")}
-                        aria-current={p === currentPage ? "page" : undefined}
-                        onClick={() => setCurrentPage(p)}
+                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50"
+                        onClick={() => setSelected(new Set())}
                       >
-                        {p}
+                        Clear
                       </button>
-                    ))}
-                    <button
-                      className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-                      disabled={currentPage >= totalPages}
-                      aria-label="Next page"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    >
-                      ›
-                    </button>
-                  </nav>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+                    </div>
+                  </div>
+                )}
 
-      {viewRow && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Request details"
-          tabIndex={-1}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
-        >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
-          <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
-            <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
-              <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
-                {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
-                  <img
-                    src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                    onError={({ currentTarget }) => {
-                      currentTarget.style.display = "none";
-                      const parent = currentTarget.parentElement;
-                      if (parent) {
-                        parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${(viewRow?.name_first || "?").trim().charAt(0).toUpperCase()}</div>`;
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">
-                    {(((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1)) || "?").toUpperCase()}
+                {!loading && !loadError && sortedRows.length > 0 && (
+                  <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
+                    <nav className="flex items-center gap-2">
+                      <button
+                        className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                        disabled={currentPage <= 1}
+                        aria-label="Previous page"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      >
+                        ‹
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                        <button
+                          key={p}
+                          className={[
+                            "h-9 min-w-9 px-3 rounded-md border",
+                            p === currentPage
+                              ? "border-[#0b82ff] bg-[#0b82ff] text-white"
+                              : "border-gray-300 text-gray-700 hover:bg-gray-50",
+                          ].join(" ")}
+                          aria-current={p === currentPage ? "page" : undefined}
+                          onClick={() => setCurrentPage(p)}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                      <button
+                        className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        disabled={currentPage >= totalPages}
+                        aria-label="Next page"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      >
+                        ›
+                      </button>
+                    </nav>
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </section>
 
-              <div className="mt-5 text-center space-y-0.5">
-                <div className="text-2xl font-semibold text-gray-900">
-                  {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
+        {viewRow && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Request details"
+            tabIndex={-1}
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
+            <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl flex flex-col overflow-hidden">
+              <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
+                <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
+                  {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
+                    <img
+                      src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={({ currentTarget }) => {
+                        currentTarget.style.display = "none";
+                        const parent = currentTarget.parentElement;
+                        if (parent) {
+                          parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#0b82ff]">${(viewRow?.name_first || "?").trim().charAt(0).toUpperCase()}</div>`;
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full grid place-items-center text-3xl font-semibold text-[#0b82ff]">
+                      {(((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1)) || "?").toUpperCase()}
+                    </div>
+                  )}
                 </div>
-                <div className="text-sm text-gray-600">{viewRow.email || "-"}</div>
-              </div>
 
-              <div className="mt-3 flex items-center justify-center gap-3">
-                <div className="text-sm text-gray-600">
-                  Created <span className="font-semibold text-[#008cfc]">{viewRow.created_at_display || "-"}</span>
+                <div className="mt-5 text-center space-y-0.5">
+                  <div className="text-2xl font-semibold text-gray-900">
+                    {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
+                  </div>
+                  <div className="text-sm text-gray-600">{viewRow.email || "-"}</div>
                 </div>
-                <div className="flex items-center gap-1 flex-wrap">
-                  {viewRow._expired ? (
-                    (viewRow.status === "approved" || viewRow.status === "declined" || ["canceled","cancelled"].includes(String(viewRow.status).toLowerCase())) ? (
-                      ["canceled","cancelled"].includes(String(viewRow.status).toLowerCase()) ? (
-                        <StatusPill value="canceled" />
+
+                <div className="mt-3 flex items-center justify-center gap-3">
+                  <div className="text-sm text-gray-600">
+                    Created <span className="font-semibold text-[#0b82ff]">{viewRow.created_at_display || "-"}</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {viewRow._expired ? (
+                      (viewRow.status === "approved" || viewRow.status === "declined" || ["canceled","cancelled"].includes(String(viewRow.status).toLowerCase())) ? (
+                        ["canceled","cancelled"].includes(String(viewRow.status).toLowerCase()) ? (
+                          <StatusPill value="canceled" />
+                        ) : (
+                          <>
+                            <StatusPill value={viewRow.status} />
+                            <StatusPill value="expired" />
+                          </>
+                        )
                       ) : (
-                        <>
-                          <StatusPill value={viewRow.status} />
-                          <StatusPill value="expired" />
-                        </>
+                        <StatusPill value="expired" />
                       )
                     ) : (
-                      <StatusPill value="expired" />
-                    )
+                      <StatusPill value={viewRow.ui_status} />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto blue-scroll bg-gray-50">
+                <div className="mb-4 flex items-center justify-center gap-2">
+                  <SectionButton k="all" label="All" />
+                  <SectionButton k="info" label="Personal Information" />
+                  <SectionButton k="details" label="Service Request Details" />
+                  <SectionButton k="rate" label="Service Rate" />
+                </div>
+                {renderSection()}
+              </div>
+
+              <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 gap-3 border-t border-gray-200 bg-white">
+                <button
+                  type="button"
+                  onClick={() => { setViewRow(null); }}
+                  className="w-full inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold bg-[#0b82ff] text-white hover:bg-[#086bd4]"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showDecline && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Decline service request"
+            tabIndex={-1}
+            autoFocus
+            className="fixed inset-0 z-[2147483646] flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingDecline && setShowDecline(false)} />
+            <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
+              <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
+                <div className="text-xl font-semibold">Decline Service Request</div>
+                <div className="text-xs opacity-90">Select reason for declining</div>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <div className="grid grid-cols-1 gap-2">
+                  {REASONS_ADMIN.map((r) => (
+                    <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${declineReason===r?'border-red-500 ring-1 ring-red-300 bg-red-50':'border-gray-200 hover:bg-gray-50'}`}>
+                      <input
+                        type="radio"
+                        name="decline-reason"
+                        className="h-4 w-4"
+                        checked={declineReason === r}
+                        onChange={() => setDeclineReason((curr) => (curr === r ? "" : r))}
+                        disabled={submittingDecline}
+                      />
+                      <span className="text-sm md:text-base">{r}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-gray-700">Other</div>
+                  <textarea
+                    value={declineOther}
+                    onChange={(e) => setDeclineOther(e.target.value)}
+                    disabled={submittingDecline}
+                    placeholder="Type other reason here"
+                    className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  />
+                </div>
+
+                {declineErr ? <div className="text-sm text-red-700">{declineErr}</div> : null}
+              </div>
+              <div className="px-6 py-4 border-top border-t border-gray-100 flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => !submittingDecline && setShowDecline(false)}
+                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+                  disabled={submittingDecline}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={submitDecline}
+                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                  disabled={submittingDecline}
+                >
+                  {submittingDecline ? "Submitting..." : "Confirm Decline"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showReason && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Decline reason"
+            tabIndex={-1}
+            className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
+            <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
+                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+                    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                    {reasonTarget?.service_type || "Request"}
+                  </span>
+                </div>
+                <div className="mt-1 text-sm text-gray-600">Created {reasonTarget?.created_at_display || "-"}</div>
+              </div>
+              <div className="p-6">
+                <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
+                  <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">Reason</div>
+                  <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
+                    {getReasonText(reasonTarget)}
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-red-200 bg-white p-4">
+                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Client</div>
+                    <div className="mt-1 text-[15px] font-semibold text-gray-900">
+                      {[reasonTarget?.name_first, reasonTarget?.name_last].filter(Boolean).join(" ") || "-"}
+                    </div>
+                    <div className="text-sm text-gray-600">{reasonTarget?.email || "-"}</div>
+                  </div>
+                  <div className="rounded-xl border border-red-200 bg-white p-4">
+                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service</div>
+                    <div className="mt-1 text-[15px] font-semibold text-gray-900">{reasonTarget?.service_task || "-"}</div>
+                    <div className="text-sm text-gray-600">{reasonTarget?.service_type || "-"}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
+                <button
+                  type="button"
+                  onClick={() => { setShowReason(false); }}
+                  className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {submittingDecline && !showDeclineLoading && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Please wait a moment"
+            tabIndex={-1}
+            autoFocus
+            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
+              <div className="relative mx-auto w-40 h-40">
+                <div
+                  className="absolute inset-0 animate-spin rounded-full"
+                  style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#0b82ff22", borderTopColor: "#0b82ff", borderRadius: "9999px" }}
+                />
+                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
+              </div>
+              <div className="mt-6 text-center space-y-1">
+                <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
+                <div className="text-sm text-gray-600 animate-pulse">Submitting decline</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showCancelLoading && (
+          <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Loading next step"
+              tabIndex={-1}
+              className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8 z-[2147483647]"
+            >
+              <div className="relative mx-auto w-40 h-40">
+                <div
+                  className="absolute inset-0 animate-spin rounded-full"
+                  style={{
+                    borderWidth: '10px',
+                    borderStyle: 'solid',
+                    borderColor: '#0b82ff22',
+                    borderTopColor: '#0b82ff',
+                    borderRadius: '9999px'
+                  }}
+                />
+                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {!logoBrokenLoading ? (
+                    <img
+                      src="/jdklogo.png"
+                      alt="JDK Homecare Logo"
+                      className="w-20 h-20 object-contain"
+                      onError={() => setLogoBrokenLoading(true)}
+                    />
                   ) : (
-                    <StatusPill value={viewRow.ui_status} />
+                    <div className="w-20 h-20 rounded-full border border-[#0b82ff] flex items-center justify-center">
+                      <span className="font-bold text-[#0b82ff]">JDK</span>
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
-
-            <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
-              <div className="mb-4 flex items-center justify-center gap-2">
-                <SectionButton k="all" label="All" />
-                <SectionButton k="info" label="Personal Information" />
-                <SectionButton k="details" label="Service Request Details" />
-                <SectionButton k="rate" label="Service Rate" />
+              <div className="mt-6 text-center">
+                <div className="text-base font-semibold text-gray-900">Please wait a moment</div>
+                <div className="text-sm text-gray-500 animate-pulse">Processing cancel request</div>
               </div>
-              {renderSection()}
-            </div>
-
-            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 gap-3 border-t border-gray-200 bg-white">
-              <button
-                type="button"
-                onClick={() => { setViewRow(null); }}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
-              >
-                Close
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {showDecline && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Decline service request"
-          tabIndex={-1}
-          autoFocus
-          className="fixed inset-0 z-[2147483646] flex items-center justify-center"
-        >
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingDecline && setShowDecline(false)} />
-          <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
-            <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
-              <div className="text-xl font-semibold">Decline Service Request</div>
-              <div className="text-xs opacity-90">Select reason for declining</div>
+        {showCancelSuccess && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Cancel request successful"
+            tabIndex={-1}
+            autoFocus
+            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
+              <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+                {!logoBroken2 ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-16 h-16 object-contain"
+                    onError={() => setLogoBroken2(true)}
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full border border-[#0b82ff] flex items-center justify-center">
+                    <span className="font-bold text-[#0b82ff]">JDK</span>
+                  </div>
+                )}
+              </div>
+              <div className="mt-6 text-center space-y-2">
+                <div className="text-lg font-semibold text-gray-900">Cancel Request Successful</div>
+                <div className="text-sm text-gray-600">The service request has been canceled.</div>
+              </div>
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowCancelSuccess(false)}
+                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
+                >
+                  Done
+                </button>
+              </div>
             </div>
-            <div className="px-6 py-5 space-y-4">
-              <div className="grid grid-cols-1 gap-2">
-                {REASONS_ADMIN.map((r) => (
-                  <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${declineReason===r?'border-red-500 ring-1 ring-red-300 bg-red-50':'border-gray-200 hover:bg-gray-50'}`}>
-                    <input
-                      type="radio"
-                      name="decline-reason"
-                      className="h-4 w-4"
-                      checked={declineReason === r}
-                      onChange={() => setDeclineReason((curr) => (curr === r ? "" : r))}
-                      disabled={submittingDecline}
+          </div>
+        )}
+
+        {showDeclineLoading && (
+          <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Loading next step"
+              tabIndex={-1}
+              className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8 z-[2147483647]"
+            >
+              <div className="relative mx-auto w-40 h-40">
+                <div
+                  className="absolute inset-0 animate-spin rounded-full"
+                  style={{
+                    borderWidth: '10px',
+                    borderStyle: 'solid',
+                    borderColor: '#0b82ff22',
+                    borderTopColor: '#0b82ff',
+                    borderRadius: '9999px'
+                  }}
+                />
+                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {!logoBrokenDecline ? (
+                    <img
+                      src="/jdklogo.png"
+                      alt="JDK Homecare Logo"
+                      className="w-20 h-20 object-contain"
+                      onError={() => setLogoBrokenDecline(true)}
                     />
-                    <span className="text-sm md:text-base">{r}</span>
-                  </label>
-                ))}
-              </div>
-
-              <div className="space-y-2">
-                <div className="text-sm font-semibold text-gray-700">Other</div>
-                <textarea
-                  value={declineOther}
-                  onChange={(e) => setDeclineOther(e.target.value)}
-                  disabled={submittingDecline}
-                  placeholder="Type other reason here"
-                  className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
-                />
-              </div>
-
-              {declineErr ? <div className="text-sm text-red-700">{declineErr}</div> : null}
-            </div>
-            <div className="px-6 py-4 border-top border-t border-gray-100 flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => !submittingDecline && setShowDecline(false)}
-                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-                disabled={submittingDecline}
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={submitDecline}
-                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
-                disabled={submittingDecline}
-              >
-                {submittingDecline ? "Submitting..." : "Confirm Decline"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showReason && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Decline reason"
-          tabIndex={-1}
-          className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
-        >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
-          <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
-                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
-                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                  {reasonTarget?.service_type || "Request"}
-                </span>
-              </div>
-              <div className="mt-1 text-sm text-gray-600">Created {reasonTarget?.created_at_display || "-"}</div>
-            </div>
-            <div className="p-6">
-              <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
-                <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">Reason</div>
-                <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
-                  {getReasonText(reasonTarget)}
+                  ) : (
+                    <div className="w-20 h-20 rounded-full border border-[#0b82ff] flex items-center justify-center">
+                      <span className="font-bold text-[#0b82ff]">JDK</span>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="rounded-xl border border-red-200 bg-white p-4">
-                  <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Client</div>
-                  <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                    {[reasonTarget?.name_first, reasonTarget?.name_last].filter(Boolean).join(" ") || "-"}
-                  </div>
-                  <div className="text-sm text-gray-600">{reasonTarget?.email || "-"}</div>
-                </div>
-                <div className="rounded-xl border border-red-200 bg-white p-4">
-                  <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service</div>
-                  <div className="mt-1 text-[15px] font-semibold text-gray-900">{reasonTarget?.service_task || "-"}</div>
-                  <div className="text-sm text-gray-600">{reasonTarget?.service_type || "-"}</div>
-                </div>
+              <div className="mt-6 text-center">
+                <div className="text-base font-semibold text-gray-900">Please wait a moment</div>
+                <div className="text-sm text-gray-500 animate-pulse">Submitting decline</div>
               </div>
             </div>
-            <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
-              <button
-                type="button"
-                onClick={() => { setShowReason(false); }}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-              >
-                Close
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {submittingDecline && !showDeclineLoading && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Please wait a moment"
-          tabIndex={-1}
-          autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
-        >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="relative mx-auto w-40 h-40">
-              <div
-                className="absolute inset-0 animate-spin rounded-full"
-                style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#008cfc22", borderTopColor: "#008cfc", borderRadius: "9999px" }}
-              />
-              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
-            </div>
-            <div className="mt-6 text-center space-y-1">
-              <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
-              <div className="text-sm text-gray-600 animate-pulse">Submitting decline</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showCancelLoading && (
-        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+        {showDeclineSuccess && (
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Loading next step"
+            aria-label="Request declined successfully"
             tabIndex={-1}
-            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+            autoFocus
+            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center"
           >
-            <div className="relative mx-auto w-40 h-40">
-              <div
-                className="absolute inset-0 animate-spin rounded-full"
-                style={{
-                  borderWidth: '10px',
-                  borderStyle: 'solid',
-                  borderColor: '#008cfc22',
-                  borderTopColor: '#008cfc',
-                  borderRadius: '9999px'
-                }}
-              />
-              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                {!logoBrokenLoading ? (
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
+              <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+                {!logoBrokenDecline2 ? (
                   <img
                     src="/jdklogo.png"
                     alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBrokenLoading(true)}
+                    className="w-16 h-16 object-contain"
+                    onError={() => setLogoBrokenDecline2(true)}
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
-                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  <div className="w-16 h-16 rounded-full border border-[#0b82ff] flex items-center justify-center">
+                    <span className="font-bold text-[#0b82ff]">JDK</span>
                   </div>
                 )}
               </div>
-            </div>
-            <div className="mt-6 text-center">
-              <div className="text-base font-semibold text-gray-900">Please wait a moment</div>
-              <div className="text-sm text-gray-500 animate-pulse">Processing cancel request</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showCancelSuccess && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Cancel request successful"
-          tabIndex={-1}
-          autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
-        >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-              {!logoBroken2 ? (
-                <img
-                  src="/jdklogo.png"
-                  alt="JDK Homecare Logo"
-                  className="w-16 h-16 object-contain"
-                  onError={() => setLogoBroken2(true)}
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
-                  <span className="font-bold text-[#008cfc]">JDK</span>
-                </div>
-              )}
-            </div>
-            <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">Cancel Request Successful</div>
-              <div className="text-sm text-gray-600">The service request has been canceled.</div>
-            </div>
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => setShowCancelSuccess(false)}
-                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showDeclineLoading && (
-        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Loading next step"
-            tabIndex={-1}
-            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
-          >
-            <div className="relative mx-auto w-40 h-40">
-              <div
-                className="absolute inset-0 animate-spin rounded-full"
-                style={{
-                  borderWidth: '10px',
-                  borderStyle: 'solid',
-                  borderColor: '#008cfc22',
-                  borderTopColor: '#008cfc',
-                  borderRadius: '9999px'
-                }}
-              />
-              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                {!logoBrokenDecline ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBrokenDecline(true)}
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
-                    <span className="font-bold text-[#008cfc]">JDK</span>
-                  </div>
-                )}
+              <div className="mt-6 text-center space-y-2">
+                <div className="text-lg font-semibold text-gray-900">Request Declined Successfully</div>
+                <div className="text-sm text-gray-600">The service request has been declined.</div>
+              </div>
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowDeclineSuccess(false)}
+                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
+                >
+                  Done
+                </button>
               </div>
             </div>
-            <div className="mt-6 text-center">
-              <div className="text-base font-semibold text-gray-900">Please wait a moment</div>
-              <div className="text-sm text-gray-500 animate-pulse">Submitting decline</div>
-            </div>
           </div>
-        </div>
-      )}
-
-      {showDeclineSuccess && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Request declined successfully"
-          tabIndex={-1}
-          autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
-        >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-              {!logoBrokenDecline2 ? (
-                <img
-                  src="/jdklogo.png"
-                  alt="JDK Homecare Logo"
-                  className="w-16 h-16 object-contain"
-                  onError={() => setLogoBrokenDecline2(true)}
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
-                  <span className="font-bold text-[#008cfc]">JDK</span>
-                </div>
-              )}
-            </div>
-            <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">Request Declined Successfully</div>
-              <div className="text-sm text-gray-600">The service request has been declined.</div>
-            </div>
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => setShowDeclineSuccess(false)}
-                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
+        )}
+      </main>
+    </>
   );
 }

@@ -71,6 +71,14 @@ function normalizeAttachments(arr) {
     .filter(Boolean);
 }
 
+async function publicOrSignedUrl(bucket, path) {
+  if (!path) return null;
+  const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
+  if (pub?.publicUrl) return pub.publicUrl;
+  const { data: signed } = await supabaseAdmin.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
+  return signed?.signedUrl || null;
+}
+
 exports.submitFullRequest = async (req, res) => {
   try {
     const src = req.body || {};
@@ -343,18 +351,15 @@ exports.listApproved = async (req, res) => {
       .limit(limit);
     if (error) throw error;
 
+    const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
     const items = Array.isArray(data) ? data : [];
-    const fixed = items.map((it) => {
+    const fixed = await Promise.all(items.map(async (it) => {
       const d = { ...(it.details || {}) };
       if (d.is_urgent !== undefined) d.is_urgent = yesNo(toBoolStrict(d.is_urgent));
       if (d.tools_provided !== undefined) d.tools_provided = yesNo(toBoolStrict(d.tools_provided));
-      if (!d.image_url && d.image_name) {
-        const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
-        const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(d.image_name);
-        d.image_url = pub?.publicUrl || null;
-      }
+      if (!d.image_url && d.image_name) d.image_url = await publicOrSignedUrl(bucket, d.image_name);
       return { ...it, details: d };
-    });
+    }));
     const gids = fixed.map(it => it.request_group_id).filter(Boolean);
     let cancelled = [];
     try { cancelled = await getCancelledByGroupIds(gids); } catch {}
@@ -397,13 +402,15 @@ exports.listCurrent = async (req, res) => {
       });
     }
     const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
-    const combined = await Promise.all(targetGroups.map(g => getCombinedByGroupId(g)));
+    const combined = await Promise.all(targetGroups.map(async g => {
+      const row = await getCombinedByGroupId(g);
+      if (!row) return null;
+      const d = row.details || {};
+      if (!d.image_url && d.image_name) d.image_url = await publicOrSignedUrl(bucket, d.image_name);
+      return { ...row, details: d };
+    }));
     const items = combined.filter(Boolean).map(row => {
       const d = row.details || {};
-      if (!d.image_url && d.image_name) {
-        const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(d.image_name);
-        d.image_url = pub?.publicUrl || null;
-      }
       const r = row.rate || {};
       const gid = row.details?.request_group_id || row.info?.request_group_id || row.rate?.request_group_id || '';
       const base = {
@@ -469,8 +476,7 @@ exports.byGroup = async (req, res) => {
     const d = row.details || {};
     if (!d.image_url && d.image_name) {
       const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
-      const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(d.image_name);
-      row.details = { ...d, image_url: pub?.publicUrl || null };
+      row.details = { ...d, image_url: await publicOrSignedUrl(bucket, d.image_name) };
     }
     return res.status(200).json(row);
   } catch {

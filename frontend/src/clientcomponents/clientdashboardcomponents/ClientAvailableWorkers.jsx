@@ -1,39 +1,88 @@
 // ClientAvailableWorkers.jsx
 import React, { useRef, useState, useEffect } from 'react';
+import axios from 'axios';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
-const ClientAvailableWorkers = () => {
-  const workers = [
-    { id: 1, name: 'Juan Dela Cruz', skill: 'Plumber', image: '/workers/juan.png' },
-    { id: 2, name: 'Maria Santos', skill: 'Electrician', image: '/workers/maria.png' },
-    { id: 3, name: 'Pedro Reyes', skill: 'Carpenter', image: '/workers/pedro.png' },
-    { id: 4, name: 'Ana Lopez', skill: 'House Cleaner', image: '/workers/ana.png' },
-    { id: 5, name: 'Ana Lopez', skill: 'House Cleaner', image: '/workers/ana.png' },
-    { id: 6, name: 'Ana Lopez', skill: 'House Cleaner', image: '/workers/ana.png' },
-    { id: 7, name: 'J Lopez',  skill: 'House Cleaner', image: '/workers/ana.png' },
-  ];
+function peso(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return '';
+  return `₱${x.toLocaleString()}`;
+}
 
-  const items = workers.map((w, i) => ({
-    ...w,
-    country: ['Philippines','United States','Portugal','India'][i % 4],
-    success: '100%',
-    jobs: [81,16,30,89][i % 4],
-    rate: ['$15/hr','$55/hr','$65/hr','$20/hr'][i % 4],
-    title:
-      w.skill === 'Plumber'
-        ? 'Plumber | Pipe Repair | Leak Fix'
-        : w.skill === 'Electrician'
-        ? 'Licensed Electrician | Wiring | Troubleshooting'
-        : w.skill === 'Carpenter'
-        ? 'Carpenter | Cabinets | Custom Woodwork'
-        : 'House Cleaner | Deep Clean | Move-in/out',
-    bio:
-      'Experienced home service professional focused on reliable, high-quality work and great communication. Available for flexible schedules.',
-    consultText: ['$15 per 30 minutes Zoom meeting','$25 per 30 minutes Zoom meeting','$380 per 60 minutes Zoom meeting','$5 per 30 minutes Zoom meeting'][i % 4]
-  }));
+function primaryRate(rate) {
+  const t = String(rate?.rate_type || '').toLowerCase();
+  if (t === 'hourly rate') {
+    const f = rate?.rate_from, to = rate?.rate_to;
+    if (f && to) return `${peso(f)}–${peso(to)}/hr`;
+    if (f) return `${peso(f)}/hr`;
+    if (to) return `${peso(to)}/hr`;
+  }
+  if (t === 'by the job rate' && rate?.rate_value) return `${peso(rate.rate_value)}/job`;
+  return '';
+}
+
+function titleFromServiceTypes(arr) {
+  const s = Array.isArray(arr) && arr.length ? String(arr[0]) : '';
+  const k = s.toLowerCase();
+  if (/plumb/.test(k)) return 'Plumber | Pipe Repair | Leak Fix';
+  if (/electr/.test(k)) return 'Licensed Electrician | Wiring | Troubleshooting';
+  if (/carpent/.test(k)) return 'Carpenter | Cabinets | Custom Woodwork';
+  if (/clean|laund/.test(k)) return 'House Cleaner | Deep Clean | Move-in/out';
+  if (/car wash|carwash|auto/.test(k)) return 'Car Washer | Interior | Exterior';
+  return s ? `${s} | Professional Services` : 'Home Service Professional';
+}
+
+const ClientAvailableWorkers = () => {
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const url = `${API_BASE}/api/admin/workerapplications?status=approved`;
+        const { data } = await axios.get(url);
+        const rows = Array.isArray(data?.items) ? data.items : [];
+        const mapped = rows.map((r, i) => {
+          const info = r.info || {};
+          const work = r.work || {};
+          const rate = r.rate || {};
+          const name = [info.first_name, info.last_name].filter(Boolean).join(' ') || 'Worker';
+          const img = info.profile_picture_url || '';
+          const st = Array.isArray(work.service_types) ? work.service_types : [];
+          const skill = st[0] || 'General';
+          const rateText = primaryRate(rate) || 'Rate upon request';
+          const bio = work.work_description || 'Experienced home service professional focused on reliable, high-quality work and great communication.';
+          const country = 'Philippines';
+          const success = '—';
+          const jobs = 0;
+          const consultText = rateText ? `${rateText} consultation` : 'Consultation available';
+          return {
+            id: r.id || `${r.request_group_id || i}`,
+            name,
+            skill,
+            image: img,
+            country,
+            success,
+            jobs,
+            rate: rateText,
+            title: titleFromServiceTypes(st),
+            bio,
+            consultText
+          };
+        });
+        if (alive) setItems(mapped);
+      } catch {
+        if (alive) setItems([]);
+      }
+    };
+    load();
+    return () => { alive = false; };
+  }, []);
 
   const PER_PAGE = 3;
   const PAGE_SIZE = 3;
@@ -51,14 +100,25 @@ const ClientAvailableWorkers = () => {
 
   const GAP = 24;
 
-  const [cardW, setCardW]   = useState(340);
+  const [cardW, setCardW]   = useState(420);
   const [endPad, setEndPad] = useState(0);
 
   const totalSlides = Math.max(1, Math.ceil(displayItems.length / PER_PAGE));
 
   const handleScroll = (direction) => {
-    const next = direction === 'left' ? current - 1 : current + 1;
-    scrollToIndex(next);
+    if (direction === 'left') {
+      if (current > 0) {
+        scrollToIndex(current - 1);
+      } else if (page > 1) {
+        setPage((p) => Math.max(1, p - 1));
+      }
+    } else {
+      if (current < totalSlides - 1) {
+        scrollToIndex(current + 1);
+      } else if (page < totalPages) {
+        setPage((p) => Math.min(totalPages, p + 1));
+      }
+    }
   };
 
   const onTrackScroll = () => {
@@ -92,7 +152,7 @@ const ClientAvailableWorkers = () => {
     if (!wrap || !track) return;
     const visible = wrap.clientWidth - getHPad(wrap) - getHPad(track);
     const exact   = Math.floor((visible - GAP * (PER_PAGE - 1)) / PER_PAGE);
-    const clamped = Math.max(300, Math.min(520, exact));
+    const clamped = Math.max(420, Math.min(600, exact));
     setCardW(clamped);
     setEndPad(0);
   };
@@ -224,22 +284,22 @@ const ClientAvailableWorkers = () => {
             <button
               onClick={() => handleScroll('left')}
               className="absolute -left-2 md:left-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
+              aria-disabled={page === 1 && current === 0}
             >
               <ArrowLeft size={22} />
             </button>
 
-            <div ref={wrapRef} className="w-full max-w-[1425px] overflow-visible px-12 py-4">
+            <div ref={wrapRef} className="w-full max-w-[1425px] overflow-visible px-12 py-2">
               <div
                 ref={scrollRef}
                 onScroll={onTrackScroll}
-                className="flex space-x-6 overflow-x-scroll scroll-smooth no-scrollbar pl-4 pr-4 select-none no-hand"
-                style={{ touchAction: 'pan-x' }}
                 onPointerDown={onDragPointerDown}
                 onPointerMove={onDragPointerMove}
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}
-                onPointerLeave={endDrag}
                 onClickCapture={onTrackClickCapture}
+                className="flex space-x-6 overflow-x-scroll scroll-smooth no-scrollbar pl-4 pr-4 select-none no-hand"
+                style={{ touchAction: 'auto' }}
               >
                 {displayItems.map((w, i) => (
                   <div
@@ -249,7 +309,7 @@ const ClientAvailableWorkers = () => {
                     style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
                   >
                     <button className="absolute top-4 right-4 h-8 w-8 rounded-full grid place-items-center hover:bg-gray-100">
-                      <svg viewBox="0 0 24 24" className="h-5 w-5 text-gray-400"><path d="M12 21s-7.5-4.35-10-8.74C.35 9.36 2.01 6 5.2 6c1.92 0 3.09 1.02 3.8 2.06C9.71 7.02 10.88 6 12.8 6c3.19 0 4.85 3.36 3.2 6.26C19.5 16.65 12 21 12 21z" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
+                      <img src="/verifiedicon.png" alt="" className="h-7 w-7 object-contain" />
                     </button>
 
                     <div className="flex items-center gap-3">
@@ -295,14 +355,9 @@ const ClientAvailableWorkers = () => {
                       <div className="mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3">{w.bio}</div>
                     </div>
 
-                    <a href="#" className="mt-4 inline-flex items-center gap-2 text-sm text-[#008cfc] hover:underline">
-                      <svg viewBox="0 0 24 24" className="h-4 w-4"><path d="M3 5h18v14H3z" fill="none" stroke="currentColor" strokeWidth="1.5"/><path d="M9 10l3 2 3-2" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
-                      {w.consultText}
+                    <a href="#" className="mt-4 w-full h-11 rounded-lg bg-[#008cfc] text-white font-medium grid place-items-center hover:bg-blue-700 transition">
+                      View Worker
                     </a>
-
-                    <button className="mt-4 w-full h-11 rounded-lg border border-emerald-500 text-emerald-600 font-medium hover:bg-emerald-50 transition">
-                      Book a consultation
-                    </button>
                   </div>
                 ))}
                 <div aria-hidden className="flex-shrink-0" style={{ width: `${endPad}px` }} />
@@ -312,6 +367,7 @@ const ClientAvailableWorkers = () => {
             <button
               onClick={() => handleScroll('right')}
               className="absolute -right-2 md:right-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
+              aria-disabled={page === totalPages && current === totalSlides - 1}
             >
               <ArrowRight size={22} />
             </button>
@@ -323,32 +379,48 @@ const ClientAvailableWorkers = () => {
             </div>
             <nav className="flex items-center gap-2">
               <button
-                className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                disabled={page === 1}
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 hidden"
+                disabled
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 aria-label="Previous page"
               >
                 ‹
               </button>
-              {pages.map((p, idx) =>
-                typeof p === 'number' ? (
-                  <button
-                    key={`${p}-${idx}`}
-                    onClick={() => setPage(p)}
-                    className={`h-9 min-w-9 px-3 rounded-md border text-sm ${
-                      p === page ? 'border-[#008cfc] bg-[#008cfc] text-white' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                    aria-current={p === page ? 'page' : undefined}
-                  >
-                    {p}
-                  </button>
-                ) : (
-                  <span key={`dots-${idx}`} className="px-1 text-gray-500 select-none">…</span>
-                )
-              )}
+              {(() => {
+                const t = totalPages;
+                const p = page;
+                const out = [];
+                if (t <= 7) {
+                  for (let i = 1; i <= t; i++) out.push(i);
+                } else {
+                  out.push(1);
+                  if (p > 4) out.push('…');
+                  const start = Math.max(2, p - 1);
+                  const end = Math.min(t - 1, p + 1);
+                  for (let i = start; i <= end; i++) out.push(i);
+                  if (p < t - 3) out.push('…');
+                  out.push(t);
+                }
+                return out.map((pg, idx) =>
+                  typeof pg === 'number' ? (
+                    <button
+                      key={`${pg}-${idx}`}
+                      onClick={() => setPage(pg)}
+                      className={`h-9 min-w-9 px-3 rounded-md border text-sm ${
+                        pg === page ? 'border-[#008cfc] bg-[#008cfc] text-white' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                      aria-current={pg === page ? 'page' : undefined}
+                    >
+                      {pg}
+                    </button>
+                  ) : (
+                    <span key={`dots-${idx}`} className="px-1 text-gray-500 select-none">…</span>
+                  )
+                );
+              })()}
               <button
-                className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                disabled={page >= totalPages}
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 hidden"
+                disabled
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 aria-label="Next page"
               >

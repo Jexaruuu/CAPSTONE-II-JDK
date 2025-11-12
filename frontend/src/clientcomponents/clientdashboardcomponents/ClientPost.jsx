@@ -106,6 +106,38 @@ function timeAgo(input) {
   return `${y} year${y === 1 ? '' : 's'}`;
 }
 
+function parsePreferredTime(val) {
+  if (!val) return { h: 23, m: 59 };
+  const s = String(val).trim().replace(/\./g, '');
+  let m;
+  if ((m = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i.exec(s))) {
+    let h = parseInt(m[1], 10);
+    const mm = m[2] ? parseInt(m[2], 10) : 0;
+    const ap = m[3] ? m[3].toLowerCase() : '';
+    if (ap === 'am') {
+      if (h === 12) h = 0;
+    } else if (ap === 'pm') {
+      if (h !== 12) h = (h % 12) + 12;
+    }
+    if (!ap && h === 24) h = 0;
+    return { h: Math.max(0, Math.min(23, h)), m: Math.max(0, Math.min(59, mm)) };
+  }
+  if ((m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(s))) {
+    const h = Math.max(0, Math.min(23, parseInt(m[1], 10)));
+    const mm = Math.max(0, Math.min(59, parseInt(m[2], 10)));
+    return { h, m: mm };
+  }
+  return { h: 23, m: 59 };
+}
+
+function isExpiredPreferred(dateVal, timeVal) {
+  const d = dateOnlyFrom(dateVal);
+  if (!d) return false;
+  const { h, m } = parsePreferredTime(timeVal);
+  const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0, 0);
+  return dt.getTime() < Date.now();
+}
+
 const ClientPost = () => {
   const [loading, setLoading] = useState(true);
   const [approved, setApproved] = useState([]);
@@ -248,7 +280,7 @@ const ClientPost = () => {
       })
       .then((res) => {
         const items = Array.isArray(res?.data?.items) ? res.data.items : [];
-        const filtered = items.filter((it) => !isExpired(it?.details?.preferred_date));
+        const filtered = items.filter((it) => !isExpiredPreferred(it?.details?.preferred_date, it?.details?.preferred_time));
         const normalized = filtered.map((it) => {
           const d = { ...(it.details || {}) };
           const b = toBoolStrictClient(d.is_urgent);
@@ -289,7 +321,13 @@ const ClientPost = () => {
           headers: headersWithU
         });
         const items = Array.isArray(data?.items) ? data.items : [];
-        const filtered = items.filter((it) => String(it?.status || it?.details?.status || '').toLowerCase() !== 'declined' && !isExpired(it?.details?.preferred_date));
+        const filtered = items.filter((it) => {
+          const stat = String(it?.status || it?.details?.status || '').toLowerCase();
+          if (stat === 'declined') return false;
+          const d = it?.details?.preferred_date;
+          const t = it?.details?.preferred_time;
+          return !isExpiredPreferred(d, t);
+        });
         setCurrentItems(filtered);
       } catch {
         setCurrentItems([]);
@@ -316,6 +354,13 @@ const ClientPost = () => {
   useEffect(() => {
     const id = setInterval(() => setDotStep((s) => (s + 1) % 4), 350);
     return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentItems((prev) => prev.filter((it) => !isExpiredPreferred(it?.details?.preferred_date, it?.details?.preferred_time)));
+    }, 30000);
+    return () => clearInterval(timer);
   }, []);
 
   const hasApproved = false;

@@ -215,8 +215,19 @@ const WorkerAvailableServiceRequest = () => {
   };
 
   const handleScroll = (direction) => {
-    const next = direction === 'left' ? current - 1 : current + 1;
-    scrollToIndex(next);
+    if (direction === 'left') {
+      if (current > 0) {
+        scrollToIndex(current - 1);
+      } else if (page > 1) {
+        setPage((p) => Math.max(1, p - 1));
+      }
+    } else {
+      if (current < totalSlides - 1) {
+        scrollToIndex(current + 1);
+      } else if (page < totalPages) {
+        setPage((p) => Math.min(totalPages, p + 1));
+      }
+    }
   };
 
   const onTrackScroll = () => {
@@ -347,6 +358,7 @@ const WorkerAvailableServiceRequest = () => {
             <button
               onClick={() => handleScroll('left')}
               className="absolute -left-2 md:left-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
+              aria-disabled={page === 1 && current === 0}
             >
               <ArrowLeft size={22} />
             </button>
@@ -356,13 +368,7 @@ const WorkerAvailableServiceRequest = () => {
                 ref={scrollRef}
                 onScroll={onTrackScroll}
                 className="flex space-x-6 overflow-x-scroll scroll-smooth no-scrollbar pl-4 pr-4 select-none no-hand"
-                style={{ touchAction: 'pan-x' }}
-                onPointerDown={onDragPointerDown}
-                onPointerMove={onDragPointerMove}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-                onPointerLeave={endDrag}
-                onClickCapture={onTrackClickCapture}
+                style={{ touchAction: 'auto' }}
               >
                 {displayItems.map((req, i) => {
                   const Icon = getServiceIcon(req.service_type);
@@ -373,9 +379,9 @@ const WorkerAvailableServiceRequest = () => {
                       className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-300 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:border-[#008cfc] hover:shadow-xl"
                       style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
                     >
-                      <div className="absolute top-4 right-4 h-8 w-8 rounded-lg border border-gray-400 text-[#008cfc] flex items-center justify-center select-none" aria-hidden="true">
-                        <Icon className="h-4 w-4" />
-                      </div>
+                      <button className="absolute top-4 right-4 h-8 w-8 rounded-full grid place-items-center hover:bg-gray-100">
+                        <img src="/verifiedicon.png" alt="" className="h-7 w-7 object-contain" />
+                      </button>
 
                       <div className="flex items-center gap-3">
                         <div className="h-12 w-12 rounded-full overflow-hidden">
@@ -445,6 +451,7 @@ const WorkerAvailableServiceRequest = () => {
             <button
               onClick={() => handleScroll('right')}
               className="absolute -right-2 md:right-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
+              aria-disabled={page === totalPages && current === totalSlides - 1}
             >
               <ArrowRight size={22} />
             </button>
@@ -456,8 +463,8 @@ const WorkerAvailableServiceRequest = () => {
             </div>
             <nav className="flex items-center gap-2">
               <button
-                className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                disabled={page === 1}
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 hidden"
+                disabled
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 aria-label="Previous page"
               >
@@ -480,8 +487,8 @@ const WorkerAvailableServiceRequest = () => {
                 )
               )}
               <button
-                className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                disabled={page >= totalPages}
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 hidden"
+                disabled
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 aria-label="Next page"
               >

@@ -968,7 +968,7 @@ export default function WorkerApplicationMenu() {
                         )}
 
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[160px]"
                           onClick={() => toggleSort("name_first")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -977,7 +977,7 @@ export default function WorkerApplicationMenu() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[160px]"
                           onClick={() => toggleSort("name_last")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -989,7 +989,7 @@ export default function WorkerApplicationMenu() {
                           Email
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 w=[360px]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 w-[280px]"
                           onClick={() => toggleSort("service_types_lex")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -998,7 +998,7 @@ export default function WorkerApplicationMenu() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap min-w-[220px] w-[280px]"
                           onClick={() => toggleSort("task_or_role")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -1045,7 +1045,7 @@ export default function WorkerApplicationMenu() {
                               </td>
                             )}
 
-                            <td className="px-4 py-4 border border-gray-200">
+                            <td className="px-4 py-4 border border-gray-200 min-w-[160px]">
                               <div className="min-w-0">
                                 <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
                                   {u.name_first || "-"}
@@ -1053,16 +1053,16 @@ export default function WorkerApplicationMenu() {
                               </div>
                             </td>
 
-                            <td className="px-4 py-4 border border-gray-200">{u.name_last || "-"}</td>
+                            <td className="px-4 py-4 border border-gray-200 min-w-[160px]">{u.name_last || "-"}</td>
                             <td className="px-4 py-4 border border-gray-200">
                               <div className="truncate">{u.email || "-"}</div>
                             </td>
-                            <td className="px-4 py-4 border border-gray-200 w-[360px]" align="top">
-                              <div className="max-w-[360px]">
+                            <td className="px-4 py-4 border border-gray-200 w-[280px]" align="top">
+                              <div className="max-w-[280px]">
                                 <ServiceTypesInline list={u.service_types} />
                               </div>
                             </td>
-                            <td className="px-4 py-4 border border-gray-200">
+                            <td className="px-4 py-4 border border-gray-200 min-w-[220px] w-[280px]">
                               <TaskPill value={u.task_or_role} />
                             </td>
                             <td className="px-4 py-4 border border-gray-200 whitespace-nowrap min-w-[210px]">
