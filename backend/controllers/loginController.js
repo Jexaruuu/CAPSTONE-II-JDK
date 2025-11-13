@@ -5,27 +5,39 @@ const loginUser = async (req, res) => {
   const { email_address, password } = req.body;
 
   try {
-    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
-      email: email_address,
-      password
-    });
-    if (error) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
+    const email = String(email_address || '').trim().toLowerCase();
 
-    let user = await loginModel.getClientByEmail(email_address);
+    let user = await loginModel.getClientByEmail(email);
     let role = 'client';
     if (!user) {
-      user = await loginModel.getWorkerByEmail(email_address);
+      user = await loginModel.getWorkerByEmail(email);
       role = 'worker';
     }
+
     if (!user) {
       return res.status(404).json({ message: 'User not found in profile table' });
     }
 
+    const storedPassword = String(user.password || '');
+    const incomingPassword = String(password || '');
+    if (storedPassword !== incomingPassword) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    let token = null;
+    try {
+      const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+        email,
+        password: incomingPassword
+      });
+      if (!error) {
+        token = data?.session?.access_token || null;
+      }
+    } catch {}
+
     req.session.user = {
       id: user.id,
-      auth_uid: data?.user?.id || user.auth_uid || null,
+      auth_uid: user.auth_uid || null,
       role,
       first_name: user.first_name,
       last_name: user.last_name,
@@ -45,7 +57,7 @@ const loginUser = async (req, res) => {
       message: 'Login successful',
       user,
       role,
-      token: data.session.access_token,
+      token,
       email_address: user.email_address
     });
   } catch (err) {

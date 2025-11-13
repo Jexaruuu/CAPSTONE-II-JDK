@@ -76,6 +76,116 @@ export default function WorkerProfile() {
   const age=useMemo(()=>computeAge(form.date_of_birth),[form.date_of_birth]);
   const validateDob=(iso)=>{ if(!iso)return ""; const d=new Date(iso); if(isNaN(d)) return "Invalid date"; if(d>new Date()) return "Date cannot be in the future"; const a=computeAge(iso); return a==null?"Invalid age":""; };
 
+  const setMonthYear = (monthIndex, year) => {
+    setDpView(prev => {
+      let d = new Date(prev);
+      d.setFullYear(year);
+      d.setMonth(monthIndex);
+      if (d < minDOBDate) d = new Date(minDOBDate);
+      if (d > maxDOBDate) d = new Date(maxDOBDate);
+      return d;
+    });
+  };
+
+  const onSaveProfile = async () => {
+    if (!canSaveProfile) return;
+    try {
+      setSavingProfile(true);
+      setShowSaving(true);
+      const payload = {};
+      if (phoneDirty) payload.phone = form.phone || null;
+      if (dobDirty) payload.date_of_birth = form.date_of_birth || null;
+      const { data } = await axios.post(`${API_BASE}/api/workers/profile`, payload, { withCredentials:true, headers:headersWithU });
+      const dob = data?.date_of_birth ? String(data.date_of_birth).slice(0,10) : "";
+      const next = {
+        first_name: data?.first_name || "",
+        last_name: data?.last_name || "",
+        email: data?.email_address || "",
+        phone: data?.phone || "",
+        facebook: data?.facebook || "",
+        instagram: data?.instagram || "",
+        date_of_birth: dob
+      };
+      setForm(next);
+      setBase(next);
+      setAvatarUrl(data?.profile_picture || null);
+      if (data?.created_at) {
+        const t = new Date(data.created_at);
+        setCreatedAt(t.toLocaleString("en-PH",{timeZone:"Asia/Manila",dateStyle:"long",timeStyle:"short"}));
+      }
+      localStorage.setItem("first_name", next.first_name);
+      localStorage.setItem("last_name", next.last_name);
+      if (data?.sex) localStorage.setItem("sex", data.sex);
+      setEditingPhone(false);
+      setPhoneTaken(false);
+      setPhoneEditCommitted(true);
+      setPhoneErrorAfterDone(false);
+      setEditingDob(false);
+      setDobError("");
+      setDobEditCommitted(true);
+      setSavedProfile(true);
+      setShowSuccess(true);
+    } catch (err) {
+      const msg = err?.response?.data?.message || "";
+      if (msg.toLowerCase().includes("contact number already in use")) {
+        setPhoneTaken(true);
+        setEditingPhone(true);
+        setPhoneErrorAfterDone(true);
+      } else if (msg) {
+        setDobError(msg);
+      }
+    } finally {
+      setSavingProfile(false);
+      setShowSaving(false);
+    }
+  };
+
+  const onSaveSocial = async () => {
+    if (!canSaveSocial) return;
+    try {
+      setSavingSocial(true);
+      setShowSaving(true);
+      const payload = {};
+      if (facebookDirty) payload.facebook = form.facebook || null;
+      if (instagramDirty) payload.instagram = form.instagram || null;
+      const { data } = await axios.post(`${API_BASE}/api/workers/profile`, payload, { withCredentials:true, headers:headersWithU });
+      const dob = data?.date_of_birth ? String(data.date_of_birth).slice(0,10) : "";
+      const next = {
+        first_name: data?.first_name || "",
+        last_name: data?.last_name || "",
+        email: data?.email_address || "",
+        phone: data?.phone || "",
+        facebook: data?.facebook || "",
+        instagram: data?.instagram || "",
+        date_of_birth: dob
+      };
+      setForm(next);
+      setBase(next);
+      setAvatarUrl(data?.profile_picture || null);
+      if (data?.created_at) {
+        const t = new Date(data.created_at);
+        setCreatedAt(t.toLocaleString("en-PH",{timeZone:"Asia/Manila",dateStyle:"long",timeStyle:"short"}));
+      }
+      localStorage.setItem("first_name", next.first_name);
+      localStorage.setItem("last_name", next.last_name);
+      if (data?.sex) localStorage.setItem("sex", data.sex);
+      setFacebookTaken(false);
+      setInstagramTaken(false);
+      setSavedSocial(true);
+      setShowSuccess(true);
+    } catch (err) {
+      const msg = err?.response?.data?.message || "";
+      if (msg.toLowerCase().includes("facebook already in use")) {
+        setFacebookTaken(true);
+      } else if (msg.toLowerCase().includes("instagram already in use")) {
+        setInstagramTaken(true);
+      }
+    } finally {
+      setSavingSocial(false);
+      setShowSaving(false);
+    }
+  };
+
   const CalendarPopover = dpOpen ? createPortal(
     <div ref={dpPortalRef} className="fixed z-[1000]" style={{ top: dpCoords.top, left: dpCoords.left, width: dpCoords.width }}>
       <div className="rounded-2xl border border-gray-200 bg-white shadow-xl p-3">

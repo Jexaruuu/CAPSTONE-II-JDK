@@ -1,10 +1,11 @@
 const { supabaseAdmin } = require('../supabaseClient');
 
 const getClientByEmail = async (email) => {
+  const e = String(email || '').trim().toLowerCase();
   const { data, error } = await supabaseAdmin
     .from('user_client')
     .select('*')
-    .eq('email_address', email)
+    .eq('email_address', e)
     .limit(1)
     .single();
 
@@ -15,10 +16,11 @@ const getClientByEmail = async (email) => {
 };
 
 const getWorkerByEmail = async (email) => {
+  const e = String(email || '').trim().toLowerCase();
   const { data, error } = await supabaseAdmin
     .from('user_worker')
     .select('*')
-    .eq('email_address', email)
+    .eq('email_address', e)
     .limit(1)
     .single();
 
