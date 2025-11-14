@@ -623,7 +623,7 @@ export default function WorkerApplicationMenu() {
     { key: "declined", label: "Declined", count: counts.declined },
   ];
 
-  const COLSPAN = ENABLE_SELECTION ? 9 : 8;
+  const COLSPAN = ENABLE_SELECTION ? 8 : 7;
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 7;
@@ -998,15 +998,6 @@ export default function WorkerApplicationMenu() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap min-w-[220px] w-[280px]"
-                          onClick={() => toggleSort("task_or_role")}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            Task
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                          </span>
-                        </th>
-                        <th
                           className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap min-w-[210px]"
                           onClick={() => toggleSort("created_at_ts")}
                         >
@@ -1061,9 +1052,6 @@ export default function WorkerApplicationMenu() {
                               <div className="max-w-[280px]">
                                 <ServiceTypesInline list={u.service_types} />
                               </div>
-                            </td>
-                            <td className="px-4 py-4 border border-gray-200 min-w-[220px] w-[280px]">
-                              <TaskPill value={u.task_or_role} />
                             </td>
                             <td className="px-4 py-4 border border-gray-200 whitespace-nowrap min-w-[210px]">
                               {u.created_at_display || "-"}
