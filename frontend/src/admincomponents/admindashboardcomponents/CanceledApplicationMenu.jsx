@@ -4,6 +4,10 @@ import { ChevronsUpDown } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+const ENABLE_SELECTION = false;
+const BOLD_FIRST_NAME = false;
+const ACTION_ALIGN_RIGHT = false;
+
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
@@ -284,7 +288,7 @@ export default function CanceledApplicationMenu() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const [sort, setSort] = useState({ key: "name_first", dir: "asc" });
+  const [sort, setSort] = useState({ key: "full_name", dir: "asc" });
   const [viewRow, setViewRow] = useState(null);
   const [reasonRow, setReasonRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -344,12 +348,17 @@ export default function CanceledApplicationMenu() {
         );
         const infoNormalized = { ...i, date_of_birth: dob || i.date_of_birth };
 
+        const first_name = infoNormalized.first_name || r.first_name || "";
+        const last_name = infoNormalized.last_name || r.last_name || "";
+        const full_name = [first_name, last_name].filter(Boolean).join(" ");
+
         return {
           id: r.id,
           status: "canceled",
           ui_status: "cancelled",
-          name_first: infoNormalized.first_name || r.first_name || "",
-          name_last: infoNormalized.last_name || r.last_name || "",
+          name_first: first_name,
+          name_last: last_name,
+          full_name,
           email: infoNormalized.email_address || infoNormalized.email || r.email || "",
           info: infoNormalized,
           work: w,
@@ -670,7 +679,7 @@ export default function CanceledApplicationMenu() {
         <SectionCard
           title="Work Details"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               <span className="h-3 w-3 rounded-full bg-white/60" />
               Experience
             </span>
@@ -777,44 +786,27 @@ export default function CanceledApplicationMenu() {
                     <thead>
                       <tr className="text-left text-sm text-gray-600">
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
-                          onClick={() => toggleSort("name_first")}
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 w-[180px] min-w-[180px]"
+                          onClick={() => toggleSort("full_name")}
                         >
                           <span className="inline-flex items-center gap-1">
-                            First Name
+                            Worker Name
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
-                          onClick={() => toggleSort("name_last")}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            Last Name
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                          </span>
-                        </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">Email</th>
-                        <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
-                          onClick={() => toggleSort("primary_service")}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            Primary Service
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                          </span>
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[260px] whitespace-nowrap">
+                          Email
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
                           onClick={() => toggleSort("task_or_role")}
                         >
-                          <span className="inline-flex items-center gap-1">
-                            Task
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                          <span className="inline-flex items-center">
+                            Service Task
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap w-[220px]"
                           onClick={() => toggleSort("created_at_ts")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -822,39 +814,42 @@ export default function CanceledApplicationMenu() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">Status</th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">Action</th>
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
+                          Status
+                        </th>
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
+                          Action
+                        </th>
                       </tr>
                     </thead>
 
                     <tbody className="text-sm text-gray-800 font-semibold">
                       {pageRows.map((u, idx) => {
+                        const fullName = u.full_name || [u.name_first, u.name_last].filter(Boolean).join(" ");
                         return (
                           <tr key={u.id} className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}>
-                            <td className="px-4 py-4 border border-gray-200">
-                              <div className="flex items-center gap-3">
-                                <div className="min-w-0">
-                                  <div className="text-gray-900 truncate font-semibold">{u.name_first || "-"}</div>
+                            <td className="px-4 py-4 border border-gray-200 w-[180px] min-w-[180px]">
+                              <div className="min-w-0">
+                                <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
+                                  {fullName || "-"}
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-4 border border-gray-200">{u.name_last || "-"}</td>
-                            <td className="px-4 py-4 border border-gray-200">
+                            <td className="px-4 py-4 border border-gray-200 w-[260px] whitespace-nowrap">
                               <div className="truncate">{u.email || "-"}</div>
                             </td>
-                            <td className="px-4 py-4 border border-gray-200">
-                              <ServiceTypePill value={u.primary_service} />
+                            <td className="px-4 py-4 border border-gray-200 align-top">
+                              <div className="whitespace-nowrap">
+                                <TaskPill value={u.task_or_role} />
+                              </div>
                             </td>
-                            <td className="px-4 py-4 border border-gray-200">
-                              <TaskPill value={u.task_or_role} />
-                            </td>
-                            <td className="px-4 py-4 border border-gray-200">{u.created_at_display || "-"}</td>
-                            <td className="px-4 py-4 border border-gray-200">
+                            <td className="px-4 py-4 border border-gray-200 whitespace-nowrap w-[220px]">{u.created_at_display || "-"}</td>
+                            <td className="px-4 py-4 border border-gray-200 w-[160px] min-w-[160px]">
                               <div className="flex items-center gap-1 flex-wrap">
                                 <StatusPill value="cancelled" />
                               </div>
                             </td>
-                            <td className="px-4 py-4 w-40 text-left border border-gray-200">
+                            <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}>
                               <div className="inline-flex gap-2">
                                 <button
                                   onClick={() => {
@@ -881,7 +876,7 @@ export default function CanceledApplicationMenu() {
 
                       {!loading && !loadError && pageRows.length === 0 && (
                         <tr>
-                          <td colSpan={8} className="px-4 py-16 text-center text-gray-500 border border-gray-200">
+                          <td colSpan={6} className="px-4 py-16 text-center text-gray-500 border border-gray-200">
                             No cancelled applications.
                           </td>
                         </tr>
@@ -1047,7 +1042,7 @@ export default function CanceledApplicationMenu() {
                               href={url}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                              className="inline-flex.items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                             >
                               Open
                             </a>
@@ -1119,7 +1114,7 @@ export default function CanceledApplicationMenu() {
               <button
                 type="button"
                 onClick={() => { setReasonRow(null); }}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-orange-300 px-3 py-2 text-sm font-medium text-orange-600 hover:bg-orange-50"
+                className="w-full inline-flex.items-center justify-center rounded-lg border border-orange-300 px-3 py-2 text-sm font-medium text-orange-600 hover:bg-orange-50"
               >
                 Close
               </button>

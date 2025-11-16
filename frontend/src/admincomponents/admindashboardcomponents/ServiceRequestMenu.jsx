@@ -42,14 +42,28 @@ function StatusPill({ value }) {
       aria-label={`Status: ${cfg.label}`}
       title={cfg.label}
     >
-      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+      <span className="h-3 w-3 rounded-full bg-current.opacity-30" />
       {cfg.label}
     </span>
   );
 }
 
 function ServiceTypePill({ value }) {
-  const cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  const v = String(value || "").toLowerCase().trim();
+  let cfg;
+  if (v === "car washing" || v === "car wash") {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  } else if (v === "carpentry") {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  } else if (v === "electrical works" || v === "electrical work" || v === "electrical") {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  } else if (v === "laundry") {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  } else if (v === "plumbing") {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  } else {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  }
   return (
     <span
       className={[
@@ -71,13 +85,13 @@ function TaskPill({ value }) {
     <span
       className={[
         "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
-        "bg-gray-100",
-        "text-gray-700",
-        "border-gray-300",
+        "bg-violet-50",
+        "text-violet-700",
+        "border-violet-200",
       ].join(" ")}
       title={value || "-"}
     >
-      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+      <span className="h-3 w-3 rounded-full bg-violet-500 opacity-30" />
       {value || "-"}
     </span>
   );
@@ -175,7 +189,7 @@ export default function AdminServiceRequests() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
 
-  const [sort, setSort] = useState({ key: "name_first", dir: "asc" });
+  const [sort, setSort] = useState({ key: "full_name", dir: "asc" });
 
   const [selected, setSelected] = useState(() => new Set());
   const headerCheckboxRef = useRef(null);
@@ -301,6 +315,7 @@ export default function AdminServiceRequests() {
           ui_status: r.status || "pending",
           name_first: i.first_name || "",
           name_last: i.last_name || "",
+          full_name: [i.first_name, i.last_name].filter(Boolean).join(" ") || "",
           email: i.email_address || d.email_address || "",
           service_type: d.service_type || "",
           service_task: d.service_task || "",
@@ -596,7 +611,7 @@ export default function AdminServiceRequests() {
     { key: "expired", label: "Expired", count: expiredCount },
   ];
 
-  const COLSPAN = ENABLE_SELECTION ? 9 : 8;
+  const COLSPAN = ENABLE_SELECTION ? 8 : 7;
 
   const SectionButton = ({ k, label }) => {
     const active = sectionOpen === k;
@@ -642,19 +657,19 @@ export default function AdminServiceRequests() {
   const SectionCard = ({ title, children, badge }) => (
     <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#0b82ff] hover:ring-2 hover:ring-[#0b82ff] hover:shadow-xl">
       <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#0b82ff] to-[#4aa6ff] text-white flex items-center justify-between">
-        <h3 className="text-base font-semibold flex items-center gap-2">
+        <h3 className="text-base font-semibold flex.items-center gap-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
           {title}
         </h3>
         {badge || (
-          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text.white border-white/20">
             <span className="h-3 w-3 rounded-full bg-white/60" />
             Info
           </span>
         )}
       </div>
       <div className="p-6">{children}</div>
-      <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
+      <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from.transparent via-blue-200 to-transparent opacity-60"></div>
     </section>
   );
   const renderSection = () => {
@@ -709,7 +724,7 @@ export default function AdminServiceRequests() {
                 </div>
               </div>
               <div className="xl:col-span-2">
-                <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
+                <div className="aspect-[4/3] w-full rounded-xl border.border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
                   {img ? (
                     <img
                       src={img}
@@ -732,7 +747,7 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text-white border-white/20">
                 <span className="h-3 w-3 rounded-full bg-white/60" />
                 Pricing
               </span>
@@ -786,7 +801,7 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Service Request Details"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               <span className="h-3 w-3 rounded-full bg-white/60" />
               Request
             </span>
@@ -1040,46 +1055,30 @@ export default function AdminServiceRequests() {
                           )}
 
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
-                            onClick={() => toggleSort("name_first")}
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 w-[180px] min-w-[180px]"
+                            onClick={() => toggleSort("full_name")}
                           >
                             <span className="inline-flex items-center gap-1">
-                              First Name
+                              Client Name
                               <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                             </span>
                           </th>
-                          <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
-                            onClick={() => toggleSort("name_last")}
-                          >
-                            <span className="inline-flex items-center gap-1">
-                              Last Name
-                              <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                            </span>
-                          </th>
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[260px] whitespace-nowrap">
                             Email
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
                             onClick={() => toggleSort("service_type")}
                           >
                             <span className="inline-flex items-center gap-1">
                               Service Type
-                              <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                             </span>
                           </th>
-                          <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
-                            onClick={() => toggleSort("service_task")}
-                          >
-                            <span className="inline-flex items-center gap-1">
-                              Task
-                              <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                            </span>
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 min-w-[220px]">
+                            Service Task
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap w-[220px]"
                             onClick={() => toggleSort("created_at_ts")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1087,7 +1086,7 @@ export default function AdminServiceRequests() {
                               <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                             </span>
                           </th>
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
                             Status
                           </th>
                           <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
@@ -1105,6 +1104,7 @@ export default function AdminServiceRequests() {
                           const isFinal = u.status === "approved" || u.status === "declined" || isCanceled;
                           const isDeclined = sLower === "declined";
                           const isApproved = sLower === "approved";
+                          const fullName = u.full_name || [u.name_first, u.name_last].filter(Boolean).join(" ");
                           return (
                             <tr
                               key={u.id}
@@ -1122,30 +1122,31 @@ export default function AdminServiceRequests() {
                                 </td>
                               )}
 
-                              <td className="px-4 py-4 border border-gray-200">
-                                <div className="flex items-center gap-3">
-                                  <div className="min-w-0">
-                                    <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
-                                      {u.name_first || "-"}
-                                    </div>
+                              <td className="px-4 py-4 border border-gray-200 w-[180px] min-w-[180px]">
+                                <div className="min-w-0">
+                                  <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
+                                    {fullName || "-"}
                                   </div>
                                 </div>
                               </td>
 
-                              <td className="px-4 py-4 border border-gray-200">{u.name_last || "-"}</td>
-                              <td className="px-4 py-4 border border-gray-200">
+                              <td className="px-4 py-4 border border-gray-200 w-[260px] whitespace-nowrap">
                                 <div className="truncate">{u.email || "-"}</div>
                               </td>
-                              <td className="px-4 py-4 border border-gray-200">
-                                <ServiceTypePill value={u.service_type} />
+                              <td className="px-4 py-4 border border-gray-200 align-top">
+                                <div className="whitespace-nowrap">
+                                  <ServiceTypePill value={u.service_type} />
+                                </div>
                               </td>
-                              <td className="px-4 py-4 border border-gray-200">
-                                <TaskPill value={u.service_task} />
+                              <td className="px-4 py-4 border border-gray-200 align-top min-w-[220px]">
+                                <div className="whitespace-nowrap">
+                                  <TaskPill value={u.service_task} />
+                                </div>
                               </td>
-                              <td className="px-4 py-4 border border-gray-200">
+                              <td className="px-4 py-4 border border-gray-200 whitespace-nowrap w-[220px]">
                                 {u.created_at_display || "-"}
                               </td>
-                              <td className="px-4 py-4 border border-gray-200">
+                              <td className="px-4 py-4 border border-gray-200 w-[160px] min-w-[160px]">
                                 <div className="flex items-center gap-1 flex-wrap">
                                   {u._expired ? (
                                     isFinal ? (
@@ -1287,7 +1288,7 @@ export default function AdminServiceRequests() {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
             <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl flex flex-col overflow-hidden">
               <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
-                <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
+                <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border.border-blue-100 bg-white overflow-hidden shadow">
                   {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
                     <img
                       src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
@@ -1316,7 +1317,7 @@ export default function AdminServiceRequests() {
                 </div>
 
                 <div className="mt-3 flex items-center justify-center gap-3">
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm.text-gray-600">
                     Created <span className="font-semibold text-[#0b82ff]">{viewRow.created_at_display || "-"}</span>
                   </div>
                   <div className="flex items-center gap-1 flex-wrap">
@@ -1370,7 +1371,7 @@ export default function AdminServiceRequests() {
             aria-label="Decline service request"
             tabIndex={-1}
             autoFocus
-            className="fixed inset-0 z-[2147483646] flex items-center justify-center"
+            className="fixed inset-0 z-[2147483646] flex.items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingDecline && setShowDecline(false)} />
             <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
@@ -1440,7 +1441,7 @@ export default function AdminServiceRequests() {
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
             <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
-              <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
+              <div className="px-6 py-4 bg-gradient.to-r from-red-50 to-white border-b border-red-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
                   <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
@@ -1457,7 +1458,7 @@ export default function AdminServiceRequests() {
                     {getReasonText(reasonTarget)}
                   </div>
                 </div>
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="mt-4.grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="rounded-xl border border-red-200 bg-white p-4">
                     <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Client</div>
                     <div className="mt-1 text-[15px] font-semibold text-gray-900">
@@ -1466,7 +1467,7 @@ export default function AdminServiceRequests() {
                     <div className="text-sm text-gray-600">{reasonTarget?.email || "-"}</div>
                   </div>
                   <div className="rounded-xl border border-red-200 bg-white p-4">
-                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service</div>
+                    <div className="text-[11px] font-semibold tracking-widest text-gray-500.uppercase">Service</div>
                     <div className="mt-1 text-[15px] font-semibold text-gray-900">{reasonTarget?.service_task || "-"}</div>
                     <div className="text-sm text-gray-600">{reasonTarget?.service_type || "-"}</div>
                   </div>

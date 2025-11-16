@@ -47,11 +47,36 @@ const isYes = (v) => String(v ?? "").toLowerCase() === "yes";
 const rate_toNumber = (x) => (x === null || x === undefined || x === "" ? null : Number(x));
 
 function ServiceTypePill({ value }) {
-  const cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  const v = String(value || "").toLowerCase().trim();
+  let cfg;
+  if (
+    v === "car washing" ||
+    v === "car wash" ||
+    v === "carwashing" ||
+    v === "carwasher" ||
+    v === "car washer"
+  ) {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  } else if (v === "carpentry" || v === "carpenter") {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  } else if (
+    v === "electrical works" ||
+    v === "electrical work" ||
+    v === "electrical" ||
+    v === "electrician"
+  ) {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  } else if (v === "laundry") {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  } else if (v === "plumbing" || v === "plumber") {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  } else {
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
+  }
   return (
     <span
       className={[
-        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide whitespace-nowrap",
         cfg.bg,
         cfg.text,
         cfg.br,
@@ -68,7 +93,7 @@ function TaskPill({ value }) {
   return (
     <span
       className={[
-        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
+        "inline-flex.items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
         "bg-gray-100",
         "text-gray-700",
         "border-gray-300",
@@ -99,9 +124,9 @@ function YesNoPill({ yes }) {
 
 function ServiceTypesInline({ list }) {
   const arr = Array.isArray(list) ? list.filter(Boolean) : [];
-  if (arr.length === 0) return <span>-</span>;
+  if (arr.length === 0) return <span className="text-gray-500 text-sm">-</span>;
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex items-center gap-1.5 whitespace-nowrap">
       {arr.map((s, i) => (
         <ServiceTypePill key={`${s}-${i}`} value={s} />
       ))}
@@ -142,7 +167,15 @@ function parseDateTime(val) {
 }
 function fmtDateTime(val) {
   const d = parseDateTime(val);
-  return d ? d.toLocaleString() : "";
+  if (!d) return "";
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  });
 }
 function fmtDateOnly(val) {
   const d = parseDateTime(val);
@@ -295,7 +328,7 @@ export default function WorkerApplicationMenu() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const [sort, setSort] = useState({ key: "name_first", dir: "asc" });
+  const [sort, setSort] = useState({ key: "full_name", dir: "asc" });
   const [selected, setSelected] = useState(() => new Set());
   const headerCheckboxRef = useRef(null);
   const [viewRow, setViewRow] = useState(null);
@@ -368,6 +401,7 @@ export default function WorkerApplicationMenu() {
           status: s || "pending",
           name_first: i.first_name || "",
           name_last: i.last_name || "",
+          full_name: [i.first_name, i.last_name].filter(Boolean).join(" ") || "",
           email: r.email_address || i.email_address || "",
           barangay: i.barangay || "",
           additional_address: i.additional_address || i.street || "",
@@ -623,7 +657,7 @@ export default function WorkerApplicationMenu() {
     { key: "declined", label: "Declined", count: counts.declined },
   ];
 
-  const COLSPAN = ENABLE_SELECTION ? 8 : 7;
+  const COLSPAN = ENABLE_SELECTION ? 7 : 6;
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 7;
@@ -742,7 +776,7 @@ export default function WorkerApplicationMenu() {
             </span>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg.grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
             <Field label="Date of Birth" value={viewRow?.birth_date_display || "-"} />
             <Field label="Age" value={viewRow?.age ?? "-"} />
             <Field label="Contact Number:" value={<ContactDisplay number={viewRow?.contact_number} />} />
@@ -757,7 +791,7 @@ export default function WorkerApplicationMenu() {
         <SectionCard
           title="Work Details"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               <span className="h-3 w-3 rounded-full bg-white/60" />
               Experience
             </span>
@@ -797,7 +831,7 @@ export default function WorkerApplicationMenu() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text-white border-white/20">
                 <span className="h-3 w-3 rounded-full bg-white/60" />
                 Pricing
               </span>
@@ -815,7 +849,7 @@ export default function WorkerApplicationMenu() {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text-white border-white/20">
               <span className="h-3 w-3 rounded-full bg-white/60" />
               Pricing
             </span>
@@ -883,9 +917,9 @@ export default function WorkerApplicationMenu() {
                     <button
                       key={t.key}
                       onClick={() => setFilter(t.key)}
-                      className={`inline-flex items-center gap-2 h-10 rounded-full border px-3 text-sm transition ${
+                      className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm transition ${
                         active
-                          ? "border-[#008cfc] bg-[#008cfc] text-white"
+                          ? "border[#008cfc] bg-[#008cfc] text-white"
                           : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                       }`}
                       title={`${t.label} (${typeof t.count === "number" ? t.count : "0"})`}
@@ -968,37 +1002,27 @@ export default function WorkerApplicationMenu() {
                         )}
 
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[160px]"
-                          onClick={() => toggleSort("name_first")}
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 w-[180px] min-w-[180px]"
+                          onClick={() => toggleSort("full_name")}
                         >
                           <span className="inline-flex items-center gap-1">
-                            First Name
+                            Worker Name
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[160px]"
-                          onClick={() => toggleSort("name_last")}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            Last Name
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                          </span>
-                        </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border.border-gray-200 w-[260px] whitespace-nowrap">
                           Email
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 w-[280px]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
                           onClick={() => toggleSort("service_types_lex")}
                         >
-                          <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex items-center">
                             Service Type
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap min-w-[210px]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap w-[220px]"
                           onClick={() => toggleSort("created_at_ts")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -1006,7 +1030,7 @@ export default function WorkerApplicationMenu() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200">
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
                           Status
                         </th>
                         <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
@@ -1019,6 +1043,7 @@ export default function WorkerApplicationMenu() {
                       {pageRows.map((u, idx) => {
                         const isDeclined = String(u.status).toLowerCase() === "declined";
                         const disableActions = u.status === "approved" || isDeclined;
+                        const fullName = u.full_name || [u.name_first, u.name_last].filter(Boolean).join(" ");
                         return (
                           <tr
                             key={u.id}
@@ -1036,27 +1061,26 @@ export default function WorkerApplicationMenu() {
                               </td>
                             )}
 
-                            <td className="px-4 py-4 border border-gray-200 min-w-[160px]">
+                            <td className="px-4 py-4 border.border-gray-200 w-[180px] min-w-[180px]">
                               <div className="min-w-0">
                                 <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
-                                  {u.name_first || "-"}
+                                  {fullName || "-"}
                                 </div>
                               </div>
                             </td>
 
-                            <td className="px-4 py-4 border border-gray-200 min-w-[160px]">{u.name_last || "-"}</td>
-                            <td className="px-4 py-4 border border-gray-200">
+                            <td className="px-4 py-4 border border-gray-200 w-[260px] whitespace-nowrap">
                               <div className="truncate">{u.email || "-"}</div>
                             </td>
-                            <td className="px-4 py-4 border border-gray-200 w-[280px]" align="top">
-                              <div className="max-w-[280px]">
+                            <td className="px-4 py-4 border border-gray-200 align-top">
+                              <div className="whitespace-nowrap">
                                 <ServiceTypesInline list={u.service_types} />
                               </div>
                             </td>
-                            <td className="px-4 py-4 border border-gray-200 whitespace-nowrap min-w-[210px]">
+                            <td className="px-4 py-4 border border-gray-200 whitespace-nowrap w-[220px]">
                               {u.created_at_display || "-"}
                             </td>
-                            <td className="px-4 py-4 border border-gray-200">
+                            <td className="px-4 py-4 border border-gray-200 w-[160px] min-w-[160px]">
                               <StatusPill value={u.status} />
                             </td>
 
@@ -1441,7 +1465,7 @@ export default function WorkerApplicationMenu() {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex.items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
