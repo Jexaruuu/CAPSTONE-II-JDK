@@ -2,17 +2,276 @@ const workerModel = require("../models/workerModel");
 const notifModel = require("../models/notificationsModel");
 const { supabase, supabaseAdmin, createConfirmedUser } = require("../supabaseClient");
 
-function parseCookie(str){const out={};if(!str)return out;str.split(";").forEach(p=>{const i=p.indexOf("=");if(i>-1)out[p.slice(0,i).trim()]=p.slice(i+1).trim()});return out}
-function readAppUHeader(req){const h=req.headers["x-app-u"];if(!h)return{};try{return JSON.parse(decodeURIComponent(h))}catch{return{}}}
-function sess(req){const s=req.session?.user||{};let role=s.role;let email=s.email_address||null;let auth_uid=s.auth_uid||null;if(!role||(!email&&!auth_uid)){const c=parseCookie(req.headers.cookie||"");if(c.app_u){try{const j=JSON.parse(decodeURIComponent(c.app_u));role=role||j.r;email=email||j.e||null;auth_uid=auth_uid||j.au||null}catch{}}}if(!role||(!email&&!auth_uid)){const h=readAppUHeader(req);if(h&&(h.e||h.au)){role=role||h.r;email=email||h.e||null;auth_uid=auth_uid||h.au||null}}return{role,email,auth_uid,id:s.id||null}}
-function computeAge(iso){if(!iso)return null;const d=new Date(String(iso));if(isNaN(d.getTime()))return null;const t=new Date();let a=t.getFullYear()-d.getFullYear();const m=t.getMonth()-d.getMonth();if(m<0||(m===0&&t.getDate()<d.getDate()))a--;return a>=0&&a<=120?a:null}
+function parseCookie(str) {
+  const out = {};
+  if (!str) return out;
+  str.split(";").forEach((p) => {
+    const i = p.indexOf("=");
+    if (i > -1) out[p.slice(0, i).trim()] = p.slice(i + 1).trim();
+  });
+  return out;
+}
 
-const registerWorker=async(req,res)=>{const{first_name,last_name,sex,email_address,password,is_agreed_to_terms}=req.body;try{const email=String(email_address||"").trim().toLowerCase();const verified=req.session?.verifiedEmails?.[email]===true;if(!verified)return res.status(400).json({message:"Please verify your email with the 6-digit code before creating an account."});const exists=await workerModel.checkEmailExistenceAcrossAllUsers(email);if(exists.length>0)return res.status(400).json({message:"Email already in use"});const agreed_at=is_agreed_to_terms?new Date().toISOString():null;let authUser=null;const{user:createdUser,error:authError}=await createConfirmedUser(email,password,{first_name,last_name,sex,role:"worker",is_agreed_to_terms:!!is_agreed_to_terms,agreed_at});if(authError){if(authError.status===422||(authError.message&&authError.message.toLowerCase().includes("already"))){try{const{data,listError}=await supabaseAdmin.auth.admin.listUsers();if(!listError&&data&&Array.isArray(data.users)){const existing=data.users.find(u=>String(u.email||"").trim().toLowerCase()===email);if(existing)authUser=existing}}catch{}}if(!authUser)return res.status(authError.status||400).json({message:authError.message||"Signup failed",code:authError.code||undefined})}else{authUser=createdUser}await workerModel.createWorker(authUser.id,first_name,last_name,sex,email,password,!!is_agreed_to_terms,agreed_at);if(req.session?.verifiedEmails)delete req.session.verifiedEmails[email];return res.status(201).json({message:"Worker registered successfully",data:{first_name,last_name,sex,is_agreed_to_terms:!!is_agreed_to_terms,agreed_at,auth_uid:authUser.id}})}catch(e){return res.status(400).json({message:e?.message||"Internal server error"})}};
+function readAppUHeader(req) {
+  const h = req.headers["x-app-u"];
+  if (!h) return {};
+  try {
+    return JSON.parse(decodeURIComponent(h));
+  } catch {
+    return {};
+  }
+}
 
-const me=async(req,res)=>{try{const s=sess(req);if(s.role!=="worker"||(!s.auth_uid&&!s.email))return res.status(401).json({message:"Unauthorized"});const payload=await workerModel.getWorkerAccountProfile({auth_uid:s.auth_uid,email:s.email});return res.status(200).json(payload)}catch{return res.status(400).json({message:"Failed to load profile"})}};
+function sess(req) {
+  const s = req.session?.user || {};
+  let role = s.role;
+  let email = s.email_address || null;
+  let auth_uid = s.auth_uid || null;
+  if (!role || (!email && !auth_uid)) {
+    const c = parseCookie(req.headers.cookie || "");
+    if (c.app_u) {
+      try {
+        const j = JSON.parse(decodeURIComponent(c.app_u));
+        role = role || j.r;
+        email = email || j.e || null;
+        auth_uid = auth_uid || j.au || null;
+      } catch {}
+    }
+  }
+  if (!role || (!email && !auth_uid)) {
+    const h = readAppUHeader(req);
+    if (h && (h.e || h.au)) {
+      role = role || h.r;
+      email = email || h.e || null;
+      auth_uid = auth_uid || h.au || null;
+    }
+  }
+  return { role, email, auth_uid, id: s.id || null };
+}
 
-const password=async(req,res)=>{try{const s=sess(req);if(s.role!=="worker"||(!s.auth_uid&&!s.email))return res.status(401).json({message:"Unauthorized"});const{current_password,new_password,confirm_password}=req.body||{};if(!current_password||!new_password||new_password!==confirm_password)return res.status(400).json({message:"Invalid request"});const row=await workerModel.getByAuthUid(s.auth_uid||null);const acctEmail=row?.email_address||s.email;const sign=await supabase.auth.signInWithPassword({email:acctEmail,password:current_password});if(sign.error)return res.status(400).json({message:"Current password is incorrect"});const uid=row?.auth_uid||s.auth_uid;await workerModel.updateAuthPassword(uid,new_password);await workerModel.updatePassword(uid,new_password);return res.status(200).json({message:"Password updated"})}catch{return res.status(400).json({message:"Failed to update password"})}};
+function computeAge(iso) {
+  if (!iso) return null;
+  const d = new Date(String(iso));
+  if (isNaN(d.getTime())) return null;
+  const t = new Date();
+  let a = t.getFullYear() - d.getFullYear();
+  const m = t.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
+  return a >= 0 && a <= 120 ? a : null;
+}
 
-const updateProfile=async(req,res)=>{try{const s=sess(req);if(s.role!=="worker"||(!s.auth_uid&&!s.email))return res.status(401).json({message:"Unauthorized"});const patch={};["first_name","last_name","phone","facebook","instagram","date_of_birth"].forEach(k=>{if(k in req.body){const v=typeof req.body[k]==="string"?req.body[k].trim():req.body[k];patch[k]=v===""?null:v}});const dbPatch={};if("first_name"in patch)dbPatch.first_name=patch.first_name;if("last_name"in patch)dbPatch.last_name=patch.last_name;if("phone"in patch)dbPatch.contact_number=patch.phone?patch.phone:null;if("facebook"in patch)dbPatch.social_facebook=patch.facebook?workerModel.normalizeFacebook(patch.facebook):null;if("instagram"in patch)dbPatch.social_instagram=patch.instagram?workerModel.normalizeInstagram(patch.instagram):null;if("date_of_birth"in patch){dbPatch.date_of_birth=patch.date_of_birth?patch.date_of_birth:null;const a=computeAge(patch.date_of_birth);dbPatch.age=a==null?null:a}if("phone"in patch&&patch.phone){const taken=await workerModel.isContactNumberTakenAcrossAll(patch.phone,s.auth_uid);if(taken)return res.status(400).json({message:"Contact number already in use"})}if("facebook"in patch&&patch.facebook){const takenFb=await workerModel.isSocialLinkTakenAcrossAll("facebook",patch.facebook,s.auth_uid);if(takenFb)return res.status(400).json({message:"Facebook already in use"})}if("instagram"in patch&&patch.instagram){const takenIg=await workerModel.isSocialLinkTakenAcrossAll("instagram",patch.instagram,s.auth_uid);if(takenIg)return res.status(400).json({message:"Instagram already in use"})}const hasAny=Object.keys(dbPatch).length>0;const before=await workerModel.getByAuthUid(s.auth_uid||null);const uid=before?.auth_uid||s.auth_uid;if(hasAny){await workerModel.updateWorkerProfile(uid,dbPatch);if("first_name"in patch||"last_name"in patch){const meta={};if("first_name"in patch)meta.first_name=patch.first_name||"";if("last_name"in patch)meta.last_name=patch.last_name||"";await workerModel.updateAuthUserMeta(uid,meta)}const changes=[];if(("first_name"in patch)||("last_name"in patch))changes.push("name");if("phone"in patch)changes.push("contact number");if("facebook"in patch)changes.push("facebook");if("instagram"in patch)changes.push("instagram");if("date_of_birth"in patch)changes.push("date of birth");const title="Profile updated successfully";const message=changes.length?`Updated ${changes.join(", ")}.`:"Your details are now up to date.";await notifModel.create({auth_uid:uid,role:"worker",title,message})}const payload=await workerModel.getWorkerAccountProfile({auth_uid:uid,email:s.email});return res.status(200).json(payload)}catch{return res.status(400).json({message:"Failed to update profile"})}};
+const registerWorker = async (req, res) => {
+  const { first_name, last_name, sex, email_address, password, is_agreed_to_terms } = req.body;
+  try {
+    const rawEmail = String(email_address || "").trim();
+    const email = rawEmail.toLowerCase();
+    if (!first_name || !last_name || !sex || !email || !password) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
 
-module.exports={registerWorker,me,password,updateProfile};
+    const map = req.session?.verifiedEmails || {};
+    let verified = false;
+    for (const key of Object.keys(map)) {
+      if (String(key || "").trim().toLowerCase() === email && map[key] === true) {
+        verified = true;
+        break;
+      }
+    }
+    if (!verified) {
+      return res
+        .status(400)
+        .json({ message: "Please verify your email with the 6-digit code before creating an account." });
+    }
+
+    const exists = await workerModel.checkEmailExistenceAcrossAllUsers(email);
+    if (exists.length > 0) {
+      return res.status(400).json({ message: "Email already in use" });
+    }
+
+    const agreed_at = is_agreed_to_terms ? new Date().toISOString() : null;
+    let authUser = null;
+
+    const { user: createdUser, error: authError } = await createConfirmedUser(email, password, {
+      first_name,
+      last_name,
+      sex,
+      role: "worker",
+      is_agreed_to_terms: !!is_agreed_to_terms,
+      agreed_at,
+    });
+
+    if (authError) {
+      if (
+        authError.status === 422 ||
+        (authError.message && authError.message.toLowerCase().includes("already"))
+      ) {
+        try {
+          const { data, listError } = await supabaseAdmin.auth.admin.listUsers();
+          if (!listError && data && Array.isArray(data.users)) {
+            const existing = data.users.find(
+              (u) => String(u.email || "").trim().toLowerCase() === email
+            );
+            if (existing) authUser = existing;
+          }
+        } catch {}
+      }
+      if (!authUser) {
+        return res
+          .status(authError.status || 400)
+          .json({ message: authError.message || "Signup failed", code: authError.code || undefined });
+      }
+    } else {
+      authUser = createdUser;
+    }
+
+    await workerModel.createWorker(
+      authUser.id,
+      first_name,
+      last_name,
+      sex,
+      email,
+      password,
+      !!is_agreed_to_terms,
+      agreed_at
+    );
+
+    if (req.session?.verifiedEmails) {
+      const src = req.session.verifiedEmails;
+      const next = {};
+      Object.keys(src).forEach((k) => {
+        if (String(k || "").trim().toLowerCase() !== email) next[k] = src[k];
+      });
+      req.session.verifiedEmails = next;
+    }
+
+    return res.status(201).json({
+      message: "Worker registered successfully",
+      data: {
+        first_name,
+        last_name,
+        sex,
+        is_agreed_to_terms: !!is_agreed_to_terms,
+        agreed_at,
+        auth_uid: authUser.id,
+      },
+    });
+  } catch (e) {
+    return res.status(400).json({ message: e?.message || "Internal server error" });
+  }
+};
+
+const me = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "worker" || (!s.auth_uid && !s.email)) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const payload = await workerModel.getWorkerAccountProfile({
+      auth_uid: s.auth_uid,
+      email: s.email,
+    });
+    return res.status(200).json(payload);
+  } catch {
+    return res.status(400).json({ message: "Failed to load profile" });
+  }
+};
+
+const password = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "worker" || (!s.auth_uid && !s.email)) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { current_password, new_password, confirm_password } = req.body || {};
+    if (!current_password || !new_password || new_password !== confirm_password) {
+      return res.status(400).json({ message: "Invalid request" });
+    }
+    const row = await workerModel.getByAuthUid(s.auth_uid || null);
+    const acctEmail = row?.email_address || s.email;
+    const sign = await supabase.auth.signInWithPassword({
+      email: acctEmail,
+      password: current_password,
+    });
+    if (sign.error) return res.status(400).json({ message: "Current password is incorrect" });
+    const uid = row?.auth_uid || s.auth_uid;
+    await workerModel.updateAuthPassword(uid, new_password);
+    await workerModel.updatePassword(uid, new_password);
+    return res.status(200).json({ message: "Password updated" });
+  } catch {
+    return res.status(400).json({ message: "Failed to update password" });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "worker" || (!s.auth_uid && !s.email)) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const patch = {};
+    ["first_name", "last_name", "phone", "facebook", "instagram", "date_of_birth"].forEach((k) => {
+      if (k in req.body) {
+        const v = typeof req.body[k] === "string" ? req.body[k].trim() : req.body[k];
+        patch[k] = v === "" ? null : v;
+      }
+    });
+
+    const dbPatch = {};
+    if ("first_name" in patch) dbPatch.first_name = patch.first_name;
+    if ("last_name" in patch) dbPatch.last_name = patch.last_name;
+    if ("phone" in patch) dbPatch.contact_number = patch.phone ? patch.phone : null;
+    if ("facebook" in patch)
+      dbPatch.social_facebook = patch.facebook ? workerModel.normalizeFacebook(patch.facebook) : null;
+    if ("instagram" in patch)
+      dbPatch.social_instagram = patch.instagram ? workerModel.normalizeInstagram(patch.instagram) : null;
+    if ("date_of_birth" in patch) {
+      dbPatch.date_of_birth = patch.date_of_birth ? patch.date_of_birth : null;
+      const a = computeAge(patch.date_of_birth);
+      dbPatch.age = a == null ? null : a;
+    }
+
+    if ("phone" in patch && patch.phone) {
+      const taken = await workerModel.isContactNumberTakenAcrossAll(patch.phone, s.auth_uid);
+      if (taken) return res.status(400).json({ message: "Contact number already in use" });
+    }
+    if ("facebook" in patch && patch.facebook) {
+      const takenFb = await workerModel.isSocialLinkTakenAcrossAll("facebook", patch.facebook, s.auth_uid);
+      if (takenFb) return res.status(400).json({ message: "Facebook already in use" });
+    }
+    if ("instagram" in patch && patch.instagram) {
+      const takenIg = await workerModel.isSocialLinkTakenAcrossAll("instagram", patch.instagram, s.auth_uid);
+      if (takenIg) return res.status(400).json({ message: "Instagram already in use" });
+    }
+
+    const hasAny = Object.keys(dbPatch).length > 0;
+    const before = await workerModel.getByAuthUid(s.auth_uid || null);
+    const uid = before?.auth_uid || s.auth_uid;
+
+    if (hasAny) {
+      await workerModel.updateWorkerProfile(uid, dbPatch);
+      if ("first_name" in patch || "last_name" in patch) {
+        const meta = {};
+        if ("first_name" in patch) meta.first_name = patch.first_name || "";
+        if ("last_name" in patch) meta.last_name = patch.last_name || "";
+        await workerModel.updateAuthUserMeta(uid, meta);
+      }
+      const changes = [];
+      if ("first_name" in patch || "last_name" in patch) changes.push("name");
+      if ("phone" in patch) changes.push("contact number");
+      if ("facebook" in patch) changes.push("facebook");
+      if ("instagram" in patch) changes.push("instagram");
+      if ("date_of_birth" in patch) changes.push("date of birth");
+      const title = "Profile updated successfully";
+      const message = changes.length ? `Updated ${changes.join(", ")}.` : "Your details are now up to date.";
+      await notifModel.create({ auth_uid: uid, role: "worker", title, message });
+    }
+
+    const payload = await workerModel.getWorkerAccountProfile({ auth_uid: uid, email: s.email });
+    return res.status(200).json(payload);
+  } catch {
+    return res.status(400).json({ message: "Failed to update profile" });
+  }
+};
+
+module.exports = { registerWorker, me, password, updateProfile };
