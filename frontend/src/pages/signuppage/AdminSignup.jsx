@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
@@ -41,15 +41,28 @@ const AdminSignup = () => {
 
   const normEmail = (s) => String(s || '').trim().toLowerCase();
 
+  const passwordRules = useMemo(() => {
+    const v = password || '';
+    const len = v.length >= 8;
+    const upper = /[A-Z]/.test(v);
+    const num = /\d/.test(v);
+    const special = /[^A-Za-z0-9]/.test(v);
+    const match = password && password === confirm_password;
+    const score = [len, upper, num, special].filter(Boolean).length;
+    return { len, upper, num, special, match, score };
+  }, [password, confirm_password]);
+
   const isFormValid =
     first_name.trim() !== '' &&
     last_name.trim() !== '' &&
     admin_no.trim() !== '' &&
     sex.trim() !== '' &&
     email_address.trim() !== '' &&
-    password.trim().length >= 12 &&
-    confirm_password.trim() !== '' &&
-    password === confirm_password;
+    passwordRules.len &&
+    passwordRules.upper &&
+    passwordRules.num &&
+    passwordRules.special &&
+    passwordRules.match;
 
   const requestOtp = async () => {
     try {
@@ -228,12 +241,19 @@ const AdminSignup = () => {
       setErrorMessage('Admin No. is required');
       return;
     }
-    if (password !== confirm_password) {
+    if (!passwordRules.match) {
       setErrorMessage('Passwords do not match');
       return;
     }
-    if (password.trim().length < 12) {
-      setErrorMessage('Password must be at least 12 characters long');
+    if (
+      !passwordRules.len ||
+      !passwordRules.upper ||
+      !passwordRules.num ||
+      !passwordRules.special
+    ) {
+      setErrorMessage(
+        'Password must be at least 8 characters and include a capital letter, a number, and a special character'
+      );
       return;
     }
 
@@ -266,9 +286,10 @@ const AdminSignup = () => {
 
       <div className="flex justify-center items-center flex-grow px-4 py-12 -mt-[84px]">
         <div className="bg-white p-8 max-w-lg w-full">
-          <h2 className="text-3xl font-semibold text-center mb-10">
+          <h2 className="text-3xl font-semibold text-center mb-4">
             Sign up to be an <span className="text-[#008cfc]">Admin</span>
           </h2>
+          <div className="w-16 h-[2px] bg-gray-300 mx-auto mb-4"></div>
 
           <div className="space-y-4">
             <div className="flex space-x-4">
@@ -358,7 +379,7 @@ const AdminSignup = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold mb-1">Password (12 or more characters)</label>
+              <label htmlFor="password" className="block text-sm font-semibold mb-1">Password (8 or more characters)</label>
               <div className="relative">
                 <input
                   id="password"
@@ -380,6 +401,31 @@ const AdminSignup = () => {
                   </button>
                 )}
               </div>
+
+              <div className="mt-2">
+                <div className="h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+                  <div
+                    className={[
+                      'h-full transition-all',
+                      !password
+                        ? 'bg-gray-300 w-0'
+                        : passwordRules.score <= 1
+                        ? 'bg-red-500 w-1/4'
+                        : passwordRules.score === 2
+                        ? 'bg-amber-500 w-2/4'
+                        : passwordRules.score === 3
+                        ? 'bg-yellow-500 w-3/4'
+                        : 'bg-emerald-500 w-full',
+                    ].join(' ')}
+                  />
+                </div>
+                <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <li className={passwordRules.len ? 'text-emerald-600' : 'text-gray-500'}>At least 8 characters</li>
+                  <li className={passwordRules.upper ? 'text-emerald-600' : 'text-gray-500'}>One uppercase letter</li>
+                  <li className={passwordRules.num ? 'text-emerald-600' : 'text-gray-500'}>One number</li>
+                  <li className={passwordRules.special ? 'text-emerald-600' : 'text-gray-500'}>One special character</li>
+                </ul>
+              </div>
             </div>
 
             <div>
@@ -391,7 +437,12 @@ const AdminSignup = () => {
                   value={confirm_password}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm password"
-                  className={`w-full p-2.5 ${confirm_password ? 'pr-20' : ''} border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]`}
+                  className={[
+                    `w-full p-2.5 ${confirm_password ? 'pr-20' : ''} border-2 rounded-md focus:outline-none focus:ring-2`,
+                    passwordRules.match || !confirm_password
+                      ? 'border-gray-300 focus:ring-[#008cfc]'
+                      : 'border-red-300 focus:ring-red-400',
+                  ].join(' ')}
                   autoComplete="new-password"
                 />
                 {confirm_password.length > 0 && (
@@ -405,6 +456,18 @@ const AdminSignup = () => {
                   </button>
                 )}
               </div>
+              {confirm_password &&
+              (!passwordRules.match ||
+                !passwordRules.len ||
+                !passwordRules.upper ||
+                !passwordRules.num ||
+                !passwordRules.special) ? (
+                <p className="text-xs text-red-600 mt-1">
+                  {!passwordRules.match
+                    ? 'Passwords do not match'
+                    : 'Password must be at least 8 characters and include a capital letter, a number, and a special character'}
+                </p>
+              ) : null}
             </div>
           </div>
 

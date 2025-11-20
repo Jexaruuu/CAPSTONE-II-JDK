@@ -72,7 +72,7 @@ exports.registerAdmin = async (req, res) => {
     if (!first_name.trim() || !last_name.trim()) return res.status(400).json({ message: 'First and last name are required.' });
     if (!adminNo) return res.status(400).json({ message: 'Admin No. is required.' });
     if (!email || !email.includes('@')) return res.status(400).json({ message: 'Valid email is required.' });
-    if (!password || password.length < 12) return res.status(400).json({ message: 'Password must be at least 12 characters.' });
+    if (!password || password.length < 8) return res.status(400).json({ message: 'Password must be at least 8 characters.' });
 
     if (!req.session?.verifiedEmails?.[email]) return res.status(403).json({ message: 'Email not verified. Please request your Admin No. first.' });
 
