@@ -99,7 +99,7 @@ async function resendSignupEmail(email) {
 }
 
 async function ensureStorageBucket(name, isPublic = true) {
-  const parseBytes = (v) => {
+  const parseBytes = v => {
     if (!v) return null;
     const s = String(v).trim().toLowerCase();
     if (/^\d+$/.test(s)) return Number(s);

@@ -4,6 +4,7 @@ import axios from 'axios';
 
 const ClientSignUpPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [first_name, setFirstName] = useState('');
   const [last_name, setLastName] = useState('');
@@ -31,7 +32,6 @@ const ClientSignUpPage = () => {
   const [canResendAt, setCanResendAt] = useState(0);
 
   const now = () => Date.now();
-  const navigate = useNavigate();
 
   const passwordRules = useMemo(() => {
     const v = password || '';
@@ -57,6 +57,22 @@ const ClientSignUpPage = () => {
     passwordRules.special &&
     passwordRules.match &&
     is_agreed_to_terms;
+
+  const checkEmailAvailable = async () => {
+    try {
+      const email = String(email_address || '').trim().toLowerCase();
+      const resp = await axios.post(
+        'http://localhost:5000/api/auth/check-email',
+        { email },
+        { withCredentials: true }
+      );
+      return resp?.data?.available === true;
+    } catch (e) {
+      const msg = e?.response?.data?.message || 'Failed to check email.';
+      setErrorMessage(msg);
+      return false;
+    }
+  };
 
   const requestOtp = async () => {
     try {
@@ -120,11 +136,12 @@ const ClientSignUpPage = () => {
         { withCredentials: true }
       );
       if (response.status === 201) {
+        const uid =
+          response?.data?.data?.auth_uid || response?.data?.auth_uid;
         localStorage.setItem('first_name', first_name);
         localStorage.setItem('last_name', last_name);
         localStorage.setItem('sex', sex);
         localStorage.setItem('role', 'client');
-        const uid = response?.data?.data?.auth_uid || response?.data?.auth_uid;
         if (uid) localStorage.setItem('auth_uid', uid);
         setInfoMessage('Account created. You’re all set!');
         navigate('/clientsuccess', { replace: true });
@@ -133,10 +150,17 @@ const ClientSignUpPage = () => {
       const status = error?.response?.status;
       const msg = error?.response?.data?.message;
       if (status === 429) {
-        setErrorMessage('Too many verification emails were sent. Please wait a minute and try again.');
+        setErrorMessage(
+          'Too many verification emails were sent. Please wait a minute and try again.'
+        );
         setCanResend(true);
       } else if (status === 409) {
-        setErrorMessage('This email already started signup. You can resend the verification email.');
+        setErrorMessage(
+          'This email already started signup. You can resend the verification email.'
+        );
+        setCanResend(true);
+      } else if (status === 502) {
+        setErrorMessage('Email delivery failed. Check SMTP settings in Supabase.');
         setCanResend(true);
       } else if (msg) {
         setErrorMessage(msg);
@@ -145,22 +169,6 @@ const ClientSignUpPage = () => {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const checkEmailAvailable = async () => {
-    try {
-      const email = String(email_address || '').trim().toLowerCase();
-      const resp = await axios.post(
-        'http://localhost:5000/api/auth/check-email',
-        { email },
-        { withCredentials: true }
-      );
-      return resp?.data?.available === true;
-    } catch (e) {
-      const msg = e?.response?.data?.message || 'Failed to check email.';
-      setErrorMessage(msg);
-      return false;
     }
   };
 
@@ -175,8 +183,15 @@ const ClientSignUpPage = () => {
       return;
     }
 
-    if (!passwordRules.len || !passwordRules.upper || !passwordRules.num || !passwordRules.special) {
-      setErrorMessage('Password must be at least 8 characters and include a capital letter, a number, and a special character');
+    if (
+      !passwordRules.len ||
+      !passwordRules.upper ||
+      !passwordRules.num ||
+      !passwordRules.special
+    ) {
+      setErrorMessage(
+        'Password must be at least 8 characters and include a capital letter, a number, and a special character'
+      );
       return;
     }
 
@@ -196,8 +211,14 @@ const ClientSignUpPage = () => {
   const handleResend = async () => {
     try {
       setErrorMessage('');
-      setInfo_message('');
-    } catch {}
+      setInfoMessage('Resending verification email…');
+      const email = String(email_address || '').trim().toLowerCase();
+      await axios.post('http://localhost:5000/api/auth/resend', { email });
+      setInfoMessage('Verification email resent. Please check your inbox.');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to resend verification.';
+      setErrorMessage(msg);
+    }
   };
 
   return (
