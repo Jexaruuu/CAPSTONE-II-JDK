@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
@@ -32,6 +32,18 @@ const WorkerSignUpPage = () => {
   const [canResendAt, setCanResendAt] = useState(0);
 
   const now = () => Date.now();
+
+  const passwordRules = useMemo(() => {
+    const v = password || "";
+    const len = v.length >= 8;
+    const upper = /[A-Z]/.test(v);
+    const num = /\d/.test(v);
+    const special = /[^A-Za-z0-9]/.test(v);
+    const match = password && password === confirm_password;
+    const score = [len, upper, num, special].filter(Boolean).length;
+    return { len, upper, num, special, match, score };
+  }, [password, confirm_password]);
+
   const canResendOtp = now() >= canResendAt;
 
   const isFormValid =
@@ -39,9 +51,11 @@ const WorkerSignUpPage = () => {
     last_name.trim() !== "" &&
     sex.trim() !== "" &&
     email_address.trim() !== "" &&
-    password.trim().length >= 12 &&
-    confirm_password.trim() !== "" &&
-    password === confirm_password &&
+    passwordRules.len &&
+    passwordRules.upper &&
+    passwordRules.num &&
+    passwordRules.special &&
+    passwordRules.match &&
     is_agreed_to_terms;
 
   const checkEmailAvailable = async () => {
@@ -163,12 +177,14 @@ const WorkerSignUpPage = () => {
     setInfoMessage("");
     setCanResend(false);
 
-    if (password !== confirm_password) {
+    if (!passwordRules.match) {
       setErrorMessage("Passwords do not match");
       return;
     }
-    if (password.trim().length < 12) {
-      setErrorMessage("Password must be at least 12 characters long");
+    if (!passwordRules.len || !passwordRules.upper || !passwordRules.num || !passwordRules.special) {
+      setErrorMessage(
+        "Password must be at least 8 characters and include a capital letter, a number, and a special character"
+      );
       return;
     }
 
@@ -286,7 +302,7 @@ const WorkerSignUpPage = () => {
 
             <div>
               <label htmlFor="password" className="block text-sm font-semibold mb-1">
-                Password (12 or more characters)
+                Password (8 or more characters)
               </label>
               <div className="relative">
                 <input
@@ -311,6 +327,39 @@ const WorkerSignUpPage = () => {
                   </button>
                 )}
               </div>
+
+              <div className="mt-2">
+                <div className="h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+                  <div
+                    className={[
+                      "h-full transition-all",
+                      !password
+                        ? "bg-gray-300 w-0"
+                        : passwordRules.score <= 1
+                        ? "bg-red-500 w-1/4"
+                        : passwordRules.score === 2
+                        ? "bg-amber-500 w-2/4"
+                        : passwordRules.score === 3
+                        ? "bg-yellow-500 w-3/4"
+                        : "bg-emerald-500 w-full",
+                    ].join(" ")}
+                  />
+                </div>
+                <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <li className={passwordRules.len ? "text-emerald-600" : "text-gray-500"}>
+                    At least 8 characters
+                  </li>
+                  <li className={passwordRules.upper ? "text-emerald-600" : "text-gray-500"}>
+                    One uppercase letter
+                  </li>
+                  <li className={passwordRules.num ? "text-emerald-600" : "text-gray-500"}>
+                    One number
+                  </li>
+                  <li className={passwordRules.special ? "text-emerald-600" : "text-gray-500"}>
+                    One special character
+                  </li>
+                </ul>
+              </div>
             </div>
 
             <div>
@@ -324,9 +373,12 @@ const WorkerSignUpPage = () => {
                   value={confirm_password}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm password"
-                  className={`w-full p-2.5 ${
-                    confirm_password ? "pr-20" : ""
-                  } border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]`}
+                  className={[
+                    `w-full p-2.5 ${confirm_password ? "pr-20" : ""} border-2 rounded-md focus:outline-none focus:ring-2`,
+                    passwordRules.match || !confirm_password
+                      ? "border-gray-300 focus:ring-[#008cfc]"
+                      : "border-red-300 focus:ring-red-400",
+                  ].join(" ")}
                   autoComplete="new-password"
                 />
                 {confirm_password.length > 0 && (
@@ -340,6 +392,18 @@ const WorkerSignUpPage = () => {
                   </button>
                 )}
               </div>
+              {confirm_password &&
+              (!passwordRules.match ||
+                !passwordRules.len ||
+                !passwordRules.upper ||
+                !passwordRules.num ||
+                !passwordRules.special) ? (
+                <p className="text-xs text-red-600 mt-1">
+                  {!passwordRules.match
+                    ? "Passwords do not match"
+                    : "Password must be at least 8 characters and include a capital letter, a number, and a special character"}
+                </p>
+              ) : null}
             </div>
           </div>
 
