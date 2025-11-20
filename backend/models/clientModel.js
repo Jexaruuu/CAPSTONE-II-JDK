@@ -6,9 +6,10 @@ function normalizeInstagram(url){try{const raw=String(url).trim();const src=/^ht
 function computeAge(iso){if(!iso)return null;const d=new Date(String(iso));if(isNaN(d.getTime()))return null;const t=new Date();let a=t.getFullYear()-d.getFullYear();const m=t.getMonth()-d.getMonth();if(m<0||(m===0&&t.getDate()<d.getDate()))a--;return a>=0&&a<=120?a:null}
 async function getAuthUserById(auth_uid){if(!auth_uid)return null;const{data,error}=await supabaseAdmin.auth.admin.getUserById(auth_uid);if(error)return null;return data?.user||null}
 
-const createClient=async(auth_uid,firstName,lastName,sex,email,password,isAgreedToTerms,agreedAt)=>{const{data,error}=await supabaseAdmin.from("user_client").insert([{auth_uid,first_name:firstName,last_name:lastName,sex,email_address:String(email||"").trim().toLowerCase(),password,is_agreed_to_terms:isAgreedToTerms,agreed_at:agreedAt,contact_number:null,social_facebook:null,social_instagram:null,profile_picture:null,created_at:new Date().toISOString()}]);if(error)throw error;return data};
+const createClient=async(auth_uid,firstName,lastName,sex,email,password,isAgreedToTerms,agreedAt)=>{const{data,error}=await supabaseAdmin.from("user_client").insert([{auth_uid,first_name:firstName,last_name:lastName,sex,email_address:String(email||"").trim().toLowerCase(),password,is_agreed_to_terms:isAgreedToTerms,agreed_at:agreedAt,contact_number:null,social_facebook:null,social_instagram:null,created_at:new Date().toISOString()}]);if(error)throw error;return data};
 const checkEmailExistence=async(email)=>{const e=String(email||"").trim().toLowerCase();const{data,error}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e);if(error)throw error;return data};
-const checkEmailExistenceAcrossAllUsers=async(email)=>{const e=String(email||"").trim().toLowerCase();const{data:cd,error:ce}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e);if(ce)throw ce;const{data:wd,error:we}=await supabaseAdmin.from("user_worker").select("*").ilike("email_address",e);if(we)throw we;return[...(cd||[]),...(wd||[])]};
+const checkEmailExistenceAcrossAllUsers=async(email)=>{const e=String(email||"").trim().toLowerCase();const{data:cd,error:ce}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e);if(ce)throw ce;const{data:wd,error:we}=await supabaseAdmin.from("user_worker").select("*").ilike("email_address",e);if(we)throw we;return[...(cd||[]),...(wd||[])];
+};
 const getByAuthUid=async(auth_uid)=>{const{data,error}=await supabaseAdmin.from("user_client").select("*").eq("auth_uid",auth_uid).limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
 const getByEmail=async(email)=>{const e=String(email||"").trim().toLowerCase();if(!e)return null;const{data,error}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e).limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
 
@@ -29,8 +30,7 @@ const getClientAccountProfile=async({auth_uid,email})=>{
     auth_uid:row?.auth_uid||(user?.id??""),
     created_at,
     date_of_birth:dob,
-    age,
-    profile_picture:row?.profile_picture||null
+    age
   }
 };
 
