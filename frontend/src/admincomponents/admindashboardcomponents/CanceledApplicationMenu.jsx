@@ -365,6 +365,7 @@ export default function CanceledApplicationMenu() {
           rate: { rate_type, rate_from, rate_to, rate_value },
           documents: d,
           service_types: serviceTypes,
+          service_types_lex: serviceTypes.join(", "),
           primary_service: primaryService,
           task_or_role: taskOrRole,
           years_experience: w.years_experience ?? w.experience_years ?? r.years_experience,
@@ -487,7 +488,7 @@ export default function CanceledApplicationMenu() {
   const SectionCard = ({ title, children, badge }) => (
     <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
       <div className="px-6 py-5 rounded-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
-        <h3 className="text-base font-semibold flex items-center gap-2">
+        <h3 className="text-base font-semibold flex.items-center gap-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
           {title}
         </h3>
@@ -592,7 +593,7 @@ export default function CanceledApplicationMenu() {
       <SectionCard
         title="Service Rate"
         badge={
-          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text.white border-white/20">
             <span className="h-3 w-3 rounded-full bg-white/60" />
             Pricing
           </span>
@@ -616,7 +617,7 @@ export default function CanceledApplicationMenu() {
           <SectionCard
             title="Personal Information"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 <span className="h-3 w-3 rounded-full bg-white/60" />
                 Worker
               </span>
@@ -634,7 +635,7 @@ export default function CanceledApplicationMenu() {
           <SectionCard
             title="Work Details"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 <span className="h-3 w-3 rounded-full bg-white/60" />
                 Experience
               </span>
@@ -658,7 +659,7 @@ export default function CanceledApplicationMenu() {
         <SectionCard
           title="Personal Information"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               <span className="h-3 w-3 rounded-full bg-white/60" />
               Worker
             </span>
@@ -679,7 +680,7 @@ export default function CanceledApplicationMenu() {
         <SectionCard
           title="Work Details"
           badge={
-            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               <span className="h-3 w-3 rounded-full bg-white/60" />
               Experience
             </span>
@@ -799,10 +800,10 @@ export default function CanceledApplicationMenu() {
                         </th>
                         <th
                           className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
-                          onClick={() => toggleSort("task_or_role")}
+                          onClick={() => toggleSort("service_types_lex")}
                         >
                           <span className="inline-flex items-center">
-                            Service Task
+                            Service Type
                           </span>
                         </th>
                         <th
@@ -840,7 +841,7 @@ export default function CanceledApplicationMenu() {
                             </td>
                             <td className="px-4 py-4 border border-gray-200 align-top">
                               <div className="whitespace-nowrap">
-                                <TaskPill value={u.task_or_role} />
+                                <ServiceTypesInline list={u.service_types?.length ? u.service_types : toArray(u.work?.service_types)} />
                               </div>
                             </td>
                             <td className="px-4 py-4 border border-gray-200 whitespace-nowrap w-[220px]">{u.created_at_display || "-"}</td>
@@ -974,7 +975,7 @@ export default function CanceledApplicationMenu() {
               {renderSection()}
             </div>
 
-            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 bg-white">
+            <div className="px-6 sm:px-8 pb-8 pt-6.grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 bg-white">
               <button
                 type="button"
                 onClick={() => { setViewRow(null); setShowDocs(false); }}
@@ -985,7 +986,7 @@ export default function CanceledApplicationMenu() {
               <button
                 type="button"
                 onClick={() => setShowDocs(true)}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-[#008cfc] bg-[#008cfc] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0077d6]"
+                className="w-full inline-flex items-center justify-center rounded-lg border border-[#008cfc] bg-[#008cfc] px-3 py-1.5 text-sm font-medium text.white hover:bg-[#0077d6]"
               >
                 View Documents
               </button>
@@ -1077,7 +1078,7 @@ export default function CanceledApplicationMenu() {
             <div className="px-6 py-4 bg-gradient-to-r from-orange-50 to-white border-b border-orange-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-orange-700">Cancellation Reason</h3>
-                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
+                <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
                   <span className="h-3 w-3 rounded-full bg-current opacity-30" />
                   {reasonRow?.primary_service || "Application"}
                 </span>
@@ -1110,7 +1111,7 @@ export default function CanceledApplicationMenu() {
                 </div>
               </div>
             </div>
-            <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
+            <div className="px-6.pb-6 pt-4 border-t border-gray-200 bg-white">
               <button
                 type="button"
                 onClick={() => { setReasonRow(null); }}

@@ -42,7 +42,7 @@ function StatusPill({ value }) {
       aria-label={`Status: ${cfg.label}`}
       title={cfg.label}
     >
-      <span className="h-3 w-3 rounded-full bg-current.opacity-30" />
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
       {cfg.label}
     </span>
   );
@@ -669,7 +669,7 @@ export default function AdminServiceRequests() {
         )}
       </div>
       <div className="p-6">{children}</div>
-      <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from.transparent via-blue-200 to-transparent opacity-60"></div>
+      <div className="pointer-events-none.absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from.transparent via-blue-200 to-transparent opacity-60"></div>
     </section>
   );
   const renderSection = () => {
@@ -699,7 +699,7 @@ export default function AdminServiceRequests() {
             title="Service Request Details"
             badge={
               <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full bg-white/60" />
+                <span className="h-3 w-3 rounded-full.bg-white/60" />
                 Request
               </span>
             }
@@ -1023,7 +1023,7 @@ export default function AdminServiceRequests() {
               </div>
             </div>
 
-            <div className="px-6 mt-3">
+            <div className="px-6.mt-3">
               <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
                 {loading && (
                   <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">
@@ -1189,7 +1189,7 @@ export default function AdminServiceRequests() {
                                     <>
                                       <button
                                         onClick={() => openDeclineModal(u)}
-                                        className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50.disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={disableActions}
                                       >
                                         Decline

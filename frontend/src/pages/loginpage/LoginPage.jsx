@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 
-// ✅ Your direct Supabase credentials
 const supabaseUrl = 'https://uoyzcboehvwxcadrqqfq.supabase.co';
 const supabaseKey =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVveXpjYm9laHZ3eGNhZHJxcWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyODE4MzcsImV4cCI6MjA2ODg1NzgzN30.09tdQtyneRfAbQJRoVy5J9YpsuLTwn-EDF0tt2hUosg';
@@ -15,9 +14,8 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // 👁️ toggle state
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Redirect if already logged in
   useEffect(() => {
     const isLoggedIn =
       localStorage.getItem('first_name') &&
@@ -29,13 +27,11 @@ const LoginPage = () => {
     }
   }, [navigate]);
 
-  // Login Handler (Backend first, then Supabase fallback)
   const handleLogin = async () => {
     try {
       setLoading(true);
       setError('');
 
-      // Try backend login first
       const response = await axios.post(
         'http://localhost:5000/api/login',
         { email_address: email, password },
@@ -44,16 +40,11 @@ const LoginPage = () => {
 
       const { user, role, email_address: serverEmail } = response.data;
 
-      // ✅ keep your existing saves
       localStorage.setItem('first_name', user.first_name || '');
       localStorage.setItem('last_name',  user.last_name  || '');
       localStorage.setItem('sex',        user.sex        || '');
       localStorage.setItem('role',       role);
-
-      // ✅ NEW: persist email for auto-fill/lock
       localStorage.setItem('email_address', serverEmail || user?.email_address || email);
-
-      // ✅ OPTIONAL (non-breaking): persist the user blob too (helps your JSON email scan)
       try { localStorage.setItem('user', JSON.stringify(user)); } catch {}
 
       if (role === 'client') navigate('/clientdashboard');
@@ -62,7 +53,6 @@ const LoginPage = () => {
     } catch (err) {
       console.warn('Backend login failed, trying Supabase...', err?.message || err);
 
-      // Fallback: Supabase Auth login
       const { data, error: supabaseError } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -71,24 +61,17 @@ const LoginPage = () => {
       if (supabaseError) {
         setError(supabaseError.message || 'Login failed');
       } else {
-        // Get role from Supabase metadata
         const role = data.user?.user_metadata?.role || 'client';
 
-        // ✅ keep your existing saves for fallback path
         localStorage.setItem('first_name', data.user?.user_metadata?.first_name || '');
         localStorage.setItem('last_name',  data.user?.user_metadata?.last_name  || '');
         localStorage.setItem('role', role);
-
-        // ✅ NEW: persist email for auto-fill/lock
         localStorage.setItem('email_address', data.user?.email || email);
-
-        // ✅ OPTIONAL: also persist the supabase user blob (helps JSON email scan)
         try { localStorage.setItem('user', JSON.stringify(data.user)); } catch {}
 
-        // ✅ Redirect based on role
         if (role === 'client') navigate('/clientdashboard');
         else if (role === 'worker') navigate('/workerdashboard');
-        else navigate('/clientdashboard'); // default
+        else navigate('/clientdashboard');
       }
     } finally {
       setLoading(false);
@@ -127,7 +110,6 @@ const LoginPage = () => {
               autoComplete="email"
             />
 
-            {/* Password input with conditional Show/Hide */}
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -165,17 +147,6 @@ const LoginPage = () => {
               } transition duration-300`}
             >
               {loading ? 'Logging in...' : 'Log In'}
-            </button>
-          </div>
-
-          <div className="text-center mt-4">
-            <span>or</span>
-          </div>
-
-          <div className="flex space-x-4 mt-4">
-            <button className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 transition hover:bg-[#008cfc] border-[#008cfc] text-[#008cfc] hover:text-white">
-              <img src="/Google.png" alt="Google Logo" className="h-5 w-5 mr-2" />
-              Continue with Google
             </button>
           </div>
 

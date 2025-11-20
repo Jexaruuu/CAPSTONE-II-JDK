@@ -221,22 +221,7 @@ const WorkerSignUpPage = () => {
           <h2 className="text-3xl font-semibold text-center mb-4">
             Sign up to be a <span className="text-[#008cfc]">Worker</span>
           </h2>
-
-          <div className="flex space-x-4 mt-4">
-            <button
-              className="flex items-center justify-center w-full py-2 px-4 rounded-md border-2 transition hover:bg-[#008cfc] border-[#008cfc] text-[#008cfc] hover:text-white"
-              disabled
-            >
-              <img src="/Google.png" alt="Google Logo" className="h-5 w-5 mr-2" />
-              Continue with Google
-            </button>
-          </div>
-
-          <div className="flex items-center my-4">
-            <hr className="flex-grow border-gray-300" />
-            <span className="mx-4 text-gray-500">or</span>
-            <hr className="flex-grow border-gray-300" />
-          </div>
+          <div className="w-16 h-[2px] bg-gray-300 mx-auto mb-4"></div>
 
           <div className="space-y-4">
             <div className="flex space-x-4">
