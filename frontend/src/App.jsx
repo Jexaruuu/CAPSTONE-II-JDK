@@ -71,6 +71,14 @@ const WorkerOnlyRoute = ({ children }) => {
   return role === 'worker' ? children : <Navigate to="/login" replace />;
 };
 
+const AdminOnlyRoute = ({ children }) => {
+  const role = String(localStorage.getItem('role') || '').toLowerCase();
+  const adminNo = localStorage.getItem('admin_no');
+  const firstName = localStorage.getItem('first_name');
+  const lastName = localStorage.getItem('last_name');
+  return role === 'admin' && adminNo && firstName && lastName ? children : <Navigate to="/adminlogin" replace />;
+};
+
 const App = () => {
   return (
     <Router>
@@ -82,7 +90,14 @@ const App = () => {
         <Route path="/adminlogin" element={<AdminLoginPage />} />
         <Route path="/adminsignup" element={<GuestRoute><AdminSignup /></GuestRoute>} />
 
-        <Route path="/admindashboard" element={<AdminDashboardPage />}>
+        <Route
+          path="/admindashboard"
+          element={
+            <AdminOnlyRoute>
+              <AdminDashboardPage />
+            </AdminOnlyRoute>
+          }
+        >
           <Route index element={<DashboardMenu />} />
           <Route path="manage-users" element={<ManageUserMenu />} />
           <Route path="service-requests" element={<ServiceRequestMenu />} />
