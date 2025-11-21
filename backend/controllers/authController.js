@@ -15,11 +15,11 @@ async function resendVerification(req, res) {
 async function checkEmailAvailability(req, res) {
   try {
     const email = String(req.body?.email || '').trim().toLowerCase();
-    if (!email) return res.status(400).json({ available: false, message: 'Email is required' });
+    if (!email) return res.status(400).json({ available: false, exists: false, message: 'Email is required' });
     const taken = await isEmailTaken(email);
-    res.status(200).json({ available: !taken });
+    res.status(200).json({ available: !taken, exists: taken });
   } catch (err) {
-    res.status(400).json({ available: false, message: 'Email check failed' });
+    res.status(400).json({ available: false, exists: false, message: 'Email check failed' });
   }
 }
 

@@ -655,7 +655,7 @@ export default function AdminServiceRequests() {
   );
 
   const SectionCard = ({ title, children, badge }) => (
-    <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#0b82ff] hover:ring-2 hover:ring-[#0b82ff] hover:shadow-xl">
+    <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all.duration-300 hover:border-[#0b82ff] hover:ring-2 hover:ring-[#0b82ff] hover:shadow-xl">
       <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#0b82ff] to-[#4aa6ff] text-white flex items-center justify-between">
         <h3 className="text-base font-semibold flex.items-center gap-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
@@ -1023,7 +1023,8 @@ export default function AdminServiceRequests() {
               </div>
             </div>
 
-            <div className="px-6.mt-3">
+            {/* MIRRORED TABLE UI FROM CANCELLED REQUESTS */}
+            <div className="px-6 mt-3">
               <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
                 {loading && (
                   <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">
@@ -1074,11 +1075,16 @@ export default function AdminServiceRequests() {
                               Service Type
                             </span>
                           </th>
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 min-w-[220px]">
-                            Service Task
+                          <th
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[220px]"
+                            onClick={() => toggleSort("service_task")}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              Service Task
+                            </span>
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap w-[220px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700.cursor-pointer select-none border border-gray-200 whitespace-nowrap w-[220px]"
                             onClick={() => toggleSort("created_at_ts")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1133,7 +1139,7 @@ export default function AdminServiceRequests() {
                               <td className="px-4 py-4 border border-gray-200 w-[260px] whitespace-nowrap">
                                 <div className="truncate">{u.email || "-"}</div>
                               </td>
-                              <td className="px-4 py-4 border border-gray-200 align-top">
+                              <td className="px-4 py-4 border border-gray-200 align-top min-w-[260px]">
                                 <div className="whitespace-nowrap">
                                   <ServiceTypePill value={u.service_type} />
                                 </div>
@@ -1236,7 +1242,7 @@ export default function AdminServiceRequests() {
                 )}
 
                 {!loading && !loadError && sortedRows.length > 0 && (
-                  <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
+                  <div className="flex.items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
                     <nav className="flex items-center gap-2">
                       <button
                         className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
@@ -1313,7 +1319,7 @@ export default function AdminServiceRequests() {
                   <div className="text-2xl font-semibold text-gray-900">
                     {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
                   </div>
-                  <div className="text-sm text-gray-600">{viewRow.email || "-"}</div>
+                  <div className="text-sm.text-gray-600">{viewRow.email || "-"}</div>
                 </div>
 
                 <div className="mt-3 flex items-center justify-center gap-3">
@@ -1460,7 +1466,7 @@ export default function AdminServiceRequests() {
                 </div>
                 <div className="mt-4.grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="rounded-xl border border-red-200 bg-white p-4">
-                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Client</div>
+                    <div className="text-[11px] font-semibold tracking-widest text-gray-500.uppercase">Client</div>
                     <div className="mt-1 text-[15px] font-semibold text-gray-900">
                       {[reasonTarget?.name_first, reasonTarget?.name_last].filter(Boolean).join(" ") || "-"}
                     </div>
@@ -1499,7 +1505,7 @@ export default function AdminServiceRequests() {
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
-              <div className="relative mx-auto w-40 h-40">
+              <div className="relative.mx-auto w-40 h-40">
                 <div
                   className="absolute inset-0 animate-spin rounded-full"
                   style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#0b82ff22", borderTopColor: "#0b82ff", borderRadius: "9999px" }}

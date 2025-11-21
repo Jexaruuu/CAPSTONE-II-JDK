@@ -34,8 +34,17 @@ const AdminSignup = () => {
   const [adminNoRequesting, setAdminNoRequesting] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
 
+  const [adminNoModalOpen, setAdminNoModalOpen] = useState(false);
+  const [adminNoModalCode, setAdminNoModalCode] = useState('');
+  const [adminNoModalError, setAdminNoModalError] = useState('');
+  const [adminNoInfo, setAdminNoInfo] = useState('');
+  const [adminNoError, setAdminNoError] = useState('');
+  const [adminNoSending, setAdminNoSending] = useState(false);
+  const [adminNoCanResendAt, setAdminNoCanResendAt] = useState(0);
+
   const now = () => Date.now();
   const canResendOtp = now() >= canResendAt;
+  const canResendAdminNo = now() >= adminNoCanResendAt;
 
   const navigate = useNavigate();
 
@@ -188,7 +197,10 @@ const AdminSignup = () => {
         { email: normEmail(email_address) },
         { withCredentials: true }
       );
-      return resp?.data?.exists === true ? false : true;
+      const exists = resp?.data?.exists === true;
+      const available = resp?.data?.available === true;
+      if (exists || available === false) return false;
+      return true;
     } catch (e) {
       const msg = e?.response?.data?.message || 'Failed to check email.';
       setErrorMessage(msg);
@@ -196,10 +208,46 @@ const AdminSignup = () => {
     }
   };
 
+  const handleAdminNoConfirm = () => {
+    const code = adminNoModalCode.trim();
+    if (!code || code.length !== 6) {
+      setAdminNoModalError('Enter the 6-digit Admin No. from your email.');
+      return;
+    }
+    setAdminNo(code);
+    setAdminNoLocked(false);
+    setAdminNoModalOpen(false);
+    setAdminNoModalError('');
+  };
+
+  const resendAdminNo = async () => {
+    try {
+      setAdminNoError('');
+      setAdminNoInfo('Sending code…');
+      setAdminNoSending(true);
+      const email = normEmail(email_address);
+      await axios.post(
+        'http://localhost:5000/api/admins/request-admin-no',
+        { email },
+        { withCredentials: true }
+      );
+      setAdminNoInfo('We sent a 6-digit Admin No. to your email. Enter it below.');
+      setAdminNoCanResendAt(now() + 60000);
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to send Admin No.';
+      setAdminNoError(msg);
+      setAdminNoInfo('');
+    } finally {
+      setAdminNoSending(false);
+    }
+  };
+
   const handleRequestAdminNo = async () => {
     try {
       setErrorMessage('');
       setInfoMessage('');
+      setAdminNoInfo('');
+      setAdminNoError('');
       setAdminNoRequesting(true);
       const email = normEmail(email_address);
       if (!email || !email.includes('@')) {
@@ -216,14 +264,20 @@ const AdminSignup = () => {
         { email },
         { withCredentials: true }
       );
-      setInfoMessage(`We sent your 6-digit Admin No. to ${email}. Check your inbox.`);
-      setAdminNoLocked(false);
+      setInfoMessage('');
+      setAdminNoInfo('We sent a 6-digit Admin No. to your email. Enter it below.');
+      setAdminNoCanResendAt(now() + 60000);
+      setAdminNoModalCode('');
+      setAdminNoModalError('');
+      setAdminNoModalOpen(true);
       setEmailVerified(true);
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to send Admin No.';
       setErrorMessage(msg);
+      setAdminNoError(msg);
     } finally {
       setAdminNoRequesting(false);
+      setAdminNoSending(false);
     }
   };
 
@@ -359,7 +413,7 @@ const AdminSignup = () => {
                 placeholder="6-digit Admin No."
                 className={`w-full p-2.5 border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-[#008cfc] ${adminNoLocked ? 'border-gray-200 bg-gray-100 text-gray-500' : 'border-gray-300'}`}
                 autoComplete="off"
-                disabled={adminNoLocked}
+                disabled
               />
             </div>
 
@@ -543,6 +597,47 @@ const AdminSignup = () => {
                   {otpVerifying ? 'Verifying…' : 'Verify'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {adminNoModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-sm rounded-lg p-6 shadow-lg">
+            <h3 className="text-xl font-semibold mb-2 text-center">Verify your Admin No.</h3>
+            <p className="text-sm text-gray-600 mb-4 text-center">
+              Enter the 6-digit Admin No. we sent to <b>{email_address || 'your email'}</b>.
+            </p>
+            <input
+              value={adminNoModalCode}
+              onChange={(e) =>
+                setAdminNoModalCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+              }
+              placeholder="123456"
+              className="w-full p-3 border-2 rounded-md border-gray-300 text-center tracking-widest text-lg"
+            />
+            {adminNoInfo && <div className="text-[#008cfc] text-center mt-3">{adminNoInfo}</div>}
+            {(adminNoError || adminNoModalError) && (
+              <div className="text-red-600 text-center mt-3">
+                {adminNoError || adminNoModalError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between mt-4">
+              <button
+                onClick={() => setAdminNoModalOpen(false)}
+                className="px-4 py-2 rounded-md border border-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAdminNoConfirm}
+                disabled={adminNoModalCode.length !== 6}
+                className="px-4 py-2 rounded-md bg-[#008cfc] text-white disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+              >
+                Verify
+              </button>
             </div>
           </div>
         </div>

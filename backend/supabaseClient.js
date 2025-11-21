@@ -88,6 +88,7 @@ async function createConfirmedUser(email, password, metadata = {}) {
     if (error) throw error;
     return { user: data.user, error: null };
   } catch (err) {
+    if (err?.status === 400 && /already registered|user already registered/i.test(err?.message || "")) err.isAlreadyRegistered = true;
     return { user: null, error: err };
   }
 }

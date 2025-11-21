@@ -88,7 +88,13 @@ exports.registerAdmin = async (req, res) => {
 
     const metadata = { role: 'admin', first_name, last_name, sex, admin_no: adminNo };
     const { user, error } = await createConfirmedUser(email, password, metadata);
-    if (error || !user) return res.status(400).json({ message: error?.message || 'Failed to create auth user.' });
+    if (error || !user) {
+      const msg = error?.message || '';
+      if (error?.isAlreadyRegistered || /already registered|user already registered/i.test(msg)) {
+        return res.status(409).json({ message: 'This email already exists in another account.' });
+      }
+      return res.status(400).json({ message: msg || 'Failed to create auth user.' });
+    }
 
     const profile = {
       auth_uid: user.id,
