@@ -232,10 +232,20 @@ exports.logoutAdmin = async (_req, res) => {
 
 exports.listAllUsers = async (_req, res) => {
   try {
-    const [clients, workers] = await Promise.all([
-      adminModel.listClients(),
-      adminModel.listWorkers(),
+    const clientsPromise = adminModel.listClients();
+    const workersPromise = adminModel.listWorkers();
+    const adminsPromise =
+      typeof adminModel.listAdmins === 'function'
+        ? adminModel.listAdmins()
+        : Promise.resolve([]);
+
+    const [clients, workers, adminsRaw] = await Promise.all([
+      clientsPromise,
+      workersPromise,
+      adminsPromise,
     ]);
+
+    const admins = Array.isArray(adminsRaw) ? adminsRaw : [];
 
     const getDate = (row) => row?.created_at || row?.createdAt || null;
 
@@ -265,9 +275,23 @@ exports.listAllUsers = async (_req, res) => {
       instagram: w.social_instagram || ''
     });
 
+    const mapAdmin = (a) => ({
+      id: a.auth_uid || a.id || a.email_address,
+      role: 'admin',
+      first_name: a.first_name || '',
+      last_name: a.last_name || '',
+      sex: a.sex || '',
+      email: a.email_address,
+      date: getDate(a),
+      phone: '',
+      facebook: '',
+      instagram: ''
+    });
+
     const users = [
       ...(Array.isArray(clients) ? clients.map(mapClient) : []),
       ...(Array.isArray(workers) ? workers.map(mapWorker) : []),
+      ...(Array.isArray(admins) ? admins.map(mapAdmin) : []),
     ].sort((a, b) => {
       const ad = a.date ? new Date(a.date).getTime() : 0;
       const bd = b.date ? new Date(b.date).getTime() : 0;
@@ -275,7 +299,8 @@ exports.listAllUsers = async (_req, res) => {
     });
 
     return res.status(200).json({ users });
-  } catch {
+  } catch (err) {
+    console.error('listAllUsers error:', err);
     return res.status(500).json({ message: 'Failed to fetch users.' });
   }
 };

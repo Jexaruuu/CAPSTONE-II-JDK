@@ -74,7 +74,7 @@ exports.checkEmailExistenceAcrossAllUsers = async (email) => {
 
     const found =
       (Array.isArray(a) && a.length > 0) ||
-      (Array.isArray(c) && c.length > 0) ||
+      (Array.isArray(c) && a && c.length > 0) ||
       (Array.isArray(w) && w.length > 0);
 
     return !!found;
@@ -111,6 +111,17 @@ exports.listWorkers = async () => {
     .select('auth_uid, first_name, last_name, sex, email_address, created_at, contact_number, social_facebook, social_instagram');
   if (error) {
     console.error('listWorkers error:', error);
+    return [];
+  }
+  return data || [];
+};
+
+exports.listAdmins = async () => {
+  const { data, error } = await supabaseAdmin
+    .from(ADMIN_TABLE)
+    .select('auth_uid, first_name, last_name, sex, email_address, created_at, role');
+  if (error) {
+    console.error('listAdmins error:', error);
     return [];
   }
   return data || [];

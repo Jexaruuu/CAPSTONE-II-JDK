@@ -134,9 +134,10 @@ export default function AdminManageUser() {
   }, [viewOpen]);
 
   const roleCounts = useMemo(() => {
-    const acc = { client: 0, worker: 0, total: 0 };
+    const acc = { client: 0, worker: 0, admin: 0, total: 0 };
     for (const u of rows) {
-      const r = String(u.role || "").toLowerCase() === "worker" ? "worker" : "client";
+      const rRaw = String(u.role || "").toLowerCase();
+      const r = rRaw === "worker" ? "worker" : rRaw === "admin" ? "admin" : "client";
       acc[r] += 1;
       acc.total += 1;
     }
@@ -208,6 +209,7 @@ export default function AdminManageUser() {
     { key: "all", label: "All", count: roleCounts.total },
     { key: "client", label: "Client", count: roleCounts.client },
     { key: "worker", label: "Worker", count: roleCounts.worker },
+    { key: "admin", label: "Admin", count: roleCounts.admin },
   ];
 
   const closeModal = () => {
@@ -228,12 +230,19 @@ export default function AdminManageUser() {
   }, [viewOpen]);
 
   const RolePill = ({ role }) => {
-    const isWorker = String(role || "").toLowerCase() === "worker";
+    const r = String(role || "").toLowerCase();
+    const isWorker = r === "worker";
+    const isAdmin = r === "admin";
+    const cls = isAdmin
+      ? "border-indigo-200 text-indigo-700 bg-indigo-50"
+      : isWorker
+      ? "border-sky-200 text-sky-700 bg-sky-50"
+      : "border-teal-200 text-teal-700 bg-teal-50";
     return (
       <span
         className={[
           "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
-          isWorker ? "border-indigo-200 text-indigo-700 bg-indigo-50" : "border-emerald-200 text-emerald-700 bg-emerald-50",
+          cls,
         ].join(" ")}
       >
         <span className="h-3 w-3 rounded-full bg-current opacity-30" />
@@ -302,7 +311,7 @@ export default function AdminManageUser() {
       <div className="mb-4">
         <h1 className="text-xl font-semibold text-gray-900">Manage Users</h1>
         <p className="text-gray-600 mt-2">
-          Browse Clients or Workers, search by name or email, see when they were created, and open details.
+          Browse Clients, Workers, or Admins search by name or email, see when they were created, and open details.
         </p>
       </div>
 
@@ -388,7 +397,7 @@ export default function AdminManageUser() {
               )}
               {loadError && !loading && (
                 <div className="px-4 py-3 text-sm text-red-700 bg-red-50 border-b border-red-100">
-                {loadError}
+                  {loadError}
                 </div>
               )}
 
@@ -417,16 +426,7 @@ export default function AdminManageUser() {
                           onClick={() => toggleSort("first_name")}
                         >
                           <span className="inline-flex items-center gap-1">
-                            First Name
-                            <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                          </span>
-                        </th>
-                        <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
-                          onClick={() => toggleSort("last_name")}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            Last Name
+                            User Name
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
@@ -510,12 +510,13 @@ export default function AdminManageUser() {
                             <div className="flex items-center gap-3">
                               <div className="min-w-0">
                                 <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
-                                  <span className="font-semibold">{u.first_name || "-"}</span>
+                                  <span className="font-semibold">
+                                    {[u.first_name, u.last_name].filter(Boolean).join(" ") || "-"}
+                                  </span>
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-4 border border-gray-200">{u.last_name || "-"}</td>
                           <td className="px-4 py-4 border border-gray-200">
                             <SexBadge sex={u.sex} />
                           </td>
@@ -524,16 +525,23 @@ export default function AdminManageUser() {
                           </td>
                           <td className="px-4 py-4 border border-gray-200">{formatPrettyDate(u.date)}</td>
                           <td className="px-4 py-4 border border-gray-200">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${
-                                (u.role || "").toLowerCase() === "worker"
+                            {(() => {
+                              const r = String(u.role || "").toLowerCase();
+                              const cls =
+                                r === "admin"
                                   ? "border-indigo-200 text-indigo-700 bg-indigo-50"
-                                  : "border-emerald-200 text-emerald-700 bg-emerald-50"
-                              }`}
-                            >
-                              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                              {u.role?.charAt(0).toUpperCase() + u.role?.slice(1)}
-                            </span>
+                                  : r === "worker"
+                                  ? "border-sky-200 text-sky-700 bg-sky-50"
+                                  : "border-teal-200 text-teal-700 bg-teal-50";
+                              return (
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${cls}`}
+                                >
+                                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                                  {u.role?.charAt(0).toUpperCase() + u.role?.slice(1)}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="px-4 py-4 w-40 text-left border border-gray-200">
                             <RowMenu
@@ -541,6 +549,7 @@ export default function AdminManageUser() {
                               onEdit={() => {}}
                               onRemove={() => {}}
                               onDisable={() => handleDisable(u)}
+                              isAdmin={String(u.role || "").toLowerCase() === "admin"}
                             />
                           </td>
                         </tr>
@@ -724,7 +733,7 @@ export default function AdminManageUser() {
   );
 }
 
-function RowMenu({ onView, onEdit, onRemove, onDisable }) {
+function RowMenu({ onView, onEdit, onRemove, onDisable, isAdmin }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -757,24 +766,26 @@ function RowMenu({ onView, onEdit, onRemove, onDisable }) {
         >
           View
         </span>
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={() => {
-            setOpen(false);
-            onDisable?.();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
+        {!isAdmin && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              setOpen(false);
               onDisable?.();
-            }
-          }}
-          className="cursor-pointer inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-          aria-label="Disable user"
-        >
-          Disable
-        </span>
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onDisable?.();
+              }
+            }}
+            className="cursor-pointer inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+            aria-label="Disable user"
+          >
+            Disable
+          </span>
+        )}
       </div>
     </div>
   );
