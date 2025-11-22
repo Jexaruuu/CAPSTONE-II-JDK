@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { ChevronsUpDown, Check, Mars, Venus } from "lucide-react";
+import { ChevronsUpDown, Check, Mars, Venus, RotateCcw } from "lucide-react";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -300,7 +300,7 @@ export default function AdminManageUser() {
 
   const ProfileCircle = ({ initials, size = 72 }) => (
     <div
-      className="bg-blue-50 border border-blue-200 text-blue-600 grid place-items-center font-semibold uppercase"
+      className="bg-blue-50 border border-blue-200 text-blue-600.grid place-items-center font-semibold uppercase"
       style={{ width: size, height: size, borderRadius: 9999 }}
     >
       <span className="text-xl">{initials}</span>
@@ -415,22 +415,14 @@ export default function AdminManageUser() {
     <main className="p-6">
       <div className="mb-4">
         <h1 className="text-xl font-semibold text-gray-900">Manage Users</h1>
-        <p className="text-gray-600.mt-2">
-          Browse Clients, Workers, or Admins search by name or email, see when they were created, and open details.
-        </p>
+        <p className="text-gray-600 mt-2">Browse Clients, Workers, or Admins search by name or email, see when they were created, and open details.</p>
       </div>
 
       <section className="mt-6">
         <div className="-mx-6">
-          <div className="px-6 mb-3 hidden">
+          <div className="px-6 mb-3.hidden">
             <h2 className="text-lg font-semibold text-gray-900 sr-only">Users</h2>
             <div className="flex items-center gap-2">
-              <button
-                onClick={fetchUsers}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                ⟳ Refresh
-              </button>
             </div>
           </div>
 
@@ -486,9 +478,10 @@ export default function AdminManageUser() {
               </div>
               <button
                 onClick={fetchUsers}
-                className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
+                className="mt-7 inline-flex items-center gap-2 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
               >
-                ⟳ Refresh
+                <RotateCcw className="h-4 w-4" />
+                <span>Refresh</span>
               </button>
             </div>
           </div>
@@ -545,7 +538,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("email")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -554,7 +547,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("date")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -563,7 +556,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("role")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -612,7 +605,7 @@ export default function AdminManageUser() {
                             </div>
                           </td>
                           <td className="px-4 py-4 border border-gray-200">
-                            <div className="flex.items-center gap-3">
+                            <div className="flex items-center gap-3">
                               <div className="min-w-0">
                                 <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
                                   <span className="font-semibold">

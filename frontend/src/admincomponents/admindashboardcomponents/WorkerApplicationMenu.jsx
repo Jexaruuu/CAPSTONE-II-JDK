@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, RotateCcw } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -93,10 +93,10 @@ function TaskPill({ value }) {
   return (
     <span
       className={[
-        "inline-flex.items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
-        "bg-gray-100",
-        "text-gray-700",
-        "border-gray-300",
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide whitespace-nowrap",
+        "bg-violet-50",
+        "text-violet-700",
+        "border-violet-200",
       ].join(" ")}
       title={value || "-"}
     >
@@ -126,9 +126,22 @@ function ServiceTypesInline({ list }) {
   const arr = Array.isArray(list) ? list.filter(Boolean) : [];
   if (arr.length === 0) return <span className="text-gray-500 text-sm">-</span>;
   return (
-    <div className="flex items-center gap-1.5 whitespace-nowrap">
+    <div className="flex.items-center gap-1.5 whitespace-nowrap">
       {arr.map((s, i) => (
         <ServiceTypePill key={`${s}-${i}`} value={s} />
+      ))}
+    </div>
+  );
+}
+
+function ServiceTasksInline({ list, fallback }) {
+  const base = Array.isArray(list) ? list.filter(Boolean) : [];
+  const arr = base.length ? base : (fallback ? [fallback] : []);
+  if (!arr.length) return <span className="text-gray-500 text-sm">-</span>;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {arr.map((s, i) => (
+        <TaskPill key={`${s}-${i}`} value={s} />
       ))}
     </div>
   );
@@ -142,21 +155,21 @@ const Field = ({ label, value }) => (
 );
 
 const SectionCard = ({ title, children, badge }) => (
-  <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
-    <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
+  <section className="relative rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="px-6 py-4 rounded-t-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
       <h3 className="text-base font-semibold flex items-center gap-2">
         <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
         {title}
       </h3>
       {badge || (
-        <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+        <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text.white border-white/20">
           <span className="h-3 w-3 rounded-full bg-white/60" />
           Info
         </span>
       )}
     </div>
     <div className="p-6">{children}</div>
-    <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
+    <div className="pointer-events-none.absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent.opacity-60"></div>
   </section>
 );
 
@@ -234,12 +247,31 @@ function extractTaskFromJobDetails(job_details, primaryService) {
   if (Array.isArray(job_details)) {
     const fromService = job_details
       .map((it) => (typeof it === "object" && it ? it : {}))
-      .filter((it) => !primaryService || String(it.service || it.service_type || it.category || "").toLowerCase() === String(primaryService).toLowerCase())
+      .filter(
+        (it) =>
+          !primaryService ||
+          String(it.service || it.service_type || it.category || "").toLowerCase() ===
+            String(primaryService).toLowerCase()
+      )
       .map((it) => {
         const direct = grab(it);
         if (direct) return direct;
         if (Array.isArray(it.tasks)) {
-          const t = it.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+          const t = it.tasks
+            .map((x) => (typeof x === "string" ? x : grab(x || {})))
+            .filter(Boolean)[0];
+          if (t) return t;
+        }
+        if (Array.isArray(it.service_tasks)) {
+          const t = it.service_tasks
+            .map((x) => (typeof x === "string" ? x : grab(x || {})))
+            .filter(Boolean)[0];
+          if (t) return t;
+        }
+        if (Array.isArray(it.serviceTasks)) {
+          const t = it.serviceTasks
+            .map((x) => (typeof x === "string" ? x : grab(x || {})))
+            .filter(Boolean)[0];
           if (t) return t;
         }
         return "";
@@ -254,7 +286,21 @@ function extractTaskFromJobDetails(job_details, primaryService) {
           const direct = grab(it);
           if (direct) return direct;
           if (Array.isArray(it.tasks)) {
-            const t = it.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+            const t = it.tasks
+              .map((x) => (typeof x === "string" ? x : grab(x || {})))
+              .filter(Boolean)[0];
+            if (t) return t;
+          }
+          if (Array.isArray(it.service_tasks)) {
+            const t = it.service_tasks
+              .map((x) => (typeof x === "string" ? x : grab(x || {})))
+              .filter(Boolean)[0];
+            if (t) return t;
+          }
+          if (Array.isArray(it.serviceTasks)) {
+            const t = it.serviceTasks
+              .map((x) => (typeof x === "string" ? x : grab(x || {})))
+              .filter(Boolean)[0];
             if (t) return t;
           }
         }
@@ -270,23 +316,170 @@ function extractTaskFromJobDetails(job_details, primaryService) {
       if (typeof scoped === "string") return scoped;
       if (Array.isArray(scoped)) return extractTaskFromJobDetails(scoped, "");
       if (typeof scoped === "object") {
+        if (Array.isArray(scoped.service_tasks) && scoped.service_tasks.length) {
+          const first = scoped.service_tasks[0];
+          if (typeof first === "string") return first;
+          if (first && typeof first === "object") {
+            const direct = grab(first);
+            if (direct) return direct;
+          }
+        }
+        if (Array.isArray(scoped.serviceTasks) && scoped.serviceTasks.length) {
+          const first = scoped.serviceTasks[0];
+          if (typeof first === "string") return first;
+          if (first && typeof first === "object") {
+            const direct = grab(first);
+            if (direct) return direct;
+          }
+        }
         const direct = grab(scoped);
         if (direct) return direct;
         if (Array.isArray(scoped.tasks)) {
-          const t = scoped.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+          const t = scoped.tasks
+            .map((x) => (typeof x === "string" ? x : grab(x || {})))
+            .filter(Boolean)[0];
           if (t) return t;
         }
+      }
+    }
+    if (Array.isArray(job_details.service_tasks) && job_details.service_tasks.length) {
+      const first = job_details.service_tasks[0];
+      if (typeof first === "string") return first;
+      if (first && typeof first === "object") {
+        const direct = grab(first);
+        if (direct) return direct;
+      }
+    }
+    if (Array.isArray(job_details.serviceTasks) && job_details.serviceTasks.length) {
+      const first = job_details.serviceTasks[0];
+      if (typeof first === "string") return first;
+      if (first && typeof first === "object") {
+        const direct = grab(first);
+        if (direct) return direct;
       }
     }
     const direct = grab(job_details);
     if (direct) return direct;
     if (Array.isArray(job_details.tasks)) {
-      const t = job_details.tasks.map((x) => (typeof x === "string" ? x : grab(x || {}))).filter(Boolean)[0];
+      const t = job_details.tasks
+        .map((x) => (typeof x === "string" ? x : grab(x || {})))
+        .filter(Boolean)[0];
       if (t) return t;
     }
   }
 
   return "";
+}
+
+function extractTasksListFromJobDetails(job_details, primaryService) {
+  const tasks = [];
+  const add = (val) => {
+    const v = String(val || "").trim();
+    if (!v) return;
+    if (!tasks.includes(v)) tasks.push(v);
+  };
+  const grab = (obj) =>
+    firstNonEmpty(
+      obj.task,
+      obj.role,
+      obj.task_role,
+      obj.service_task,
+      obj.position,
+      obj.title,
+      typeof obj.name === "string" ? obj.name : ""
+    );
+  if (!job_details) return tasks;
+  if (typeof job_details === "string") {
+    job_details
+      .split(/[,/]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .forEach(add);
+    return tasks;
+  }
+  if (Array.isArray(job_details)) {
+    job_details.forEach((it) => {
+      if (!it) return;
+      if (typeof it === "string") {
+        add(it);
+        return;
+      }
+      if (typeof it === "object") {
+        const svc = String(it.service || it.service_type || it.category || "").toLowerCase();
+        if (!primaryService || svc === String(primaryService).toLowerCase()) {
+          const direct = grab(it);
+          if (direct) add(direct);
+          if (Array.isArray(it.tasks)) {
+            it.tasks.forEach((x) => {
+              if (typeof x === "string") add(x);
+              else if (x && typeof x === "object") add(grab(x));
+            });
+          }
+          if (Array.isArray(it.service_tasks)) {
+            it.service_tasks.forEach((x) => {
+              if (typeof x === "string") add(x);
+              else if (x && typeof x === "object") add(grab(x));
+            });
+          }
+          if (Array.isArray(it.serviceTasks)) {
+            it.serviceTasks.forEach((x) => {
+              if (typeof x === "string") add(x);
+              else if (x && typeof x === "object") add(grab(x));
+            });
+          }
+        }
+      }
+    });
+    return tasks;
+  }
+  if (typeof job_details === "object") {
+    if (primaryService && job_details[primaryService]) {
+      const scoped = job_details[primaryService];
+      const inner = extractTasksListFromJobDetails(scoped, "");
+      inner.forEach(add);
+    }
+    const keys = Object.keys(job_details);
+    keys.forEach((k) => {
+      const v = job_details[k];
+      if (!v) return;
+      if (typeof v === "string") {
+        add(v);
+        return;
+      }
+      if (Array.isArray(v)) {
+        v.forEach((x) => {
+          if (typeof x === "string") add(x);
+          else if (x && typeof x === "object") add(grab(x));
+        });
+        return;
+      }
+      if (typeof v === "object") {
+        const inner = extractTasksListFromJobDetails(v, "");
+        inner.forEach(add);
+      }
+    });
+    const direct = grab(job_details);
+    if (direct) add(direct);
+    if (Array.isArray(job_details.tasks)) {
+      job_details.tasks.forEach((x) => {
+        if (typeof x === "string") add(x);
+        else if (x && typeof x === "object") add(grab(x));
+      });
+    }
+    if (Array.isArray(job_details.service_tasks)) {
+      job_details.service_tasks.forEach((x) => {
+        if (typeof x === "string") add(x);
+        else if (x && typeof x === "object") add(grab(x));
+      });
+    }
+    if (Array.isArray(job_details.serviceTasks)) {
+      job_details.serviceTasks.forEach((x) => {
+        if (typeof x === "string") add(x);
+        else if (x && typeof x === "object") add(grab(x));
+      });
+    }
+  }
+  return tasks;
 }
 
 function peso(val) {
@@ -356,7 +549,7 @@ export default function WorkerApplicationMenu() {
   const [logoBrokenDecline, setLogoBrokenDecline] = useState(false);
   const [logoBrokenDecline2, setLogoBrokenDecline2] = useState(false);
 
-  const [sectionOpen, setSectionOpen] = useState("all");
+  const [sectionOpen, setSectionOpen] = useState("info");
 
   const fetchCounts = async () => {
     try {
@@ -395,6 +588,37 @@ export default function WorkerApplicationMenu() {
         const primaryService = st[0] || "";
         const taskFromDetails = extractTaskFromJobDetails(w.job_details, primaryService);
         const taskOrRole = firstNonEmpty(w.primary_task, w.role, taskFromDetails, w.work_description);
+        const tasksList = [];
+        const addTask = (val) => {
+          const v = String(val || "").trim();
+          if (!v) return;
+          if (!tasksList.includes(v)) tasksList.push(v);
+        };
+        const fromDetailsList = extractTasksListFromJobDetails(w.job_details, primaryService);
+        fromDetailsList.forEach(addTask);
+        addTask(w.primary_task);
+        addTask(w.role);
+        addTask(taskFromDetails);
+        if (Array.isArray(w.service_tasks)) {
+          w.service_tasks.forEach(addTask);
+        }
+        if (Array.isArray(w.serviceTasks)) {
+          w.serviceTasks.forEach(addTask);
+        }
+        if (typeof w.service_tasks === "string") {
+          w.service_tasks
+            .split(/[,/]/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .forEach(addTask);
+        }
+        if (typeof w.serviceTasks === "string") {
+          w.serviceTasks
+            .split(/[,/]/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .forEach(addTask);
+        }
         return {
           id: r.id,
           request_group_id: r.request_group_id,
@@ -408,13 +632,20 @@ export default function WorkerApplicationMenu() {
           birth_date_raw: i.birth_date || null,
           birth_date_display: i.birth_date ? fmtDateOnly(i.birth_date) : "",
           age: i.age ?? null,
-          contact_number: i.contact_number || i.contactNumber || r.contact_number || r.phone_number || i.phone_number || "",
+          contact_number:
+            i.contact_number ||
+            i.contactNumber ||
+            r.contact_number ||
+            r.phone_number ||
+            i.phone_number ||
+            "",
           years_experience: w.years_experience ?? "",
           tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
           service_types: st,
           primary_service: primaryService,
           service_types_lex: st.join(", "),
           task_or_role: taskOrRole || "",
+          service_tasks: tasksList,
           service_description: w.work_description || "",
           rate_type: rate.rate_type || "",
           rate_from: rate.rate_from,
@@ -432,9 +663,10 @@ export default function WorkerApplicationMenu() {
           reason_other: r.reason_other || r.decline_reason_other || null,
           decision_reason: r.decision_reason || r.reason || null,
           decided_at_raw: r.decided_at || null,
-          decided_at_display: r.decided_at ? fmtDateTime(r.decided_at) : (r.decided_at_display || "")
+          decided_at_display: r.decided_at ? fmtDateTime(r.decided_at) : r.decided_at_display || ""
         };
       });
+
       setRows(mapped);
       const norm = (x) => String(x ?? "").trim().toLowerCase();
       const pc = mapped.filter((x) => norm(x.status) === "pending").length;
@@ -683,7 +915,7 @@ export default function WorkerApplicationMenu() {
         onClick={() => setSectionOpen(k)}
         className={[
           "rounded-full px-3.5 py-1.5 text-sm border transition",
-          active ? "bg-[#008cfc] text-white border-[#008cfc]" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
+          active ? "bg-[#008cfc] text-white border-[#008cfc] shadow-sm" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
         ].join(" ")}
       >
         {label}
@@ -706,10 +938,10 @@ export default function WorkerApplicationMenu() {
               </span>
             }
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+            <div className="grid.grid-cols-1.sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
               <Field label="Date of Birth" value={viewRow?.birth_date_display || "-"} />
               <Field label="Age" value={viewRow?.age ?? "-"} />
-              <Field label="Contact Number:" value={<ContactDisplay number={viewRow?.contact_number} />} />
+              <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
               <Field label="Barangay" value={viewRow?.barangay || "-"} />
               <Field label="Additional Address" value={viewRow?.additional_address || "-"} />
             </div>
@@ -718,32 +950,54 @@ export default function WorkerApplicationMenu() {
           <SectionCard
             title="Work Details"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text-white border-white/20">
                 <span className="h-3 w-3 rounded-full bg-white/60" />
                 Experience
               </span>
             }
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-              <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types} />} />
-              <Field label="Service Task(s)" value={<TaskPill value={viewRow?.task_or_role} />} />
-              <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
-              <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
-              <Field label="Service Description" value={viewRow?.service_description || "-"} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-8 gap-y-6">
+              <div>
+                <Field
+                  label="Primary Service"
+                  value={
+                    viewRow?.primary_service ||
+                    (Array.isArray(viewRow?.service_types) && viewRow.service_types.length ? viewRow.service_types[0] : "-")
+                  }
+                />
+              </div>
+              <div>
+                <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
+              </div>
+              <div>
+                <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
+              </div>
+              <div className="lg:col-span-3">
+                <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types} />} />
+              </div>
+              <div className="lg:col-span-3">
+                <Field
+                  label="Service Task(s)"
+                  value={<ServiceTasksInline list={viewRow?.service_tasks} fallback={viewRow?.task_or_role} />}
+                />
+              </div>
+              <div className="lg:col-span-3">
+                <Field label="Service Description" value={viewRow?.service_description || "-"} />
+              </div>
             </div>
           </SectionCard>
 
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full bg-white/60" />
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3.rounded-full bg-white/60" />
                 Pricing
               </span>
             }
           >
             {t.includes("by the job") ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-3xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2.gap-x-8 gap-y-6 max-w-3xl">
                 <Field label="Rate Type" value={viewRow?.rate_type || "-"} />
                 <Field label="Rate Value" value={peso(viewRow?.rate_value)} />
               </div>
@@ -770,16 +1024,16 @@ export default function WorkerApplicationMenu() {
         <SectionCard
           title="Personal Information"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               <span className="h-3 w-3 rounded-full bg-white/60" />
               Worker
             </span>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg.grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
             <Field label="Date of Birth" value={viewRow?.birth_date_display || "-"} />
             <Field label="Age" value={viewRow?.age ?? "-"} />
-            <Field label="Contact Number:" value={<ContactDisplay number={viewRow?.contact_number} />} />
+            <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
             <Field label="Barangay" value={viewRow?.barangay || "-"} />
             <Field label="Additional Address" value={viewRow?.additional_address || "-"} />
           </div>
@@ -797,23 +1051,46 @@ export default function WorkerApplicationMenu() {
             </span>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-            <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types} />} />
-            <Field label="Service Task(s)" value={<TaskPill value={viewRow?.task_or_role} />} />
-            <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
-            <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
-            <Field label="Service Description" value={viewRow?.service_description || "-"} />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-8 gap-y-6">
+            <div>
+              <Field
+                label="Primary Service"
+                value={
+                  viewRow?.primary_service ||
+                  (Array.isArray(viewRow?.service_types) && viewRow.service_types.length ? viewRow.service_types[0] : "-")
+                }
+              />
+            </div>
+            <div>
+              <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
+            </div>
+            <div>
+              <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
+            </div>
+            <div className="lg:col-span-3">
+              <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types} />} />
+            </div>
+            <div className="lg:col-span-3">
+              <Field
+                label="Service Task(s)"
+                value={<ServiceTasksInline list={viewRow?.service_tasks} fallback={viewRow?.task_or_role} />}
+              />
+            </div>
+            <div className="lg:col-span-3">
+              <Field label="Service Description" value={viewRow?.service_description || "-"} />
+            </div>
           </div>
         </SectionCard>
       );
     }
     if (sectionOpen === "rate") {
-      if (t.includes("by the job")) {
+      const tLower = t;
+      if (tLower.includes("by the job")) {
         return (
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 <span className="h-3 w-3 rounded-full bg-white/60" />
                 Pricing
               </span>
@@ -826,18 +1103,18 @@ export default function WorkerApplicationMenu() {
           </SectionCard>
         );
       }
-      if (t.includes("hourly")) {
+      if (tLower.includes("hourly")) {
         return (
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text-white border-white/20">
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 <span className="h-3 w-3 rounded-full bg-white/60" />
                 Pricing
               </span>
             }
           >
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6 max-w-4xl">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6.max-w-4xl">
               <Field label="Rate Type" value={viewRow?.rate_type || "-"} />
               <Field label="Rate From" value={peso(viewRow?.rate_from)} />
               <Field label="Rate To" value={peso(viewRow?.rate_to)} />
@@ -849,7 +1126,7 @@ export default function WorkerApplicationMenu() {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text-white border-white/20">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               <span className="h-3 w-3 rounded-full bg-white/60" />
               Pricing
             </span>
@@ -907,10 +1184,10 @@ export default function WorkerApplicationMenu() {
 
       <section className="mt-6">
         <div className="-mx-6">
-          <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-3">
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium text-gray-700">Filter</span>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
                 {tabs.map((t) => {
                   const active = filter === t.key;
                   return (
@@ -919,7 +1196,7 @@ export default function WorkerApplicationMenu() {
                       onClick={() => setFilter(t.key)}
                       className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm transition ${
                         active
-                          ? "border[#008cfc] bg-[#008cfc] text-white"
+                          ? "border-[#008cfc] bg-[#008cfc] text-white"
                           : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                       }`}
                       title={`${t.label} (${typeof t.count === "number" ? t.count : "0"})`}
@@ -963,14 +1240,16 @@ export default function WorkerApplicationMenu() {
                   fetchItems(filter, searchTerm);
                   setCurrentPage(1);
                 }}
-                className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
+                disabled={loading}
+                className="mt-7 inline-flex items-center gap-2 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50 disabled:opacity-60"
               >
-                ⟳ Refresh
+                <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                <span>Refresh</span>
               </button>
             </div>
           </div>
 
-          <div className="px-6 mt-3">
+          <div className="px-6">
             <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
               {loading && (
                 <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">
@@ -989,7 +1268,7 @@ export default function WorkerApplicationMenu() {
                     <thead>
                       <tr className="text-left text-sm text-gray-600">
                         {ENABLE_SELECTION && (
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
+                          <th className="sticky.top-0 z-10 bg-white px-4 py-3 w-12.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
                             <input
                               ref={headerCheckboxRef}
                               type="checkbox"
@@ -1010,7 +1289,7 @@ export default function WorkerApplicationMenu() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border.border-gray-200 w-[260px] whitespace-nowrap">
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[260px] whitespace-nowrap">
                           Email
                         </th>
                         <th
@@ -1022,7 +1301,7 @@ export default function WorkerApplicationMenu() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap w-[220px]"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700.cursor-pointer select-none border border-gray-200 whitespace-nowrap w-[220px]"
                           onClick={() => toggleSort("created_at_ts")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -1030,7 +1309,7 @@ export default function WorkerApplicationMenu() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
+                        <th className="sticky top-0 z-10 bg-white px-4.py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
                           Status
                         </th>
                         <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
@@ -1061,7 +1340,7 @@ export default function WorkerApplicationMenu() {
                               </td>
                             )}
 
-                            <td className="px-4 py-4 border.border-gray-200 w-[180px] min-w-[180px]">
+                            <td className="px-4 py-4 border border-gray-200 w-[180px] min-w-[180px]">
                               <div className="min-w-0">
                                 <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
                                   {fullName || "-"}
@@ -1087,7 +1366,7 @@ export default function WorkerApplicationMenu() {
                             <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}>
                               <div className="inline-flex gap-2">
                                 <button
-                                  onClick={() => { setViewRow(u); setSectionOpen("all"); }}
+                                  onClick={() => { setViewRow(u); setSectionOpen("info"); }}
                                   className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                                 >
                                   View
@@ -1103,14 +1382,14 @@ export default function WorkerApplicationMenu() {
                                   <>
                                     <button
                                       onClick={() => openDeclineModal(u)}
-                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm.font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                       disabled={disableActions}
                                     >
                                       Decline
                                     </button>
                                     <button
                                       onClick={() => approve(u.id)}
-                                      className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="inline-flex items-center rounded-lg border border-emerald-300 px-3.py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50.disabled:opacity-50 disabled:cursor-not-allowed"
                                       disabled={disableActions}
                                     >
                                       Approve
@@ -1139,7 +1418,7 @@ export default function WorkerApplicationMenu() {
                 <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
                   <nav className="flex items-center gap-2">
                     <button
-                      className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                      className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50.disabled:opacity-50"
                       disabled={currentPage <= 1}
                       aria-label="Previous page"
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -1186,66 +1465,79 @@ export default function WorkerApplicationMenu() {
           className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
-          <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
-            <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
-              <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
-                <img
-                  src={(viewRow?.profile_picture_url && String(viewRow.profile_picture_url).startsWith("http")) ? viewRow.profile_picture_url : avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim())}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                  data-fallback="primary"
-                  onError={({ currentTarget }) => {
-                    const parent = currentTarget.parentElement;
-                    if (currentTarget.dataset.fallback === "primary") {
-                      currentTarget.dataset.fallback = "dice";
-                      currentTarget.src = avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim());
-                      return;
-                    }
-                    currentTarget.style.display = "none";
-                    if (parent) {
-                      parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1) || "?").toUpperCase()}</div>`;
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="mt-5 text-center space-y-0.5">
-                <div className="text-2xl font-semibold text-gray-900">
-                  {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
+          <div className="relative w-full max-w-[1040px] h-[82vh] rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className="relative px-6.sm:px-8 pt-5 pb-4 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white border-b border-blue-100/40">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-4 ring-white border border-blue-100 bg.white overflow-hidden shadow">
+                    <img
+                      src={(viewRow?.profile_picture_url && String(viewRow.profile_picture_url).startsWith("http")) ? viewRow.profile_picture_url : avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim())}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                      data-fallback="primary"
+                      onError={({ currentTarget }) => {
+                        const parent = currentTarget.parentElement;
+                        if (currentTarget.dataset.fallback === "primary") {
+                          currentTarget.dataset.fallback = "dice";
+                          currentTarget.src = avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim());
+                          return;
+                        }
+                        currentTarget.style.display = "none";
+                        if (parent) {
+                          parent.innerHTML = `<div class="w-full h-full.grid place-items-center text-2xl font-semibold text-[#008cfc]">${((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1) || "?").toUpperCase()}</div>`;
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xl sm:text-2xl font-semibold">
+                      {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
+                    </div>
+                    <div className="text-sm text-blue-50/90">{viewRow.email || "-"}</div>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600">{viewRow.email || "-"}</div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-center gap-3 flex-wrap">
-                <div className="text-sm text-gray-600">
-                  Created <span className="font-semibold text-[#008cfc]">{viewRow.created_at_display || "-"}</span>
+                <div className="flex flex-col items-start md:items-end gap-2">
+                  <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-blue-50/90">
+                    Application Summary
+                  </div>
+                  <div className="text-sm">
+                    Created{" "}
+                    <span className="font-semibold">
+                      {viewRow.created_at_display || "-"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    <StatusPill value={viewRow.status} />
+                  </div>
                 </div>
-                <StatusPill value={viewRow.status} />
               </div>
             </div>
 
-            <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
-              <div className="mb-5 flex items-center justify-center gap-2 flex-wrap">
-                <SectionButton k="all" label="All" />
-                <SectionButton k="info" label="Personal Information" />
-                <SectionButton k="work" label="Work Details" />
-                <SectionButton k="rate" label="Service Rate" />
+            <div className="px-6 sm:px-8 py-5 flex-1 bg-gray-50 flex flex-col overflow-hidden">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 pt-1 pb-2 border-b border-gray-200/70 shrink-0">
+                <div className="flex flex-wrap items-center gap-3">
+                  <SectionButton k="info" label="Personal Information" />
+                  <SectionButton k="work" label="Work Details" />
+                  <SectionButton k="rate" label="Service Rate" />
+                </div>
               </div>
-              {renderSection()}
+              <div className="flex-1 overflow-y-auto.pt-1">
+                {renderSection()}
+              </div>
             </div>
 
-            <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 bg-white">
+            <div className="px-6 sm:px-8 pb-5 pt-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row gap-3 sm:justify-end">
               <button
                 type="button"
                 onClick={() => { setViewRow(null); }}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                className="w-full.sm:w-auto inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
               >
                 Close
               </button>
               <button
                 type="button"
                 onClick={() => setShowDocs(true)}
-                className="w-full inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium bg-[#008cfc] text-white border border-[#008cfc] hover:bg-[#0077d6]"
+                className="w-full sm:w-auto.inline-flex items-center justify-center rounded-lg px-3.py-1.5 text-sm font-medium bg-[#008cfc] text-white border border-[#008cfc] hover:bg-[#0077d6]"
               >
                 View Documents
               </button>
@@ -1260,11 +1552,11 @@ export default function WorkerApplicationMenu() {
           aria-modal="true"
           aria-label="View documents"
           tabIndex={-1}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[2147483647] flex.items-center justify-center p-4"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDocs(false)} />
           <div className="relative w-full max-w-[900px] max-h-[80vh] overflow-hidden rounded-2xl border border-gray-300 bg-white shadow-2xl">
-            <div className="px-6 py-4 border-b bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white">
+            <div className="px-6.py-4 border-b bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white">
               <div className="text-base font-semibold">Documents</div>
             </div>
             <div className="p-6 overflow-y-auto max-h-[65vh] [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
@@ -1284,12 +1576,12 @@ export default function WorkerApplicationMenu() {
                     const url = toDocUrl(found);
                     const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(url);
                     return (
-                      <div key={cfg.label} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+                      <div key={cfg.label} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden transition-all.duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
                         <div className="p-3">
                           {isImg && url ? (
                             <img src={url} alt={cfg.label} className="w-full h-40 object-contain" />
                           ) : (
-                            <div className="text-sm text-gray-500 h-40 grid place-items-center">{url ? "Preview not available" : "No document"}</div>
+                            <div className="text-sm text-gray-500 h-40.grid place-items-center">{url ? "Preview not available" : "No document"}</div>
                           )}
                         </div>
                         <div className="p-3 border-t flex items-center justify-between">
@@ -1321,7 +1613,7 @@ export default function WorkerApplicationMenu() {
             <div className="px-6 py-4 border-t bg-white">
               <button
                 onClick={() => setShowDocs(false)}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                className="w-full inline-flex.items.center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
               >
                 Done
               </button>
@@ -1340,10 +1632,10 @@ export default function WorkerApplicationMenu() {
           className="fixed inset-0 z-[2147483646] flex items-center justify-center"
         >
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingDecline && setShowDecline(false)} />
-          <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
+          <div className="relative w-full max-w-[560px].mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
             <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
               <div className="text-xl font-semibold">Decline Application</div>
-              <div className="text-xs opacity-90">Select reason for declining</div>
+              <div className="text-xs.opacity-90">Select reason for declining</div>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div className="grid grid-cols-1 gap-2">
@@ -1369,7 +1661,7 @@ export default function WorkerApplicationMenu() {
                   onChange={(e) => setDeclineOther(e.target.value)}
                   disabled={submittingDecline}
                   placeholder="Type other reason here"
-                  className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  className="w-full.min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
                 />
               </div>
 
@@ -1387,7 +1679,7 @@ export default function WorkerApplicationMenu() {
               <button
                 type="button"
                 onClick={submitDecline}
-                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                className="inline-flex items-center rounded-lg.border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
                 disabled={submittingDecline}
               >
                 {submittingDecline ? "Submitting..." : "Confirm Decline"}
@@ -1405,8 +1697,8 @@ export default function WorkerApplicationMenu() {
           tabIndex={-1}
           className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
-          <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
+          <div className="absolute inset-0.bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
+          <div className="relative w.full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
            <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
   <div className="flex items-center justify-between">
     <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
@@ -1443,7 +1735,7 @@ export default function WorkerApplicationMenu() {
                 </div>
               </div>
             </div>
-            <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
+            <div className="px-6.pb-6 pt-4 border-t border-gray-200 bg-white">
               <button
                 type="button"
                 onClick={() => { setShowReason(false); }}
@@ -1465,10 +1757,10 @@ export default function WorkerApplicationMenu() {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex.items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex.items-center justify-center.cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl.border border-[#008cfc] bg-white.shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
@@ -1496,10 +1788,10 @@ export default function WorkerApplicationMenu() {
           className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl.border border-[#008cfc] bg-white.shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
               <div
-                className="absolute inset-0 animate-spin rounded-full"
+                className="absolute inset-0.animate-spin rounded-full"
                 style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#008cfc22", borderTopColor: "#008cfc", borderRadius: "9999px" }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
@@ -1523,9 +1815,9 @@ export default function WorkerApplicationMenu() {
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center"
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+          <div className="absolute inset-0.bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl.border border-[#008cfc] bg-white.shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full.border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               <img
                 src="/jdklogo.png"
                 alt="JDK Homecare Logo"
@@ -1570,7 +1862,7 @@ export default function WorkerApplicationMenu() {
             tabIndex={-1}
             className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
           >
-            <div className="relative mx-auto w-40 h-40">
+            <div className="relative.mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
                 style={{
@@ -1582,12 +1874,12 @@ export default function WorkerApplicationMenu() {
                 }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center.justify-center">
                 {!logoBrokenDecline ? (
                   <img
                     src="/jdklogo.png"
                     alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
+                    className="w-20 h-20.object-contain"
                     onError={() => setLogoBrokenDecline(true)}
                   />
                 ) : (
@@ -1617,13 +1909,13 @@ export default function WorkerApplicationMenu() {
           className="fixed inset-0 z-[2147483647] flex items-center justify-center"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl.border border-[#008cfc] bg-white.shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full.border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBrokenDecline2 ? (
                 <img
                   src="/jdklogo.png"
                   alt="JDK Homecare Logo"
-                  className="w-16 h-16 object-contain"
+                  className="w-16 h-16.object-contain"
                   onError={() => setLogoBrokenDecline2(true)}
                 />
               ) : (

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, RotateCcw } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -108,13 +108,13 @@ function YesNoPill({ yes }) {
   return (
     <span
       className={[
-        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
+        "inline-flex.items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
         cfg.bg,
         cfg.text,
         cfg.br,
       ].join(" ")}
     >
-      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+      <span className="h-3 w-3 rounded-full bg-current.opacity-30" />
       {cfg.label}
     </span>
   );
@@ -575,7 +575,7 @@ export default function AdminServiceRequests() {
 
   const submitDecline = async () => {
     const other = declineOther.trim();
-       if (!declineReason && !other) {
+    if (!declineReason && !other) {
       setDeclineErr("Please select a reason or write one.");
       return;
     }
@@ -668,13 +668,13 @@ export default function AdminServiceRequests() {
 
   const SectionCard = ({ title, children, badge }) => (
     <section className="relative rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="px-6 py-4 rounded-t-2xl bg-gradient-to-r from-[#0b82ff] to-[#4aa6ff] text-white flex items-center justify-between">
+      <div className="px-6 py-4 rounded-t-2xl bg-gradient.to-r from-[#0b82ff] to-[#4aa6ff] text-white flex items-center justify-between">
         <h3 className="text.base font-semibold flex items-center gap-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70" />
           {title}
         </h3>
         {badge || (
-          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text.white border-white/20">
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text.white border-white/20">
             Info
           </span>
         )}
@@ -686,50 +686,48 @@ export default function AdminServiceRequests() {
 
   const renderSection = () => {
     if (!viewRow) return null;
-   if (sectionOpen === "all") {
-  const img = pickDetailImage(viewRow?.details);
-  const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
-  return (
-    <div className="space-y-6">
-      <SectionCard
-        title="Personal Information"
-        badge={
-          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-            Client
-          </span>
-        }
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-          <Field
-            label="Barangay"
-            value={viewRow?.info?.barangay || "-"}
-          />
-          <Field label="Street" value={viewRow?.info?.street || "-"} />
-          <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
-          <div className="sm:col-span-3 mt-4 pt-4 border-t border-gray-100">
-            <Field
-              label="Contact Number"
-              value={
-                <div className="inline-flex items-center gap-2 text-[15px]">
-                  <img
-                    src="../../../public/philippines.png"
-                    alt="Philippines"
-                    className="h-4 w-6 rounded-[2px] object-cover"
-                  />
-                  <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
-                </div>
-              }
-            />
-          </div>
-        </div>
-      </SectionCard>
-      {/* rest of ALL section stays the same */}
-
+    if (sectionOpen === "all") {
+      const img = pickDetailImage(viewRow?.details);
+      const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
+      return (
+        <div className="space-y-6">
+          <SectionCard
+            title="Personal Information"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text.white border-white/20">
+                Client
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+              <Field
+                label="Barangay"
+                value={viewRow?.info?.barangay || "-"}
+              />
+              <Field label="Street" value={viewRow?.info?.street || "-"} />
+              <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
+              <div className="sm:col-span-3 mt-4 pt-4 border-t border-gray-100">
+                <Field
+                  label="Contact Number"
+                  value={
+                    <div className="inline-flex items-center gap-2 text-[15px]">
+                      <img
+                        src="../../../public/philippines.png"
+                        alt="Philippines"
+                        className="h-4 w-6 rounded-[2px] object-cover"
+                      />
+                      <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
+                    </div>
+                  }
+                />
+              </div>
+            </div>
+          </SectionCard>
 
           <SectionCard
             title="Service Request Details"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text.white border-white/20">
                 Request
               </span>
             }
@@ -781,7 +779,7 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text.white border-white/20">
                 Pricing
               </span>
             }
@@ -811,42 +809,42 @@ export default function AdminServiceRequests() {
         </div>
       );
     }
-if (sectionOpen === "info") {
-  return (
-    <SectionCard
-      title="Personal Information"
-      badge={
-        <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-          Client
-        </span>
-      }
-    >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
-        <Field
-          label="Barangay"
-          value={viewRow?.info?.barangay || "-"}
-        />
-        <Field label="Street" value={viewRow?.info?.street || "-"} />
-        <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
-        <div className="sm:col-span-3 mt-4 pt-4 border-t border-gray-100">
-          <Field
-            label="Contact Number"
-            value={
-              <div className="inline-flex items-center gap-2 text-[15px]">
-                <img
-                  src="../../../public/philippines.png"
-                  alt="Philippines"
-                  className="h-4 w-6 rounded-[2px] object-cover"
-                />
-                <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
-              </div>
-            }
-          />
-        </div>
-      </div>
-    </SectionCard>
-  );
-}
+    if (sectionOpen === "info") {
+      return (
+        <SectionCard
+          title="Personal Information"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg.white/10 text.white border-white/20">
+              Client
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+            <Field
+              label="Barangay"
+              value={viewRow?.info?.barangay || "-"}
+            />
+            <Field label="Street" value={viewRow?.info?.street || "-"} />
+            <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
+            <div className="sm:col-span-3 mt-4 pt-4 border-t border-gray-100">
+              <Field
+                label="Contact Number"
+                value={
+                  <div className="inline-flex items-center gap-2 text-[15px]">
+                    <img
+                      src="../../../public/philippines.png"
+                      alt="Philippines"
+                      className="h-4 w-6 rounded-[2px] object-cover"
+                    />
+                    <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
+                  </div>
+                }
+              />
+            </div>
+          </div>
+        </SectionCard>
+      );
+    }
 
     if (sectionOpen === "details") {
       const img = pickDetailImage(viewRow?.details);
@@ -854,7 +852,7 @@ if (sectionOpen === "info") {
         <SectionCard
           title="Service Request Details"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg.white/10 text.white border-white/20">
               Request
             </span>
           }
@@ -911,7 +909,7 @@ if (sectionOpen === "info") {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg.white/10 text.white border-white/20">
                 Pricing
               </span>
             }
@@ -928,7 +926,7 @@ if (sectionOpen === "info") {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg.white/10 text.white border-white/20">
                 Pricing
               </span>
             }
@@ -945,7 +943,7 @@ if (sectionOpen === "info") {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg.white/10 text.white border-white/20">
               Pricing
             </span>
           }
@@ -1071,9 +1069,10 @@ if (sectionOpen === "info") {
                     fetchItems(filter, searchTerm);
                     setCurrentPage(1);
                   }}
-                  className="mt-7 h-10 rounded-md.border border-blue-300 px-3 text-sm text-[#0b82ff] hover:bg-blue-50"
+                  className="mt-7 inline-flex items-center gap-2 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
                 >
-                  ⟳ Refresh
+                  <RotateCcw className="h-4 w-4" />
+                  <span>Refresh</span>
                 </button>
               </div>
             </div>
@@ -1097,7 +1096,7 @@ if (sectionOpen === "info") {
                       <thead>
                         <tr className="text-left text-sm text-gray-600">
                           {ENABLE_SELECTION && (
-                            <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
+                            <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
                               <input
                                 ref={headerCheckboxRef}
                                 type="checkbox"
@@ -1118,11 +1117,11 @@ if (sectionOpen === "info") {
                               <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                             </span>
                           </th>
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[260px] whitespace-nowrap">
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 w-[260px] whitespace-nowrap">
                             Email
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3.font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[260px]"
                             onClick={() => toggleSort("service_type")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1130,7 +1129,7 @@ if (sectionOpen === "info") {
                             </span>
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3.font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[220px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[220px]"
                             onClick={() => toggleSort("service_task")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1138,7 +1137,7 @@ if (sectionOpen === "info") {
                             </span>
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4.py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap w-[220px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 whitespace-nowrap w-[220px]"
                             onClick={() => toggleSort("created_at_ts")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1146,10 +1145,10 @@ if (sectionOpen === "info") {
                               <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                             </span>
                           </th>
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3.font-semibold text-gray-700.border border-gray-200 w-[160px] min-w-[160px]">
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 w-[160px] min-w-[160px]">
                             Status
                           </th>
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
                             Action
                           </th>
                         </tr>
@@ -1349,7 +1348,7 @@ if (sectionOpen === "info") {
             <div className="relative w-full max-w-[1040px] h-[82vh] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl flex flex-col overflow-hidden">
               <div className="relative px-6 sm:px-8 pt-5 pb-4 bg-gradient-to-r from-[#0b82ff] to-[#4aa6ff] text-white border-b.border-blue-100/40">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="flex items-center gap-4">
+                  <div className="flex.items-center gap-4">
                     <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-4 ring-white/40 border border-white/40 bg-white/90 overflow-hidden shadow">
                       {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
                         <img
@@ -1464,7 +1463,7 @@ if (sectionOpen === "info") {
                 <div className="text-xs.opacity-90">Select reason for declining</div>
               </div>
               <div className="px-6 py-5 space-y-4">
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid.grid-cols-1 gap-2">
                   {REASONS_ADMIN.map((r) => (
                     <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${declineReason===r?'border-red-500 ring-1 ring-red-300 bg-red-50':'border-gray-200 hover:bg-gray-50'}`}>
                       <input
