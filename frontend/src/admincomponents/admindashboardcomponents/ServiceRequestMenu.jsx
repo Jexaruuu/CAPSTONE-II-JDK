@@ -84,7 +84,7 @@ function TaskPill({ value }) {
   return (
     <span
       className={[
-        "inline-flex.items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
         "bg-violet-50",
         "text-violet-700",
         "border-violet-200",
@@ -106,7 +106,14 @@ function YesNoPill({ yes }) {
     ? { bg: "bg-red-50", text: "text-red-700", br: "border-red-200", label: "No" }
     : { bg: "bg-gray-50", text: "text-gray-600", br: "border-gray-200", label: "-" };
   return (
-    <span className={["inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide", cfg.bg, cfg.text, cfg.br].join(" ")}>
+    <span
+      className={[
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
+        cfg.bg,
+        cfg.text,
+        cfg.br,
+      ].join(" ")}
+    >
       <span className="h-3 w-3 rounded-full bg-current opacity-30" />
       {cfg.label}
     </span>
@@ -568,7 +575,7 @@ export default function AdminServiceRequests() {
 
   const submitDecline = async () => {
     const other = declineOther.trim();
-    if (!declineReason && !other) {
+       if (!declineReason && !other) {
       setDeclineErr("Please select a reason or write one.");
       return;
     }
@@ -667,53 +674,57 @@ export default function AdminServiceRequests() {
           {title}
         </h3>
         {badge || (
-          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text.white border-white/20">
             Info
           </span>
         )}
       </div>
       <div className="p-6">{children}</div>
-      <div className="pointer-events-none.absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60" />
+      <div className="pointer-events-none.absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent.opacity-60" />
     </section>
   );
 
   const renderSection = () => {
     if (!viewRow) return null;
-    if (sectionOpen === "all") {
-      const img = pickDetailImage(viewRow?.details);
-      const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
-      return (
-        <div className="space-y-6">
-          <SectionCard
-            title="Personal Information"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                Client
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-              <Field
-                label="Barangay"
-                value={viewRow?.info?.barangay || "-"}
-              />
-              <Field label="Street" value={viewRow?.info?.street || "-"} />
-              <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
-              <Field
-                label="Contact Number"
-                value={
-                  <div className="inline-flex items-center gap-2 text-[15px]">
-                    <img
-                      src="../../../public/philippines.png"
-                      alt="Philippines"
-                      className="h-4 w-6 rounded-[2px] object-cover"
-                    />
-                    <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
-                  </div>
-                }
-              />
-            </div>
-          </SectionCard>
+   if (sectionOpen === "all") {
+  const img = pickDetailImage(viewRow?.details);
+  const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
+  return (
+    <div className="space-y-6">
+      <SectionCard
+        title="Personal Information"
+        badge={
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            Client
+          </span>
+        }
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+          <Field
+            label="Barangay"
+            value={viewRow?.info?.barangay || "-"}
+          />
+          <Field label="Street" value={viewRow?.info?.street || "-"} />
+          <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
+          <div className="sm:col-span-3 mt-4 pt-4 border-t border-gray-100">
+            <Field
+              label="Contact Number"
+              value={
+                <div className="inline-flex items-center gap-2 text-[15px]">
+                  <img
+                    src="../../../public/philippines.png"
+                    alt="Philippines"
+                    className="h-4 w-6 rounded-[2px] object-cover"
+                  />
+                  <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
+                </div>
+              }
+            />
+          </div>
+        </div>
+      </SectionCard>
+      {/* rest of ALL section stays the same */}
+
 
           <SectionCard
             title="Service Request Details"
@@ -723,15 +734,19 @@ export default function AdminServiceRequests() {
               </span>
             }
           >
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
-              <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                <Field label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
-                <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
-                <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
-                <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
-                <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
-                <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
-                <div className="sm:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                  <Field label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
+                  <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
+                  <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
+                  <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                  <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
+                  <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
+                </div>
+                <div>
                   <Field
                     label="Description"
                     value={
@@ -742,7 +757,7 @@ export default function AdminServiceRequests() {
                   />
                 </div>
               </div>
-              <div className="xl:col-span-2">
+              <div>
                 <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden.grid place-items-center">
                   {img ? (
                     <img
@@ -796,60 +811,67 @@ export default function AdminServiceRequests() {
         </div>
       );
     }
-    if (sectionOpen === "info") {
-      return (
-        <SectionCard
-          title="Personal Information"
-          badge={
-            <span className="inline-flex items-center.gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              Client
-            </span>
-          }
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
-            <Field
-              label="Barangay"
-              value={viewRow?.info?.barangay || "-"}
-            />
-            <Field label="Street" value={viewRow?.info?.street || "-"} />
-            <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
-            <Field
-              label="Contact Number"
-              value={
-                <div className="inline-flex items-center gap-2 text-[15px]">
-                  <img
-                    src="../../../public/philippines.png"
-                    alt="Philippines"
-                    className="h-4 w-6 rounded-[2px] object-cover"
-                  />
-                  <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
-                </div>
-              }
-            />
-          </div>
-        </SectionCard>
-      );
-    }
+if (sectionOpen === "info") {
+  return (
+    <SectionCard
+      title="Personal Information"
+      badge={
+        <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+          Client
+        </span>
+      }
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+        <Field
+          label="Barangay"
+          value={viewRow?.info?.barangay || "-"}
+        />
+        <Field label="Street" value={viewRow?.info?.street || "-"} />
+        <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
+        <div className="sm:col-span-3 mt-4 pt-4 border-t border-gray-100">
+          <Field
+            label="Contact Number"
+            value={
+              <div className="inline-flex items-center gap-2 text-[15px]">
+                <img
+                  src="../../../public/philippines.png"
+                  alt="Philippines"
+                  className="h-4 w-6 rounded-[2px] object-cover"
+                />
+                <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
+              </div>
+            }
+          />
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
     if (sectionOpen === "details") {
       const img = pickDetailImage(viewRow?.details);
       return (
         <SectionCard
           title="Service Request Details"
           badge={
-            <span className="inline-flex items-center.gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               Request
             </span>
           }
         >
-          <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
-            <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-              <Field label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
-              <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
-              <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
-              <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
-              <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
-              <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
-              <div className="sm:col-span-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                <Field label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
+                <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
+                <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
+                <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
+                <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
+              </div>
+              <div>
                 <Field
                   label="Description"
                   value={
@@ -860,7 +882,7 @@ export default function AdminServiceRequests() {
                 />
               </div>
             </div>
-            <div className="xl:col-span-2">
+            <div>
               <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
                 {img ? (
                   <img
@@ -889,7 +911,7 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center.gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 Pricing
               </span>
             }
@@ -906,7 +928,7 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center.gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 Pricing
               </span>
             }
@@ -923,7 +945,7 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex.items-center.gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               Pricing
             </span>
           }
@@ -1100,7 +1122,7 @@ export default function AdminServiceRequests() {
                             Email
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3.font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
                             onClick={() => toggleSort("service_type")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1108,7 +1130,7 @@ export default function AdminServiceRequests() {
                             </span>
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[220px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3.font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[220px]"
                             onClick={() => toggleSort("service_task")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1124,7 +1146,7 @@ export default function AdminServiceRequests() {
                               <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                             </span>
                           </th>
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3.font-semibold text-gray-700.border border-gray-200 w-[160px] min-w-[160px]">
                             Status
                           </th>
                           <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
@@ -1219,7 +1241,7 @@ export default function AdminServiceRequests() {
                                   {isDeclined ? (
                                     <button
                                       onClick={() => openReasonModal(u)}
-                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm.font-medium text-red-600 hover:bg-red-50"
                                     >
                                       Reason
                                     </button>
@@ -1227,14 +1249,14 @@ export default function AdminServiceRequests() {
                                     <>
                                       <button
                                         onClick={() => openDeclineModal(u)}
-                                        className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50.disabled:cursor-not-allowed"
+                                        className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm.font-medium text-red-600 hover:bg-red-50.disabled:opacity-50.disabled:cursor-not-allowed"
                                         disabled={disableActions}
                                       >
                                         Decline
                                       </button>
                                       <button
                                         onClick={() => approve(u.id)}
-                                        className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50.disabled:cursor-not-allowed"
+                                        className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm.font-medium text-emerald-600 hover:bg-emerald-50.disabled:opacity-50.disabled:cursor-not-allowed"
                                         disabled={disableActions}
                                       >
                                         Approve
@@ -1277,7 +1299,7 @@ export default function AdminServiceRequests() {
                   <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
                     <nav className="flex items-center gap-2">
                       <button
-                        className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                        className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50.disabled:opacity-50"
                         disabled={currentPage <= 1}
                         aria-label="Previous page"
                         onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -1345,7 +1367,7 @@ export default function AdminServiceRequests() {
                           }}
                         />
                       ) : (
-                        <div className="w-full h-full grid.place-items-center text-2xl font-semibold text-[#0b82ff]">
+                        <div className="w-full h-full.grid.place-items-center text-2xl font-semibold text-[#0b82ff]">
                           {(((viewRow?.name_first || "").trim().slice(0, 1) + (viewRow?.name_last || "").trim().slice(0, 1)) || "?").toUpperCase()}
                         </div>
                       )}
@@ -1408,7 +1430,7 @@ export default function AdminServiceRequests() {
                     </span>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto blue-scroll pt-1">
+                <div className="flex-1 overflow-y-auto blue-scroll.pt-1">
                   {renderSection()}
                 </div>
               </div>
@@ -1417,7 +1439,7 @@ export default function AdminServiceRequests() {
                 <button
                   type="button"
                   onClick={() => { setViewRow(null); }}
-                  className="inline-flex items-center justify-center rounded-lg px-4.py-2.5 text-sm font-semibold bg-[#0b82ff] text-white hover:bg-[#086bd4] transition"
+                  className="inline-flex.items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                 >
                   Close
                 </button>
@@ -1483,7 +1505,7 @@ export default function AdminServiceRequests() {
                 <button
                   type="button"
                   onClick={submitDecline}
-                  className="inline-flex items-center rounded-lg border px-3.py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                  className="inline-flex items-center rounded-lg border px-3.py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50.disabled:opacity-60"
                   disabled={submittingDecline}
                 >
                   {submittingDecline ? "Submitting..." : "Confirm Decline"}
@@ -1506,7 +1528,7 @@ export default function AdminServiceRequests() {
               <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
-                  <span className="inline-flex items-center gap-1 rounded-full.border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+                  <span className="inline-flex items-center gap-1 rounded-full.border px-2.5 py-1 text-xs.font-medium bg-red-50 text-red-700 border-red-200">
                     <span className="h-3 w-3.rounded-full bg-current opacity-30" />
                     {reasonTarget?.service_type || "Request"}
                   </span>
@@ -1539,7 +1561,7 @@ export default function AdminServiceRequests() {
                 <button
                   type="button"
                   onClick={() => { setShowReason(false); }}
-                  className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                  className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-2 text-sm.font-medium text-red-600 hover:bg-red-50"
                 >
                   Close
                 </button>
@@ -1566,7 +1588,7 @@ export default function AdminServiceRequests() {
                   className="absolute inset-0 animate-spin rounded-full"
                   style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#0b82ff22", borderTopColor: "#0b82ff", borderRadius: "9999px" }}
                 />
-                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
+                <div className="absolute inset-6 rounded-full.border-2 border-[#0b82ff33]" />
               </div>
               <div className="mt-6 text-center.space-y-1">
                 <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
@@ -1597,7 +1619,7 @@ export default function AdminServiceRequests() {
                     borderRadius: '9999px'
                   }}
                 />
-                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
+                <div className="absolute inset-6 rounded-full.border-2 border-[#0b82ff33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   {!logoBrokenLoading ? (
                     <img
@@ -1607,7 +1629,7 @@ export default function AdminServiceRequests() {
                       onError={() => setLogoBrokenLoading(true)}
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full border border-[#0b82ff] flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-full.border border-[#0b82ff] flex items-center justify-center">
                       <span className="font-bold text-[#0b82ff]">JDK</span>
                     </div>
                   )}
@@ -1633,8 +1655,8 @@ export default function AdminServiceRequests() {
             className="fixed inset-0 z-[2147483647] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
-              <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+            <div className="relative w-[380px] max-w-[92vw] rounded-2xl.border border-[#0b82ff] bg-white shadow-2xl p-8">
+              <div className="mx-auto w-24 h-24 rounded-full.border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
                 {!logoBroken2 ? (
                   <img
                     src="/jdklogo.png"
@@ -1643,7 +1665,7 @@ export default function AdminServiceRequests() {
                     onError={() => setLogoBroken2(true)}
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full border border-[#0b82ff] flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full.border border-[#0b82ff] flex items-center justify-center">
                     <span className="font-bold text-[#0b82ff]">JDK</span>
                   </div>
                 )}
@@ -1656,7 +1678,7 @@ export default function AdminServiceRequests() {
                 <button
                   type="button"
                   onClick={() => setShowCancelSuccess(false)}
-                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
+                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl.shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
                 >
                   Done
                 </button>
@@ -1673,7 +1695,7 @@ export default function AdminServiceRequests() {
               aria-modal="true"
               aria-label="Loading next step"
               tabIndex={-1}
-              className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8 z-[2147483647]"
+              className="relative w-[320px] max-w-[90vw] rounded-2xl.border border-[#0b82ff] bg-white shadow-2xl p-8 z-[2147483647]"
             >
               <div className="relative mx-auto w-40 h-40">
                 <div
@@ -1686,7 +1708,7 @@ export default function AdminServiceRequests() {
                     borderRadius: '9999px'
                   }}
                 />
-                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
+                <div className="absolute inset-6 rounded-full.border-2 border-[#0b82ff33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   {!logoBrokenDecline ? (
                     <img
@@ -1696,7 +1718,7 @@ export default function AdminServiceRequests() {
                       onError={() => setLogoBrokenDecline(true)}
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full border border-[#0b82ff] flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-full.border border-[#0b82ff] flex items-center justify-center">
                       <span className="font-bold text-[#0b82ff]">JDK</span>
                     </div>
                   )}
@@ -1722,8 +1744,8 @@ export default function AdminServiceRequests() {
             className="fixed inset-0 z-[2147483647] flex.items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
-              <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+            <div className="relative w-[380px] max-w-[92vw] rounded-2xl.border border-[#0b82ff] bg-white shadow-2xl p-8">
+              <div className="mx-auto w-24 h-24 rounded-full.border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
                 {!logoBrokenDecline2 ? (
                   <img
                     src="/jdklogo.png"
@@ -1732,7 +1754,7 @@ export default function AdminServiceRequests() {
                     onError={() => setLogoBrokenDecline2(true)}
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full border border-[#0b82ff] flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full.border border-[#0b82ff] flex items-center justify-center">
                     <span className="font-bold text-[#0b82ff]">JDK</span>
                   </div>
                 )}
@@ -1745,7 +1767,7 @@ export default function AdminServiceRequests() {
                 <button
                   type="button"
                   onClick={() => setShowDeclineSuccess(false)}
-                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
+                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl.shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
                 >
                   Done
                 </button>
