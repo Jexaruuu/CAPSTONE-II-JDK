@@ -39,6 +39,7 @@ export default function AdminManageUser() {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewUser, setViewUser] = useState(null);
   const [logoBroken, setLogoBroken] = useState(false);
+  const [sectionOpen, setSectionOpen] = useState("info");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 400);
@@ -270,15 +271,15 @@ export default function AdminManageUser() {
   };
 
   const Field = ({ label, value }) => (
-    <div className="text-center">
-      <div className="text-[11px] font-semibold tracking-widest text-black uppercase">{label}</div>
-      <div className="mt-1 text-[15px] font-semibold text-[#008cfc] break-words">{value ?? "-"}</div>
+    <div className="text-left">
+      <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">{label}</div>
+      <div className="mt-1 text-[15px] font-semibold text-gray-900 break-words">{value ?? "-"}</div>
     </div>
   );
 
   const SectionCard = ({ title, children, badge }) => (
-    <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
-      <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
+    <section className="relative rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="px-6 py-4 rounded-t-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
         <h3 className="text-[15px] font-semibold flex items-center gap-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
           {title}
@@ -290,7 +291,7 @@ export default function AdminManageUser() {
           </span>
         )}
       </div>
-      <div className="p-5 text-center">
+      <div className="p-6">
         {children}
       </div>
       <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
@@ -306,11 +307,115 @@ export default function AdminManageUser() {
     </div>
   );
 
+  const SectionButton = ({ k, label }) => {
+    const active = sectionOpen === k;
+    return (
+      <button
+        onClick={() => setSectionOpen(k)}
+        className={[
+          "rounded-full px-3.5 py-1.5 text-sm border transition",
+          active ? "bg-[#008cfc] text-white border-[#008cfc] shadow-sm" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+        ].join(" ")}
+      >
+        {label}
+      </button>
+    );
+  };
+
+  const renderSection = () => {
+    if (!viewUser) return null;
+    if (sectionOpen === "info") {
+      return (
+        <SectionCard
+          title="Personal Information"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
+              User
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+            <Field
+              label="Gender"
+              value={<SexBadge sex={viewUser.sex} />}
+            />
+            <Field
+              label="Contact Number"
+              value={
+                viewUser.phone ? (
+                  <span className="inline-flex items-center gap-2">
+                    <img src="/philippines.png" alt="PH" className="h-4 w-6 rounded-sm object-cover" />
+                    <span className="text-black">+63</span>
+                    <span className="font-semibold tracking-wide text-black">{viewUser.phone}</span>
+                  </span>
+                ) : (
+                  "None"
+                )
+              }
+            />
+          </div>
+        </SectionCard>
+      );
+    }
+    if (sectionOpen === "social") {
+      return (
+        <SectionCard
+          title="Social Links"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
+              Social
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-4xl">
+            <Field
+              label="Facebook"
+              value={
+                viewUser.facebook ? (
+                  <a
+                    href={viewUser.facebook}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 justify-start text-[#008cfc] hover:underline break-all"
+                  >
+                    <FaFacebookF /> {viewUser.facebook}
+                  </a>
+                ) : (
+                  "None"
+                )
+              }
+            />
+            <Field
+              label="Instagram"
+              value={
+                viewUser.instagram ? (
+                  <a
+                    href={viewUser.instagram}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 justify-start text-[#008cfc] hover:underline break-all"
+                  >
+                    <FaInstagram className="text-pink-500" /> {viewUser.instagram}
+                  </a>
+                ) : (
+                  "None"
+                )
+              }
+            />
+          </div>
+        </SectionCard>
+      );
+    }
+    return null;
+  };
+
   return (
     <main className="p-6">
       <div className="mb-4">
         <h1 className="text-xl font-semibold text-gray-900">Manage Users</h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-gray-600.mt-2">
           Browse Clients, Workers, or Admins search by name or email, see when they were created, and open details.
         </p>
       </div>
@@ -440,7 +545,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("email")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -449,7 +554,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("date")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -458,7 +563,7 @@ export default function AdminManageUser() {
                           </span>
                         </th>
                         <th
-                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
+                          className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200"
                           onClick={() => toggleSort("role")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -507,7 +612,7 @@ export default function AdminManageUser() {
                             </div>
                           </td>
                           <td className="px-4 py-4 border border-gray-200">
-                            <div className="flex items-center gap-3">
+                            <div className="flex.items-center gap-3">
                               <div className="min-w-0">
                                 <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
                                   <span className="font-semibold">
@@ -545,7 +650,7 @@ export default function AdminManageUser() {
                           </td>
                           <td className="px-4 py-4 w-40 text-left border border-gray-200">
                             <RowMenu
-                              onView={() => { setViewUser(u); setViewOpen(true); }}
+                              onView={() => { setViewUser(u); setSectionOpen("info"); setViewOpen(true); }}
                               onEdit={() => {}}
                               onRemove={() => {}}
                               onDisable={() => handleDisable(u)}
@@ -602,126 +707,76 @@ export default function AdminManageUser() {
           aria-modal="true"
           aria-label="User details"
           tabIndex={-1}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-3"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative w-full max-w-[680px] max-h-[85vh] h-auto rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
-            <div className="relative px-6 pt-6 pb-3 bg-gradient-to-b from-blue-50 to-white">
-              <div className="mx-auto ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow" style={{width:72,height:72,borderRadius:9999}}>
-                {viewUser.profile_picture ? (
-                  <img
-                    src={viewUser.profile_picture}
-                    alt="Profile"
-                    className="w-full h-full object-cover rounded-full"
-                    onError={({ currentTarget }) => {
-                      currentTarget.style.display = "none";
-                      const parent = currentTarget.parentElement;
-                      if (parent) {
-                        const initials = `${(viewUser.first_name || "").trim().slice(0,1)}${(viewUser.last_name || "").trim().slice(0,1)}`.toUpperCase();
-                        parent.innerHTML = `<div class="w-full h-full rounded-full bg-blue-50 border border-blue-200 text-blue-600 grid place-items-center font-semibold text-xl uppercase">${initials}</div>`;
-                      }
-                    }}
-                  />
-                ) : (
-                  <ProfileCircle
-                    initials={`${(viewUser.first_name || "").trim().slice(0,1)}${(viewUser.last_name || "").trim().slice(0,1)}`.toUpperCase()}
-                    size={72}
-                  />
-                )}
-              </div>
-
-              <div className="mt-3 text-center space-y-0.5">
-                <div className="text-lg font-semibold text-gray-900">
-                  {[viewUser.first_name, viewUser.last_name].filter(Boolean).join(" ") || "-"}
+          <div className="relative w-full max-w-[1040px] h-[82vh] rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className="relative px-6 sm:px-8 pt-5 pb-4 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white border-b border-blue-100/40">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-4 ring-white/40 border border-white/40 bg-white/90 overflow-hidden shadow">
+                    {viewUser.profile_picture ? (
+                      <img
+                        src={viewUser.profile_picture}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                        onError={({ currentTarget }) => {
+                          currentTarget.style.display = "none";
+                          const parent = currentTarget.parentElement;
+                          if (parent) {
+                            const initials = `${(viewUser.first_name || "").trim().slice(0,1)}${(viewUser.last_name || "").trim().slice(0,1)}`.toUpperCase();
+                            parent.innerHTML = `<div class="w-full h-full rounded-full bg-blue-50 border border-blue-200 text-blue-600 grid place-items-center font-semibold text-xl uppercase">${initials}</div>`;
+                          }
+                        }}
+                      />
+                    ) : (
+                      <ProfileCircle
+                        initials={`${(viewUser.first_name || "").trim().slice(0,1)}${(viewUser.last_name || "").trim().slice(0,1)}`.toUpperCase()}
+                        size={80}
+                      />
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xl sm:text-2xl font-semibold">
+                      {[viewUser.first_name, viewUser.last_name].filter(Boolean).join(" ") || "-"}
+                    </div>
+                    <div className="text-sm text-blue-50/90">{viewUser.email || "-"}</div>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600">{viewUser.email || "-"}</div>
-              </div>
-
-              <div className="mt-2 flex items-center justify-center gap-3">
-                <div className="text-sm text-gray-600">
-                  Created <span className="font-semibold text-[#008cfc]">{formatPrettyDate(viewUser.date)}</span>
+                <div className="flex flex-col items-start md:items-end gap-2">
+                  <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-blue-50/90">
+                    User Summary
+                  </div>
+                  <div className="text-sm">
+                    Created{" "}
+                    <span className="font-semibold">
+                      {formatPrettyDate(viewUser.date)}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    <RolePill role={viewUser.role} />
+                  </div>
                 </div>
-                <RolePill role={viewUser.role} />
               </div>
             </div>
 
-            <div className="px-5 sm:px-6 py-3 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
-              <div className="space-y-3">
-                <SectionCard
-                  title="Personal Information"
-                  badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                      <span className="h-3 w-3 rounded-full bg-white/60" />
-                      User
-                    </span>
-                  }
-                >
-                  <div className="flex flex-col items-center gap-4">
-                    <Field
-                      label="Gender"
-                      value={<SexBadge sex={viewUser.sex} />}
-                    />
-                    <Field
-                      label="Contact Number"
-                      value={
-                        viewUser.phone ? (
-                          <span className="inline-flex items-center gap-2 justify-center">
-                            <img src="/philippines.png" alt="PH" className="h-4 w-6 rounded-sm object-cover" />
-                            <span className="text-[#008cfc]">+63</span>
-                            <span className="font-semibold tracking-wide text-[#008cfc]">{viewUser.phone}</span>
-                          </span>
-                        ) : (
-                          "None"
-                        )
-                      }
-                    />
-                  </div>
-                </SectionCard>
-
-                <SectionCard
-                  title="Social Links"
-                  badge={
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                      <span className="h-3 w-3 rounded-full bg-white/60" />
-                      Social
-                    </span>
-                  }
-                >
-                  <div className="flex flex-col items-center gap-4">
-                    <Field
-                      label="Facebook"
-                      value={
-                        viewUser.facebook ? (
-                          <a href={viewUser.facebook} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 justify-center text-[#008cfc] hover:underline break-all">
-                            <FaFacebookF /> {viewUser.facebook}
-                          </a>
-                        ) : (
-                          "None"
-                        )
-                      }
-                    />
-                    <Field
-                      label="Instagram"
-                      value={
-                        viewUser.instagram ? (
-                          <a href={viewUser.instagram} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 justify-center text-[#008cfc] hover:underline break-all">
-                            <FaInstagram className="text-pink-500" /> {viewUser.instagram}
-                          </a>
-                        ) : (
-                          "None"
-                        )
-                      }
-                    />
-                  </div>
-                </SectionCard>
+            <div className="px-6 sm:px-8 py-5 flex-1 bg-gray-50 flex flex-col overflow-hidden">
+              <div className="mb-3 flex flex-wrap items-center gap-3 pt-1 pb-2 border-b border-gray-200/70 shrink-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <SectionButton k="info" label="Personal Information" />
+                  <SectionButton k="social" label="Social Links" />
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto pt-1">
+                {renderSection()}
               </div>
             </div>
 
-            <div className="px-5 sm:px-6 pb-4 pt-3 grid grid-cols-1 gap-2 border-t border-gray-200 bg-white">
+            <div className="px-6 sm:px-8 pb-5 pt-4 border-t border-gray-200 bg-white flex justify-end">
               <button
                 type="button"
                 onClick={closeModal}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-2 text-sm font-medium text-[#008cfc] hover:bg-blue-50"
+                className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-[#008cfc] hover:bg-blue-50"
               >
                 Close
               </button>
