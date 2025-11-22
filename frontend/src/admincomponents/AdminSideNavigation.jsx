@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ClipboardList, FileText, Power } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, FileText, Power, User } from 'lucide-react';
 import axios from 'axios';
 import { sbAdmin as supabase } from '../supabaseBrowser';
 
@@ -181,12 +181,23 @@ const AdminSideNavigation = () => {
         </nav>
 
         <div className="mt-auto pt-2 space-y-2">
+          <div className="border-t border-gray-200 mx-3" />
+
+          <button
+            type="button"
+            onClick={() => navigate('/admindashboard/account-details')}
+            className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] md:text-base font-medium transition-colors text-black hover:bg-gray-50 hover:text-[#008cfc]"
+          >
+            <User className="h-5 w-5" />
+            <span>Account Details</span>
+          </button>
+
           <button
             type="button"
             onClick={handleLogout}
             className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] md:text-base font-medium transition-colors text-black hover:bg-gray-50 hover:text-red-600"
           >
-            <Power className="h-4 w-4" />
+            <Power className="h-5 w-5" />
             <span>Log out</span>
           </button>
 

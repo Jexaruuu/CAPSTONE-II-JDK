@@ -84,14 +84,14 @@ function TaskPill({ value }) {
   return (
     <span
       className={[
-        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
+        "inline-flex.items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
         "bg-violet-50",
         "text-violet-700",
         "border-violet-200",
       ].join(" ")}
       title={value || "-"}
     >
-      <span className="h-3 w-3 rounded-full bg-violet-500 opacity-30" />
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
       {value || "-"}
     </span>
   );
@@ -156,8 +156,8 @@ function peso(val) {
 function fmtMMDDYYYY(val) {
   const d = dateOnlyFrom(val);
   if (!d) return val || "-";
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, 0 + "".length);
+  const dd = String(d.getDate()).padStart(2, 0 + "".length);
   const yyyy = d.getFullYear();
   return `${mm}/${dd}/${yyyy}`;
 }
@@ -180,8 +180,17 @@ function fmtPreferredTime(val) {
     ampm = ampm.toUpperCase();
     if (h === 0) h = 12;
   }
-  const mm = String(min).padStart(2, "0");
+  const mm = String(min).padStart(2, 0 + "".length);
   return `${h}:${mm} ${ampm}`;
+}
+function formatContactNumberPH(val) {
+  if (!val) return "-";
+  const s = String(val).replace(/[^0-9]/g, "");
+  if (!s) return "-";
+  let rest = s;
+  if (rest.startsWith("63")) rest = rest.slice(2);
+  if (rest.startsWith("0")) rest = rest.slice(1);
+  return `+63 ${rest}`;
 }
 
 export default function AdminServiceRequests() {
@@ -475,10 +484,6 @@ export default function AdminServiceRequests() {
       html.style.overflow = prevHtml || "";
       body.style.overflow = prevBody || "";
     }
-    return () => {
-      html.style.overflow = prevHtml || "";
-      body.style.overflow = prevBody || "";
-    };
   }, [showCancelSuccess, submittingDecline, showCancelLoading, showDeclineLoading, showDeclineSuccess]);
 
   const sortedRows = useMemo(() => {
@@ -655,23 +660,23 @@ export default function AdminServiceRequests() {
   );
 
   const SectionCard = ({ title, children, badge }) => (
-    <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all.duration-300 hover:border-[#0b82ff] hover:ring-2 hover:ring-[#0b82ff] hover:shadow-xl">
-      <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-[#0b82ff] to-[#4aa6ff] text-white flex items-center justify-between">
-        <h3 className="text-base font-semibold flex.items-center gap-2">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
+    <section className="relative rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="px-6 py-4 rounded-t-2xl bg-gradient-to-r from-[#0b82ff] to-[#4aa6ff] text-white flex items-center justify-between">
+        <h3 className="text.base font-semibold flex items-center gap-2">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70" />
           {title}
         </h3>
         {badge || (
-          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text.white border-white/20">
-            <span className="h-3 w-3 rounded-full bg-white/60" />
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
             Info
           </span>
         )}
       </div>
       <div className="p-6">{children}</div>
-      <div className="pointer-events-none.absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from.transparent via-blue-200 to-transparent opacity-60"></div>
+      <div className="pointer-events-none.absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60" />
     </section>
   );
+
   const renderSection = () => {
     if (!viewRow) return null;
     if (sectionOpen === "all") {
@@ -683,15 +688,30 @@ export default function AdminServiceRequests() {
             title="Personal Information"
             badge={
               <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full bg-white/60" />
                 Client
               </span>
             }
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-              <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
+              <Field
+                label="Barangay"
+                value={viewRow?.info?.barangay || "-"}
+              />
               <Field label="Street" value={viewRow?.info?.street || "-"} />
               <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
+              <Field
+                label="Contact Number"
+                value={
+                  <div className="inline-flex items-center gap-2 text-[15px]">
+                    <img
+                      src="../../../public/philippines.png"
+                      alt="Philippines"
+                      className="h-4 w-6 rounded-[2px] object-cover"
+                    />
+                    <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
+                  </div>
+                }
+              />
             </div>
           </SectionCard>
 
@@ -699,7 +719,6 @@ export default function AdminServiceRequests() {
             title="Service Request Details"
             badge={
               <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full.bg-white/60" />
                 Request
               </span>
             }
@@ -724,7 +743,7 @@ export default function AdminServiceRequests() {
                 </div>
               </div>
               <div className="xl:col-span-2">
-                <div className="aspect-[4/3] w-full rounded-xl border.border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
+                <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden.grid place-items-center">
                   {img ? (
                     <img
                       src={img}
@@ -747,8 +766,7 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full bg-white/60" />
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 Pricing
               </span>
             }
@@ -765,11 +783,13 @@ export default function AdminServiceRequests() {
                 <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6">
                 <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
                 <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
                 <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
-                <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+                <div className="sm:col-span-3">
+                  <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+                </div>
               </div>
             )}
           </SectionCard>
@@ -781,16 +801,31 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Personal Information"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              <span className="h-3 w-3 rounded-full bg-white/60" />
+            <span className="inline-flex items-center.gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               Client
             </span>
           }
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
-            <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
+            <Field
+              label="Barangay"
+              value={viewRow?.info?.barangay || "-"}
+            />
             <Field label="Street" value={viewRow?.info?.street || "-"} />
             <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
+            <Field
+              label="Contact Number"
+              value={
+                <div className="inline-flex items-center gap-2 text-[15px]">
+                  <img
+                    src="../../../public/philippines.png"
+                    alt="Philippines"
+                    className="h-4 w-6 rounded-[2px] object-cover"
+                  />
+                  <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
+                </div>
+              }
+            />
           </div>
         </SectionCard>
       );
@@ -801,8 +836,7 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Service Request Details"
           badge={
-            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              <span className="h-3 w-3 rounded-full bg-white/60" />
+            <span className="inline-flex items-center.gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               Request
             </span>
           }
@@ -855,8 +889,7 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full bg-white/60" />
+              <span className="inline-flex items-center.gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 Pricing
               </span>
             }
@@ -873,8 +906,7 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full bg-white/60" />
+              <span className="inline-flex items-center.gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 Pricing
               </span>
             }
@@ -891,17 +923,18 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              <span className="h-3 w-3 rounded-full bg-white/60" />
+            <span className="inline-flex.items-center.gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
               Pricing
             </span>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6">
             <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
             <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
             <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
-            <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+            <div className="sm:col-span-3">
+              <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+            </div>
           </div>
         </SectionCard>
       );
@@ -1003,7 +1036,7 @@ export default function AdminServiceRequests() {
                   {searchTerm && (
                     <button
                       onClick={() => setSearchTerm("")}
-                      className="mt-3.5 absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
+                      className="mt-3.5 absolute.right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
                       aria-label="Clear search"
                     >
                       ✕
@@ -1016,14 +1049,13 @@ export default function AdminServiceRequests() {
                     fetchItems(filter, searchTerm);
                     setCurrentPage(1);
                   }}
-                  className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#0b82ff] hover:bg-blue-50"
+                  className="mt-7 h-10 rounded-md.border border-blue-300 px-3 text-sm text-[#0b82ff] hover:bg-blue-50"
                 >
                   ⟳ Refresh
                 </button>
               </div>
             </div>
 
-            {/* MIRRORED TABLE UI FROM CANCELLED REQUESTS */}
             <div className="px-6 mt-3">
               <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
                 {loading && (
@@ -1043,11 +1075,11 @@ export default function AdminServiceRequests() {
                       <thead>
                         <tr className="text-left text-sm text-gray-600">
                           {ENABLE_SELECTION && (
-                            <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
+                            <th className="sticky top-0 z-10 bg-white px-4 py-3 w-12.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
                               <input
                                 ref={headerCheckboxRef}
                                 type="checkbox"
-                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                className="h-4 w-4 rounded.border-gray-300 text-blue-600 focus:ring-blue-500"
                                 onChange={toggleSelectAll}
                                 checked={allSelected}
                                 aria-label="Select all"
@@ -1084,7 +1116,7 @@ export default function AdminServiceRequests() {
                             </span>
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700.cursor-pointer select-none border border-gray-200 whitespace-nowrap w-[220px]"
+                            className="sticky top-0 z-10 bg-white px-4.py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap w-[220px]"
                             onClick={() => toggleSort("created_at_ts")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1114,13 +1146,13 @@ export default function AdminServiceRequests() {
                           return (
                             <tr
                               key={u.id}
-                              className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
+                              className={`border-t.border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
                             >
                               {ENABLE_SELECTION && (
                                 <td className="px-4 py-4 border border-gray-200">
                                   <input
                                     type="checkbox"
-                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    className="h-4 w-4 rounded.border-gray-300 text-blue-600 focus:ring-blue-500"
                                     checked={selected.has(u.id)}
                                     onChange={() => toggleSelectRow(u.id)}
                                     aria-label={`Select ${u.name_first} ${u.name_last}`}
@@ -1178,7 +1210,7 @@ export default function AdminServiceRequests() {
                                   <button
                                     onClick={() => {
                                       setViewRow(u);
-                                      setSectionOpen("all");
+                                      setSectionOpen("info");
                                     }}
                                     className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                                   >
@@ -1195,14 +1227,14 @@ export default function AdminServiceRequests() {
                                     <>
                                       <button
                                         onClick={() => openDeclineModal(u)}
-                                        className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50.disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50.disabled:cursor-not-allowed"
                                         disabled={disableActions}
                                       >
                                         Decline
                                       </button>
                                       <button
                                         onClick={() => approve(u.id)}
-                                        className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50.disabled:cursor-not-allowed"
                                         disabled={disableActions}
                                       >
                                         Approve
@@ -1228,7 +1260,7 @@ export default function AdminServiceRequests() {
                 </div>
 
                 {ENABLE_SELECTION && selected.size > 0 && (
-                  <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 text-sm">
+                  <div className="flex items-center justify-between.border-t.border-gray-200 px-4 py-3 text-sm">
                     <div className="text-gray-700">{selected.size} selected</div>
                     <div className="flex items-center gap-2">
                       <button
@@ -1242,7 +1274,7 @@ export default function AdminServiceRequests() {
                 )}
 
                 {!loading && !loadError && sortedRows.length > 0 && (
-                  <div className="flex.items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
+                  <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
                     <nav className="flex items-center gap-2">
                       <button
                         className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
@@ -1292,76 +1324,100 @@ export default function AdminServiceRequests() {
             className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
-            <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl flex flex-col overflow-hidden">
-              <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
-                <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border.border-blue-100 bg-white overflow-hidden shadow">
-                  {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
-                    <img
-                      src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                      onError={({ currentTarget }) => {
-                        currentTarget.style.display = "none";
-                        const parent = currentTarget.parentElement;
-                        if (parent) {
-                          parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#0b82ff]">${(viewRow?.name_first || "?").trim().charAt(0).toUpperCase()}</div>`;
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full grid place-items-center text-3xl font-semibold text-[#0b82ff]">
-                      {(((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1)) || "?").toUpperCase()}
+            <div className="relative w-full max-w-[1040px] h-[82vh] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl flex flex-col overflow-hidden">
+              <div className="relative px-6 sm:px-8 pt-5 pb-4 bg-gradient-to-r from-[#0b82ff] to-[#4aa6ff] text-white border-b.border-blue-100/40">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-4 ring-white/40 border border-white/40 bg-white/90 overflow-hidden shadow">
+                      {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
+                        <img
+                          src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                          onError={({ currentTarget }) => {
+                            currentTarget.style.display = "none";
+                            const parent = currentTarget.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `<div class="w-full h-full grid place-items-center text-2xl font-semibold text-[#0b82ff]">${(
+                                (viewRow?.name_first || "?").trim().charAt(0).toUpperCase()
+                              )}</div>`;
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full grid.place-items-center text-2xl font-semibold text-[#0b82ff]">
+                          {(((viewRow?.name_first || "").trim().slice(0, 1) + (viewRow?.name_last || "").trim().slice(0, 1)) || "?").toUpperCase()}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-
-                <div className="mt-5 text-center space-y-0.5">
-                  <div className="text-2xl font-semibold text-gray-900">
-                    {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
+                    <div className="space-y-1">
+                      <div className="text-xl sm:text-2xl font-semibold">
+                        {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
+                      </div>
+                      <div className="text-sm text-blue-50/90">{viewRow.email || "-"}</div>
+                    </div>
                   </div>
-                  <div className="text-sm.text-gray-600">{viewRow.email || "-"}</div>
-                </div>
-
-                <div className="mt-3 flex items-center justify-center gap-3">
-                  <div className="text-sm.text-gray-600">
-                    Created <span className="font-semibold text-[#0b82ff]">{viewRow.created_at_display || "-"}</span>
-                  </div>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {viewRow._expired ? (
-                      (viewRow.status === "approved" || viewRow.status === "declined" || ["canceled","cancelled"].includes(String(viewRow.status).toLowerCase())) ? (
-                        ["canceled","cancelled"].includes(String(viewRow.status).toLowerCase()) ? (
-                          <StatusPill value="canceled" />
+                  <div className="flex flex-col items-start md:items-end gap-2">
+                    <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-blue-50/90">
+                      Request Summary
+                    </div>
+                    <div className="text-sm">
+                      Created{" "}
+                      <span className="font-semibold">
+                        {viewRow.created_at_display || "-"}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {viewRow._expired ? (
+                        (viewRow.status === "approved" || viewRow.status === "declined" || ["canceled", "cancelled"].includes(String(viewRow.status).toLowerCase())) ? (
+                          ["canceled", "cancelled"].includes(String(viewRow.status).toLowerCase()) ? (
+                            <StatusPill value="canceled" />
+                          ) : (
+                            <>
+                              <StatusPill value={viewRow.status} />
+                              <StatusPill value="expired" />
+                            </>
+                          )
                         ) : (
-                          <>
-                            <StatusPill value={viewRow.status} />
-                            <StatusPill value="expired" />
-                          </>
+                          <StatusPill value="expired" />
                         )
                       ) : (
-                        <StatusPill value="expired" />
-                      )
-                    ) : (
-                      <StatusPill value={viewRow.ui_status} />
-                    )}
+                        <StatusPill value={viewRow.ui_status} />
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto blue-scroll bg-gray-50">
-                <div className="mb-4 flex items-center justify-center gap-2">
-                  <SectionButton k="all" label="All" />
-                  <SectionButton k="info" label="Personal Information" />
-                  <SectionButton k="details" label="Service Request Details" />
-                  <SectionButton k="rate" label="Service Rate" />
+              <div className="px-6 sm:px-8 py-5 flex-1 bg-gray-50 flex flex-col overflow-hidden">
+                <div className="mb-3 flex flex-wrap.items-center justify-between gap-3 pt-1 pb-2 border-b border-gray-200/70 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <SectionButton k="info" label="Personal Information" />
+                    <SectionButton k="details" label="Service Request Details" />
+                    <SectionButton k="rate" label="Service Rate" />
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Preferred Date:{" "}
+                    <span className="font-semibold text-gray-800">
+                      {fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"}
+                    </span>
+                    {" · "}
+                    Time:{" "}
+                    <span className="font-semibold text-gray-800">
+                      {fmtPreferredTime(viewRow?.details?.preferred_time)}
+                    </span>
+                  </div>
                 </div>
-                {renderSection()}
+                <div className="flex-1 overflow-y-auto blue-scroll pt-1">
+                  {renderSection()}
+                </div>
               </div>
 
-              <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 gap-3 border-t border-gray-200 bg-white">
+              <div className="px-6 sm:px-8 pb-5 pt-4 border-t border-gray-200 bg-white flex justify-end">
                 <button
                   type="button"
                   onClick={() => { setViewRow(null); }}
-                  className="w-full inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold bg-[#0b82ff] text-white hover:bg-[#086bd4]"
+                  className="inline-flex items-center justify-center rounded-lg px-4.py-2.5 text-sm font-semibold bg-[#0b82ff] text-white hover:bg-[#086bd4] transition"
                 >
                   Close
                 </button>
@@ -1377,13 +1433,13 @@ export default function AdminServiceRequests() {
             aria-label="Decline service request"
             tabIndex={-1}
             autoFocus
-            className="fixed inset-0 z-[2147483646] flex.items-center justify-center"
+            className="fixed inset-0 z-[2147483646] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingDecline && setShowDecline(false)} />
             <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
               <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
                 <div className="text-xl font-semibold">Decline Service Request</div>
-                <div className="text-xs opacity-90">Select reason for declining</div>
+                <div className="text-xs.opacity-90">Select reason for declining</div>
               </div>
               <div className="px-6 py-5 space-y-4">
                 <div className="grid grid-cols-1 gap-2">
@@ -1419,7 +1475,7 @@ export default function AdminServiceRequests() {
                 <button
                   type="button"
                   onClick={() => !submittingDecline && setShowDecline(false)}
-                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+                  className="inline-flex items-center rounded-lg border px-3.py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
                   disabled={submittingDecline}
                 >
                   Back
@@ -1427,7 +1483,7 @@ export default function AdminServiceRequests() {
                 <button
                   type="button"
                   onClick={submitDecline}
-                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                  className="inline-flex items-center rounded-lg border px-3.py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
                   disabled={submittingDecline}
                 >
                   {submittingDecline ? "Submitting..." : "Confirm Decline"}
@@ -1445,13 +1501,13 @@ export default function AdminServiceRequests() {
             tabIndex={-1}
             className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
           >
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
+            <div className="absolute inset-0.bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
             <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
-              <div className="px-6 py-4 bg-gradient.to-r from-red-50 to-white border-b border-red-200">
+              <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
-                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
-                    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                  <span className="inline-flex items-center gap-1 rounded-full.border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+                    <span className="h-3 w-3.rounded-full bg-current opacity-30" />
                     {reasonTarget?.service_type || "Request"}
                   </span>
                 </div>
@@ -1464,16 +1520,16 @@ export default function AdminServiceRequests() {
                     {getReasonText(reasonTarget)}
                   </div>
                 </div>
-                <div className="mt-4.grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="rounded-xl border border-red-200 bg-white p-4">
-                    <div className="text-[11px] font-semibold tracking-widest text-gray-500.uppercase">Client</div>
+                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Client</div>
                     <div className="mt-1 text-[15px] font-semibold text-gray-900">
                       {[reasonTarget?.name_first, reasonTarget?.name_last].filter(Boolean).join(" ") || "-"}
                     </div>
                     <div className="text-sm text-gray-600">{reasonTarget?.email || "-"}</div>
                   </div>
                   <div className="rounded-xl border border-red-200 bg-white p-4">
-                    <div className="text-[11px] font-semibold tracking-widest text-gray-500.uppercase">Service</div>
+                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service</div>
                     <div className="mt-1 text-[15px] font-semibold text-gray-900">{reasonTarget?.service_task || "-"}</div>
                     <div className="text-sm text-gray-600">{reasonTarget?.service_type || "-"}</div>
                   </div>
@@ -1512,7 +1568,7 @@ export default function AdminServiceRequests() {
                 />
                 <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
               </div>
-              <div className="mt-6 text-center space-y-1">
+              <div className="mt-6 text-center.space-y-1">
                 <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
                 <div className="text-sm text-gray-600 animate-pulse">Submitting decline</div>
               </div>
@@ -1663,7 +1719,7 @@ export default function AdminServiceRequests() {
             autoFocus
             onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+            className="fixed inset-0 z-[2147483647] flex.items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
