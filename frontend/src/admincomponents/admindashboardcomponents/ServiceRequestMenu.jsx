@@ -108,13 +108,13 @@ function YesNoPill({ yes }) {
   return (
     <span
       className={[
-        "inline-flex.items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
         cfg.bg,
         cfg.text,
         cfg.br,
       ].join(" ")}
     >
-      <span className="h-3 w-3 rounded-full bg-current.opacity-30" />
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
       {cfg.label}
     </span>
   );
@@ -631,7 +631,7 @@ export default function AdminServiceRequests() {
       <button
         onClick={() => setSectionOpen(k)}
         className={[
-          "rounded-full px-3.5 py-1.5 text-sm border transition",
+          "rounded-full px-3 py-1.5 text-xs md:text-sm border transition",
           active ? "bg-[#0b82ff] text-white border-[#0b82ff] shadow-sm" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
         ].join(" ")}
       >
@@ -660,27 +660,19 @@ export default function AdminServiceRequests() {
   };
 
   const Field = ({ label, value }) => (
-    <div className="text-left">
-      <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">{label}</div>
-      <div className="mt-1 text-[15px] font-semibold text-gray-900 break-words">{value ?? "-"}</div>
+    <div className="text-left space-y-0.5">
+      <div className="text-[11px] font-medium tracking-wide text-gray-500 uppercase">{label}</div>
+      <div className="text-[14px] font-semibold text-gray-900 break-words">{value ?? "-"}</div>
     </div>
   );
 
   const SectionCard = ({ title, children, badge }) => (
-    <section className="relative rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="px-6 py-4 rounded-t-2xl bg-gradient.to-r from-[#0b82ff] to-[#4aa6ff] text-white flex items-center justify-between">
-        <h3 className="text.base font-semibold flex items-center gap-2">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70" />
-          {title}
-        </h3>
-        {badge || (
-          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text.white border-white/20">
-            Info
-          </span>
-        )}
+    <section className="relative rounded-xl border border-gray-200 bg-white">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+        {badge || null}
       </div>
-      <div className="p-6">{children}</div>
-      <div className="pointer-events-none.absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent.opacity-60" />
+      <div className="p-4">{children}</div>
     </section>
   );
 
@@ -690,23 +682,24 @@ export default function AdminServiceRequests() {
       const img = pickDetailImage(viewRow?.details);
       const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
       return (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <SectionCard
             title="Personal Information"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text.white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
                 Client
               </span>
             }
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
               <Field
                 label="Barangay"
                 value={viewRow?.info?.barangay || "-"}
               />
               <Field label="Street" value={viewRow?.info?.street || "-"} />
               <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
-              <div className="sm:col-span-3 mt-4 pt-4 border-t border-gray-100">
+              <div className="sm:col-span-3 mt-2 pt-3 border-t border-gray-100">
                 <Field
                   label="Contact Number"
                   value={
@@ -727,20 +720,21 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Request Details"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text.white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
                 Request
               </span>
             }
           >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                   <Field label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
                   <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
                   <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
                   <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                   <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
                   <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
                 </div>
@@ -756,7 +750,7 @@ export default function AdminServiceRequests() {
                 </div>
               </div>
               <div>
-                <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden.grid place-items-center">
+                <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
                   {img ? (
                     <img
                       src={img}
@@ -779,24 +773,25 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white/10 text.white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
                 Pricing
               </span>
             }
           >
             {t.includes("by the job") ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-3xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 max-w-3xl">
                 <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
                 <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
               </div>
             ) : t.includes("hourly") ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6 max-w-4xl">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 max-w-4xl">
                 <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
                 <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
                 <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
                 <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
                 <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
                 <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
@@ -814,19 +809,20 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Personal Information"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg.white/10 text.white border-white/20">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
               Client
             </span>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
             <Field
               label="Barangay"
               value={viewRow?.info?.barangay || "-"}
             />
             <Field label="Street" value={viewRow?.info?.street || "-"} />
             <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
-            <div className="sm:col-span-3 mt-4 pt-4 border-t border-gray-100">
+            <div className="sm:col-span-3 mt-2 pt-3 border-t border-gray-100">
               <Field
                 label="Contact Number"
                 value={
@@ -852,20 +848,21 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Service Request Details"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg.white/10 text.white border-white/20">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
               Request
             </span>
           }
         >
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                 <Field label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
                 <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
                 <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
                 <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                 <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
                 <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
               </div>
@@ -909,12 +906,13 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg.white/10 text.white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
                 Pricing
               </span>
             }
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-3xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 max-w-3xl">
               <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
               <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
             </div>
@@ -926,12 +924,13 @@ export default function AdminServiceRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg.white/10 text.white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
                 Pricing
               </span>
             }
           >
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6 max-w-4xl">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 max-w-4xl">
               <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
               <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
               <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
@@ -943,12 +942,13 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg.white/10 text.white border-white/20">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
               Pricing
             </span>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
             <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
             <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
             <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
@@ -1345,11 +1345,11 @@ export default function AdminServiceRequests() {
             className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
-            <div className="relative w-full max-w-[1040px] h-[82vh] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl flex flex-col overflow-hidden">
-              <div className="relative px-6 sm:px-8 pt-5 pb-4 bg-gradient-to-r from-[#0b82ff] to-[#4aa6ff] text-white border-b.border-blue-100/40">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="flex.items-center gap-4">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-4 ring-white/40 border border-white/40 bg-white/90 overflow-hidden shadow">
+            <div className="relative w-full max-w-[960px] max-h-[80vh] rounded-2xl border border-gray-200 bg-white shadow-2xl flex flex-col overflow-hidden">
+              <div className="relative px-6 sm:px-8 py-4 border-b border-gray-200 bg-white">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-gray-200 bg-gray-100 overflow-hidden">
                       {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
                         <img
                           src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
@@ -1359,36 +1359,37 @@ export default function AdminServiceRequests() {
                             currentTarget.style.display = "none";
                             const parent = currentTarget.parentElement;
                             if (parent) {
-                              parent.innerHTML = `<div class="w-full h-full grid place-items-center text-2xl font-semibold text-[#0b82ff]">${(
-                                (viewRow?.name_first || "?").trim().charAt(0).toUpperCase()
-                              )}</div>`;
+                              parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${(
+                                ((viewRow?.name_first || "").trim().slice(0, 1) +
+                                  (viewRow?.name_last || "").trim().slice(0, 1)) || "?"
+                              ).toUpperCase()}</div>`;
                             }
                           }}
                         />
                       ) : (
-                        <div className="w-full h-full.grid.place-items-center text-2xl font-semibold text-[#0b82ff]">
+                        <div className="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">
                           {(((viewRow?.name_first || "").trim().slice(0, 1) + (viewRow?.name_last || "").trim().slice(0, 1)) || "?").toUpperCase()}
                         </div>
                       )}
                     </div>
                     <div className="space-y-1">
-                      <div className="text-xl sm:text-2xl font-semibold">
+                      <div className="text-lg sm:text-xl font-semibold text-gray-900">
                         {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
                       </div>
-                      <div className="text-sm text-blue-50/90">{viewRow.email || "-"}</div>
+                      <div className="text-sm text-gray-500">{viewRow.email || "-"}</div>
                     </div>
                   </div>
                   <div className="flex flex-col items-start md:items-end gap-2">
-                    <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-blue-50/90">
+                    <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
                       Request Summary
                     </div>
-                    <div className="text-sm">
+                    <div className="text-xs text-gray-500">
                       Created{" "}
-                      <span className="font-semibold">
+                      <span className="font-medium text-gray-700">
                         {viewRow.created_at_display || "-"}
                       </span>
                     </div>
-                    <div className="flex flex-wrap gap-2 mt-1">
+                    <div className="flex flex-wrap gap-2">
                       {viewRow._expired ? (
                         (viewRow.status === "approved" || viewRow.status === "declined" || ["canceled", "cancelled"].includes(String(viewRow.status).toLowerCase())) ? (
                           ["canceled", "cancelled"].includes(String(viewRow.status).toLowerCase()) ? (
@@ -1410,8 +1411,8 @@ export default function AdminServiceRequests() {
                 </div>
               </div>
 
-              <div className="px-6 sm:px-8 py-5 flex-1 bg-gray-50 flex flex-col overflow-hidden">
-                <div className="mb-3 flex flex-wrap.items-center justify-between gap-3 pt-1 pb-2 border-b border-gray-200/70 shrink-0">
+              <div className="px-6 sm:px-8 py-4 flex-1 bg-gray-50 flex flex-col overflow-hidden">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-gray-200 shrink-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <SectionButton k="info" label="Personal Information" />
                     <SectionButton k="details" label="Service Request Details" />
@@ -1429,12 +1430,12 @@ export default function AdminServiceRequests() {
                     </span>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto blue-scroll.pt-1">
+                <div className="flex-1 overflow-y-auto blue-scroll pt-3">
                   {renderSection()}
                 </div>
               </div>
 
-              <div className="px-6 sm:px-8 pb-5 pt-4 border-t border-gray-200 bg-white flex justify-end">
+              <div className="px-6 sm:px-8 py-4 border-t border-gray-200 bg-white flex justify-end">
                 <button
                   type="button"
                   onClick={() => { setViewRow(null); }}

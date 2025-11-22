@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, RotateCcw } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -35,7 +35,15 @@ function StatusPill({ value }) {
 function ServiceTypePill({ value }) {
   const cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
   return (
-    <span className={["inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide", cfg.bg, cfg.text, cfg.br].join(" ")}>
+    <span
+      className={[
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide whitespace-nowrap",
+        cfg.bg,
+        cfg.text,
+        cfg.br
+      ].join(" ")}
+      title={value || "-"}
+    >
       <span className="h-3 w-3 rounded-full bg-current opacity-30" />
       {value || "-"}
     </span>
@@ -44,7 +52,15 @@ function ServiceTypePill({ value }) {
 
 function TaskPill({ value }) {
   return (
-    <span className={["inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide", "bg-gray-100", "text-gray-700", "border-gray-300"].join(" ")}>
+    <span
+      className={[
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide whitespace-nowrap",
+        "bg-violet-50",
+        "text-violet-700",
+        "border-violet-200"
+      ].join(" ")}
+      title={value || "-"}
+    >
       <span className="h-3 w-3 rounded-full bg-current opacity-30" />
       {value || "-"}
     </span>
@@ -272,11 +288,17 @@ function ContactDisplay({ number }) {
     </div>
   );
 }
-function ServiceTypesInline({ list }) {
+function ServiceTypesInline({ list, nowrap }) {
   const arr = Array.isArray(list) ? list.filter(Boolean) : [];
-  if (arr.length === 0) return <span>-</span>;
+  if (arr.length === 0) return <span className="text-gray-500 text-sm">-</span>;
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div
+      className={
+        nowrap
+          ? "flex items-center gap-1.5 whitespace-nowrap"
+          : "flex items-center gap-1.5 whitespace-nowrap flex-wrap"
+      }
+    >
       {arr.map((s, i) => (
         <ServiceTypePill key={`${s}-${i}`} value={s} />
       ))}
@@ -500,7 +522,7 @@ export default function CanceledApplicationMenu() {
         )}
       </div>
       <div className="p-6">{children}</div>
-      <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent opacity-60"></div>
+      <div className="pointer-events-none.absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent.opacity-60"></div>
     </section>
   );
 
@@ -711,7 +733,7 @@ export default function CanceledApplicationMenu() {
 
       <section className="mt-6">
         <div className="-mx-6">
-          <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-3">
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium text-gray-700">Filter</span>
               <div className="flex items-center gap-2 flex-wrap">
@@ -770,13 +792,15 @@ export default function CanceledApplicationMenu() {
                   fetchItems();
                   setCurrentPage(1);
                 }}
-                className="mt-7 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50"
+                disabled={loading}
+                className="mt-7 inline-flex items-center gap-2 h-10 rounded-md border border-blue-300 px-3 text-sm text-[#008cfc] hover:bg-blue-50 disabled:opacity-60"
               >
-                ⟳ Refresh
+                <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                <span>Refresh</span>
               </button>
             </div>
           </div>
-          <div className="px-6 mt-3">
+          <div className="px-6">
             <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
               {loading && <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">Loading…</div>}
               {loadError && !loading && <div className="px-4 py-3 text-sm text-red-700 bg-red-50 border-b border-red-100">{loadError}</div>}
@@ -840,9 +864,7 @@ export default function CanceledApplicationMenu() {
                               <div className="truncate">{u.email || "-"}</div>
                             </td>
                             <td className="px-4 py-4 border border-gray-200 align-top">
-                              <div className="whitespace-nowrap">
-                                <ServiceTypesInline list={u.service_types?.length ? u.service_types : toArray(u.work?.service_types)} />
-                              </div>
+                              <ServiceTypesInline list={u.service_types?.length ? u.service_types : toArray(u.work?.service_types)} nowrap />
                             </td>
                             <td className="px-4 py-4 border border-gray-200 whitespace-nowrap w-[220px]">{u.created_at_display || "-"}</td>
                             <td className="px-4 py-4 border border-gray-200 w-[160px] min-w-[160px]">
@@ -929,7 +951,7 @@ export default function CanceledApplicationMenu() {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); setShowDocs(false); }} />
           <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
             <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
-              <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
+              <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg.white overflow-hidden shadow">
                 <img
                   src={(viewRow?.profile_picture && String(viewRow.profile_picture).startsWith("http")) ? viewRow.profile_picture : avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim())}
                   alt="Avatar"
@@ -1005,7 +1027,7 @@ export default function CanceledApplicationMenu() {
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDocs(false)} />
           <div className="relative w-full max-w-[900px] max-h-[80vh] overflow-hidden rounded-2xl border border-gray-300 bg-white shadow-2xl">
-            <div className="px-6 py-4 border-b bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white">
+            <div className="px-6.py-4 border-b bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white">
               <div className="text-base font-semibold">Documents</div>
             </div>
             <div className="p-6 overflow-y-auto max-h-[65vh] [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
@@ -1115,7 +1137,7 @@ export default function CanceledApplicationMenu() {
               <button
                 type="button"
                 onClick={() => { setReasonRow(null); }}
-                className="w-full inline-flex.items-center justify-center rounded-lg border border-orange-300 px-3 py-2 text-sm font-medium text-orange-600 hover:bg-orange-50"
+                className="w-full.inline-flex.items-center justify-center rounded-lg border border-orange-300 px-3 py-2 text-sm font-medium text-orange-600 hover:bg-orange-50"
               >
                 Close
               </button>
