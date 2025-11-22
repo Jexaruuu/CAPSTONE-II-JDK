@@ -50,7 +50,9 @@ const ClientViewServiceRequest = () => {
       const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
       const e = a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
       return encodeURIComponent(JSON.stringify({ r: 'client', e, au }));
-    } catch { return ''; }
+    } catch {
+      return '';
+    }
   };
   const appU = useMemo(() => buildAppU(), []);
   const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
@@ -75,7 +77,10 @@ const ClientViewServiceRequest = () => {
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      if (!id) { setLoading(false); return; }
+      if (!id) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const { data } = await axios.get(`${API_BASE}/api/clientservicerequests/by-group/${encodeURIComponent(id)}`, { withCredentials: true, headers: headersWithU });
@@ -87,7 +92,9 @@ const ClientViewServiceRequest = () => {
       }
     };
     run();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id, headersWithU]);
 
   useEffect(() => {
@@ -108,9 +115,27 @@ const ClientViewServiceRequest = () => {
     };
   }, [loading, showCancel, submittingCancel, leavingDone, showCancelSuccess]);
 
-  const savedInfo = (() => { try { return JSON.parse(localStorage.getItem('clientInformationForm') || '{}'); } catch { return {}; }})();
-  const savedDetails = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRequestDetails') || '{}'); } catch { return {}; }})();
-  const savedRate = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRate') || '{}'); } catch { return {}; }})();
+  const savedInfo = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('clientInformationForm') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const savedDetails = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('clientServiceRequestDetails') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const savedRate = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('clientServiceRate') || '{}');
+    } catch {
+      return {};
+    }
+  })();
 
   const s = location.state || {};
 
@@ -320,7 +345,7 @@ const ClientViewServiceRequest = () => {
           )}
 
           <div className="space-y-6 mt-5">
-            <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+            <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300">
               <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
                 <h3 className="text-xl md:text-[22px] font-semibold">Personal Information</h3>
                 <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
@@ -368,7 +393,7 @@ const ClientViewServiceRequest = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
               <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+                <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300">
                   <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
                     <h3 className="text-xl md:text-[22px] font-semibold">Service Request Details</h3>
                     <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
@@ -407,7 +432,7 @@ const ClientViewServiceRequest = () => {
                             <span className="font-semibold text-gray-700">Request Image:</span>
                             <div className="w-full">
                               <div className="w-full h-64 rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50">
-                                <img src={review_image} alt="" className="w/full h/full object-cover" />
+                                <img src={review_image} alt="" className="w-full h-full object-cover object-center" />
                               </div>
                             </div>
                           </div>
@@ -417,7 +442,7 @@ const ClientViewServiceRequest = () => {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+                <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300">
                   <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
                     <h3 className="text-xl md:text-[22px] font-semibold">Service Rate</h3>
                     <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
@@ -442,7 +467,7 @@ const ClientViewServiceRequest = () => {
               </div>
 
               <aside className="lg:col-span-1 flex flex-col">
-                <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 overflow-hidden flex flex-col transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+                <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 overflow-hidden flex flex-col transition-all duration-300">
                   <div className="bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] px-6 py-5 text-white rounded-t-2xl">
                     <div className="text-base font-medium">Summary</div>
                     <div className="text-xs text-white/90">Review everything before leaving</div>
