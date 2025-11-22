@@ -218,6 +218,18 @@ exports.sendAdminNoEmail = async (req, res) => {
   }
 };
 
+exports.getCurrentAdmin = async (req, res) => {
+  try {
+    const u = req.session && req.session.user;
+    if (!u || String(u.role || '').toLowerCase() !== 'admin') {
+      return res.status(401).json({ message: 'Not authenticated as admin.' });
+    }
+    return res.status(200).json({ user: u });
+  } catch {
+    return res.status(500).json({ message: 'Failed to fetch current admin.' });
+  }
+};
+
 exports.logoutAdmin = async (_req, res) => {
   try {
     if (_req.session) {

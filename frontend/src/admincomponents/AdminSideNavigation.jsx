@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ClipboardList, FileText, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, FileText, Power } from 'lucide-react';
 import axios from 'axios';
 import { sbAdmin as supabase } from '../supabaseBrowser';
 
@@ -10,7 +10,7 @@ const navItems = [
   { label: 'Dashboard',           to: '/admindashboard',                     icon: LayoutDashboard },
   { label: 'Manage Users',        to: '/admindashboard/manage-users',        icon: Users },
   { label: 'Service Requests',    to: '/admindashboard/service-requests',    icon: FileText,       badgeKey: 'service' },
-  { label: 'Applications', to: '/admindashboard/worker-applications', icon: ClipboardList,  badgeKey: 'worker' },
+  { label: 'Applications',        to: '/admindashboard/worker-applications', icon: ClipboardList,  badgeKey: 'worker' },
 ];
 
 const AdminSideNavigation = () => {
@@ -18,6 +18,8 @@ const AdminSideNavigation = () => {
   const location = useLocation();
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingWorkerCount, setPendingWorkerCount] = useState(0);
+  const [adminName, setAdminName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
 
   const handleLogout = async () => {
     try {
@@ -58,8 +60,60 @@ const AdminSideNavigation = () => {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    const init = async () => {
+      let nameSet = false;
+      let emailSet = false;
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/admin/me`, { withCredentials: true, timeout: 5000 });
+        const u = data?.user || {};
+        const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ');
+        if (fullName) {
+          setAdminName(fullName);
+          nameSet = true;
+        }
+        if (u.email_address) {
+          setAdminEmail(u.email_address);
+          emailSet = true;
+        }
+      } catch {}
+
+      if (!nameSet) {
+        try {
+          const first = localStorage.getItem('first_name') || '';
+          const last = localStorage.getItem('last_name') || '';
+          const fullName = [first, last].filter(Boolean).join(' ');
+          if (fullName) setAdminName(fullName);
+        } catch {}
+      }
+
+      let localEmail = '';
+      try {
+        localEmail = localStorage.getItem('email') || localStorage.getItem('admin_email') || '';
+      } catch {}
+
+      if (!emailSet && localEmail) {
+        setAdminEmail(localEmail);
+        emailSet = true;
+      }
+
+      if (!emailSet) {
+        try {
+          const { data } = await supabase.auth.getUser();
+          const email = data?.user?.email || '';
+          if (email) setAdminEmail(email);
+        } catch {}
+      }
+    };
+    init();
+  }, []);
+
   const serviceActive = location.pathname.startsWith('/admindashboard/service-requests');
   const workerActive = location.pathname.startsWith('/admindashboard/worker-applications');
+
+  const displayName = adminName || 'Admin User';
+  const displayEmail = adminEmail || 'admin@example.com';
+  const avatarInitial = displayName.trim().charAt(0).toUpperCase() || 'A';
 
   return (
     <aside className="h-screen w-72 shrink-0 px-3 py-4">
@@ -126,15 +180,31 @@ const AdminSideNavigation = () => {
           ))}
         </nav>
 
-        <div className="mt-auto pt-2">
+        <div className="mt-auto pt-2 space-y-2">
           <button
             type="button"
             onClick={handleLogout}
             className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] md:text-base font-medium transition-colors text-black hover:bg-gray-50 hover:text-red-600"
           >
-            <LogOut className="h-5 w-5" />
+            <Power className="h-4 w-4" />
             <span>Log out</span>
           </button>
+
+          <div className="border-t border-gray-200 mx-3" />
+
+          <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-gray-50 cursor-default">
+            <div className="h-9 w-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+              {avatarInitial}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-semibold text-gray-900 truncate max-w-[10rem]">
+                {displayName}
+              </span>
+              <span className="text-xs text-gray-500 truncate max-w-[10rem]">
+                {displayEmail}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </aside>

@@ -69,17 +69,6 @@ const AdminTopNavigation = () => {
             </span>
             {adminNo ? <></> : null}
           </div>
-
-          <div className="h-10 w-10 rounded-full overflow-hidden border border-gray-200">
-            <img
-              src="/adminicon.png"
-              alt="Admin"
-              className="h-full w-full object-cover"
-              onError={(e) => {
-                e.currentTarget.src = '/Clienticon.png';
-              }}
-            />
-          </div>
         </div>
       </div>
     </header>
