@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import LoginFooter from '../../logincomponents/LoginFooter';
 
 import { sbAdmin as supabase } from '../../supabaseBrowser';
 
@@ -295,6 +296,7 @@ const AdminLoginPage = () => {
           </div>
         </div>
       </div>
+      <LoginFooter/>
     </div>
   );
 };

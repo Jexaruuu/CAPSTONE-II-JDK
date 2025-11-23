@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import RoleFooter from '../../rolecomponents/RoleFooter';
 
 const RolePage = () => {
   const [role, setRole] = useState('');
 
   return (
-    <div className="min-h-screen flex flex-col bg-white overflow-hidden">
+    <div className="relative min-h-screen flex flex-col bg-white overflow-hidden">
       <div className="bg-white z-50">
         <div className="max-w-[1545px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
           <div className="flex items-center space-x-6">
@@ -22,11 +23,15 @@ const RolePage = () => {
 
       <div className="flex justify-center items-center flex-grow px-4 py-6 -mt-24">
         <div className="bg-white p-8 rounded-xl max-w-lg w-full">
-          <h2 className="text-3xl font-semibold text-center mb-6">Join as a <span className='text-[#008cfc]'>Client</span> or <span className='text-[#008cfc]'>Worker</span></h2>
+          <h2 className="text-3xl font-semibold text-center mb-6">
+            Join as a <span className="text-[#008cfc]">Client</span> or <span className="text-[#008cfc]">Worker</span>
+          </h2>
           <div className="space-y-4 mb-6">
             <div
               onClick={() => setRole('client')}
-              className={`cursor-pointer p-6 border-2 rounded-md ${role === 'client' ? 'border-[#008cfc]' : 'border-gray-300'} hover:border-[#008cfc] transition-colors`}
+              className={`cursor-pointer p-6 border-2 rounded-md ${
+                role === 'client' ? 'border-[#008cfc]' : 'border-gray-300'
+              } hover:border-[#008cfc] transition-colors`}
             >
               <div className="flex items-center space-x-2">
                 <input
@@ -43,7 +48,9 @@ const RolePage = () => {
 
             <div
               onClick={() => setRole('worker')}
-              className={`cursor-pointer p-6 border-2 rounded-md ${role === 'worker' ? 'border-[#008cfc]' : 'border-gray-300'} hover:border-[#008cfc] transition-colors`}
+              className={`cursor-pointer p-6 border-2 rounded-md ${
+                role === 'worker' ? 'border-[#008cfc]' : 'border-gray-300'
+              } hover:border-[#008cfc] transition-colors`}
             >
               <div className="flex items-center space-x-2">
                 <input
@@ -63,7 +70,9 @@ const RolePage = () => {
             {role === 'client' ? (
               <Link to="/clientsignup">
                 <button
-                  className={`py-2 px-6 rounded-md w-full ${role === 'client' ? 'bg-[#008cfc]' : 'bg-gray-300 text-gray-500'} text-white transition duration-300`}
+                  className={`py-2 px-6 rounded-md w-full ${
+                    role === 'client' ? 'bg-[#008cfc]' : 'bg-gray-300 text-gray-500'
+                  } text-white transition duration-300`}
                 >
                   Create Account as Client
                 </button>
@@ -71,7 +80,9 @@ const RolePage = () => {
             ) : role === 'worker' ? (
               <Link to="/workersignup">
                 <button
-                  className={`py-2 px-6 rounded-md w-full ${role === 'worker' ? 'bg-[#008cfc]' : 'bg-gray-300 text-gray-500'} text-white transition duration-300`}
+                  className={`py-2 px-6 rounded-md w-full ${
+                    role === 'worker' ? 'bg-[#008cfc]' : 'bg-gray-300 text-gray-500'
+                  } text-white transition duration-300`}
                 >
                   Create Account as Worker
                 </button>
@@ -93,6 +104,10 @@ const RolePage = () => {
             </Link>
           </div>
         </div>
+      </div>
+
+      <div className="absolute bottom-0 left-0 w-full">
+        <RoleFooter />
       </div>
     </div>
   );

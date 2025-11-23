@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
+import LoginFooter from '../../logincomponents/LoginFooter';
 
 const supabaseUrl = 'https://uoyzcboehvwxcadrqqfq.supabase.co';
 const supabaseKey =
@@ -94,7 +95,7 @@ const LoginPage = () => {
         </div>
       </div>
 
-      <div className="flex justify-center items-center flex-grow px-4 py-6 -mt-20">
+      <div className="flex justify-center items-center flex-grow px-4 py-40">
         <div className="p-8 rounded-md max-w-lg w-full">
           <h2 className="text-3xl font-semibold text-center mb-6">
             Log in to <span className="text-[#008cfc]">JDK HOMECARE</span>
@@ -158,6 +159,7 @@ const LoginPage = () => {
           </div>
         </div>
       </div>
+      <LoginFooter/>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
+import SignupFooter from "../../signupcomponents/SignupFooter";
 
 const WorkerSignUpPage = () => {
   const location = useLocation();
@@ -215,7 +216,7 @@ const WorkerSignUpPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white overflow-hidden">
+    <div className="relative min-h-screen flex flex-col bg-white overflow-hidden">
       <div className="bg-white z-50">
         <div className="max-w-[1540px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
           <div className="flex items-center space-x-6">
@@ -514,6 +515,10 @@ const WorkerSignUpPage = () => {
           </div>
         </div>
       )}
+
+      <div className="absolute bottom-0 left-0 w-full">
+        <SignupFooter />
+      </div>
     </div>
   );
 };
