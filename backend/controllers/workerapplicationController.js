@@ -375,3 +375,51 @@ exports.cancel = async (req, res) => {
     return res.status(500).json({ message: friendlyError(err) });
   }
 };
+
+exports.listMine = async (req, res) => {
+  try {
+    let email = String(req.query.email || '').trim();
+    let workerId = req.query.worker_id ? parseInt(req.query.worker_id, 10) : null;
+
+    if (!email && workerId) {
+      try {
+        const foundById = await findWorkerById(workerId);
+        if (foundById?.email_address) {
+          email = String(foundById.email_address).trim();
+        }
+      } catch {}
+    }
+
+    if (!email && req.session?.user?.email_address) {
+      email = String(req.session.user.email_address).trim();
+    }
+
+    if (!email) {
+      return res.status(200).json({ items: [] });
+    }
+
+    const statusRaw = String(req.query.status || 'all').toLowerCase();
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10), 1), 50);
+
+    let query = supabaseAdmin
+      .from('wa_pending')
+      .select('id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, docs, reason_choice, reason_other, decision_reason')
+      .ilike('email_address', email)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (statusRaw !== 'all') {
+      query = query.eq('status', statusRaw);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const items = Array.isArray(data) ? data : [];
+    return res.status(200).json({ items });
+  } catch (err) {
+    return res.status(500).json({ message: friendlyError(err) });
+  }
+};
+
+

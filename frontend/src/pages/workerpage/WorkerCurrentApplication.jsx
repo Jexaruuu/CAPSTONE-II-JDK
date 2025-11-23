@@ -99,11 +99,17 @@ const getWorkerEmail = () => {
     const raw = localStorage.getItem("workerAuth") || "";
     if (!raw) return "";
     const j = JSON.parse(raw);
-    return j?.email_address || j?.email || j?.user?.email || "";
+    if (j?.email_address) return j.email_address;
+    if (j?.email) return j.email;
+    if (j?.user?.email) return j.user.email;
+    if (j?.user_worker?.email_address) return j.user_worker.email_address;
+    if (j?.data?.user?.email) return j.data.user.email;
+    return "";
   } catch {
     return "";
   }
 };
+
 
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "Worker")}`;
@@ -253,46 +259,45 @@ export default function WorkerCurrentApplication() {
   const navigate = useNavigate();
 
   const fetchByStatus = async (statusKey) => {
-    setLoading(true);
-    try {
-      const email = getWorkerEmail();
-      if (!email) {
-        setItems([]);
-        return;
-      }
-      const statusParam = statusKey === "all" ? "all" : statusKey;
-      const { data } = await axios.get(`${API_BASE}/api/admin/workerapplications`, {
-        params: { status: statusParam, q: email },
-        withCredentials: true,
-      });
-      const arr = Array.isArray(data?.items) ? data.items : [];
-      const emailLower = String(email).toLowerCase();
-      const ownOnly = arr.filter((r) => {
-        const e = r.email_address || r.worker_email || r.info?.email_address || r.info?.email;
-        if (!e) return true;
-        return String(e).toLowerCase() === emailLower;
-      });
-      const normalized = ownOnly.map((r, i) => ({
-        id: r.request_group_id ?? r.id ?? `${i}`,
-        status: String(r.status || "pending").toLowerCase(),
-        created_at: r.created_at || new Date().toISOString(),
-        updated_at: r.decided_at || r.created_at || new Date().toISOString(),
-        info: r.info || {},
-        work: r.work || {},
-        rate: r.rate || {},
-        decision_reason: r.decision_reason || null,
-        reason_choice: r.reason_choice || null,
-        reason_other: r.reason_other || null,
-        decided_at: r.decided_at || null,
-        email_address: r.email_address || email || null,
-      }));
-      setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
-    } catch {
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const email = getWorkerEmail();
+    const statusParam = statusKey === "all" ? "all" : statusKey;
+
+    const { data } = await axios.get(`${API_BASE}/api/workerapplications/mine`, {
+      params: { status: statusParam, email: email || undefined },
+      withCredentials: true,
+    });
+
+    const arr = Array.isArray(data?.items) ? data.items : [];
+    const normalized = arr.map((r, i) => ({
+      id: r.request_group_id ?? r.id ?? `${i}`,
+      status: String(r.status || "pending").toLowerCase(),
+      created_at: r.created_at || new Date().toISOString(),
+      updated_at: r.decided_at || r.created_at || new Date().toISOString(),
+      info: r.info || {},
+      work: r.work || {},
+      rate: r.rate || {},
+      decision_reason: r.decision_reason || null,
+      reason_choice: r.reason_choice || null,
+      reason_other: r.reason_other || null,
+      decided_at: r.decided_at || null,
+      email_address: r.email_address || email || null,
+    }));
+
+    setItems(
+      normalized.sort(
+        (a, b) =>
+          new Date(b.updated_at).getTime() -
+          new Date(a.updated_at).getTime()
+      )
+    );
+  } catch {
+    setItems([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchByStatus(statusFilter);
