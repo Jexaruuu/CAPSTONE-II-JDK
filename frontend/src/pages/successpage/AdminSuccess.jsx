@@ -6,6 +6,11 @@ const AdminSuccessPage = () => {
   const [seconds, setSeconds] = useState(5);
 
   useEffect(() => {
+    localStorage.removeItem('first_name');
+    localStorage.removeItem('last_name');
+    localStorage.removeItem('role');
+    localStorage.removeItem('admin_no');
+
     const lockToSuccess = () => {
       navigate('/adminsuccess', { replace: true });
     };
@@ -15,7 +20,7 @@ const AdminSuccessPage = () => {
 
     const tick = setInterval(() => setSeconds((s) => (s > 0 ? s - 1 : 0)), 1000);
     const t = setTimeout(() => {
-      navigate('/admindashboard', { replace: true });
+      navigate('/adminlogin', { replace: true });
     }, 5000);
 
     return () => {

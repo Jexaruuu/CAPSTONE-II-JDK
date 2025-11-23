@@ -23,8 +23,8 @@ const LoginPage = () => {
       localStorage.getItem('last_name');
     if (isLoggedIn) {
       const role = localStorage.getItem('role');
-      if (role === 'client') navigate('/clientdashboard', { replace: true });
-      else if (role === 'worker') navigate('/workerdashboard', { replace: true });
+      if (role === 'client') navigate('/clientwelcome', { replace: true });
+      else if (role === 'worker') navigate('/workerwelcome', { replace: true });
     }
   }, [navigate]);
 
@@ -48,8 +48,8 @@ const LoginPage = () => {
       localStorage.setItem('email_address', serverEmail || user?.email_address || email);
       try { localStorage.setItem('user', JSON.stringify(user)); } catch {}
 
-      if (role === 'client') navigate('/clientdashboard');
-      else if (role === 'worker') navigate('/workerdashboard');
+      if (role === 'client') navigate('/clientwelcome');
+      else if (role === 'worker') navigate('/workerwelcome');
 
     } catch (err) {
       console.warn('Backend login failed, trying Supabase...', err?.message || err);
@@ -70,9 +70,9 @@ const LoginPage = () => {
         localStorage.setItem('email_address', data.user?.email || email);
         try { localStorage.setItem('user', JSON.stringify(data.user)); } catch {}
 
-        if (role === 'client') navigate('/clientdashboard');
-        else if (role === 'worker') navigate('/workerdashboard');
-        else navigate('/clientdashboard');
+        if (role === 'client') navigate('/clientwelcome');
+        else if (role === 'worker') navigate('/workerwelcome');
+        else navigate('/clientwelcome');
       }
     } finally {
       setLoading(false);

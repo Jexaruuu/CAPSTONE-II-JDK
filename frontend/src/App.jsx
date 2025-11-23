@@ -1,4 +1,3 @@
-// App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 
@@ -56,8 +55,8 @@ const ProtectedRoute = ({ children }) => {
 
 const GuestRoute = ({ children }) => {
   const role = String(localStorage.getItem('role') || '').toLowerCase();
-  if (role === 'client') return <Navigate to="/clientdashboard" replace />;
-  if (role === 'worker') return <Navigate to="/workerdashboard" replace />;
+  if (role === 'client') return <Navigate to="/clientwelcome" replace />;
+  if (role === 'worker') return <Navigate to="/workerwelcome" replace />;
   return children;
 };
 

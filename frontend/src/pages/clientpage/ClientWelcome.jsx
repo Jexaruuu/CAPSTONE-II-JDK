@@ -29,7 +29,7 @@ const ClientWelcomePage = () => {
             Welcome Client, {prefix} <span className='text-[#008cfc]'>{`${firstName} ${lastName}`}</span>!
           </h1>
           <p className="text-xl text-left mb-6">
-            We’re excited to have you with us. Let’s get started with your first service request!
+            We’re excited to have you with us. Let’s get started!
           </p>
           <p className="text-left mb-8">
             <span className='text-[#008cfc]'>JDK HOMECARE</span> provides better home service and maintenance solutions. Whether it’s cleaning, repairs, or anything in between, we’ve got you covered. Your satisfaction is our priority!

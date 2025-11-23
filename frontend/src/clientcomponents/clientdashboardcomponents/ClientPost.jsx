@@ -636,7 +636,7 @@ const ClientPost = () => {
         </div>
 
         {hasCurrent ? (
-          <div className="bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300 hover:ring-2 hover:shadow-xl hover:ring-inset hover:border-[#008cfc] hover:ring-[#008cfc]">
+          <div className="bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-4 min-w-0">
                 <div className="shrink-0">

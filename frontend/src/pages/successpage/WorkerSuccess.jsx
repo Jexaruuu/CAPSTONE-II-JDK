@@ -5,14 +5,19 @@ const WorkerSuccessPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    localStorage.removeItem('first_name');
+    localStorage.removeItem('last_name');
+    localStorage.removeItem('sex');
+    localStorage.removeItem('role');
+    localStorage.removeItem('auth_uid');
+
     const t = setTimeout(() => {
-      navigate('/workerwelcome', { replace: true });
+      navigate('/login', { replace: true });
     }, 5000);
 
-    // Block back navigation while this page is mounted
     const blockBack = (e) => {
       e?.preventDefault?.();
-      navigate('/workerwelcome', { replace: true });
+      navigate('/login', { replace: true });
       setTimeout(() => window.history.go(1), 0);
     };
     window.history.replaceState(null, '', window.location.href);
@@ -29,7 +34,6 @@ const WorkerSuccessPage = () => {
       <div className="text-center">
         <img src="Success.png" alt="Success" className="h-24 w-24 mx-auto" />
         <h2 className="text-2xl font-semibold text-[#008cfc] mt-4">Congratulations, your account has been created!</h2>
-        <p className="text-lg mt-2">Let's get you started!</p>
       </div>
     </div>
   );
