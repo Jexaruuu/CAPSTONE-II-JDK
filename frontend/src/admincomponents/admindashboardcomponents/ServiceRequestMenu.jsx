@@ -1515,60 +1515,85 @@ export default function AdminServiceRequests() {
           </div>
         )}
 
-        {showReason && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Decline reason"
-            tabIndex={-1}
-            className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
-          >
-            <div className="absolute inset-0.bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
-            <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
-              <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
-                  <span className="inline-flex items-center gap-1 rounded-full.border px-2.5 py-1 text-xs.font-medium bg-red-50 text-red-700 border-red-200">
-                    <span className="h-3 w-3.rounded-full bg-current opacity-30" />
-                    {reasonTarget?.service_type || "Request"}
-                  </span>
-                </div>
-                <div className="mt-1 text-sm text-gray-600">Created {reasonTarget?.created_at_display || "-"}</div>
-              </div>
-              <div className="p-6">
-                <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
-                  <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">Reason</div>
-                  <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
-                    {getReasonText(reasonTarget)}
-                  </div>
-                </div>
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-red-200 bg-white p-4">
-                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Client</div>
-                    <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                      {[reasonTarget?.name_first, reasonTarget?.name_last].filter(Boolean).join(" ") || "-"}
-                    </div>
-                    <div className="text-sm text-gray-600">{reasonTarget?.email || "-"}</div>
-                  </div>
-                  <div className="rounded-xl border border-red-200 bg-white p-4">
-                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service</div>
-                    <div className="mt-1 text-[15px] font-semibold text-gray-900">{reasonTarget?.service_task || "-"}</div>
-                    <div className="text-sm text-gray-600">{reasonTarget?.service_type || "-"}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
-                <button
-                  type="button"
-                  onClick={() => { setShowReason(false); }}
-                  className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-2 text-sm.font-medium text-red-600 hover:bg-red-50"
-                >
-                  Close
-                </button>
-              </div>
+{showReason && (
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-label="Decline reason (service request)"
+    tabIndex={-1}
+    className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
+  >
+    <div
+      className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      onClick={() => setShowReason(false)}
+    />
+    <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
+      <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+            <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+            {reasonTarget?.service_type || "Request"}
+          </span>
+        </div>
+        <div className="mt-1 text-sm text-gray-600">
+          Created {reasonTarget?.created_at_display || "-"}
+        </div>
+        <div className="text-sm text-gray-600">
+          Decided {reasonTarget?.decided_at ? fmtDateTime(reasonTarget.decided_at) : "-"}
+        </div>
+      </div>
+
+      <div className="p-6">
+        <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
+          <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">
+            Reason
+          </div>
+          <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
+            {getReasonText(reasonTarget)}
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-red-200 bg-white p-4">
+            <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">
+              Client
+            </div>
+            <div className="mt-1 text-[15px] font-semibold text-gray-900">
+              {[reasonTarget?.name_first, reasonTarget?.name_last].filter(Boolean).join(" ") || "-"}
+            </div>
+            <div className="text-sm text-gray-600">{reasonTarget?.email || "-"}</div>
+          </div>
+
+          <div className="rounded-xl border border-red-200 bg-white p-4">
+            <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">
+              Service
+            </div>
+            <div className="mt-1 text-[15px] font-semibold text-gray-900">
+              {reasonTarget?.service_task || "-"}
+            </div>
+            <div className="text-sm text-gray-600">
+              {reasonTarget?.service_type || "-"}
             </div>
           </div>
-        )}
+        </div>
+      </div>
+
+      <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
+        <button
+          type="button"
+          onClick={() => {
+            setShowReason(false);
+          }}
+          className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
         {submittingDecline && !showDeclineLoading && (
           <div

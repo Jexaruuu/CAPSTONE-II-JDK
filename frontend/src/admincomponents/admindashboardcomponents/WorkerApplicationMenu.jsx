@@ -1313,9 +1313,9 @@ export default function WorkerApplicationMenu() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky.top-0 z-10 bg-white px-4.py-3 font-semibold text-gray-700 border border-gray-200 w-[260px] whitespace-nowrap">
-                          Email
-                        </th>
+                     <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[260px] whitespace-nowrap">
+  Email
+</th>
                         <th
                           className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
                           onClick={() => toggleSort("service_types_lex")}
@@ -1333,12 +1333,12 @@ export default function WorkerApplicationMenu() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky.top-0 z-10 bg-white px-4.py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
-                          Status
-                        </th>
-                        <th className="sticky.top-0 z-10 bg-white px-4.py-3 w-40 font-semibold text-gray-700 border border-gray-200">
-                          Action
-                        </th>
+                     <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
+  Status
+</th>
+                     <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
+  Action
+</th>
                       </tr>
                     </thead>
 
