@@ -136,30 +136,51 @@ const Card = ({ item, onView, onReason }) => {
   const info = item.info || {};
   const work = item.work || {};
   const rate = item.rate || {};
-  const serviceTypes = Array.isArray(work?.service_types)
-    ? work.service_types
-    : work?.service_type
-    ? [work.service_type]
-    : [];
+const serviceTypes = Array.isArray(work?.service_types)
+  ? work.service_types
+  : work?.service_type
+  ? [work.service_type]
+  : [];
   const primaryService = serviceTypes[0] || work.primary_service || "";
+
+  const iconSources = serviceTypes.length
+  ? serviceTypes
+  : [primaryService || work?.work_description];
+
+const iconComponents = iconSources.map((st, idx) => {
+  const IconComp = iconForService(st);
+  return <IconComp key={`${st}-${idx}`} className="h-4 w-4" />;
+});
+
   const Icon = iconForService(primaryService || work?.work_description);
-  const statusLower = String(item.status || "").toLowerCase();
-  const isPending = statusLower === "pending";
-  const isApproved = statusLower === "approved";
-  const isDeclined = statusLower === "declined";
-  const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
-  const cardBase = "bg-white border border-gray-300 rounded-2xl p-6 shadow-sm";
-  const cardState = "";
-  const profileUrl = info?.profile_picture_url || avatarFromName(info?.first_name || "Worker");
+
+const statusLower = String(item.status || "").toLowerCase();
+const isPending = statusLower === "pending";
+const isApproved = statusLower === "approved";
+const isDeclined = statusLower === "declined";
+const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
+
+   const isMuted = isCancelled;
+
+ const cardBase =
+  "bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300";
+  const cardState = isDeclined
+  ? "hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
+  : "";
+  const profileUrl =
+    info?.profile_picture_url || avatarFromName(info?.first_name || "Worker");
   const createdAgo = item.created_at ? timeAgo(item.created_at) : "";
   const address = buildLocation(info, work);
   const yearsExp =
-    work?.years_experience !== undefined && work?.years_experience !== null && work?.years_experience !== ""
+    work?.years_experience !== undefined &&
+    work?.years_experience !== null &&
+    work?.years_experience !== ""
       ? String(work.years_experience)
       : "";
   const tools = work?.tools_provided;
   const rateTypeText = formatRateType(rate?.rate_type);
-  return (
+
+   return (
     <div className={`${cardBase} ${cardState}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4 min-w-0">
@@ -167,59 +188,105 @@ const Card = ({ item, onView, onReason }) => {
             <img
               src={profileUrl}
               alt=""
-              className="w-20 h-20 rounded-full object-cover border border-blue-300"
-              onError={(e) => { e.currentTarget.src = avatarFromName(info?.first_name || "Worker"); }}
+              className="w-16 h-16 rounded-full object-cover border border-blue-300"
+              onError={(e) => {
+                e.currentTarget.src = avatarFromName(
+                  info?.first_name || "Worker"
+                );
+              }}
             />
           </div>
           <div className="min-w-0">
             <div className="text-xl md:text-2xl font-semibold truncate">
               <span className="text-gray-700">Service Type:</span>{" "}
-              <span className={isCancelled || isDeclined ? "text-gray-500" : "text-[#008cfc]"}>
+              <span className={isMuted ? "text-gray-500" : "text-[#008cfc]"}>
                 {primaryService || "Service"}
               </span>
             </div>
-            <div className={`mt-1 text-base md:text-lg truncate ${isCancelled || isDeclined ? "text-gray-600" : ""}`}>
+            <div
+              className={`mt-1 text-base md:text-lg truncate ${
+                isMuted ? "text-gray-600" : "text-black"
+              }`}
+            >
               <span className="font-semibold">Work Description:</span>{" "}
               {work?.work_description || "-"}
             </div>
-            <div className="mt-1 text-sm text-gray-500">
-              {createdAgo ? `Submitted ${createdAgo} ago by You` : ""}
+            <div className="mt-1 text-base text-gray-500">
+              {createdAgo ? `Created ${createdAgo}` : ""}
             </div>
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
               <div className="space-y-1.5">
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Address:</span>
-                  <span className={isCancelled || isDeclined ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
+                  <span
+                    className={
+                      isMuted
+                        ? "text-gray-500 font-medium"
+                        : "text-[#008cfc] font-medium"
+                    }
+                  >
                     {address || "-"}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Years of Experience:</span>
-                  <span className={isCancelled || isDeclined ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
+                  <span className="text-gray-700 font-semibold">
+                    Years of Experience:
+                  </span>
+                  <span
+                    className={
+                      isMuted
+                        ? "text-gray-500 font-medium"
+                        : "text-[#008cfc] font-medium"
+                    }
+                  >
                     {yearsExp ? yearsExp : "-"}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Tools Provided:</span>
-                  <span className={isCancelled || isDeclined ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
+                  <span className="text-gray-700 font-semibold">
+                    Tools Provided:
+                  </span>
+                  <span
+                    className={
+                      isMuted
+                        ? "text-gray-500 font-medium"
+                        : "text-[#008cfc] font-medium"
+                    }
+                  >
                     {typeof tools === "boolean"
                       ? tools
                         ? "Yes"
                         : "No"
-                      : (String(tools || "").trim() || "-")}
+                      : String(tools || "").trim() || "-"}
                   </span>
                 </div>
               </div>
               <div className="space-y-1.5 md:pl-10">
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Rate Type:</span>
-                  <span className={isCancelled || isDeclined ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
+                  <span className="text-gray-700 font-semibold">
+                    Rate Type:
+                  </span>
+                  <span
+                    className={
+                      isMuted
+                        ? "text-gray-500 font-medium"
+                        : "text-[#008cfc] font-medium"
+                    }
+                  >
                     {rateTypeText || "-"}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Service Rate:</span>
-                  <span className={isCancelled || isDeclined ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
+                  <span className="text-gray-700 font-semibold">
+                    Service Rate:
+                  </span>
+                  <span
+                    className={
+                      isMuted
+                        ? "text-gray-500 font-medium"
+                        : "text-[#008cfc] font-medium"
+                    }
+                  >
                     <RateText rate={rate} />
                   </span>
                 </div>
@@ -227,6 +294,7 @@ const Card = ({ item, onView, onReason }) => {
             </div>
           </div>
         </div>
+
         <div className="flex items-center gap-2 shrink-0">
           {isCancelled && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
@@ -237,12 +305,12 @@ const Card = ({ item, onView, onReason }) => {
           {!isCancelled && isDeclined && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Declined
+              Declined Application
             </span>
           )}
           {!isCancelled && !isDeclined && isApproved && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              <span className="h-3 w-3 rounded-full bg-current.opacity-30" />
               Approved Application
             </span>
           )}
@@ -255,24 +323,41 @@ const Card = ({ item, onView, onReason }) => {
               Pending
             </span>
           )}
-          <div className={`h-10 w-10 rounded-lg border flex items-center justify-center ${isCancelled || isDeclined ? "border-gray-300 text-gray-500" : "border-gray-300 text-[#008cfc]"}`}>
+          <div
+            className={`h-10 w-10 rounded-lg border flex items-center justify-center ${
+              isCancelled || isDeclined
+                ? "border-gray-300 text-gray-500"
+                : "border-gray-300 text-[#008cfc]"
+            }`}
+          >
             <Icon className="h-5 w-5" />
           </div>
         </div>
       </div>
-      <div className="-mt-9 flex justify-end gap-2">
+
+          <div className="-mt-9 flex justify-end gap-2">
         {isDeclined || isCancelled ? (
           <Link
             to={`/workerpostapplication?id=${encodeURIComponent(item.id)}`}
-            onClick={(e) => { e.preventDefault(); onReason(item); }}
-            className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium ${isCancelled ? "border-orange-300 text-orange-600 hover:bg-orange-50" : "border-red-300 text-red-600 hover:bg-red-50"}`}
+            onClick={(e) => {
+              e.preventDefault();
+              onReason(item);
+            }}
+            className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium ${
+              isCancelled
+                ? "border-orange-300 text-orange-600 hover:bg-orange-50"
+                : "border-red-300 text-red-600 hover:bg-red-50"
+            }`}
           >
             View Reason
           </Link>
         ) : (
           <Link
             to={`/workerpostapplication?id=${encodeURIComponent(item.id)}`}
-            onClick={(e) => { e.preventDefault(); onView(item); }}
+            onClick={(e) => {
+              e.preventDefault();
+              onView(item);
+            }}
             className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
           >
             View
