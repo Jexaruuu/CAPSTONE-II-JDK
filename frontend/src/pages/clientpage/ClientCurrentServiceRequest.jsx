@@ -302,6 +302,16 @@ export default function ClientCurrentServiceRequest() {
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
 
+    useEffect(() => {
+    if (showReason) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = original;
+      };
+    }
+  }, [showReason]);
+
   const markUserCancelled = (arr) => {
     let ids = [];
     try {

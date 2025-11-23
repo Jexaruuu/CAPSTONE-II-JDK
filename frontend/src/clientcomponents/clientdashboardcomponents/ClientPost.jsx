@@ -655,7 +655,7 @@ const ClientPost = () => {
                   <div className="mt-1 text-base md:text-lg truncate">
                     <span className="font-semibold">Service Task:</span> {currentItem?.details?.service_task || 'Task'}
                   </div>
-                  <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago by You` : ''}</div>
+                  <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago ` : ''}</div>
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap gap-x-6 gap-y-1">

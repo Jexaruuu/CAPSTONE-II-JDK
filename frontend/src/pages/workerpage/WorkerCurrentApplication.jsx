@@ -69,7 +69,10 @@ const peso = (v) => {
 const formatRateType = (t) => {
   const s = String(t || "").replace(/_/g, " ").trim().toLowerCase();
   if (!s) return "-";
-  return s.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  return s
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 };
 
 const RateText = ({ rate }) => {
@@ -136,37 +139,29 @@ const Card = ({ item, onView, onReason }) => {
   const info = item.info || {};
   const work = item.work || {};
   const rate = item.rate || {};
-const serviceTypes = Array.isArray(work?.service_types)
-  ? work.service_types
-  : work?.service_type
-  ? [work.service_type]
-  : [];
+  const serviceTypes = Array.isArray(work?.service_types)
+    ? work.service_types
+    : work?.service_type
+    ? [work.service_type]
+    : [];
   const primaryService = serviceTypes[0] || work.primary_service || "";
-
   const iconSources = serviceTypes.length
-  ? serviceTypes
-  : [primaryService || work?.work_description];
+    ? serviceTypes
+    : [primaryService || work?.work_description];
 
-const iconComponents = iconSources.map((st, idx) => {
-  const IconComp = iconForService(st);
-  return <IconComp key={`${st}-${idx}`} className="h-4 w-4" />;
-});
-
-  const Icon = iconForService(primaryService || work?.work_description);
-
-const statusLower = String(item.status || "").toLowerCase();
-const isPending = statusLower === "pending";
-const isApproved = statusLower === "approved";
-const isDeclined = statusLower === "declined";
-const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
-
-   const isMuted = isCancelled;
-
- const cardBase =
-  "bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300";
+  const statusLower = String(item.status || "").toLowerCase();
+  const isPending = statusLower === "pending";
+  const isApproved = statusLower === "approved";
+  const isDeclined = statusLower === "declined";
+  const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
+  const isMuted = isCancelled;
+  const cardBase =
+    "bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300";
   const cardState = isDeclined
-  ? "hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
-  : "";
+    ? "hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
+    : isPending && !isCancelled
+    ? "hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl"
+    : "";
   const profileUrl =
     info?.profile_picture_url || avatarFromName(info?.first_name || "Worker");
   const createdAgo = item.created_at ? timeAgo(item.created_at) : "";
@@ -180,7 +175,7 @@ const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
   const tools = work?.tools_provided;
   const rateTypeText = formatRateType(rate?.rate_type);
 
-   return (
+  return (
     <div className={`${cardBase} ${cardState}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4 min-w-0">
@@ -323,19 +318,27 @@ const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
               Pending
             </span>
           )}
-          <div
-            className={`h-10 w-10 rounded-lg border flex items-center justify-center ${
-              isCancelled || isDeclined
-                ? "border-gray-300 text-gray-500"
-                : "border-gray-300 text-[#008cfc]"
-            }`}
-          >
-            <Icon className="h-5 w-5" />
+          <div className="flex items-center gap-2">
+            {iconSources.map((st, idx) => {
+              const IconComp = iconForService(st);
+              return (
+                <div
+                  key={`${st}-${idx}`}
+                  className={`h-10 w-10 rounded-lg border flex items-center justify-center ${
+                    isCancelled || isDeclined
+                      ? "border-gray-300 text-gray-500"
+                      : "border-gray-300 text-[#008cfc]"
+                  }`}
+                >
+                  <IconComp className="h-5 w-5" />
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-          <div className="-mt-9 flex justify-end gap-2">
+      <div className="-mt-9 flex justify-end gap-2">
         {isDeclined || isCancelled ? (
           <Link
             to={`/workerpostapplication?id=${encodeURIComponent(item.id)}`}
@@ -379,6 +382,16 @@ export default function WorkerCurrentApplication() {
   const [logoBroken, setLogoBroken] = useState(false);
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
+
+    useEffect(() => {
+    if (showReason) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = original;
+      };
+    }
+  }, [showReason]);
 
   const fetchByStatus = async (statusKey) => {
     setLoading(true);
@@ -509,10 +522,12 @@ export default function WorkerCurrentApplication() {
     const jd = work?.job_details;
     const set = new Set();
     if (Array.isArray(jd)) {
-      jd.forEach(v => { if (v) set.add(String(v)); });
+      jd.forEach((v) => {
+        if (v) set.add(String(v));
+      });
     } else if (jd && typeof jd === "object") {
-      Object.values(jd).forEach(v => {
-        if (Array.isArray(v)) v.forEach(x => { if (x) set.add(String(x)); });
+      Object.values(jd).forEach((v) => {
+        if (Array.isArray(v)) v.forEach((x) => { if (x) set.add(String(x)); });
         else if (v) set.add(String(v));
       });
     }
@@ -539,37 +554,47 @@ export default function WorkerCurrentApplication() {
                 <button
                   type="button"
                   onClick={() => setStatusFilter("all")}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "all" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                    statusFilter === "all" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
                   All
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "pending" ? "all" : "pending"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "pending" ? "border-yellow-500 bg-yellow-500 text-white hover:bg-yellow-600" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                    statusFilter === "pending" ? "border-yellow-500 bg-yellow-500 text-white hover:bg-yellow-600" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
-                  Pending
+                  Pending Applications
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "approved" ? "all" : "approved"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "approved" ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                    statusFilter === "approved" ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
-                  Approved
+                  Approved Applications
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "declined" ? "all" : "declined"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "declined" ? "border-red-600 bg-red-600 text-white hover:bg-red-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                    statusFilter === "declined" ? "border-red-600 bg-red-600 text-white hover:bg-red-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
-                  Declined
+                  Declined Applications
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "cancelled" ? "all" : "cancelled"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "cancelled" ? "border-orange-600 bg-orange-600 text-white hover:bg-orange-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                    statusFilter === "cancelled" ? "border-orange-600 bg-orange-600 text-white hover:bg-orange-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
-                  Canceled
+                  Canceled Applications
                 </button>
               </div>
             </div>
@@ -580,7 +605,7 @@ export default function WorkerCurrentApplication() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search applications"
-                  className="border-none outline-none text-black w-full sm:w-64 md:w-80 h-full placeholder:text-gray-400 bg-transparent"
+                  className="border-none outline-none text-black w-full.sm:w-64 md:w-80 h-full placeholder:text-gray-400 bg-transparent"
                 />
               </div>
               <button
@@ -668,84 +693,118 @@ export default function WorkerCurrentApplication() {
 
       <WorkerFooter />
 
-      {showReason && (
-        <>
-          {(() => {
-            const isCancel = String(reasonTarget?.status || "").toLowerCase() === "cancelled" || String(reasonTarget?.status || "").toLowerCase() === "canceled";
-            const headGrad = isCancel ? "from-orange-50" : "from-red-50";
-            const borderCol = isCancel ? "border-orange-300" : "border-red-300";
-            const titleCol = isCancel ? "text-orange-700" : "text-red-700";
-            const badgeBg = isCancel ? "bg-orange-50" : "bg-red-50";
-            const badgeText = isCancel ? "text-orange-700" : "text-red-700";
-            const badgeBorder = isCancel ? "border-orange-200" : "border-red-200";
-            const panelBorder = isCancel ? "border-orange-200" : "border-red-200";
-            const panelBg = isCancel ? "bg-orange-50/60" : "bg-red-50/60";
-            const closeBorder = isCancel ? "border-orange-300" : "border-red-300";
-            const closeText = isCancel ? "text-orange-600" : "text-red-600";
-            const closeHover = isCancel ? "hover:bg-orange-50" : "hover:bg-red-50";
-            const title = isCancel ? "Cancel Reason" : "Decline Reason";
-            const work = reasonTarget?.work || {};
-            const serviceTypesText = buildServiceTypeList(work);
-            const serviceTasksText = buildServiceTasks(work);
-            return (
+{showReason && (
+  <>
+    {(() => {
+      const isCancel =
+        String(reasonTarget?.status || "").toLowerCase() === "cancelled" ||
+        String(reasonTarget?.status || "").toLowerCase() === "canceled";
+      const headGrad = isCancel ? "from-orange-50" : "from-red-50";
+      const borderCol = isCancel ? "border-orange-300" : "border-red-300";
+      const titleCol = isCancel ? "text-orange-700" : "text-red-700";
+      const badgeBg = isCancel ? "bg-orange-50" : "bg-red-50";
+      const badgeText = isCancel ? "text-orange-700" : "text-red-700";
+      const badgeBorder = isCancel ? "border-orange-200" : "border-red-200";
+      const panelBorder = isCancel ? "border-orange-200" : "border-red-200";
+      const panelBg = isCancel ? "bg-orange-50/60" : "bg-red-50/60";
+      const closeBorder = isCancel ? "border-orange-300" : "border-red-300";
+      const closeText = isCancel ? "text-orange-600" : "text-red-600";
+      const closeHover = isCancel ? "hover:bg-orange-50" : "hover:bg-red-50";
+      const title = isCancel ? "Cancel Reason" : "Decline Reason";
+      const work = reasonTarget?.work || {};
+      const serviceTypesText = buildServiceTypeList(work);
+      const serviceTasksText = buildServiceTasks(work);
+
+      return (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          tabIndex={-1}
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowReason(false)}
+          />
+          <div
+            className={`relative w-full max-w-[720px] rounded-2xl border ${borderCol} bg-white shadow-2xl overflow-hidden`}
+          >
+            <div
+              className={`px-6 py-4 bg-gradient-to-r ${headGrad} to-white border-b ${
+                isCancel ? "border-orange-200" : "border-red-200"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className={`text-lg font-semibold ${titleCol}`}>{title}</h3>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${badgeBg} ${badgeText} ${badgeBorder}`}
+                >
+                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                  {(Array.isArray(work?.service_types) &&
+                    work.service_types[0]) ||
+                    "Application"}
+                </span>
+              </div>
+              <div className="mt-1 text-sm text-gray-600">
+                Created{" "}
+                {reasonTarget?.created_at
+                  ? formatDate(reasonTarget.created_at)
+                  : "-"}
+              </div>
+            </div>
+            <div className="p-6">
               <div
-                role="dialog"
-                aria-modal="true"
-                aria-label={title}
-                tabIndex={-1}
-                className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
+                className={`rounded-xl border ${panelBorder} ${panelBg} p-4`}
               >
-                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
-                <div className={`relative w-full max-w-[720px] rounded-2xl border ${borderCol} bg-white shadow-2xl overflow-hidden`}>
-                  <div className={`px-6 py-4 bg-gradient-to-r ${headGrad} to-white border-b ${isCancel ? "border-orange-200" : "border-red-200"}`}>
-                    <div className="flex items-center justify-between">
-                      <h3 className={`text-lg font-semibold ${titleCol}`}>{title}</h3>
-                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${badgeBg} ${badgeText} ${badgeBorder}`}>
-                        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                        {(Array.isArray(work?.service_types) && work.service_types[0]) || "Application"}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-sm text-gray-600">
-                      Created {reasonTarget?.created_at ? `${formatDate(reasonTarget.created_at)}` : "-"}
-                    </div>
+                <div
+                  className={`text-[11px] font-semibold tracking-widest ${
+                    isCancel ? "text-orange-700" : "text-red-700"
+                  } uppercase`}
+                >
+                  Reason
+                </div>
+                <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
+                  {getReasonText(reasonTarget)}
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                  <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">
+                    Service Type
                   </div>
-                  <div className="p-6">
-                    <div className={`rounded-xl border ${panelBorder} ${panelBg} p-4`}>
-                      <div className={`text-[11px] font-semibold tracking-widest ${isCancel ? "text-orange-700" : "text-red-700"} uppercase`}>Reason</div>
-                      <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
-                        {getReasonText(reasonTarget)}
-                      </div>
-                    </div>
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="rounded-xl border border-gray-200 bg-white p-4">
-                        <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service Type</div>
-                        <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                          {serviceTypesText}
-                        </div>
-                      </div>
-                      <div className="rounded-xl border border-gray-200 bg-white p-4">
-                        <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service Task</div>
-                        <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                          {serviceTasksText}
-                        </div>
-                      </div>
-                    </div>
+                  <div className="mt-1 text-[15px] font-semibold text-gray-900">
+                    {serviceTypesText}
                   </div>
-                  <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
-                    <button
-                      type="button"
-                      onClick={() => { setShowReason(false); }}
-                      className={`w-full inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium ${closeBorder} ${closeText} ${closeHover}`}
-                    >
-                      Close
-                    </button>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                  <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">
+                    Service Task
+                  </div>
+                  <div className="mt-1 text-[15px] font-semibold text-gray-900">
+                    {serviceTasksText}
                   </div>
                 </div>
               </div>
-            );
-          })()}
-        </>
-      )}
+            </div>
+            <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReason(false);
+                }}
+                className={`w-full inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium ${closeBorder} ${closeText} ${closeHover}`}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+  </>
+)}
+
 
       {false && (
         <div
