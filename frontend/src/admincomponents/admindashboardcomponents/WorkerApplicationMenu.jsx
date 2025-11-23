@@ -139,7 +139,6 @@ function YesNoPill({ yes }) {
   );
 }
 
-
 function ServiceTypesInline({ list, nowrap }) {
   const arr = Array.isArray(list) ? list.filter(Boolean) : [];
   if (arr.length === 0) return <span className="text-gray-500 text-sm">-</span>;
@@ -809,7 +808,12 @@ export default function WorkerApplicationMenu() {
         n.delete(id);
         return n;
       });
-      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), approved: c.approved + 1, total: Math.max(0, c.pending - 1) + c.approved + 1 + c.declined }));
+      setCounts((c) => ({
+        ...c,
+        pending: Math.max(0, c.pending - 1),
+        approved: c.approved + 1,
+        total: Math.max(0, c.pending - 1) + c.approved + 1 + c.declined
+      }));
     } catch (err) {
       setLoadError(err?.response?.data?.message || err?.message || "Failed to approve");
     }
@@ -840,7 +844,12 @@ export default function WorkerApplicationMenu() {
         n.delete(id);
         return n;
       });
-      setCounts((c) => ({ ...c, pending: Math.max(0, c.pending - 1), declined: c.declined + 1, total: Math.max(0, c.pending - 1) + c.approved + c.declined + 1 }));
+      setCounts((c) => ({
+        ...c,
+        pending: Math.max(0, c.pending - 1),
+        declined: c.declined + 1,
+        total: Math.max(0, c.pending - 1) + c.approved + c.declined + 1
+      }));
     } catch (err) {
       setLoadError(err?.response?.data?.message || err?.message || "Failed to decline");
       throw err;
@@ -965,7 +974,7 @@ export default function WorkerApplicationMenu() {
           <SectionCard
             title="Work Details"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs.font-medium bg.white text-gray-700 border-gray-200">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
                 Experience
               </span>
@@ -1005,7 +1014,7 @@ export default function WorkerApplicationMenu() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs.font-medium bg.white text-gray-700 border-gray-200">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
                 Pricing
               </span>
@@ -1039,7 +1048,7 @@ export default function WorkerApplicationMenu() {
         <SectionCard
           title="Personal Information"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs.font-medium bg.white text-gray-700 border-gray-200">
               <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
               Worker
             </span>
@@ -1060,7 +1069,7 @@ export default function WorkerApplicationMenu() {
         <SectionCard
           title="Work Details"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs.font-medium bg.white text-gray-700 border-gray-200">
               <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
               Experience
             </span>
@@ -1105,7 +1114,7 @@ export default function WorkerApplicationMenu() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs.font-medium bg.white text-gray-700 border-gray-200">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
                 Pricing
               </span>
@@ -1141,7 +1150,7 @@ export default function WorkerApplicationMenu() {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
               <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
               Pricing
             </span>
@@ -1304,7 +1313,7 @@ export default function WorkerApplicationMenu() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[260px] whitespace-nowrap">
+                        <th className="sticky.top-0 z-10 bg-white px-4.py-3 font-semibold text-gray-700 border border-gray-200 w-[260px] whitespace-nowrap">
                           Email
                         </th>
                         <th
@@ -1324,10 +1333,10 @@ export default function WorkerApplicationMenu() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
+                        <th className="sticky.top-0 z-10 bg-white px-4.py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
                           Status
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
+                        <th className="sticky.top-0 z-10 bg-white px-4.py-3 w-40 font-semibold text-gray-700 border border-gray-200">
                           Action
                         </th>
                       </tr>
@@ -1335,8 +1344,10 @@ export default function WorkerApplicationMenu() {
 
                     <tbody className="text-sm text-gray-800 font-semibold">
                       {pageRows.map((u, idx) => {
-                        const isDeclined = String(u.status).toLowerCase() === "declined";
-                        const disableActions = u.status === "approved" || isDeclined;
+                        const sLower = String(u.status || "").toLowerCase();
+                        const isDeclined = sLower === "declined";
+                        const isApproved = sLower === "approved";
+                        const disableActions = isApproved || isDeclined;
                         const fullName = u.full_name || [u.name_first, u.name_last].filter(Boolean).join(" ");
                         return (
                           <tr
@@ -1363,12 +1374,12 @@ export default function WorkerApplicationMenu() {
                               </div>
                             </td>
 
-                           <td className="px-4 py-4 border border-gray-200 w-[260px] whitespace-nowrap">
-  <div className="truncate">{u.email || "-"}</div>
-</td>
-<td className="px-4 py-4 border border-gray-200.align-top">
-  <ServiceTypesInline list={u.service_types} nowrap />
-</td>
+                            <td className="px-4 py-4 border border-gray-200 w-[260px] whitespace-nowrap">
+                              <div className="truncate">{u.email || "-"}</div>
+                            </td>
+                            <td className="px-4 py-4 border border-gray-200.align-top">
+                              <ServiceTypesInline list={u.service_types} nowrap />
+                            </td>
                             <td className="px-4 py-4 border border-gray-200 whitespace-nowrap w-[220px]">
                               {u.created_at_display || "-"}
                             </td>
@@ -1391,7 +1402,7 @@ export default function WorkerApplicationMenu() {
                                   >
                                     Reason
                                   </button>
-                                ) : (
+                                ) : isApproved ? null : (
                                   <>
                                     <button
                                       onClick={() => openDeclineModal(u)}
@@ -1497,7 +1508,7 @@ export default function WorkerApplicationMenu() {
                         }
                         currentTarget.style.display = "none";
                         if (parent) {
-                          parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#008cfc]">${((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1) || "?").toUpperCase()}</div>`;
+                          parent.innerHTML = `<div class="w-full h-full.grid place-items-center text-xl font-semibold text-[#008cfc]">${((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1) || "?").toUpperCase()}</div>`;
                         }
                       }}
                     />
@@ -1529,7 +1540,7 @@ export default function WorkerApplicationMenu() {
                   <SectionButton k="rate" label="Service Rate" />
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto pt-3">
+              <div className="flex-1 overflow-y-auto.pt-3">
                 {renderSection()}
               </div>
             </div>
@@ -1707,17 +1718,17 @@ export default function WorkerApplicationMenu() {
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
           <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
-           <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
-  <div className="flex items-center justify-between">
-    <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
-    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
-      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-      {Array.isArray(reasonTarget?.service_types) && reasonTarget?.service_types.length ? reasonTarget.service_types[0] : "Application"}
-    </span>
-  </div>
-  <div className="mt-1 text-sm text-gray-600">Created {reasonTarget?.created_at_display || "-"}</div>
-  <div className="text-sm text-gray-600">Decided {reasonTarget?.decided_at_display || "-"}</div>
-</div>
+            <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
+                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                  {Array.isArray(reasonTarget?.service_types) && reasonTarget?.service_types.length ? reasonTarget.service_types[0] : "Application"}
+                </span>
+              </div>
+              <div className="mt-1 text-sm text-gray-600">Created {reasonTarget?.created_at_display || "-"}</div>
+              <div className="text-sm text-gray-600">Decided {reasonTarget?.decided_at_display || "-"}</div>
+            </div>
             <div className="p-6">
               <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
                 <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">Reason</div>
@@ -1765,7 +1776,7 @@ export default function WorkerApplicationMenu() {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center.cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white.shadow-2xl p-8">
@@ -1793,7 +1804,7 @@ export default function WorkerApplicationMenu() {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center.cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
@@ -1914,11 +1925,11 @@ export default function WorkerApplicationMenu() {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+          className="fixed inset-0 z-[2147483647] flex.items-center justify-center"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex.items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBrokenDecline2 ? (
                 <img
                   src="/jdklogo.png"
@@ -1927,7 +1938,7 @@ export default function WorkerApplicationMenu() {
                   onError={() => setLogoBrokenDecline2(true)}
                 />
               ) : (
-                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex.items-center justify-center">
                   <span className="font-bold text-[#008cfc]">JDK</span>
                 </div>
               )}

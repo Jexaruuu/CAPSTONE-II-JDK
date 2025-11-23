@@ -110,30 +110,55 @@ const getWorkerEmail = () => {
   }
 };
 
-
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "Worker")}`;
+
+const buildLocation = (info, work) => {
+  const barangay =
+    info?.barangay ??
+    work?.barangay ??
+    info?.brgy ??
+    work?.brgy ??
+    "";
+  const street =
+    info?.street ??
+    work?.street ??
+    info?.street_name ??
+    work?.street_name ??
+    "";
+  const parts = [];
+  if (barangay) parts.push(`Barangay ${barangay}`);
+  if (street) parts.push(street);
+  return parts.join(", ");
+};
 
 const Card = ({ item, onView, onReason }) => {
   const info = item.info || {};
   const work = item.work || {};
   const rate = item.rate || {};
-  const Icon = iconForService(work?.service_types?.[0] || work?.work_description);
+  const serviceTypes = Array.isArray(work?.service_types)
+    ? work.service_types
+    : work?.service_type
+    ? [work.service_type]
+    : [];
+  const primaryService = serviceTypes[0] || work.primary_service || "";
+  const Icon = iconForService(primaryService || work?.work_description);
   const statusLower = String(item.status || "").toLowerCase();
   const isPending = statusLower === "pending";
   const isApproved = statusLower === "approved";
   const isDeclined = statusLower === "declined";
   const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
-  const cardBase = "rounded-2xl border p-5 md:p-6 shadow-sm transition-all duration-300";
-  const cardState = isDeclined
-    ? "border-gray-300 bg-white hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
-    : isApproved
-    ? "border-gray-300 bg-white hover:border-emerald-600 hover:ring-2 hover:ring-emerald-600 hover:shadow-xl"
-    : isCancelled
-    ? "border-gray-200 bg-gray-50"
-    : "border-gray-300 bg-white hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl";
+  const cardBase = "bg-white border border-gray-300 rounded-2xl p-6 shadow-sm";
+  const cardState = "";
   const profileUrl = info?.profile_picture_url || avatarFromName(info?.first_name || "Worker");
-  const title = work?.work_description || "Worker Application";
+  const createdAgo = item.created_at ? timeAgo(item.created_at) : "";
+  const address = buildLocation(info, work);
+  const yearsExp =
+    work?.years_experience !== undefined && work?.years_experience !== null && work?.years_experience !== ""
+      ? String(work.years_experience)
+      : "";
+  const tools = work?.tools_provided;
+  const rateTypeText = formatRateType(rate?.rate_type);
   return (
     <div className={`${cardBase} ${cardState}`}>
       <div className="flex items-start justify-between gap-4">
@@ -142,49 +167,61 @@ const Card = ({ item, onView, onReason }) => {
             <img
               src={profileUrl}
               alt=""
-              className="w-16 h-16 rounded-full object-cover border border-blue-300"
+              className="w-20 h-20 rounded-full object-cover border border-blue-300"
               onError={(e) => { e.currentTarget.src = avatarFromName(info?.first_name || "Worker"); }}
             />
           </div>
           <div className="min-w-0">
-            <h3 className={`text-xl md:text-2xl font-semibold truncate ${isCancelled ? "text-gray-700" : ""}`}>
-              <span className="text-gray-700">Application:</span>{" "}
-              <span className={isCancelled ? "text-gray-500" : "text-[#008cfc]"}>{title}</span>
-            </h3>
-            <div className={`mt-0.5 text-base md:text-lg truncate ${isCancelled ? "text-gray-600" : "text-black"}`}>
-              <span className="font-semibold">Primary Service:</span>{" "}
-              {Array.isArray(work?.service_types) && work.service_types.length ? work.service_types[0] : "-"}
+            <div className="text-xl md:text-2xl font-semibold truncate">
+              <span className="text-gray-700">Service Type:</span>{" "}
+              <span className={isCancelled || isDeclined ? "text-gray-500" : "text-[#008cfc]"}>
+                {primaryService || "Service"}
+              </span>
             </div>
-            <p className="mt-1 text-base text-gray-500">Created {timeAgo(item.created_at)} by You</p>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12 md:gap-x-16 text-base text-gray-700">
+            <div className={`mt-1 text-base md:text-lg truncate ${isCancelled || isDeclined ? "text-gray-600" : ""}`}>
+              <span className="font-semibold">Work Description:</span>{" "}
+              {work?.work_description || "-"}
+            </div>
+            <div className="mt-1 text-sm text-gray-500">
+              {createdAgo ? `Submitted ${createdAgo} ago by You` : ""}
+            </div>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
               <div className="space-y-1.5">
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                  <span className={isCancelled ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
-                    {work?.preferred_date ? formatDate(work.preferred_date) : "-"}
+                  <span className="text-gray-700 font-semibold">Address:</span>
+                  <span className={isCancelled || isDeclined ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
+                    {address || "-"}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Years of Experience:</span>
+                  <span className={isCancelled || isDeclined ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
+                    {yearsExp ? yearsExp : "-"}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Tools Provided:</span>
-                  <span className={isCancelled ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
-                    {work?.tools_provided || "-"}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Experience:</span>
-                  <span className={isCancelled ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
-                    {work?.years_experience !== undefined && work?.years_experience !== null ? `${work.years_experience} yr${Number(work.years_experience) === 1 ? "" : "s"}` : "-"}
+                  <span className={isCancelled || isDeclined ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
+                    {typeof tools === "boolean"
+                      ? tools
+                        ? "Yes"
+                        : "No"
+                      : (String(tools || "").trim() || "-")}
                   </span>
                 </div>
               </div>
               <div className="space-y-1.5 md:pl-10">
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Rate Type:</span>
-                  <span className={isCancelled ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{formatRateType(rate?.rate_type)}</span>
+                  <span className={isCancelled || isDeclined ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
+                    {rateTypeText || "-"}
+                  </span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Rate:</span>
-                  <span className={isCancelled ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}><RateText rate={rate} /></span>
+                  <span className="text-gray-700 font-semibold">Service Rate:</span>
+                  <span className={isCancelled || isDeclined ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>
+                    <RateText rate={rate} />
+                  </span>
                 </div>
               </div>
             </div>
@@ -206,7 +243,7 @@ const Card = ({ item, onView, onReason }) => {
           {!isCancelled && !isDeclined && isApproved && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Approved
+              Approved Application
             </span>
           )}
           {!isCancelled && !isDeclined && isPending && (
@@ -259,45 +296,45 @@ export default function WorkerCurrentApplication() {
   const navigate = useNavigate();
 
   const fetchByStatus = async (statusKey) => {
-  setLoading(true);
-  try {
-    const email = getWorkerEmail();
-    const statusParam = statusKey === "all" ? "all" : statusKey;
+    setLoading(true);
+    try {
+      const email = getWorkerEmail();
+      const statusParam = statusKey === "all" ? "all" : statusKey;
 
-    const { data } = await axios.get(`${API_BASE}/api/workerapplications/mine`, {
-      params: { status: statusParam, email: email || undefined },
-      withCredentials: true,
-    });
+      const { data } = await axios.get(`${API_BASE}/api/workerapplications/mine`, {
+        params: { status: statusParam, email: email || undefined },
+        withCredentials: true,
+      });
 
-    const arr = Array.isArray(data?.items) ? data.items : [];
-    const normalized = arr.map((r, i) => ({
-      id: r.request_group_id ?? r.id ?? `${i}`,
-      status: String(r.status || "pending").toLowerCase(),
-      created_at: r.created_at || new Date().toISOString(),
-      updated_at: r.decided_at || r.created_at || new Date().toISOString(),
-      info: r.info || {},
-      work: r.work || {},
-      rate: r.rate || {},
-      decision_reason: r.decision_reason || null,
-      reason_choice: r.reason_choice || null,
-      reason_other: r.reason_other || null,
-      decided_at: r.decided_at || null,
-      email_address: r.email_address || email || null,
-    }));
+      const arr = Array.isArray(data?.items) ? data.items : [];
+      const normalized = arr.map((r, i) => ({
+        id: r.request_group_id ?? r.id ?? `${i}`,
+        status: String(r.status || "pending").toLowerCase(),
+        created_at: r.created_at || new Date().toISOString(),
+        updated_at: r.decided_at || r.created_at || new Date().toISOString(),
+        info: r.info || {},
+        work: r.work || {},
+        rate: r.rate || {},
+        decision_reason: r.decision_reason || null,
+        reason_choice: r.reason_choice || null,
+        reason_other: r.reason_other || null,
+        decided_at: r.decided_at || null,
+        email_address: r.email_address || email || null,
+      }));
 
-    setItems(
-      normalized.sort(
-        (a, b) =>
-          new Date(b.updated_at).getTime() -
-          new Date(a.updated_at).getTime()
-      )
-    );
-  } catch {
-    setItems([]);
-  } finally {
-    setLoading(false);
-  }
-};
+      setItems(
+        normalized.sort(
+          (a, b) =>
+            new Date(b.updated_at).getTime() -
+            new Date(a.updated_at).getTime()
+        )
+      );
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchByStatus(statusFilter);

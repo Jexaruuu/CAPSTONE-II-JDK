@@ -482,7 +482,7 @@ function WorkerPost() {
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">
-        <div className="relative h-36 sm:h-44 md:h-52 lg:h-72">
+        <div className="relative h-36 sm=h-44 md:h-52 lg:h-72">
           {banners.map((src, i) => (
             <img
               key={i}
@@ -513,7 +513,7 @@ function WorkerPost() {
         </div>
 
         {hasCurrent ? (
-          <div className="bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300 hover:ring-2 hover:shadow-xl hover:ring-inset hover:border-[#008cfc] hover:ring-[#008cfc]">
+          <div className="bg-white border border-gray-300 rounded-2xl p-6 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-4 min-w-0">
                 <div className="shrink-0">
