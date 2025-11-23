@@ -256,13 +256,23 @@ export default function WorkerCurrentApplication() {
     setLoading(true);
     try {
       const email = getWorkerEmail();
+      if (!email) {
+        setItems([]);
+        return;
+      }
       const statusParam = statusKey === "all" ? "all" : statusKey;
       const { data } = await axios.get(`${API_BASE}/api/admin/workerapplications`, {
-        params: { status: statusParam, q: email || undefined },
+        params: { status: statusParam, q: email },
         withCredentials: true,
       });
       const arr = Array.isArray(data?.items) ? data.items : [];
-      const normalized = arr.map((r, i) => ({
+      const emailLower = String(email).toLowerCase();
+      const ownOnly = arr.filter((r) => {
+        const e = r.email_address || r.worker_email || r.info?.email_address || r.info?.email;
+        if (!e) return true;
+        return String(e).toLowerCase() === emailLower;
+      });
+      const normalized = ownOnly.map((r, i) => ({
         id: r.request_group_id ?? r.id ?? `${i}`,
         status: String(r.status || "pending").toLowerCase(),
         created_at: r.created_at || new Date().toISOString(),
