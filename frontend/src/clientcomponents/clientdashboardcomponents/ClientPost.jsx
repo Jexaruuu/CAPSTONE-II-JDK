@@ -972,7 +972,7 @@ const ClientPost = () => {
                 Cancel
               </button>
               <Link
-                to="/account-settings"
+                to="/client-account-settings"
                 onClick={goTop}
                 className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition text-center"
               >

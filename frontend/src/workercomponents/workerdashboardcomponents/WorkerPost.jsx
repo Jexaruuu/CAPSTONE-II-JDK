@@ -829,7 +829,7 @@ function WorkerPost() {
                 Cancel
               </button>
               <Link
-                to="/workerprofile"
+                to="/worker-account-settings"
                 onClick={() => { setShowProfileGate(false); goTop(); }}
                 className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition text-center"
               >
