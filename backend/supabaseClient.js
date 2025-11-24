@@ -40,12 +40,12 @@ function getSupabase() {
 }
 
 function getSupabaseAdmin() {
-  const { url, svc } = loadEnv();
-  if (!svc) throw new Error("Service role key missing on server");
-  if (!_adminClient || url !== _last.url || svc !== _last.svc) {
-    _adminClient = createClient(url, svc, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { url, anon, svc } = loadEnv();
+  const key = svc || anon;
+  if (!_adminClient || url !== _last.url || key !== _last.svc) {
+    _adminClient = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
     _last.url = url;
-    _last.svc = svc;
+    _last.svc = key;
   }
   return _adminClient;
 }

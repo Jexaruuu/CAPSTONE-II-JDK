@@ -210,12 +210,13 @@ const WorkerReviewPost = ({ handleBack }) => {
 
       const payload = pruneEmpty(payloadRaw) || {};
 
-      const resp = await fetch(`${base}/api/workerapplication/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      });
+const appU = encodeURIComponent(JSON.stringify({ r: "worker", e: email || null, au: localStorage.getItem("worker_auth_uid") || null }));
+const resp = await fetch(`${base}/api/workerapplication/submit`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'x-app-u': appU },
+  credentials: 'include',
+  body: JSON.stringify(payload)
+});
 
       let bodyText = '';
       try { bodyText = await resp.text(); } catch {}

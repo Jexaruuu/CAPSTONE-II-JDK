@@ -950,7 +950,6 @@ export default function WorkerApplicationMenu() {
   const renderSection = () => {
     if (!viewRow) return null;
     const t = String(viewRow?.rate_type || "").toLowerCase();
-
     if (sectionOpen === "all") {
       return (
         <div className="space-y-4">
@@ -966,18 +965,16 @@ export default function WorkerApplicationMenu() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
               <Field label="Date of Birth" value={viewRow?.birth_date_display || "-"} />
               <Field label="Age" value={viewRow?.age ?? "-"} />
+              <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
               <Field label="Barangay" value={viewRow?.barangay || "-"} />
               <Field label="Additional Address" value={viewRow?.additional_address || "-"} />
-              <div className="sm:col-span-3 mt-2 pt-3 border-t border-gray-100">
-                <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
-              </div>
             </div>
           </SectionCard>
 
           <SectionCard
             title="Work Details"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs.font-medium bg.white text-gray-700 border-gray-200">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
                 Experience
               </span>
@@ -1017,7 +1014,7 @@ export default function WorkerApplicationMenu() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs.font-medium bg.white text-gray-700 border-gray-200">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
                 Pricing
               </span>
@@ -1046,13 +1043,12 @@ export default function WorkerApplicationMenu() {
         </div>
       );
     }
-
     if (sectionOpen === "info") {
       return (
         <SectionCard
           title="Personal Information"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs.font-medium bg.white text-gray-700 border-gray-200">
               <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
               Worker
             </span>
@@ -1061,22 +1057,19 @@ export default function WorkerApplicationMenu() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
             <Field label="Date of Birth" value={viewRow?.birth_date_display || "-"} />
             <Field label="Age" value={viewRow?.age ?? "-"} />
+            <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
             <Field label="Barangay" value={viewRow?.barangay || "-"} />
             <Field label="Additional Address" value={viewRow?.additional_address || "-"} />
-            <div className="sm:col-span-3 mt-2 pt-3 border-t border-gray-100">
-              <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
-            </div>
           </div>
         </SectionCard>
       );
     }
-
     if (sectionOpen === "work") {
       return (
         <SectionCard
           title="Work Details"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs.font-medium bg.white text-gray-700 border-gray-200">
               <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
               Experience
             </span>
@@ -1114,7 +1107,6 @@ export default function WorkerApplicationMenu() {
         </SectionCard>
       );
     }
-
     if (sectionOpen === "rate") {
       const tLower = t;
       if (tLower.includes("by the job")) {
@@ -1122,7 +1114,7 @@ export default function WorkerApplicationMenu() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs.font-medium bg.white text-gray-700 border-gray-200">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
                 Pricing
               </span>
@@ -1140,7 +1132,7 @@ export default function WorkerApplicationMenu() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium.bg-white text-gray-700 border-gray-200">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
                 Pricing
               </span>
@@ -1158,7 +1150,7 @@ export default function WorkerApplicationMenu() {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
               <span className="h-2.5 w-2.5 rounded-full bg-[#008cfc]" />
               Pricing
             </span>
@@ -1321,9 +1313,9 @@ export default function WorkerApplicationMenu() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[260px] whitespace-nowrap">
-                          Email
-                        </th>
+                     <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[260px] whitespace-nowrap">
+  Email
+</th>
                         <th
                           className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
                           onClick={() => toggleSort("service_types_lex")}
@@ -1341,12 +1333,12 @@ export default function WorkerApplicationMenu() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
-                          Status
-                        </th>
-                        <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
-                          Action
-                        </th>
+                     <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
+  Status
+</th>
+                     <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
+  Action
+</th>
                       </tr>
                     </thead>
 
@@ -1360,7 +1352,7 @@ export default function WorkerApplicationMenu() {
                         return (
                           <tr
                             key={u.id}
-                            className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
+                            className={`border-t.border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
                           >
                             {ENABLE_SELECTION && (
                               <td className="px-4 py-4 border border-gray-200">
@@ -1385,7 +1377,7 @@ export default function WorkerApplicationMenu() {
                             <td className="px-4 py-4 border border-gray-200 w-[260px] whitespace-nowrap">
                               <div className="truncate">{u.email || "-"}</div>
                             </td>
-                            <td className="px-4 py-4 border border-gray-200 align-top">
+                            <td className="px-4 py-4 border border-gray-200.align-top">
                               <ServiceTypesInline list={u.service_types} nowrap />
                             </td>
                             <td className="px-4 py-4 border border-gray-200 whitespace-nowrap w-[220px]">
@@ -1421,7 +1413,7 @@ export default function WorkerApplicationMenu() {
                                     </button>
                                     <button
                                       onClick={() => approve(u.id)}
-                                      className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50.disabled:cursor-not-allowed"
                                       disabled={disableActions}
                                     >
                                       Approve
@@ -1516,7 +1508,7 @@ export default function WorkerApplicationMenu() {
                         }
                         currentTarget.style.display = "none";
                         if (parent) {
-                          parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#008cfc]">${((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1) || "?").toUpperCase()}</div>`;
+                          parent.innerHTML = `<div class="w-full h-full.grid place-items-center text-xl font-semibold text-[#008cfc]">${((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1) || "?").toUpperCase()}</div>`;
                         }
                       }}
                     />
@@ -1529,31 +1521,26 @@ export default function WorkerApplicationMenu() {
                   </div>
                 </div>
                 <div className="flex flex-col items-start md:items-end gap-2">
-                  <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
-                    Application Summary
-                  </div>
                   <div className="text-xs text-gray-500">
                     Created{" "}
                     <span className="font-medium text-gray-700">
                       {viewRow.created_at_display || "-"}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <StatusPill value={viewRow.status} />
-                  </div>
+                  <StatusPill value={viewRow.status} />
                 </div>
               </div>
             </div>
 
             <div className="px-6 sm:px-8 py-4 flex-1 bg-gray-50 flex flex-col overflow-hidden">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-gray-200 shrink-0">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap.items-center gap-2">
                   <SectionButton k="info" label="Personal Information" />
                   <SectionButton k="work" label="Work Details" />
                   <SectionButton k="rate" label="Service Rate" />
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto pt-3">
+              <div className="flex-1 overflow-y-auto.pt-3">
                 {renderSection()}
               </div>
             </div>
@@ -1578,268 +1565,81 @@ export default function WorkerApplicationMenu() {
         </div>
       )}
 
-           {viewRow && showDocs && (
+      {viewRow && showDocs && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="View documents"
           tabIndex={-1}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[2147483647] flex items-center.justify-center p-4"
         >
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setShowDocs(false)}
-          />
-          <div className="relative w-full max-w-[960px] max-h-[80vh] rounded-2xl border border-gray-200 bg-white shadow-2xl flex flex-col overflow-hidden">
-            <div className="relative px-6 sm:px-8 py-4 border-b border-gray-200 bg-white">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-gray-200 bg-gray-100 overflow-hidden">
-                    <img
-                      src={
-                        viewRow?.profile_picture_url ||
-                        avatarFromName(
-                          `${viewRow?.name_first || ""} ${
-                            viewRow?.name_last || ""
-                          }`.trim()
-                        )
-                      }
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                      data-fallback="primary"
-                      onError={({ currentTarget }) => {
-                        const parent = currentTarget.parentElement;
-                        if (currentTarget.dataset.fallback === "primary") {
-                          currentTarget.dataset.fallback = "dice";
-                          currentTarget.src = avatarFromName(
-                            `${viewRow?.name_first || ""} ${
-                              viewRow?.name_last || ""
-                            }`.trim()
-                          );
-                          return;
-                        }
-                        currentTarget.style.display = "none";
-                        if (parent) {
-                          parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#008cfc]">${(
-                            (viewRow?.name_first || "")
-                              .trim()
-                              .slice(0, 1) +
-                            (viewRow?.name_last || "")
-                              .trim()
-                              .slice(0, 1) || "?"
-                          ).toUpperCase()}</div>`;
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="text-lg sm:text-xl font-semibold text-gray-900">
-                      {[viewRow.name_first, viewRow.name_last]
-                        .filter(Boolean)
-                        .join(" ") || "-"}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {viewRow.email || "-"}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col items-start md:items-end gap-2">
-                  <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
-                    Application Documents
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Created{" "}
-                    <span className="font-medium text-gray-700">
-                      {viewRow.created_at_display || "-"}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <StatusPill value={viewRow.status} />
-                  </div>
-                </div>
-              </div>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDocs(false)} />
+          <div className="relative w-full max-w-[900px] max-h-[80vh] overflow-hidden rounded-2xl border border-gray-300 bg-white shadow-2xl">
+            <div className="px-6 py-4 border-b bg-gradient.to-r from-[#008cfc] to-[#4aa6ff] text-white">
+              <div className="text-base font-semibold">Documents</div>
             </div>
-
-            <div className="px-6 sm:px-8 py-4 flex-1 bg-gray-50 flex flex-col overflow-hidden">
-              <div className="mb-3 flex items-center justify-between gap-3 pb-2 border-b border-gray-200 shrink-0">
-                <div className="text-sm font-semibold text-gray-900">
-                  Documents
-                </div>
-                <div className="text-xs text-gray-500">
-                  Review the worker’s submitted documents.
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto pt-3 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
-                {viewRow && viewRow.docs && Object.keys(viewRow.docs).length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[
-                      {
-                        label: "Primary ID (Front)",
-                        keys: [
-                          "primary_id_front",
-                          "primaryIdFront",
-                          "primary_front",
-                          "primary_front_id",
-                          "primary_id_front_url",
-                          "primary_front_url"
-                        ]
-                      },
-                      {
-                        label: "Primary ID (Back)",
-                        keys: [
-                          "primary_id_back",
-                          "primaryIdBack",
-                          "primary_back",
-                          "primary_back_id",
-                          "primary_id_back_url",
-                          "primary_back_url"
-                        ]
-                      },
-                      {
-                        label: "Secondary ID",
-                        keys: [
-                          "secondary_id",
-                          "secondaryId",
-                          "secondary_id_url"
-                        ]
-                      },
-                      {
-                        label: "NBI/Police Clearance",
-                        keys: [
-                          "nbi_police_clearance",
-                          "nbi_clearance",
-                          "police_clearance",
-                          "nbi",
-                          "police"
-                        ]
-                      },
-                      {
-                        label: "Proof of Address",
-                        keys: [
-                          "proof_of_address",
-                          "proofOfAddress",
-                          "address_proof",
-                          "proof_address",
-                          "billing_proof",
-                          "utility_bill",
-                          "proof_of_residence",
-                          "proofOfResidence",
-                          "residence_proof",
-                          "residency_proof",
-                          "barangay_clearance",
-                          "barangay_certificate",
-                          "electric_bill",
-                          "water_bill",
-                          "meralco_bill"
-                        ],
-                        fuzzy: {
-                          any: [
-                            "address",
-                            "residence",
-                            "residency",
-                            "billing",
-                            "utility",
-                            "bill",
-                            "proof",
-                            "poa",
-                            "barangay",
-                            "clearance"
-                          ]
-                        }
-                      },
-                      {
-                        label: "Medical Certificate",
-                        keys: ["medical_certificate", "med_cert"],
-                        fuzzy: {
-                          any: [
-                            "medical",
-                            "med_cert",
-                            "medcert",
-                            "health",
-                            "fit_to_work",
-                            "fit-to-work",
-                            "fit2work",
-                            "med"
-                          ]
-                        }
-                      },
-                      {
-                        label: "Certificates",
-                        keys: [
-                          "certificates",
-                          "training_certificates",
-                          "certs"
-                        ]
-                      }
-                    ].map((cfg) => {
-                      const d = viewRow.docs || {};
-                      const found = resolveDoc(d, cfg.keys, cfg.fuzzy);
-                      const url = toDocUrl(found);
-                      const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(url);
-                      return (
-                        <div
-                          key={cfg.label}
-                          className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl"
-                        >
-                          <div className="p-3">
-                            {isImg && url ? (
-                              <img
-                                src={url}
-                                alt={cfg.label}
-                                className="w-full h-40 object-contain"
-                              />
-                            ) : (
-                              <div className="text-sm text-gray-500 h-40 grid place-items-center">
-                                {url
-                                  ? "Preview not available"
-                                  : "No document"}
-                              </div>
-                            )}
-                          </div>
-                          <div className="p-3 border-t flex items-center justify-between">
-                            <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
-                              <span className="h-2 w-2 rounded-full bg-gray-500/70" />
-                              {cfg.label}
-                            </div>
-                            {url ? (
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
-                              >
-                                Open
-                              </a>
-                            ) : (
-                              <span className="text-sm text-gray-400">
-                                No link
-                              </span>
-                            )}
-                          </div>
+            <div className="p-6 overflow-y-auto max-h-[65vh] [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+              {viewRow && viewRow.docs && Object.keys(viewRow.docs).length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[
+                    { label: "Primary ID (Front)", keys: ["primary_id_front", "primaryIdFront", "primary_front", "primary_front_id", "primary_id_front_url", "primary_front_url"] },
+                    { label: "Primary ID (Back)", keys: ["primary_id_back", "primaryIdBack", "primary_back", "primary_back_id", "primary_id_back_url", "primary_back_url"] },
+                    { label: "Secondary ID", keys: ["secondary_id", "secondaryId", "secondary_id_url"] },
+                    { label: "NBI/Police Clearance", keys: ["nbi_police_clearance", "nbi_clearance", "police_clearance", "nbi", "police"] },
+                    { label: "Proof of Address", keys: ["proof_of_address","proofOfAddress","address_proof","proof_address","billing_proof","utility_bill","proof_of_residence","proofOfResidence","residence_proof","residency_proof","barangay_clearance","barangay_certificate","electric_bill","water_bill","meralco_bill"], fuzzy: { any: ["address","residence","residency","billing","utility","bill","proof","poa","barangay","clearance"] } },
+                    { label: "Medical Certificate", keys: ["medical_certificate", "med_cert"], fuzzy: { any: ["medical", "med_cert", "medcert", "health", "fit_to_work", "fit-to-work", "fit2work", "med"] } },
+                    { label: "Certificates", keys: ["certificates", "training_certificates", "certs"] },
+                  ].map((cfg) => {
+                    const d = viewRow.docs || {};
+                    const found = resolveDoc(d, cfg.keys, cfg.fuzzy);
+                    const url = toDocUrl(found);
+                    const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(url);
+                    return (
+                      <div key={cfg.label} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+                        <div className="p-3">
+                          {isImg && url ? (
+                            <img src={url} alt={cfg.label} className="w-full h-40 object-contain" />
+                          ) : (
+                            <div className="text-sm text-gray-500 h-40 grid place-items-center">{url ? "Preview not available" : "No document"}</div>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-600 py-10">
-                    No documents.
-                  </div>
-                )}
-              </div>
+                        <div className="p-3 border-t flex items-center justify-between">
+                          <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                            <span className="h-2 w-2 rounded-full bg-gray-500/70" />
+                            {cfg.label}
+                          </div>
+                          {url ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                            >
+                              Open
+                            </a>
+                          ) : (
+                            <span className="text-sm text-gray-400">No link</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center text-gray-600">No documents.</div>
+              )}
             </div>
-
-            <div className="px-6 sm:px-8 py-4 border-t border-gray-100 bg-white flex flex-col sm:flex-row gap-3 sm:justify-end">
+            <div className="px-6 py-4 border-t bg-white">
               <button
                 onClick={() => setShowDocs(false)}
-                className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
               >
-                Close
+                Done
               </button>
             </div>
           </div>
         </div>
       )}
-
 
       {showDecline && (
         <div
@@ -1976,10 +1776,10 @@ export default function WorkerApplicationMenu() {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center.cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white.shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
@@ -2004,7 +1804,7 @@ export default function WorkerApplicationMenu() {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center.cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
@@ -2125,11 +1925,11 @@ export default function WorkerApplicationMenu() {
           autoFocus
           onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+          className="fixed inset-0 z-[2147483647] flex.items-center justify-center"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex.items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBrokenDecline2 ? (
                 <img
                   src="/jdklogo.png"
@@ -2138,7 +1938,7 @@ export default function WorkerApplicationMenu() {
                   onError={() => setLogoBrokenDecline2(true)}
                 />
               ) : (
-                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex.items-center justify-center">
                   <span className="font-bold text-[#008cfc]">JDK</span>
                 </div>
               )}

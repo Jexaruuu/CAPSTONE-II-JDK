@@ -148,6 +148,7 @@ const Card = ({ item, onView, onReason }) => {
   const iconSources = serviceTypes.length
     ? serviceTypes
     : [primaryService || work?.work_description];
+  const serviceTypesText = serviceTypes.length ? serviceTypes.join(", ") : (primaryService || "Service");
 
   const statusLower = String(item.status || "").toLowerCase();
   const isPending = statusLower === "pending";
@@ -160,7 +161,7 @@ const Card = ({ item, onView, onReason }) => {
   const cardState = isDeclined
     ? "hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
     : isPending && !isCancelled
-    ? "hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl"
+    ? "hover:border-yellow-500 hover:ring-2 hover:ring-yellow-500 hover:shadow-xl"
     : "";
   const profileUrl =
     info?.profile_picture_url || avatarFromName(info?.first_name || "Worker");
@@ -195,7 +196,7 @@ const Card = ({ item, onView, onReason }) => {
             <div className="text-xl md:text-2xl font-semibold truncate">
               <span className="text-gray-700">Service Type:</span>{" "}
               <span className={isMuted ? "text-gray-500" : "text-[#008cfc]"}>
-                {primaryService || "Service"}
+                {serviceTypesText}
               </span>
             </div>
             <div
@@ -294,7 +295,7 @@ const Card = ({ item, onView, onReason }) => {
           {isCancelled && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Canceled
+              Canceled Application
             </span>
           )}
           {!isCancelled && isDeclined && (
@@ -305,7 +306,7 @@ const Card = ({ item, onView, onReason }) => {
           )}
           {!isCancelled && !isDeclined && isApproved && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-              <span className="h-3 w-3 rounded-full bg-current.opacity-30" />
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Approved Application
             </span>
           )}
@@ -315,7 +316,7 @@ const Card = ({ item, onView, onReason }) => {
                 <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
               </span>
-              Pending
+              Pending Application
             </span>
           )}
           <div className="flex items-center gap-2">
@@ -383,7 +384,7 @@ export default function WorkerCurrentApplication() {
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
 
-    useEffect(() => {
+  useEffect(() => {
     if (showReason) {
       const original = document.body.style.overflow;
       document.body.style.overflow = "hidden";
@@ -605,7 +606,7 @@ export default function WorkerCurrentApplication() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search applications"
-                  className="border-none outline-none text-black w-full.sm:w-64 md:w-80 h-full placeholder:text-gray-400 bg-transparent"
+                  className="border-none outline-none text-black w-full sm:w-64 md:w-80 h-full placeholder:text-gray-400 bg-transparent"
                 />
               </div>
               <button

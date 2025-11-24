@@ -479,6 +479,19 @@ function WorkerPost() {
     }
   };
 
+  const buildServiceTypesArr = (item) => {
+    const d = item?.work || item?.details || {};
+    const st = d.service_types || d.service_type || d.primary_service || [];
+    if (Array.isArray(st)) return st.filter(Boolean).map((x) => String(x));
+    if (typeof st === 'string' && st.trim()) return [st.trim()];
+    return [];
+  };
+
+  const buildServiceTypesText = (item) => {
+    const arr = buildServiceTypesArr(item);
+    return arr.length ? arr.join(', ') : (buildServiceType(item) || 'Service');
+  };
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">
@@ -527,7 +540,7 @@ function WorkerPost() {
                 <div className="min-w-0">
                   <div className="text-xl md:text-2xl font-semibold truncate">
                     <span className="text-gray-700">Service Type:</span>{' '}
-                    <span className="text-[#008cfc]">{buildServiceType(currentApp) || 'Service'}</span>
+                    <span className="text-[#008cfc]">{buildServiceTypesText(currentApp)}</span>
                   </div>
                   <div className="mt-1 text-base md:text-lg truncate">
                     <span className="font-semibold">Work Description:</span> {currentApp?.details?.work_description || '-'}
@@ -604,13 +617,21 @@ function WorkerPost() {
                       <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
                       <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
                     </span>
-                    Pending
+                    Pending Application
                   </span>
                 )}
-                <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
+                <div className="flex items-center gap-2">
                   {(() => {
-                    const Icon = getServiceIcon(buildServiceType(currentApp) || currentApp?.details?.work_description || '');
-                    return <Icon className="h-5 w-5" />;
+                    const types = buildServiceTypesArr(currentApp);
+                    const srcs = types.length ? types : [buildServiceType(currentApp) || currentApp?.details?.work_description || ''];
+                    return srcs.map((t, i) => {
+                      const Icon = getServiceIcon(t);
+                      return (
+                        <div key={`${t}-${i}`} className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                      );
+                    });
                   })()}
                 </div>
               </div>
