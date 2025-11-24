@@ -137,13 +137,17 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
   const isDeclined = statusLower === "declined";
   const isExpiredReq = isExpired(d.preferred_date);
   const cardBase = "rounded-2xl border p-5 md:p-6 shadow-sm transition-all duration-300";
-  const cardState = (isCancelled || isExpiredReq)
-    ? "border-gray-200 bg-gray-50"
-    : isDeclined
-      ? "border-gray-300 bg-white hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
-      : isApproved
-        ? "border-gray-300 bg-white hover:border-emerald-600 hover:ring-2 hover:ring-emerald-600 hover:shadow-xl"
-        : "border-gray-300 bg-white hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl";
+  const cardState = isCancelled
+    ? "border-gray-300 bg-white hover:border-orange-400 hover:ring-2 hover:ring-orange-400 hover:shadow-xl"
+    : isExpiredReq
+      ? "border-gray-200 bg-gray-50"
+      : isDeclined
+        ? "border-gray-300 bg-white hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
+        : isApproved
+          ? "border-gray-300 bg-white hover:border-emerald-600 hover:ring-2 hover:ring-emerald-600 hover:shadow-xl"
+          : (isPending
+              ? "border-gray-300 bg-white hover:border-yellow-500 hover:ring-2 hover:ring-yellow-500 hover:shadow-xl"
+              : "border-gray-300 bg-white hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl");
   const profileUrl = React.useMemo(() => {
     const u = item?.info?.profile_picture_url || "";
     if (u) return u;
@@ -164,11 +168,11 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
           </div>
           <div className="min-w-0">
             <Link to={`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`} className="block pointer-events-none select-text">
-              <h3 className={`text-xl md:text-2xl font-semibold truncate ${(isCancelled || isExpiredReq) ? "text-gray-700" : ""}`}>
+              <h3 className={`text-xl md:text-2xl font-semibold truncate ${isExpiredReq ? "text-gray-700" : ""}`}>
                 <span className="text-gray-700">Service Type:</span>{" "}
-                <span className={(isCancelled || isExpiredReq) ? "text-gray-500" : "text-[#008cfc]"}>{d.service_type || "Service"}</span>
+                <span className={isExpiredReq ? "text-gray-500" : "text-[#008cfc]"}>{d.service_type || "Service"}</span>
               </h3>
-              <div className={`mt-0.5 text-base md:text-lg truncate ${(isCancelled || isExpiredReq) ? "text-gray-600" : "text-black"}`}>
+              <div className={`mt-0.5 text-base md:text-lg truncate ${isExpiredReq ? "text-gray-600" : "text-black"}`}>
                 <span className="font-semibold">Service Task:</span> {d.service_task || "Task"}
               </div>
             </Link>
@@ -177,15 +181,15 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
               <div className="space-y-1.5">
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                  <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+                  <span className={isExpiredReq ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                  <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
+                  <span className={isExpiredReq ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Urgency:</span>
-                  <span className={`font-medium ${hasUrgency ? (urgentBool ? ((isCancelled || isExpiredReq) ? "text-gray-600" : "text-green-600") : ((isCancelled || isExpiredReq) ? "text-gray-600" : "text-red-600")) : ((isCancelled || isExpiredReq) ? "text-gray-500" : "text-[#008cfc]")}`}>
+                  <span className={`font-medium ${hasUrgency ? (urgentBool ? (isExpiredReq ? "text-gray-600" : "text-green-600") : (isExpiredReq ? "text-gray-600" : "text-red-600")) : (isExpiredReq ? "text-gray-500" : "text-[#008cfc]")}`}>
                     {hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}
                   </span>
                 </div>
@@ -193,11 +197,11 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
               <div className="space-y-1.5 md:pl-10">
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Rate Type:</span>
-                  <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{formatRateType(rate.rate_type)}</span>
+                  <span className={isExpiredReq ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{formatRateType(rate.rate_type)}</span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Service Rate:</span>
-                  <span className={(isCancelled || isExpiredReq) ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}><RateText rate={rate} /></span>
+                  <span className={isExpiredReq ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}><RateText rate={rate} /></span>
                 </div>
               </div>
             </div>
@@ -228,7 +232,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
                 <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
               </span>
-              Pending
+              Pending Request
             </span>
           )}
           {(isExpiredReq && !isCancelled) && (
@@ -237,7 +241,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
               Expired Request
             </span>
           )}
-          <div className={`h-10 w-10 rounded-lg border flex items-center justify-center ${(isCancelled || isExpiredReq || isDeclined) ? "border-gray-300 text-gray-500" : "border-gray-300 text-[#008cfc]"}`}>
+          <div className={`h-10 w-10 rounded-lg border flex items-center justify-center ${(isExpiredReq || isDeclined) ? "border-gray-300 text-gray-500" : "border-gray-300 text-[#008cfc]"}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -302,7 +306,7 @@ export default function ClientCurrentServiceRequest() {
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
 
-    useEffect(() => {
+  useEffect(() => {
     if (showReason) {
       const original = document.body.style.overflow;
       document.body.style.overflow = "hidden";
@@ -623,7 +627,7 @@ export default function ClientCurrentServiceRequest() {
               </div>
             </div>
             <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
-              <div className="mt-6 flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
+              <div className="mt-6 flex items中心 h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
                 <span className="text-gray-500 text-lg">🔍︎</span>
                 <input
                   value={query}

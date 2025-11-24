@@ -9,18 +9,19 @@ const avatarFromName = (name) =>
 
 function StatusPill({ value }) {
   const v = String(value || "").toLowerCase();
+  const isCanceled = v === "canceled" || v === "cancelled";
   const cfg =
     v === "approved"
       ? { bg: "bg-emerald-50", text: "text-emerald-700", br: "border-emerald-200", label: "Approved" }
       : v === "declined"
       ? { bg: "bg-red-50", text: "text-red-700", br: "border-red-200", label: "Declined" }
-      : v === "cancelled"
-      ? { bg: "bg-orange-50", text: "text-orange-700", br: "border-orange-200", label: "Cancelled" }
+      : isCanceled
+      ? { bg: "bg-orange-50", text: "text-orange-700", br: "border-orange-200", label: "Canceled" }
       : v === "expired"
       ? { bg: "bg-gray-50", text: "text-gray-600", br: "border-gray-200", label: "Expired" }
       : { bg: "bg-amber-50", text: "text-amber-700", br: "border-amber-200", label: "Pending" };
   return (
-    <span className={["inline-flex.items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide", cfg.bg, cfg.text, cfg.br].join(" ")}>
+    <span className={["inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide", cfg.bg, cfg.text, cfg.br].join(" ")}>
       <span className="h-3 w-3 rounded-full bg-current opacity-30" />
       {cfg.label}
     </span>
@@ -31,17 +32,17 @@ function ServiceTypePill({ value }) {
   const v = String(value || "").toLowerCase().trim();
   let cfg;
   if (v === "car washing" || v === "car wash") {
-    cfg = { bg: "bg-violet-50", text: "text-violet-700", br: "border-violet-200" };
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
   } else if (v === "carpentry") {
-    cfg = { bg: "bg-violet-50", text: "text-violet-700", br: "border-violet-200" };
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
   } else if (v === "electrical works" || v === "electrical work" || v === "electrical") {
-    cfg = { bg: "bg-violet-50", text: "text-violet-700", br: "border-violet-200" };
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
   } else if (v === "laundry") {
-    cfg = { bg: "bg-violet-50", text: "text-violet-700", br: "border-violet-200" };
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
   } else if (v === "plumbing") {
-    cfg = { bg: "bg-violet-50", text: "text-violet-700", br: "border-violet-200" };
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
   } else {
-    cfg = { bg: "bg-violet-50", text: "text-violet-700", br: "border-violet-200" };
+    cfg = { bg: "bg-blue-50", text: "text-blue-700", br: "border-blue-200" };
   }
   return (
     <span
@@ -53,7 +54,7 @@ function ServiceTypePill({ value }) {
       ].join(" ")}
       title={value || "-"}
     >
-      <span className="h-3 w-3 rounded-full bg-violet-500 opacity-30" />
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
       {value || "-"}
     </span>
   );
@@ -70,7 +71,7 @@ function TaskPill({ value }) {
       ].join(" ")}
       title={value || "-"}
     >
-      <span className="h-3 w-3 rounded-full bg-violet-500 opacity-30" />
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
       {value || "-"}
     </span>
   );
@@ -85,8 +86,8 @@ function YesNoPill({ yes }) {
     ? { bg: "bg-red-50", text: "text-red-700", br: "border-red-200", label: "No" }
     : { bg: "bg-gray-50", text: "text-gray-600", br: "border-gray-200", label: "-" };
   return (
-    <span className={["inline-flex.items-center gap-1 rounded-full border px-3.py-1.5 text-xs font-semibold tracking-wide", cfg.bg, cfg.text, cfg.br].join(" ")}>
-      <span className="h-3 w-3 rounded-full bg-current.opacity-30" />
+    <span className={["inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide", cfg.bg, cfg.text, cfg.br].join(" ")}>
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
       {cfg.label}
     </span>
   );
@@ -170,6 +171,15 @@ const pickDetailImage = (details = {}) => {
   }
   return null;
 };
+function formatContactNumberPH(val) {
+  if (!val) return "-";
+  const s = String(val).replace(/[^0-9]/g, "");
+  if (!s) return "-";
+  let rest = s;
+  if (rest.startsWith("63")) rest = rest.slice(2);
+  if (rest.startsWith("0")) rest = rest.slice(1);
+  return `+63 ${rest}`;
+}
 
 export default function AdminCancelledRequests() {
   const [rows, setRows] = useState([]);
@@ -353,7 +363,7 @@ export default function AdminCancelledRequests() {
           {title}
         </h3>
         {badge || (
-          <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
             <span className="h-3 w-3 rounded-full bg-white/60" />
             Info
           </span>
@@ -386,7 +396,7 @@ export default function AdminCancelledRequests() {
           <SectionCard
             title="Personal Information"
             badge={
-              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 <span className="h-3 w-3 rounded-full bg-white/60" />
                 Client
               </span>
@@ -402,7 +412,7 @@ export default function AdminCancelledRequests() {
           <SectionCard
             title="Service Request Details"
             badge={
-              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 <span className="h-3 w-3 rounded-full bg-white/60" />
                 Request
               </span>
@@ -447,7 +457,7 @@ export default function AdminCancelledRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
                 <span className="h-3 w-3 rounded-full bg-white/60" />
                 Pricing
               </span>
@@ -465,7 +475,7 @@ export default function AdminCancelledRequests() {
                 <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
               </div>
             ) : (
-              <div className="grid.grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
                 <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
                 <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
                 <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
@@ -481,13 +491,13 @@ export default function AdminCancelledRequests() {
         <SectionCard
           title="Personal Information"
           badge={
-            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              <span className="h-3 w-3.rounded-full bg-white/60" />
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
               Client
             </span>
           }
         >
-          <div className="grid.grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
             <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
             <Field label="Street" value={viewRow?.info?.street || "-"} />
             <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
@@ -501,8 +511,8 @@ export default function AdminCancelledRequests() {
         <SectionCard
           title="Service Request Details"
           badge={
-            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              <span className="h-3 w-3.rounded-full bg-white/60" />
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
               Request
             </span>
           }
@@ -551,13 +561,13 @@ export default function AdminCancelledRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3.rounded-full bg-white/60" />
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
                 Pricing
               </span>
             }
           >
-            <div className="grid.grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-3xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-3xl">
               <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
               <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
             </div>
@@ -569,13 +579,13 @@ export default function AdminCancelledRequests() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3.rounded-full bg-white/60" />
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+                <span className="h-3 w-3 rounded-full bg-white/60" />
                 Pricing
               </span>
             }
           >
-            <div className="grid.grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6 max-w-4xl">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6 max-w-4xl">
               <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
               <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
               <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
@@ -587,13 +597,13 @@ export default function AdminCancelledRequests() {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5.py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              <span className="h-3 w-3.rounded-full bg-white/60" />
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
+              <span className="h-3 w-3 rounded-full bg-white/60" />
               Pricing
             </span>
           }
         >
-          <div className="grid.grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
             <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
             <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
             <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
@@ -638,6 +648,186 @@ export default function AdminCancelledRequests() {
     { key: "plumber", label: "Plumbing" },
   ];
 
+  const ModalSectionButton = ({ k, label }) => {
+    const active = sectionOpen === k;
+    return (
+      <button
+        onClick={() => setSectionOpen(k)}
+        className={[
+          "rounded-full px-3 py-1.5 text-xs md:text-sm border transition",
+          active ? "bg-[#0b82ff] text-white border-[#0b82ff] shadow-sm" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+        ].join(" ")}
+      >
+        {label}
+      </button>
+    );
+  };
+
+  const ModalField = ({ label, value }) => (
+    <div className="text-left space-y-0.5">
+      <div className="text-[11px] font-medium tracking-wide text-gray-500 uppercase">{label}</div>
+      <div className="text-[14px] font-semibold text-gray-900 break-words">{value ?? "-"}</div>
+    </div>
+  );
+
+  const ModalSectionCard = ({ title, children, badge }) => (
+    <section className="relative rounded-xl border border-gray-200 bg-white">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+        {badge || null}
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+
+  const modalRenderSection = () => {
+    if (!viewRow) return null;
+    if (sectionOpen === "info") {
+      return (
+        <ModalSectionCard
+          title="Personal Information"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="inline-flex h-3 w-3 rounded-full bg-[#0b82ff]" />
+              Client
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
+            <ModalField label="Barangay" value={viewRow?.info?.barangay || "-"} />
+            <ModalField label="Street" value={viewRow?.info?.street || "-"} />
+            <ModalField label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
+            <div className="sm:col-span-3 mt-2 pt-3 border-t border-gray-100">
+              <ModalField
+                label="Contact Number"
+                value={
+                  <div className="inline-flex items-center gap-2 text-[15px]">
+                    <img src="../../../public/philippines.png" alt="Philippines" className="h-4 w-6 rounded-[2px] object-cover" />
+                    <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
+                  </div>
+                }
+              />
+            </div>
+          </div>
+        </ModalSectionCard>
+      );
+    }
+    if (sectionOpen === "details") {
+      const img = pickDetailImage(viewRow?.details);
+      return (
+        <ModalSectionCard
+          title="Service Request Details"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+              Request
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                <ModalField label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
+                <ModalField label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
+                <ModalField label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
+                <ModalField label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                <ModalField label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
+                <ModalField label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
+              </div>
+              <div>
+                <ModalField
+                  label="Description"
+                  value={<span className="whitespace-pre-line text-[15px] leading-relaxed">{viewRow?.details?.service_description || viewRow?.details?.description || "-"}</span>}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
+                {img ? (
+                  <img
+                    src={img}
+                    alt="Service Request"
+                    className="w-full h-full object-cover"
+                    onError={({ currentTarget }) => {
+                      currentTarget.style.display = "none";
+                      const p = currentTarget.parentElement;
+                      if (p) p.innerHTML = '<div class="text-sm text-gray-500">No image available</div>';
+                    }}
+                  />
+                ) : (
+                  <div className="text-sm text-gray-500">No image available</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </ModalSectionCard>
+      );
+    }
+    if (sectionOpen === "rate") {
+      const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
+      if (t.includes("by the job")) {
+        return (
+          <ModalSectionCard
+            title="Service Rate"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+                Pricing
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 max-w-3xl">
+              <ModalField label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+              <ModalField label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+            </div>
+          </ModalSectionCard>
+        );
+      }
+      if (t.includes("hourly")) {
+        return (
+          <ModalSectionCard
+            title="Service Rate"
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+                Pricing
+              </span>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 max-w-4xl">
+              <ModalField label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+              <ModalField label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
+              <ModalField label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
+            </div>
+          </ModalSectionCard>
+        );
+      }
+      return (
+        <ModalSectionCard
+          title="Service Rate"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+              Pricing
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
+            <ModalField label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+            <ModalField label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
+            <ModalField label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
+            <div className="sm:col-span-3">
+              <ModalField label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
+            </div>
+          </div>
+        </ModalSectionCard>
+      );
+    }
+    return null;
+  };
+
   return (
     <>
       <style>{`
@@ -663,7 +853,7 @@ export default function AdminCancelledRequests() {
 
       <main className="p-6">
         <div className="mb-4">
-          <h1 className="text-xl font-semibold text-gray-900">Cancelled Requests</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Canceled Requests</h1>
           <p className="text-gray-600 mt-2">All service requests that have been cancelled.</p>
         </div>
 
@@ -673,7 +863,14 @@ export default function AdminCancelledRequests() {
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium text-gray-700">Filter</span>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {serviceTabs.map((t) => {
+                  {[
+                    { key: "all", label: "All" },
+                    { key: "carwasher", label: "Car Washing" },
+                    { key: "carpenter", label: "Carpentry" },
+                    { key: "electrician", label: "Electrical Works" },
+                    { key: "laundry", label: "Laundry" },
+                    { key: "plumber", label: "Plumbing" },
+                  ].map((t) => {
                     const active = serviceFilter === t.key;
                     const count =
                       t.key === "all"
@@ -692,7 +889,7 @@ export default function AdminCancelledRequests() {
                       >
                         <span>{t.label}</span>
                         <span
-                          className={`inline-flex items-center justify-center.min-w-6 rounded-full px-1.5 text-xs font-semibold ${
+                          className={`inline-flex items-center justify-center min-w-6 rounded-full px-1.5 text-xs font-semibold ${
                             active ? "bg-white/20" : "bg-gray-100 text-gray-700"
                           }`}
                         >
@@ -747,7 +944,7 @@ export default function AdminCancelledRequests() {
                       <thead>
                         <tr className="text-left text-sm text-gray-600">
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 w-[180px] min-w-[180px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 w-[180px] min-w-[180px]"
                             onClick={() => toggleSort("full_name")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -759,7 +956,7 @@ export default function AdminCancelledRequests() {
                             Email
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[260px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[260px]"
                             onClick={() => toggleSort("service_type")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -767,15 +964,15 @@ export default function AdminCancelledRequests() {
                             </span>
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[220px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[220px]"
                             onClick={() => toggleSort("service_task")}
                           >
-                            <span className="inline-flex items-center.gap-1">
+                            <span className="inline-flex items-center gap-1">
                               Service Task
                             </span>
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700.cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 whitespace-nowrap w-[220px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 whitespace-nowrap w-[220px]"
                             onClick={() => toggleSort("created_at_ts")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -783,12 +980,12 @@ export default function AdminCancelledRequests() {
                               <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                             </span>
                           </th>
-                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 w-[160px] min-w-[160px]">
+                          <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 w-[160px] min-w-[160px]">
                             Status
                           </th>
-                        <th className="sticky top-0 z-10 bg-white px-5 py-3 w-40 font-semibold text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
-  Action
-</th>
+                          <th className="sticky top-0 z-10 bg-white px-5 py-3 w-40 font-semibold text-gray-700 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200">
+                            Action
+                          </th>
                         </tr>
                       </thead>
 
@@ -830,7 +1027,7 @@ export default function AdminCancelledRequests() {
                                   <button
                                     onClick={() => {
                                       setViewRow(u);
-                                      setSectionOpen("all");
+                                      setSectionOpen("info");
                                     }}
                                     className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                                   >
@@ -900,63 +1097,80 @@ export default function AdminCancelledRequests() {
         </section>
 
         {viewRow && (
-          <div role="dialog" aria-modal="true" aria-label="Request details" tabIndex={-1} className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Request details"
+            tabIndex={-1}
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+          >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
-            <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#008cfc] bg.white shadow-2xl flex flex-col overflow-hidden">
-              <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
-                <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg-white overflow-hidden shadow">
-                  {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
-                    <img
-                      src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                      onError={({ currentTarget }) => {
-                        currentTarget.style.display = "none";
-                        const parent = currentTarget.parentElement;
-                        if (parent) {
-                          parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${(((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1)) || "?").toUpperCase()}</div>`;
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">
-                      {(((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1)) || "?").toUpperCase()}
+            <div className="relative w-full max-w-[960px] max-h-[80vh] rounded-2xl border border-gray-200 bg-white shadow-2xl flex flex-col overflow-hidden">
+              <div className="relative px-6 sm:px-8 py-4 border-b border-gray-200 bg-white">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-gray-200 bg-gray-100 overflow-hidden">
+                      {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
+                        <img
+                          src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                          onError={({ currentTarget }) => {
+                            currentTarget.style.display = "none";
+                            const parent = currentTarget.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${(
+                                ((viewRow?.name_first || "").trim().slice(0, 1) +
+                                  (viewRow?.name_last || "").trim().slice(0, 1)) || "?"
+                              ).toUpperCase()}</div>`;
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">
+                          {(((viewRow?.name_first || "").trim().slice(0, 1) + (viewRow?.name_last || "").trim().slice(0, 1)) || "?").toUpperCase()}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-
-                <div className="mt-5 text-center space-y-0.5">
-                  <div className="text-2xl font-semibold text-gray-900">
-                    {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
+                    <div className="space-y-1">
+                      <div className="text-lg sm:text-xl font-semibold text-gray-900">
+                        {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
+                      </div>
+                      <div className="text-sm text-gray-500">{viewRow.email || "-"}</div>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600">{viewRow.email || "-"}</div>
-                </div>
-
-                <div className="mt-3 flex items-center justify-center gap-3">
-                  <div className="text-sm text-gray-600">
-                    Created <span className="font-semibold text-[#008cfc]">{viewRow.created_at_display || "-"}</span>
-                  </div>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <StatusPill value="cancelled" />
+                  <div className="flex flex-col items-start md:items-end gap-2">
+                    <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
+                      Request Summary
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Created <span className="font-medium text-gray-700">{viewRow.created_at_display || "-"}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <StatusPill value="cancelled" />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto blue-scroll bg-gray-50">
-                <div className="mb-4 flex items-center justify-center gap-2">
-                  <SectionButton k="all" label="All" />
-                  <SectionButton k="info" label="Personal Information" />
-                  <SectionButton k="details" label="Service Request Details" />
-                  <SectionButton k="rate" label="Service Rate" />
+              <div className="px-6 sm:px-8 py-4 flex-1 bg-gray-50 flex flex-col overflow-hidden">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-gray-200 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ModalSectionButton k="info" label="Personal Information" />
+                    <ModalSectionButton k="details" label="Service Request Details" />
+                    <ModalSectionButton k="rate" label="Service Rate" />
+                  </div>
                 </div>
-                {renderSection()}
+                <div className="flex-1 overflow-y-auto blue-scroll pt-3">
+                  {modalRenderSection()}
+                </div>
               </div>
 
-              <div className="px-6 sm:px-8 pb-8 pt-6 grid grid-cols-1 sm:grid-cols-1 gap-3 border-t border-gray-200 bg-white">
+              <div className="px-6 sm:px-8 py-4 border-t border-gray-200 bg-white flex justify-end">
                 <button
                   type="button"
                   onClick={() => { setViewRow(null); }}
-                  className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                  className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                 >
                   Close
                 </button>
@@ -970,15 +1184,19 @@ export default function AdminCancelledRequests() {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setReasonRow(null); }} />
             <div className="relative w-full max-w-[720px] rounded-2xl border border-orange-300 bg-white shadow-2xl overflow-hidden">
               <div className="px-6 py-4 bg-gradient-to-r from-orange-50 to-white border-b border-orange-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-orange-700">Cancellation Reason</h3>
-                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
-                    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                    {reasonRow?.service_type || "Request"}
-                  </span>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-orange-700">Cancellation Reason</h3>
+                    <div className="mt-1 text-sm text-gray-600">Created {reasonRow?.created_at_display || "-"}</div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
+                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                      {reasonRow?.service_type || "Request"}
+                    </span>
+                    <div className="text-sm text-gray-600">{reasonRow?.canceled_at ? `Canceled ${fmtDateTime(reasonRow.canceled_at)}` : ""}</div>
+                  </div>
                 </div>
-                <div className="mt-1 text-sm text-gray-600">Created {reasonRow?.created_at_display || "-"}</div>
-                <div className="text-xs text-gray-500">{reasonRow?.canceled_at ? `Cancelled ${fmtDateTime(reasonRow.canceled_at)}` : ""}</div>
               </div>
               <div className="p-6">
                 <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">

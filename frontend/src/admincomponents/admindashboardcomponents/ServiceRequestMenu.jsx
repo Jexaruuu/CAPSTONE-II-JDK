@@ -822,7 +822,7 @@ export default function AdminServiceRequests() {
             />
             <Field label="Street" value={viewRow?.info?.street || "-"} />
             <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
-            <div className="sm:col-span-3 mt-2 pt-3 border-t border-gray-100">
+            <div className="sm:col-span-3 mt-2 pt-3 border-gray-100">
               <Field
                 label="Contact Number"
                 value={
@@ -1527,7 +1527,7 @@ export default function AdminServiceRequests() {
     aria-modal="true"
     aria-label="Decline reason (service request)"
     tabIndex={-1}
-    className="fixed inset-0 z-[2147483646] flex.items-center justify-center p-4"
+    className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
   >
     <div
       className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -1535,18 +1535,22 @@ export default function AdminServiceRequests() {
     />
     <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
       <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
-          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
-            <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-            {reasonTarget?.service_type || "Request"}
-          </span>
-        </div>
-        <div className="mt-1 text-sm text-gray-600">
-          Created {reasonTarget?.created_at_display || "-"}
-        </div>
-        <div className="text-sm text-gray-600">
-          Decided {reasonTarget?.decided_at ? fmtDateTime(reasonTarget.decided_at) : "-"}
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
+            <div className="mt-1 text-sm text-gray-600">
+              Created {reasonTarget?.created_at_display || "-"}
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              {reasonTarget?.service_type || "Request"}
+            </span>
+            <div className="text-sm text-gray-600">
+              Decided {reasonTarget?.decided_at ? fmtDateTime(reasonTarget.decided_at) : "-"}
+            </div>
+          </div>
         </div>
       </div>
 
