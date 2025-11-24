@@ -181,6 +181,32 @@ function formatContactNumberPH(val) {
   return `+63 ${rest}`;
 }
 
+function parseHM24(val) {
+  if (!val) return { h: 23, m: 59 };
+  const s = String(val).trim();
+  let d = new Date(`1970-01-01T${s}`);
+  if (isNaN(d)) d = new Date(`1970-01-01 ${s}`);
+  if (!isNaN(d)) return { h: d.getHours(), m: d.getMinutes() };
+  const m = /^(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])?$/.exec(s);
+  if (!m) return { h: 23, m: 59 };
+  let h = parseInt(m[1], 10);
+  let min = m[2] ? parseInt(m[2], 10) : 0;
+  const ap = m[3] ? m[3].toUpperCase() : null;
+  if (ap === "PM" && h < 12) h += 12;
+  if (ap === "AM" && h === 12) h = 0;
+  if (!ap && h > 23) h = 23;
+  if (min > 59) min = 59;
+  return { h, m: min };
+}
+function isExpiredDT(dateVal, timeVal) {
+  const d = dateOnlyFrom(dateVal);
+  if (!d) return false;
+  const { h, m } = parseHM24(timeVal);
+  d.setHours(h, m, 0, 0);
+  const now = new Date();
+  return d.getTime() < now.getTime();
+}
+
 export default function AdminCancelledRequests() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -234,7 +260,8 @@ export default function AdminCancelledRequests() {
           created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
           reason_choice: r.reason_choice || null,
           reason_other: r.reason_other || null,
-          canceled_at: r.canceled_at || null
+          canceled_at: r.canceled_at || null,
+          _expired: isExpiredDT(d.preferred_date, d.preferred_time),
         };
       });
       setRows(mapped);
@@ -1018,8 +1045,15 @@ export default function AdminCancelledRequests() {
                                 {u.created_at_display || "-"}
                               </td>
                               <td className="px-4 py-4 border border-gray-200 w-[160px] min-w-[160px]">
-                                <div className="flex items-center gap-1 flex-wrap">
-                                  <StatusPill value="cancelled" />
+                                <div className="flex items-center gap-1 flex-nowrap whitespace-nowrap">
+                                  {u._expired ? (
+                                    <>
+                                      <StatusPill value="cancelled" />
+                                      <StatusPill value="expired" />
+                                    </>
+                                  ) : (
+                                    <StatusPill value="cancelled" />
+                                  )}
                                 </div>
                               </td>
                               <td className="px-4 py-4 w-40 text-left border border-gray-200 whitespace-nowrap">
@@ -1146,8 +1180,15 @@ export default function AdminCancelledRequests() {
                     <div className="text-xs text-gray-500">
                       Created <span className="font-medium text-gray-700">{viewRow.created_at_display || "-"}</span>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <StatusPill value="cancelled" />
+                    <div className="flex flex-nowrap gap-2 whitespace-nowrap">
+                      {viewRow._expired ? (
+                        <>
+                          <StatusPill value="cancelled" />
+                          <StatusPill value="expired" />
+                        </>
+                      ) : (
+                        <StatusPill value="cancelled" />
+                      )}
                     </div>
                   </div>
                 </div>

@@ -224,7 +224,7 @@ exports.submitFullRequest = async (req, res) => {
 
     const firstUpload = uploaded[0] || null;
     const urgentRaw = is_urgent ?? metadata.is_urgent ?? metadata.urgency ?? metadata.priority ?? '';
-    const toolsRaw = tools_provided ?? metadata.tools_provided ?? metadata.tools ?? '';
+       const toolsRaw = tools_provided ?? metadata.tools_provided ?? metadata.tools ?? '';
 
     const detailsRow = {
       request_group_id,
@@ -376,6 +376,7 @@ exports.listCurrent = async (req, res) => {
     const email = String(req.query.email || req.session?.user?.email_address || '').trim();
     if (!email) return res.status(401).json({ message: 'Unauthorized' });
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
+    const groupIdFilter = String(req.query.groupId || '').trim();
     const details = await listDetailsByEmail(email, limit);
     const groups = details.map(d => d.request_group_id).filter(Boolean);
     const cancelledIds = await getCancelledByGroupIds(groups);
@@ -390,6 +391,13 @@ exports.listCurrent = async (req, res) => {
       const activeGroups = groups.filter(g => !cancelledIds.includes(g));
       targetGroups = activeGroups;
       statusValue = 'pending';
+    }
+    if (groupIdFilter) {
+      if (scope === 'cancelled') {
+        targetGroups = cancelledIds.includes(groupIdFilter) ? [groupIdFilter] : [];
+      } else {
+        targetGroups = cancelledIds.includes(groupIdFilter) ? [] : (groups.includes(groupIdFilter) ? [groupIdFilter] : []);
+      }
     }
     let statusMap = {};
     if (targetGroups.length) {

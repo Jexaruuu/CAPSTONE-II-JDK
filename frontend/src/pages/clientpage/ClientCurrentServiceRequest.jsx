@@ -94,6 +94,32 @@ const isExpired = (val) => {
   return d < today;
 };
 
+const parseHM24 = (val) => {
+  if (!val) return { h: 23, m: 59 };
+  const s = String(val).trim();
+  let d = new Date(`1970-01-01T${s}`);
+  if (isNaN(d)) d = new Date(`1970-01-01 ${s}`);
+  if (!isNaN(d)) return { h: d.getHours(), m: d.getMinutes() };
+  const m = /^(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])?$/.exec(s);
+  if (!m) return { h: 23, m: 59 };
+  let h = parseInt(m[1], 10);
+  let min = m[2] ? parseInt(m[2], 10) : 0;
+  const ap = m[3] ? m[3].toUpperCase() : null;
+  if (ap === "PM" && h < 12) h += 12;
+  if (ap === "AM" && h === 12) h = 0;
+  if (!ap && h > 23) h = 23;
+  if (min > 59) min = 59;
+  return { h, m: min };
+};
+const isExpiredDT = (dateVal, timeVal) => {
+  const d = dateOnlyFrom(dateVal);
+  if (!d) return false;
+  const { h, m } = parseHM24(timeVal);
+  d.setHours(h, m, 0, 0);
+  const now = new Date();
+  return d.getTime() < now.getTime();
+};
+
 const RateText = ({ rate }) => {
   const t = String(rate?.rate_type || "").toLowerCase();
   const from = rate?.rate_from;
@@ -135,7 +161,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
   const isPending = statusLower === "pending";
   const isApproved = statusLower === "approved";
   const isDeclined = statusLower === "declined";
-  const isExpiredReq = isExpired(d.preferred_date);
+  const isExpiredReq = isExpiredDT(d.preferred_date, d.preferred_time);
   const cardBase = "rounded-2xl border p-5 md:p-6 shadow-sm transition-all duration-300";
   const cardState = isCancelled
     ? "border-gray-300 bg-white hover:border-orange-400 hover:ring-2 hover:ring-orange-400 hover:shadow-xl"
@@ -207,12 +233,20 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-nowrap whitespace-nowrap">
           {(isCancelled) && (
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Canceled Request
-            </span>
+            <>
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
+                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                Canceled Request
+              </span>
+              {isExpiredReq && (
+                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
+                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                  Expired Request
+                </span>
+              )}
+            </>
           )}
           {(!isCancelled && isDeclined) && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
@@ -380,20 +414,20 @@ export default function ClientCurrentServiceRequest() {
           withCredentials: true,
         });
         const arr = Array.isArray(data) ? data : data?.items || [];
- const normalized = arr.map((r, i) => ({
-  id: r.request_group_id ?? r.id ?? `${i}`,
-  status: "cancelled",
-  created_at: r.created_at || new Date().toISOString(),
-  updated_at: r.canceled_at || r.updated_at || r.created_at || new Date().toISOString(),
-  details: r.details || {},
-  rate: r.rate || {},
-  info: r.info || {},
-  decision_reason: r.decision_reason || r.reason || null,
-  reason_choice: r.reason_choice || null,
-  reason_other: r.reason_other || null,
-  decided_at: r.decided_at || null,
-  canceled_at: r.canceled_at || r.cancelled_at || null
-}));
+        const normalized = arr.map((r, i) => ({
+          id: r.request_group_id ?? r.id ?? `${i}`,
+          status: "cancelled",
+          created_at: r.created_at || new Date().toISOString(),
+          updated_at: r.canceled_at || r.updated_at || r.created_at || new Date().toISOString(),
+          details: r.details || {},
+          rate: r.rate || {},
+          info: r.info || {},
+          decision_reason: r.decision_reason || r.reason || null,
+          reason_choice: r.reason_choice || null,
+          reason_other: r.reason_other || null,
+          decided_at: r.decided_at || null,
+          canceled_at: r.canceled_at || r.cancelled_at || null
+        }));
         const withAvatars = await enrichProfiles(normalized);
         setItems(markUserCancelled(withAvatars).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       } else if (statusKey === "expired") {
@@ -509,7 +543,10 @@ export default function ClientCurrentServiceRequest() {
   }, [totalPages, page]);
 
   const onEdit = (item) => {
-    navigate(`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`);
+    const navId = item.id;
+    if (navId !== undefined && navId !== null) {
+      navigate(`/clientreviewservicerequest?id=${encodeURIComponent(navId)}`);
+    }
   };
 
   const onOpenMenu = () => {};
@@ -562,8 +599,32 @@ export default function ClientCurrentServiceRequest() {
     return parts.join(" — ") || "No reason provided.";
   };
 
-  const onReason = (item) => {
-    setReasonTarget(item);
+  const onReason = async (item) => {
+    const isCancel = (String(item?.status || "").toLowerCase() === "cancelled") || !!item?.user_cancelled;
+    let row = item;
+    if (isCancel && !item?.canceled_at) {
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/clientservicerequests`, {
+          params: { scope: "cancelled", groupId: item.id },
+          withCredentials: true,
+        });
+        const arr = Array.isArray(data?.items) ? data.items : [];
+        const match = arr.find((r) => {
+          const gid = r.request_group_id || r.id || r.details?.request_group_id || r.info?.request_group_id || r.rate?.request_group_id;
+          return String(gid) === String(item.id);
+        });
+        if (match) {
+          row = {
+            ...item,
+            canceled_at: match.canceled_at || match.cancelled_at || null,
+            reason_choice: item.reason_choice || match.reason_choice || null,
+            reason_other: item.reason_other || match.reason_other || null,
+            decision_reason: item.decision_reason || match.decision_reason || null
+          };
+        }
+      } catch {}
+    }
+    setReasonTarget(row);
     setShowReason(true);
   };
 
@@ -783,7 +844,7 @@ export default function ClientCurrentServiceRequest() {
             const closeHover = isCancel ? "hover:bg-orange-50" : "hover:bg-red-50";
             const title = isCancel ? "Cancellation Reason" : "Decline Reason";
             const createdStr = reasonTarget?.created_at ? new Date(reasonTarget.created_at).toLocaleString() : "-";
-           const canceledStr = (reasonTarget?.canceled_at || reasonTarget?.decided_at) ? new Date(reasonTarget.canceled_at || reasonTarget.decided_at).toLocaleString() : "-";
+            const canceledStr = (reasonTarget?.canceled_at || reasonTarget?.decided_at) ? new Date(reasonTarget.canceled_at || reasonTarget.decided_at).toLocaleString() : "-";
             return (
               <div
                 role="dialog"
