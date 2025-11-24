@@ -1552,20 +1552,6 @@ export default function WorkerApplicationMenu() {
                   <SectionButton k="work" label="Work Details" />
                   <SectionButton k="rate" label="Service Rate" />
                 </div>
-                <div className="text-xs text-gray-500">
-                  Primary Service:{" "}
-                  <span className="font-semibold text-gray-800">
-                    {viewRow?.primary_service ||
-                      (Array.isArray(viewRow?.service_types) && viewRow.service_types.length
-                        ? viewRow.service_types[0]
-                        : "-")}
-                  </span>
-                  {" · "}
-                  Experience:{" "}
-                  <span className="font-semibold text-gray-800">
-                    {viewRow?.years_experience || "-"}
-                  </span>
-                </div>
               </div>
               <div className="flex-1 overflow-y-auto pt-3">
                 {renderSection()}
