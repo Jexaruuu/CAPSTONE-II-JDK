@@ -1022,14 +1022,14 @@ export default function AdminCancelledRequests() {
                                   <StatusPill value="cancelled" />
                                 </div>
                               </td>
-                              <td className="px-4 py-4 w-40 text-left border border-gray-200">
-                                <div className="inline-flex gap-2">
+                              <td className="px-4 py-4 w-40 text-left border border-gray-200 whitespace-nowrap">
+                                <div className="inline-flex gap-2 flex-nowrap">
                                   <button
                                     onClick={() => {
                                       setViewRow(u);
                                       setSectionOpen("info");
                                     }}
-                                    className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                                    className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 whitespace-nowrap"
                                   >
                                     View
                                   </button>
@@ -1037,9 +1037,9 @@ export default function AdminCancelledRequests() {
                                     onClick={() => {
                                       setReasonRow(u);
                                     }}
-                                    className="inline-flex items-center rounded-lg border border-amber-300 px-3 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50"
+                                    className="inline-flex items-center rounded-lg border border-amber-300 px-3 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50 whitespace-nowrap"
                                   >
-                                    Reason
+                                    View Reason
                                   </button>
                                 </div>
                               </td>

@@ -1227,35 +1227,35 @@ export default function AdminServiceRequests() {
                               </td>
 
                               <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}>
-                                <div className="inline-flex gap-2">
+                                <div className="inline-flex gap-2 flex-nowrap">
                                   <button
                                     onClick={() => {
                                       setViewRow(u);
                                       setSectionOpen("info");
                                     }}
-                                    className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                                    className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 whitespace-nowrap"
                                   >
                                     View
                                   </button>
                                   {isDeclined ? (
                                     <button
                                       onClick={() => openReasonModal(u)}
-                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 whitespace-nowrap"
                                     >
-                                      Reason
+                                      View Reason
                                     </button>
                                   ) : isApproved ? null : (
                                     <>
                                       <button
                                         onClick={() => openDeclineModal(u)}
-                                        className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                                         disabled={disableActions}
                                       >
                                         Decline
                                       </button>
                                       <button
                                         onClick={() => approve(u.id)}
-                                        className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                                         disabled={disableActions}
                                       >
                                         Approve

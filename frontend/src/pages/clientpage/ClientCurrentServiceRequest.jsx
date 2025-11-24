@@ -380,19 +380,20 @@ export default function ClientCurrentServiceRequest() {
           withCredentials: true,
         });
         const arr = Array.isArray(data) ? data : data?.items || [];
-        const normalized = arr.map((r, i) => ({
-          id: r.request_group_id ?? r.id ?? `${i}`,
-          status: "cancelled",
-          created_at: r.created_at || new Date().toISOString(),
-          updated_at: r.updated_at || r.created_at || new Date().toISOString(),
-          details: r.details || {},
-          rate: r.rate || {},
-          info: r.info || {},
-          decision_reason: r.decision_reason || r.reason || null,
-          reason_choice: r.reason_choice || null,
-          reason_other: r.reason_other || null,
-          decided_at: r.decided_at || null
-        }));
+ const normalized = arr.map((r, i) => ({
+  id: r.request_group_id ?? r.id ?? `${i}`,
+  status: "cancelled",
+  created_at: r.created_at || new Date().toISOString(),
+  updated_at: r.canceled_at || r.updated_at || r.created_at || new Date().toISOString(),
+  details: r.details || {},
+  rate: r.rate || {},
+  info: r.info || {},
+  decision_reason: r.decision_reason || r.reason || null,
+  reason_choice: r.reason_choice || null,
+  reason_other: r.reason_other || null,
+  decided_at: r.decided_at || null,
+  canceled_at: r.canceled_at || r.cancelled_at || null
+}));
         const withAvatars = await enrichProfiles(normalized);
         setItems(markUserCancelled(withAvatars).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       } else if (statusKey === "expired") {
@@ -780,7 +781,9 @@ export default function ClientCurrentServiceRequest() {
             const closeBorder = isCancel ? "border-orange-300" : "border-red-300";
             const closeText = isCancel ? "text-orange-600" : "text-red-600";
             const closeHover = isCancel ? "hover:bg-orange-50" : "hover:bg-red-50";
-            const title = isCancel ? "Cancel Reason" : "Decline Reason";
+            const title = isCancel ? "Cancellation Reason" : "Decline Reason";
+            const createdStr = reasonTarget?.created_at ? new Date(reasonTarget.created_at).toLocaleString() : "-";
+           const canceledStr = (reasonTarget?.canceled_at || reasonTarget?.decided_at) ? new Date(reasonTarget.canceled_at || reasonTarget.decided_at).toLocaleString() : "-";
             return (
               <div
                 role="dialog"
@@ -791,7 +794,7 @@ export default function ClientCurrentServiceRequest() {
               >
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
                 <div className={`relative w-full max-w-[720px] rounded-2xl border ${borderCol} bg-white shadow-2xl overflow-hidden`}>
-                  <div className={`px-6 py-4 bg-gradient-to-r ${headGrad} to-white border-b ${isCancel ? "border-orange-200" : "border-red-200"}`}>
+                  <div className={`px-6 py-4 bg-gradient-to-r ${headGrad} to-white ${isCancel ? "border-b border-orange-200" : "border-b border-red-200"}`}>
                     <div className="flex items-center justify-between">
                       <h3 className={`text-lg font-semibold ${titleCol}`}>{title}</h3>
                       <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${badgeBg} ${badgeText} ${badgeBorder}`}>
@@ -799,9 +802,16 @@ export default function ClientCurrentServiceRequest() {
                         {(reasonTarget?.details?.service_type || "Request")}
                       </span>
                     </div>
-                    <div className="mt-1 text-sm text-gray-600">
-                      Created {reasonTarget?.created_at ? `${formatDate(reasonTarget.created_at)}` : "-"}
-                    </div>
+                    {isCancel ? (
+                      <div className="mt-1 text-sm text-gray-600 flex items-center justify-between">
+                        <span>Created {createdStr}</span>
+                        <span>Canceled {canceledStr}</span>
+                      </div>
+                    ) : (
+                      <div className="mt-1 text-sm text-gray-600">
+                        Created {createdStr}
+                      </div>
+                    )}
                   </div>
                   <div className="p-6">
                     <div className={`rounded-xl border ${panelBorder} ${panelBg} p-4`}>
