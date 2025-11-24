@@ -685,12 +685,12 @@ export default function AdminServiceRequests() {
         <div className="space-y-4">
           <SectionCard
             title="Personal Information"
-badge={
-  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-    <span className="inline-flex h-3 w-3 rounded-full bg-[#0b82ff]" />
-    Client
-  </span>
-}
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+                <span className="inline-flex h-3 w-3 rounded-full bg-[#0b82ff]" />
+                Client
+              </span>
+            }
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
               <Field
@@ -809,7 +809,7 @@ badge={
         <SectionCard
           title="Personal Information"
           badge={
-            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
               <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
               Client
             </span>
@@ -1056,7 +1056,7 @@ badge={
                   {searchTerm && (
                     <button
                       onClick={() => setSearchTerm("")}
-                      className="mt-3.5 absolute.right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
+                      className="mt-3.5 absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs text-gray-500 hover:bg-gray-100"
                       aria-label="Clear search"
                     >
                       ✕
@@ -1100,7 +1100,7 @@ badge={
                               <input
                                 ref={headerCheckboxRef}
                                 type="checkbox"
-                                className="h-4 w-4 rounded.border-gray-300 text-blue-600 focus:ring-blue-500"
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                 onChange={toggleSelectAll}
                                 checked={allSelected}
                                 aria-label="Select all"
@@ -1129,7 +1129,7 @@ badge={
                             </span>
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[220px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[220px]"
                             onClick={() => toggleSort("service_task")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1137,7 +1137,7 @@ badge={
                             </span>
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 whitespace-nowrap w-[220px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 whitespace-nowrap w-[220px]"
                             onClick={() => toggleSort("created_at_ts")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1167,13 +1167,13 @@ badge={
                           return (
                             <tr
                               key={u.id}
-                              className={`border-t.border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
+                              className={`border-t border-gray-100 ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
                             >
                               {ENABLE_SELECTION && (
                                 <td className="px-4 py-4 border border-gray-200">
                                   <input
                                     type="checkbox"
-                                    className="h-4 w-4 rounded.border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                     checked={selected.has(u.id)}
                                     onChange={() => toggleSelectRow(u.id)}
                                     aria-label={`Select ${u.name_first} ${u.name_last}`}
@@ -1240,7 +1240,7 @@ badge={
                                   {isDeclined ? (
                                     <button
                                       onClick={() => openReasonModal(u)}
-                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm.font-medium text-red-600 hover:bg-red-50"
+                                      className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
                                     >
                                       Reason
                                     </button>
@@ -1248,14 +1248,14 @@ badge={
                                     <>
                                       <button
                                         onClick={() => openDeclineModal(u)}
-                                        className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm.font-medium text-red-600 hover:bg-red-50.disabled:opacity-50.disabled:cursor-not-allowed"
+                                        className="inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={disableActions}
                                       >
                                         Decline
                                       </button>
                                       <button
                                         onClick={() => approve(u.id)}
-                                        className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm.font-medium text-emerald-600 hover:bg-emerald-50.disabled:opacity-50.disabled:cursor-not-allowed"
+                                        className="inline-flex items-center rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={disableActions}
                                       >
                                         Approve
@@ -1281,7 +1281,7 @@ badge={
                 </div>
 
                 {ENABLE_SELECTION && selected.size > 0 && (
-                  <div className="flex items-center justify-between.border-t.border-gray-200 px-4 py-3 text-sm">
+                  <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 text-sm">
                     <div className="text-gray-700">{selected.size} selected</div>
                     <div className="flex items-center gap-2">
                       <button
@@ -1298,7 +1298,7 @@ badge={
                   <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
                     <nav className="flex items-center gap-2">
                       <button
-                        className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50.disabled:opacity-50"
+                        className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                         disabled={currentPage <= 1}
                         aria-label="Previous page"
                         onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -1428,7 +1428,7 @@ badge={
                 <button
                   type="button"
                   onClick={() => { setViewRow(null); }}
-                  className="inline-flex.items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                  className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                 >
                   Close
                 </button>
@@ -1437,72 +1437,89 @@ badge={
           </div>
         )}
 
-        {showDecline && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Decline service request"
-            tabIndex={-1}
-            autoFocus
-            className="fixed inset-0 z-[2147483646] flex items-center justify-center"
-          >
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingDecline && setShowDecline(false)} />
-            <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
-              <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
-                <div className="text-xl font-semibold">Decline Service Request</div>
-                <div className="text-xs.opacity-90">Select reason for declining</div>
-              </div>
-              <div className="px-6 py-5 space-y-4">
-                <div className="grid.grid-cols-1 gap-2">
-                  {REASONS_ADMIN.map((r) => (
-                    <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${declineReason===r?'border-red-500 ring-1 ring-red-300 bg-red-50':'border-gray-200 hover:bg-gray-50'}`}>
-                      <input
-                        type="radio"
-                        name="decline-reason"
-                        className="h-4 w-4"
-                        checked={declineReason === r}
-                        onChange={() => setDeclineReason((curr) => (curr === r ? "" : r))}
-                        disabled={submittingDecline}
-                      />
-                      <span className="text-sm md:text-base">{r}</span>
-                    </label>
-                  ))}
-                </div>
+      {showDecline && (
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-label="Decline Service Request"
+    tabIndex={-1}
+    autoFocus
+    className="fixed inset-0 z-[2147483646] flex items-center justify-center"
+  >
+    <div
+      className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+      onClick={() => !submittingDecline && setShowDecline(false)}
+    />
+    <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+      <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
+        <div className="text-xl font-semibold">Decline Service Request</div>
+        <div className="text-xs opacity-90">Select reason for declining</div>
+      </div>
 
-                <div className="space-y-2">
-                  <div className="text-sm font-semibold text-gray-700">Other</div>
-                  <textarea
-                    value={declineOther}
-                    onChange={(e) => setDeclineOther(e.target.value)}
-                    disabled={submittingDecline}
-                    placeholder="Type other reason here"
-                    className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
-                  />
-                </div>
+      <div className="px-6 py-5 space-y-4">
+        <div className="grid grid-cols-1 gap-3">
+          {REASONS_ADMIN.map((r) => (
+            <label
+              key={r}
+              className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${
+                declineReason === r
+                  ? "border-red-500 ring-1 ring-red-300 bg-red-50"
+                  : "border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name="decline-reason"
+                className="h-4 w-4"
+                checked={declineReason === r}
+                onChange={() =>
+                  setDeclineReason((curr) => (curr === r ? "" : r))
+                }
+                disabled={submittingDecline}
+              />
+              <span className="text-sm md:text-base">{r}</span>
+            </label>
+          ))}
+        </div>
 
-                {declineErr ? <div className="text-sm text-red-700">{declineErr}</div> : null}
-              </div>
-              <div className="px-6 py-4 border-top border-t border-gray-100 flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={() => !submittingDecline && setShowDecline(false)}
-                  className="inline-flex items-center rounded-lg border px-3.py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-                  disabled={submittingDecline}
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={submitDecline}
-                  className="inline-flex items-center rounded-lg border px-3.py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50.disabled:opacity-60"
-                  disabled={submittingDecline}
-                >
-                  {submittingDecline ? "Submitting..." : "Confirm Decline"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="space-y-2">
+          <div className="text-sm font-semibold text-gray-700">Other</div>
+          <textarea
+            value={declineOther}
+            onChange={(e) => setDeclineOther(e.target.value)}
+            disabled={submittingDecline}
+            placeholder="Type other reason here"
+            className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+          />
+        </div>
+
+        {declineErr ? (
+          <div className="text-sm text-red-700">{declineErr}</div>
+        ) : null}
+      </div>
+
+      <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => !submittingDecline && setShowDecline(false)}
+          className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-60"
+          disabled={submittingDecline}
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={submitDecline}
+          className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
+          disabled={submittingDecline}
+        >
+          Confirm Decline
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
 {showReason && (
   <div
@@ -1510,7 +1527,7 @@ badge={
     aria-modal="true"
     aria-label="Decline reason (service request)"
     tabIndex={-1}
-    className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
+    className="fixed inset-0 z-[2147483646] flex.items-center justify-center p-4"
   >
     <div
       className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -1597,14 +1614,14 @@ badge={
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
-              <div className="relative.mx-auto w-40 h-40">
+              <div className="relative mx-auto w-40 h-40">
                 <div
-                  className="absolute inset-0.animate-spin rounded-full"
+                  className="absolute inset-0 animate-spin rounded-full"
                   style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#0b82ff22", borderTopColor: "#0b82ff", borderRadius: "9999px" }}
                 />
-                <div className="absolute inset-6 rounded-full.border-2 border-[#0b82ff33]" />
+                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
               </div>
-              <div className="mt-6 text-center.space-y-1">
+              <div className="mt-6 text-center space-y-1">
                 <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
                 <div className="text-sm text-gray-600 animate-pulse">Submitting decline</div>
               </div>
@@ -1620,11 +1637,11 @@ badge={
               aria-modal="true"
               aria-label="Loading next step"
               tabIndex={-1}
-              className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#0b82ff] bg-white.shadow-2xl p-8 z-[2147483647]"
+              className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8 z-[2147483647]"
             >
               <div className="relative mx-auto w-40 h-40">
                 <div
-                  className="absolute inset-0.animate-spin rounded-full"
+                  className="absolute inset-0 animate-spin rounded-full"
                   style={{
                     borderWidth: '10px',
                     borderStyle: 'solid',
@@ -1633,7 +1650,7 @@ badge={
                     borderRadius: '9999px'
                   }}
                 />
-                <div className="absolute inset-6 rounded-full.border-2 border-[#0b82ff33]" />
+                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   {!logoBrokenLoading ? (
                     <img
@@ -1643,7 +1660,7 @@ badge={
                       onError={() => setLogoBrokenLoading(true)}
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full.border border-[#0b82ff] flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-full border border-[#0b82ff] flex items-center justify-center">
                       <span className="font-bold text-[#0b82ff]">JDK</span>
                     </div>
                   )}
@@ -1669,8 +1686,8 @@ badge={
             className="fixed inset-0 z-[2147483647] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl.border border-[#0b82ff] bg-white shadow-2xl p-8">
-              <div className="mx-auto w-24 h-24 rounded-full.border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
+              <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
                 {!logoBroken2 ? (
                   <img
                     src="/jdklogo.png"
@@ -1679,7 +1696,7 @@ badge={
                     onError={() => setLogoBroken2(true)}
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full.border border-[#0b82ff] flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full border border-[#0b82ff] flex items-center justify-center">
                     <span className="font-bold text-[#0b82ff]">JDK</span>
                   </div>
                 )}
@@ -1692,7 +1709,7 @@ badge={
                 <button
                   type="button"
                   onClick={() => setShowCancelSuccess(false)}
-                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl.shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
+                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
                 >
                   Done
                 </button>
@@ -1709,11 +1726,11 @@ badge={
               aria-modal="true"
               aria-label="Loading next step"
               tabIndex={-1}
-              className="relative w-[320px] max-w-[90vw] rounded-2xl.border border-[#0b82ff] bg-white shadow-2xl p-8 z-[2147483647]"
+              className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8 z-[2147483647]"
             >
               <div className="relative mx-auto w-40 h-40">
                 <div
-                  className="absolute inset-0.animate-spin rounded-full"
+                  className="absolute inset-0 animate-spin rounded-full"
                   style={{
                     borderWidth: '10px',
                     borderStyle: 'solid',
@@ -1722,7 +1739,7 @@ badge={
                     borderRadius: '9999px'
                   }}
                 />
-                <div className="absolute inset-6 rounded-full.border-2 border-[#0b82ff33]" />
+                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   {!logoBrokenDecline ? (
                     <img
@@ -1732,7 +1749,7 @@ badge={
                       onError={() => setLogoBrokenDecline(true)}
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full.border border-[#0b82ff] flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-full border border-[#0b82ff] flex items-center justify-center">
                       <span className="font-bold text-[#0b82ff]">JDK</span>
                     </div>
                   )}
@@ -1755,11 +1772,11 @@ badge={
             autoFocus
             onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            className="fixed inset-0 z-[2147483647] flex.items-center justify-center"
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl.border border-[#0b82ff] bg-white shadow-2xl p-8">
-              <div className="mx-auto w-24 h-24 rounded-full.border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br.from-blue-50 to-white">
+            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
+              <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
                 {!logoBrokenDecline2 ? (
                   <img
                     src="/jdklogo.png"
@@ -1768,7 +1785,7 @@ badge={
                     onError={() => setLogoBrokenDecline2(true)}
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full.border border-[#0b82ff] flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full border border-[#0b82ff] flex items-center justify-center">
                     <span className="font-bold text-[#0b82ff]">JDK</span>
                   </div>
                 )}
@@ -1781,7 +1798,7 @@ badge={
                 <button
                   type="button"
                   onClick={() => setShowDeclineSuccess(false)}
-                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl.shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
+                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
                 >
                   Done
                 </button>

@@ -1578,7 +1578,7 @@ export default function WorkerApplicationMenu() {
         </div>
       )}
 
-      {viewRow && showDocs && (
+           {viewRow && showDocs && (
         <div
           role="dialog"
           aria-modal="true"
@@ -1586,73 +1586,260 @@ export default function WorkerApplicationMenu() {
           tabIndex={-1}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDocs(false)} />
-          <div className="relative w-full max-w-[900px] max-h-[80vh] overflow-hidden rounded-2xl border border-gray-300 bg-white shadow-2xl">
-            <div className="px-6 py-4 border-b bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white">
-              <div className="text-base font-semibold">Documents</div>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[65vh] [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
-              {viewRow && viewRow.docs && Object.keys(viewRow.docs).length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[
-                    { label: "Primary ID (Front)", keys: ["primary_id_front", "primaryIdFront", "primary_front", "primary_front_id", "primary_id_front_url", "primary_front_url"] },
-                    { label: "Primary ID (Back)", keys: ["primary_id_back", "primaryIdBack", "primary_back", "primary_back_id", "primary_id_back_url", "primary_back_url"] },
-                    { label: "Secondary ID", keys: ["secondary_id", "secondaryId", "secondary_id_url"] },
-                    { label: "NBI/Police Clearance", keys: ["nbi_police_clearance", "nbi_clearance", "police_clearance", "nbi", "police"] },
-                    { label: "Proof of Address", keys: ["proof_of_address","proofOfAddress","address_proof","proof_address","billing_proof","utility_bill","proof_of_residence","proofOfResidence","residence_proof","residency_proof","barangay_clearance","barangay_certificate","electric_bill","water_bill","meralco_bill"], fuzzy: { any: ["address","residence","residency","billing","utility","bill","proof","poa","barangay","clearance"] } },
-                    { label: "Medical Certificate", keys: ["medical_certificate", "med_cert"], fuzzy: { any: ["medical", "med_cert", "medcert", "health", "fit_to_work", "fit-to-work", "fit2work", "med"] } },
-                    { label: "Certificates", keys: ["certificates", "training_certificates", "certs"] },
-                  ].map((cfg) => {
-                    const d = viewRow.docs || {};
-                    const found = resolveDoc(d, cfg.keys, cfg.fuzzy);
-                    const url = toDocUrl(found);
-                    const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(url);
-                    return (
-                      <div key={cfg.label} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
-                        <div className="p-3">
-                          {isImg && url ? (
-                            <img src={url} alt={cfg.label} className="w-full h-40 object-contain" />
-                          ) : (
-                            <div className="text-sm text-gray-500 h-40 grid place-items-center">{url ? "Preview not available" : "No document"}</div>
-                          )}
-                        </div>
-                        <div className="p-3 border-t flex items-center justify-between">
-                          <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
-                            <span className="h-2 w-2 rounded-full bg-gray-500/70" />
-                            {cfg.label}
-                          </div>
-                          {url ? (
-                            <a
-                              href={url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
-                            >
-                              Open
-                            </a>
-                          ) : (
-                            <span className="text-sm text-gray-400">No link</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowDocs(false)}
+          />
+          <div className="relative w-full max-w-[960px] max-h-[80vh] rounded-2xl border border-gray-200 bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className="relative px-6 sm:px-8 py-4 border-b border-gray-200 bg-white">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-gray-200 bg-gray-100 overflow-hidden">
+                    <img
+                      src={
+                        viewRow?.profile_picture_url ||
+                        avatarFromName(
+                          `${viewRow?.name_first || ""} ${
+                            viewRow?.name_last || ""
+                          }`.trim()
+                        )
+                      }
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                      data-fallback="primary"
+                      onError={({ currentTarget }) => {
+                        const parent = currentTarget.parentElement;
+                        if (currentTarget.dataset.fallback === "primary") {
+                          currentTarget.dataset.fallback = "dice";
+                          currentTarget.src = avatarFromName(
+                            `${viewRow?.name_first || ""} ${
+                              viewRow?.name_last || ""
+                            }`.trim()
+                          );
+                          return;
+                        }
+                        currentTarget.style.display = "none";
+                        if (parent) {
+                          parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#008cfc]">${(
+                            (viewRow?.name_first || "")
+                              .trim()
+                              .slice(0, 1) +
+                            (viewRow?.name_last || "")
+                              .trim()
+                              .slice(0, 1) || "?"
+                          ).toUpperCase()}</div>`;
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-lg sm:text-xl font-semibold text-gray-900">
+                      {[viewRow.name_first, viewRow.name_last]
+                        .filter(Boolean)
+                        .join(" ") || "-"}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {viewRow.email || "-"}
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="text-center text-gray-600">No documents.</div>
-              )}
+                <div className="flex flex-col items-start md:items-end gap-2">
+                  <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
+                    Application Documents
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Created{" "}
+                    <span className="font-medium text-gray-700">
+                      {viewRow.created_at_display || "-"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <StatusPill value={viewRow.status} />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="px-6 py-4 border-t bg-white">
+
+            <div className="px-6 sm:px-8 py-4 flex-1 bg-gray-50 flex flex-col overflow-hidden">
+              <div className="mb-3 flex items-center justify-between gap-3 pb-2 border-b border-gray-200 shrink-0">
+                <div className="text-sm font-semibold text-gray-900">
+                  Documents
+                </div>
+                <div className="text-xs text-gray-500">
+                  Review the worker’s submitted documents.
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto pt-3 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+                {viewRow && viewRow.docs && Object.keys(viewRow.docs).length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[
+                      {
+                        label: "Primary ID (Front)",
+                        keys: [
+                          "primary_id_front",
+                          "primaryIdFront",
+                          "primary_front",
+                          "primary_front_id",
+                          "primary_id_front_url",
+                          "primary_front_url"
+                        ]
+                      },
+                      {
+                        label: "Primary ID (Back)",
+                        keys: [
+                          "primary_id_back",
+                          "primaryIdBack",
+                          "primary_back",
+                          "primary_back_id",
+                          "primary_id_back_url",
+                          "primary_back_url"
+                        ]
+                      },
+                      {
+                        label: "Secondary ID",
+                        keys: [
+                          "secondary_id",
+                          "secondaryId",
+                          "secondary_id_url"
+                        ]
+                      },
+                      {
+                        label: "NBI/Police Clearance",
+                        keys: [
+                          "nbi_police_clearance",
+                          "nbi_clearance",
+                          "police_clearance",
+                          "nbi",
+                          "police"
+                        ]
+                      },
+                      {
+                        label: "Proof of Address",
+                        keys: [
+                          "proof_of_address",
+                          "proofOfAddress",
+                          "address_proof",
+                          "proof_address",
+                          "billing_proof",
+                          "utility_bill",
+                          "proof_of_residence",
+                          "proofOfResidence",
+                          "residence_proof",
+                          "residency_proof",
+                          "barangay_clearance",
+                          "barangay_certificate",
+                          "electric_bill",
+                          "water_bill",
+                          "meralco_bill"
+                        ],
+                        fuzzy: {
+                          any: [
+                            "address",
+                            "residence",
+                            "residency",
+                            "billing",
+                            "utility",
+                            "bill",
+                            "proof",
+                            "poa",
+                            "barangay",
+                            "clearance"
+                          ]
+                        }
+                      },
+                      {
+                        label: "Medical Certificate",
+                        keys: ["medical_certificate", "med_cert"],
+                        fuzzy: {
+                          any: [
+                            "medical",
+                            "med_cert",
+                            "medcert",
+                            "health",
+                            "fit_to_work",
+                            "fit-to-work",
+                            "fit2work",
+                            "med"
+                          ]
+                        }
+                      },
+                      {
+                        label: "Certificates",
+                        keys: [
+                          "certificates",
+                          "training_certificates",
+                          "certs"
+                        ]
+                      }
+                    ].map((cfg) => {
+                      const d = viewRow.docs || {};
+                      const found = resolveDoc(d, cfg.keys, cfg.fuzzy);
+                      const url = toDocUrl(found);
+                      const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(url);
+                      return (
+                        <div
+                          key={cfg.label}
+                          className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl"
+                        >
+                          <div className="p-3">
+                            {isImg && url ? (
+                              <img
+                                src={url}
+                                alt={cfg.label}
+                                className="w-full h-40 object-contain"
+                              />
+                            ) : (
+                              <div className="text-sm text-gray-500 h-40 grid place-items-center">
+                                {url
+                                  ? "Preview not available"
+                                  : "No document"}
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-3 border-t flex items-center justify-between">
+                            <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                              <span className="h-2 w-2 rounded-full bg-gray-500/70" />
+                              {cfg.label}
+                            </div>
+                            {url ? (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                              >
+                                Open
+                              </a>
+                            ) : (
+                              <span className="text-sm text-gray-400">
+                                No link
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-600 py-10">
+                    No documents.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="px-6 sm:px-8 py-4 border-t border-gray-100 bg-white flex flex-col sm:flex-row gap-3 sm:justify-end">
               <button
                 onClick={() => setShowDocs(false)}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
               >
-                Done
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
+
 
       {showDecline && (
         <div
