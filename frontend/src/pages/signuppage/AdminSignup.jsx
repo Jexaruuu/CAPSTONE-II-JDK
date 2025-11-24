@@ -50,6 +50,7 @@ const AdminSignup = () => {
   const navigate = useNavigate();
 
   const normEmail = (s) => String(s || '').trim().toLowerCase();
+  const isGmailEmail = (s) => normEmail(s).endsWith('@gmail.com');
 
   const passwordRules = useMemo(() => {
     const v = password || '';
@@ -68,6 +69,7 @@ const AdminSignup = () => {
     admin_no.trim() !== '' &&
     sex.trim() !== '' &&
     email_address.trim() !== '' &&
+    isGmailEmail(email_address) &&
     passwordRules.len &&
     passwordRules.upper &&
     passwordRules.num &&
@@ -255,6 +257,10 @@ const AdminSignup = () => {
         setErrorMessage('Enter a valid email address.');
         return;
       }
+      if (!isGmailEmail(email)) {
+        setErrorMessage('Email must be a Gmail address.');
+        return;
+      }
       const available = await checkEmailAvailable();
       if (!available) {
         setErrorMessage('Email already in use');
@@ -288,6 +294,10 @@ const AdminSignup = () => {
     setInfoMessage('');
     setCanResend(false);
 
+    if (!isGmailEmail(email_address)) {
+      setErrorMessage('Email must be a Gmail address (ending in @gmail.com).');
+      return;
+    }
     if (!emailVerified) {
       setErrorMessage('Please tap “Send Admin No.” to your email first.');
       return;
@@ -361,7 +371,7 @@ const AdminSignup = () => {
                 />
               </div>
               <div className="w-full">
-                <label htmlFor="last_name" className="block text-sm font-semibold mb-1">Last Name</label>
+                <label htmlFor="last_name" className="block text.sm font-semibold mb-1">Last Name</label>
                 <input
                   id="last_name"
                   type="text"
@@ -382,18 +392,18 @@ const AdminSignup = () => {
                   type="email"
                   value={email_address}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email address"
+                  placeholder="@gmail.com"
                   className="w-[278px] p-2.5 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
                   autoComplete="email"
                 />
                 <button
                   type="button"
                   onClick={handleRequestAdminNo}
-                  disabled={adminNoRequesting || !email_address.trim()}
+                  disabled={adminNoRequesting || !email_address.trim() || !isGmailEmail(email_address)}
                   className={`w-[160px] shrink-0 px-4 rounded-md border-2 ${
-                    adminNoRequesting || !email_address.trim()
+                    adminNoRequesting || !email_address.trim() || !isGmailEmail(email_address)
                       ? 'border-gray-300 text-gray-400'
-                      : 'border-[#008cfc] text-[#008cfc] hover:bg-[#008cfc] hover:text-white'
+                      : 'border-[#008cfc] text-[#008cfc] hover:bg[#008cfc] hover:text-white'
                   }`}
                 >
                   {adminNoLocked
@@ -401,6 +411,9 @@ const AdminSignup = () => {
                     : (adminNoRequesting ? 'Sending…' : 'Resend')}
                 </button>
               </div>
+              {email_address && !isGmailEmail(email_address) && (
+                <p className="text-xs text-red-600 mt-1">Email must be a Gmail address.</p>
+              )}
             </div>
 
             <div>

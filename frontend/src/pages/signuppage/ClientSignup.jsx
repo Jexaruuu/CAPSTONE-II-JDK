@@ -34,6 +34,9 @@ const ClientSignUpPage = () => {
 
   const now = () => Date.now();
 
+  const normEmail = (s) => String(s || '').trim().toLowerCase();
+  const isGmailEmail = (s) => normEmail(s).endsWith('@gmail.com');
+
   const passwordRules = useMemo(() => {
     const v = password || '';
     const len = v.length >= 8;
@@ -52,6 +55,7 @@ const ClientSignUpPage = () => {
     last_name.trim() !== '' &&
     sex.trim() !== '' &&
     email_address.trim() !== '' &&
+    isGmailEmail(email_address) &&
     passwordRules.len &&
     passwordRules.upper &&
     passwordRules.num &&
@@ -61,7 +65,7 @@ const ClientSignUpPage = () => {
 
   const checkEmailAvailable = async () => {
     try {
-      const email = String(email_address || '').trim().toLowerCase();
+      const email = normEmail(email_address);
       const resp = await axios.post(
         'http://localhost:5000/api/auth/check-email',
         { email },
@@ -80,7 +84,7 @@ const ClientSignUpPage = () => {
       setOtpError('');
       setOtpInfo('Sending code…');
       setOtpSending(true);
-      const email = String(email_address || '').trim().toLowerCase();
+      const email = normEmail(email_address);
       await axios.post(
         'http://localhost:5000/api/auth/request-otp',
         { email },
@@ -102,7 +106,7 @@ const ClientSignUpPage = () => {
       setOtpError('');
       setOtpInfo('Verifying…');
       setOtpVerifying(true);
-      const email = String(email_address || '').trim().toLowerCase();
+      const email = normEmail(email_address);
       await axios.post(
         'http://localhost:5000/api/auth/verify-otp',
         { email, code: otpCode },
@@ -123,7 +127,7 @@ const ClientSignUpPage = () => {
   const completeRegistration = async () => {
     try {
       setLoading(true);
-      const email = String(email_address || '').trim().toLowerCase();
+      const email = normEmail(email_address);
       const response = await axios.post(
         'http://localhost:5000/api/clients/register',
         {
@@ -179,6 +183,12 @@ const ClientSignUpPage = () => {
     setInfoMessage('');
     setCanResend(false);
 
+    const email = normEmail(email_address);
+    if (!isGmailEmail(email)) {
+      setErrorMessage('Email must be a Gmail address.');
+      return;
+    }
+
     if (!passwordRules.match) {
       setErrorMessage('Passwords do not match');
       return;
@@ -213,7 +223,7 @@ const ClientSignUpPage = () => {
     try {
       setErrorMessage('');
       setInfoMessage('Resending verification email…');
-      const email = String(email_address || '').trim().toLowerCase();
+      const email = normEmail(email_address);
       await axios.post('http://localhost:5000/api/auth/resend', { email });
       setInfoMessage('Verification email resent. Please check your inbox.');
     } catch (err) {
@@ -301,10 +311,15 @@ const ClientSignUpPage = () => {
                 type="email"
                 value={email_address}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email address"
+                placeholder="@gmail.com"
                 className="w-full p-2.5 border-2 rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008cfc]"
                 autoComplete="email"
               />
+              {email_address && !isGmailEmail(email_address) && (
+                <p className="text-xs text-red-600 mt-1">
+                  Email must be a Gmail address.
+                </p>
+              )}
             </div>
 
             <div>
