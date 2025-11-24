@@ -685,12 +685,12 @@ export default function AdminServiceRequests() {
         <div className="space-y-4">
           <SectionCard
             title="Personal Information"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-                Client
-              </span>
-            }
+badge={
+  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+    <span className="inline-flex h-3 w-3 rounded-full bg-[#0b82ff]" />
+    Client
+  </span>
+}
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
               <Field
@@ -809,7 +809,7 @@ export default function AdminServiceRequests() {
         <SectionCard
           title="Personal Information"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
               <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
               Client
             </span>
@@ -1129,7 +1129,7 @@ export default function AdminServiceRequests() {
                             </span>
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[220px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 min-w-[220px]"
                             onClick={() => toggleSort("service_task")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1137,7 +1137,7 @@ export default function AdminServiceRequests() {
                             </span>
                           </th>
                           <th
-                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 whitespace-nowrap w-[220px]"
+                            className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none.shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 whitespace-nowrap w-[220px]"
                             onClick={() => toggleSort("created_at_ts")}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1418,17 +1418,6 @@ export default function AdminServiceRequests() {
                     <SectionButton k="details" label="Service Request Details" />
                     <SectionButton k="rate" label="Service Rate" />
                   </div>
-                  <div className="text-xs text-gray-500">
-                    Preferred Date:{" "}
-                    <span className="font-semibold text-gray-800">
-                      {fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"}
-                    </span>
-                    {" · "}
-                    Time:{" "}
-                    <span className="font-semibold text-gray-800">
-                      {fmtPreferredTime(viewRow?.details?.preferred_time)}
-                    </span>
-                  </div>
                 </div>
                 <div className="flex-1 overflow-y-auto blue-scroll pt-3">
                   {renderSection()}
@@ -1610,7 +1599,7 @@ export default function AdminServiceRequests() {
             <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
               <div className="relative.mx-auto w-40 h-40">
                 <div
-                  className="absolute inset-0 animate-spin rounded-full"
+                  className="absolute inset-0.animate-spin rounded-full"
                   style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#0b82ff22", borderTopColor: "#0b82ff", borderRadius: "9999px" }}
                 />
                 <div className="absolute inset-6 rounded-full.border-2 border-[#0b82ff33]" />
@@ -1631,11 +1620,11 @@ export default function AdminServiceRequests() {
               aria-modal="true"
               aria-label="Loading next step"
               tabIndex={-1}
-              className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8 z-[2147483647]"
+              className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#0b82ff] bg-white.shadow-2xl p-8 z-[2147483647]"
             >
               <div className="relative mx-auto w-40 h-40">
                 <div
-                  className="absolute inset-0 animate-spin rounded-full"
+                  className="absolute inset-0.animate-spin rounded-full"
                   style={{
                     borderWidth: '10px',
                     borderStyle: 'solid',
@@ -1724,7 +1713,7 @@ export default function AdminServiceRequests() {
             >
               <div className="relative mx-auto w-40 h-40">
                 <div
-                  className="absolute inset-0 animate-spin rounded-full"
+                  className="absolute inset-0.animate-spin rounded-full"
                   style={{
                     borderWidth: '10px',
                     borderStyle: 'solid',
@@ -1770,7 +1759,7 @@ export default function AdminServiceRequests() {
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div className="relative w-[380px] max-w-[92vw] rounded-2xl.border border-[#0b82ff] bg-white shadow-2xl p-8">
-              <div className="mx-auto w-24 h-24 rounded-full.border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              <div className="mx-auto w-24 h-24 rounded-full.border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br.from-blue-50 to-white">
                 {!logoBrokenDecline2 ? (
                   <img
                     src="/jdklogo.png"
