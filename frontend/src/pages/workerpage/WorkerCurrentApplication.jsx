@@ -89,11 +89,11 @@ const RateText = ({ rate }) => {
 
 const iconForService = (serviceType) => {
   const s = String(serviceType || "").toLowerCase();
-  if (s.includes("car wash") || s.includes("car washing")) return Car;
+  if (s.includes("car wash") || s.includes("carwashing") || s.includes("carwash") || s.includes("carwasher")) return Car;
   if (s.includes("carpentry") || s.includes("carpenter")) return Hammer;
-  if (s.includes("electric")) return Zap;
+  if (s.includes("electrician") || s.includes("electric")) return Zap;
   if (s.includes("plumb")) return Wrench;
-  if (s.includes("laundry")) return Shirt;
+  if (s.includes("laundry") || s.includes("launder")) return Shirt;
   return Hammer;
 };
 
@@ -139,15 +139,16 @@ const Card = ({ item, onView, onReason }) => {
   const info = item.info || {};
   const work = item.work || {};
   const rate = item.rate || {};
-  const serviceTypes = Array.isArray(work?.service_types)
+  const serviceTypesRaw = Array.isArray(work?.service_types)
     ? work.service_types
+    : typeof work?.service_types === "string"
+    ? work.service_types.split(",")
     : work?.service_type
     ? [work.service_type]
     : [];
+  const serviceTypes = serviceTypesRaw.map((x) => String(x || "").trim()).filter(Boolean);
   const primaryService = serviceTypes[0] || work.primary_service || "";
-  const iconSources = serviceTypes.length
-    ? serviceTypes
-    : [primaryService || work?.work_description];
+  const iconSources = serviceTypes.length ? serviceTypes : [primaryService || work?.work_description];
   const serviceTypesText = serviceTypes.length ? serviceTypes.join(", ") : (primaryService || "Service");
 
   const statusLower = String(item.status || "").toLowerCase();
@@ -155,14 +156,18 @@ const Card = ({ item, onView, onReason }) => {
   const isApproved = statusLower === "approved";
   const isDeclined = statusLower === "declined";
   const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
-  const isMuted = isCancelled;
+  const isMuted = false;
   const cardBase =
     "bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300";
-  const cardState = isDeclined
+  const cardState = isCancelled
+    ? "hover:border-orange-400 hover:ring-2 hover:ring-orange-400 hover:shadow-xl"
+    : isDeclined
     ? "hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
-    : isPending && !isCancelled
+    : isApproved
+    ? "hover:border-emerald-600 hover:ring-2 hover:ring-emerald-600 hover:shadow-xl"
+    : isPending
     ? "hover:border-yellow-500 hover:ring-2 hover:ring-yellow-500 hover:shadow-xl"
-    : "";
+    : "hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl";
   const profileUrl =
     info?.profile_picture_url || avatarFromName(info?.first_name || "Worker");
   const createdAgo = item.created_at ? timeAgo(item.created_at) : "";
@@ -195,15 +200,11 @@ const Card = ({ item, onView, onReason }) => {
           <div className="min-w-0">
             <div className="text-xl md:text-2xl font-semibold truncate">
               <span className="text-gray-700">Service Type:</span>{" "}
-              <span className={isMuted ? "text-gray-500" : "text-[#008cfc]"}>
+              <span className="text-[#008cfc]">
                 {serviceTypesText}
               </span>
             </div>
-            <div
-              className={`mt-1 text-base md:text-lg truncate ${
-                isMuted ? "text-gray-600" : "text-black"
-              }`}
-            >
+            <div className="mt-1 text-base md:text-lg truncate text-black">
               <span className="font-semibold">Work Description:</span>{" "}
               {work?.work_description || "-"}
             </div>
@@ -214,13 +215,7 @@ const Card = ({ item, onView, onReason }) => {
               <div className="space-y-1.5">
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Address:</span>
-                  <span
-                    className={
-                      isMuted
-                        ? "text-gray-500 font-medium"
-                        : "text-[#008cfc] font-medium"
-                    }
-                  >
+                  <span className="text-[#008cfc] font-medium">
                     {address || "-"}
                   </span>
                 </div>
@@ -228,13 +223,7 @@ const Card = ({ item, onView, onReason }) => {
                   <span className="text-gray-700 font-semibold">
                     Years of Experience:
                   </span>
-                  <span
-                    className={
-                      isMuted
-                        ? "text-gray-500 font-medium"
-                        : "text-[#008cfc] font-medium"
-                    }
-                  >
+                  <span className="text-[#008cfc] font-medium">
                     {yearsExp ? yearsExp : "-"}
                   </span>
                 </div>
@@ -242,13 +231,7 @@ const Card = ({ item, onView, onReason }) => {
                   <span className="text-gray-700 font-semibold">
                     Tools Provided:
                   </span>
-                  <span
-                    className={
-                      isMuted
-                        ? "text-gray-500 font-medium"
-                        : "text-[#008cfc] font-medium"
-                    }
-                  >
+                  <span className="text-[#008cfc] font-medium">
                     {typeof tools === "boolean"
                       ? tools
                         ? "Yes"
@@ -262,13 +245,7 @@ const Card = ({ item, onView, onReason }) => {
                   <span className="text-gray-700 font-semibold">
                     Rate Type:
                   </span>
-                  <span
-                    className={
-                      isMuted
-                        ? "text-gray-500 font-medium"
-                        : "text-[#008cfc] font-medium"
-                    }
-                  >
+                  <span className="text-[#008cfc] font-medium">
                     {rateTypeText || "-"}
                   </span>
                 </div>
@@ -276,13 +253,7 @@ const Card = ({ item, onView, onReason }) => {
                   <span className="text-gray-700 font-semibold">
                     Service Rate:
                   </span>
-                  <span
-                    className={
-                      isMuted
-                        ? "text-gray-500 font-medium"
-                        : "text-[#008cfc] font-medium"
-                    }
-                  >
+                  <span className="text-[#008cfc] font-medium">
                     <RateText rate={rate} />
                   </span>
                 </div>
@@ -325,11 +296,7 @@ const Card = ({ item, onView, onReason }) => {
               return (
                 <div
                   key={`${st}-${idx}`}
-                  className={`h-10 w-10 rounded-lg border flex items-center justify-center ${
-                    isCancelled || isDeclined
-                      ? "border-gray-300 text-gray-500"
-                      : "border-gray-300 text-[#008cfc]"
-                  }`}
+                  className="h-10 w-10 rounded-lg border flex items-center justify-center border-gray-300 text-[#008cfc]"
                 >
                   <IconComp className="h-5 w-5" />
                 </div>
@@ -453,7 +420,7 @@ export default function WorkerCurrentApplication() {
     if (!q) return list;
     return list.filter((i) => {
       const s1 = (i.work?.work_description || "").toLowerCase();
-      const s2 = (Array.isArray(i.work?.service_types) ? i.work.service_types.join(" ") : "").toLowerCase();
+      const s2 = (Array.isArray(i.work?.service_types) ? i.work.service_types.join(" ") : typeof i.work?.service_types === "string" ? i.work.service_types : "").toLowerCase();
       return s1.includes(q) || s2.includes(q);
     });
   }, [items, query, statusFilter]);
@@ -515,7 +482,11 @@ export default function WorkerCurrentApplication() {
   };
 
   const buildServiceTypeList = (work) => {
-    const arr = Array.isArray(work?.service_types) ? work.service_types.filter(Boolean) : [];
+    const arr = Array.isArray(work?.service_types)
+      ? work.service_types.filter(Boolean)
+      : typeof work?.service_types === "string"
+      ? work.service_types.split(",").map((x) => String(x || "").trim()).filter(Boolean)
+      : [];
     return arr.length ? arr.join(", ") : "-";
   };
 

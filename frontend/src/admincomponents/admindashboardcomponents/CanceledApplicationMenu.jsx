@@ -501,28 +501,19 @@ export default function CanceledApplicationMenu() {
   }, [sortedRows, currentPage]);
 
   const Field = ({ label, value }) => (
-    <div className="text-left">
-      <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">{label}</div>
-      <div className="mt-1 text-[15px] font-semibold text-gray-900 break-words">{value ?? "-"}</div>
+    <div className="text-left space-y-0.5">
+      <div className="text-[11px] font-medium tracking-wide text-gray-500 uppercase">{label}</div>
+      <div className="text-[14px] font-semibold text-gray-900 break-words">{value ?? "-"}</div>
     </div>
   );
 
   const SectionCard = ({ title, children, badge }) => (
-    <section className="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
-      <div className="px-6 py-5 rounded-2xl bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white flex items-center justify-between">
-        <h3 className="text-base font-semibold flex.items-center gap-2">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/70"></span>
-          {title}
-        </h3>
-        {badge || (
-          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-            <span className="h-3 w-3 rounded-full bg-white/60" />
-            Info
-          </span>
-        )}
+    <section className="relative rounded-xl border border-gray-200 bg-white">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+        {badge || null}
       </div>
-      <div className="p-6">{children}</div>
-      <div className="pointer-events-none.absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent.opacity-60"></div>
+      <div className="p-4">{children}</div>
     </section>
   );
 
@@ -531,7 +522,7 @@ export default function CanceledApplicationMenu() {
     return (
       <button
         onClick={() => setSectionOpen(k)}
-        className={["rounded-full px-3.5 py-1.5 text-sm border transition", active ? "bg-[#008cfc] text-white border-[#008cfc]" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"].join(" ")}
+        className={["rounded-full px-3 py-1.5 text-xs md:text-sm border transition", active ? "bg-[#0b82ff] text-white border-[#0b82ff] shadow-sm" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"].join(" ")}
       >
         {label}
       </button>
@@ -579,13 +570,13 @@ export default function CanceledApplicationMenu() {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              <span className="h-3 w-3 rounded-full bg-white/60" />
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
               Pricing
             </span>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-3xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 max-w-3xl">
             <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
             <Field label="Rate Value" value={peso(rate_toNumber(viewRow?.rate?.rate_value))} />
           </div>
@@ -597,13 +588,13 @@ export default function CanceledApplicationMenu() {
         <SectionCard
           title="Service Rate"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              <span className="h-3 w-3 rounded-full bg-white/60" />
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
               Pricing
             </span>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6 max-w-4xl">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 max-w-4xl">
             <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
             <Field label="Rate From" value={peso(rate_toNumber(viewRow?.rate?.rate_from))} />
             <Field label="Rate To" value={peso(rate_toNumber(viewRow?.rate?.rate_to))} />
@@ -615,17 +606,19 @@ export default function CanceledApplicationMenu() {
       <SectionCard
         title="Service Rate"
         badge={
-          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text.white border-white/20">
-            <span className="h-3 w-3 rounded-full bg-white/60" />
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
             Pricing
           </span>
         }
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
           <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
           <Field label="Rate From" value={peso(rate_toNumber(viewRow?.rate?.rate_from))} />
           <Field label="Rate To" value={peso(rate_toNumber(viewRow?.rate?.rate_to))} />
-          <Field label="Rate Value" value={peso(rate_toNumber(viewRow?.rate?.rate_value))} />
+          <div className="sm:col-span-3">
+            <Field label="Rate Value" value={peso(rate_toNumber(viewRow?.rate?.rate_value))} />
+          </div>
         </div>
       </SectionCard>
     );
@@ -635,20 +628,20 @@ export default function CanceledApplicationMenu() {
     if (!viewRow) return null;
     if (sectionOpen === "all") {
       return (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <SectionCard
             title="Personal Information"
             badge={
-              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full bg-white/60" />
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
                 Worker
               </span>
             }
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
               <Field label="Date of Birth" value={fmtMMDDYYYY(viewRow?.info?.date_of_birth)} />
               <Field label="Age" value={viewRow?.info?.age ?? "-"} />
-              <Field label="Contact Number:" value={<ContactDisplay number={viewRow?.info?.contact_number} />} />
+              <Field label="Contact Number" value={<ContactDisplay number={viewRow?.info?.contact_number} />} />
               <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
               <Field label="Additional Address" value={viewRow?.info?.additional_address || viewRow?.info?.street || "-"} />
             </div>
@@ -657,13 +650,13 @@ export default function CanceledApplicationMenu() {
           <SectionCard
             title="Work Details"
             badge={
-              <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full bg-white/60" />
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
                 Experience
               </span>
             }
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
               <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types?.length ? viewRow.service_types : toArray(viewRow?.work?.service_types)} />} />
               <Field label="Service Task(s)" value={<TaskPill value={viewRow?.task_or_role} />} />
               <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
@@ -681,16 +674,16 @@ export default function CanceledApplicationMenu() {
         <SectionCard
           title="Personal Information"
           badge={
-            <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              <span className="h-3 w-3 rounded-full bg-white/60" />
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
               Worker
             </span>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 max-w-5xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
             <Field label="Date of Birth" value={fmtMMDDYYYY(viewRow?.info?.date_of_birth)} />
             <Field label="Age" value={viewRow?.info?.age ?? "-"} />
-            <Field label="Contact Number:" value={<ContactDisplay number={viewRow?.info?.contact_number} />} />
+            <Field label="Contact Number" value={<ContactDisplay number={viewRow?.info?.contact_number} />} />
             <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
             <Field label="Additional Address" value={viewRow?.info?.additional_address || viewRow?.info?.street || "-"} />
           </div>
@@ -702,13 +695,13 @@ export default function CanceledApplicationMenu() {
         <SectionCard
           title="Work Details"
           badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-              <span className="h-3 w-3 rounded-full bg-white/60" />
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
               Experience
             </span>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
             <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types?.length ? viewRow.service_types : toArray(viewRow?.work?.service_types)} />} />
             <Field label="Service Task(s)" value={<TaskPill value={viewRow?.task_or_role} />} />
             <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
@@ -726,6 +719,27 @@ export default function CanceledApplicationMenu() {
 
   return (
     <main className="p-6">
+      <style>{`
+        .blue-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #0b82ff #e6f0ff;
+        }
+        .blue-scroll::-webkit-scrollbar {
+          width: 10px;
+        }
+        .blue-scroll::-webkit-scrollbar-track {
+          background: #e6f0ff;
+          border-radius: 8px;
+        }
+        .blue-scroll::-webkit-scrollbar-thumb {
+          background: #0b82ff;
+          border-radius: 8px;
+        }
+        .blue-scroll::-webkit-scrollbar-thumb:hover {
+          background: #086bd4;
+        }
+      `}</style>
+
       <div className="mb-4">
         <h1 className="text-xl font-semibold text-gray-900">Cancelled Applications</h1>
         <p className="text-gray-600 mt-2">All worker applications that have been cancelled.</p>
@@ -873,13 +887,13 @@ export default function CanceledApplicationMenu() {
                               </div>
                             </td>
                             <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}>
-                              <div className="inline-flex gap-2">
+                              <div className="inline-flex gap-2 flex-nowrap">
                                 <button
                                   onClick={() => {
                                     setViewRow(u);
-                                    setSectionOpen("all");
+                                    setSectionOpen("info");
                                   }}
-                                  className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                                  className="inline-flex items-center whitespace-nowrap rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                                 >
                                   View
                                 </button>
@@ -887,9 +901,9 @@ export default function CanceledApplicationMenu() {
                                   onClick={() => {
                                     setReasonRow(u);
                                   }}
-                                  className="inline-flex items-center rounded-lg border border-amber-300 px-3 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50"
+                                  className="inline-flex items-center whitespace-nowrap rounded-lg border border-amber-300 px-3 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50"
                                 >
-                                  Reason
+                                  View Reason
                                 </button>
                               </div>
                             </td>
@@ -947,68 +961,84 @@ export default function CanceledApplicationMenu() {
       </section>
 
       {viewRow && (
-        <div role="dialog" aria-modal="true" aria-label="Worker application details" tabIndex={-1} className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Worker application details"
+          tabIndex={-1}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+        >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); setShowDocs(false); }} />
-          <div className="relative w-full max-w-[1100px] h-[86vh] rounded-2xl border border-[#008cfc] bg-white shadow-2xl flex flex-col overflow-hidden">
-            <div className="relative px-8 pt-10 pb-6 bg-gradient-to-b from-blue-50 to-white">
-              <div className="mx-auto w-24 h-24 rounded-full ring-4 ring-white border border-blue-100 bg.white overflow-hidden shadow">
-                <img
-                  src={(viewRow?.profile_picture && String(viewRow.profile_picture).startsWith("http")) ? viewRow.profile_picture : avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim())}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                  data-fallback="primary"
-                  onError={({ currentTarget }) => {
-                    const parent = currentTarget.parentElement;
-                    if (currentTarget.dataset.fallback === "primary") {
-                      currentTarget.dataset.fallback = "dice";
-                      currentTarget.src = avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim());
-                      return;
-                    }
-                    currentTarget.style.display = "none";
-                    if (parent) {
-                      parent.innerHTML = `<div class="w-full h-full grid place-items-center text-3xl font-semibold text-[#008cfc]">${((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1) || "?").toUpperCase()}</div>`;
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="mt-5 text-center space-y-0.5">
-                <div className="text-2xl font-semibold text-gray-900">
-                  {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
+          <div className="relative w-full max-w-[960px] max-h-[80vh] rounded-2xl border border-gray-200 bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className="relative px-6 sm:px-8 py-4 border-b border-gray-200 bg-white">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-gray-200 bg-gray-100 overflow-hidden">
+                    <img
+                      src={(viewRow?.profile_picture && String(viewRow.profile_picture).startsWith("http")) ? viewRow.profile_picture : avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim())}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                      data-fallback="primary"
+                      onError={({ currentTarget }) => {
+                        const parent = currentTarget.parentElement;
+                        if (currentTarget.dataset.fallback === "primary") {
+                          currentTarget.dataset.fallback = "dice";
+                          currentTarget.src = avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim());
+                          return;
+                        }
+                        currentTarget.style.display = "none";
+                        if (parent) {
+                          parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1) || "?").toUpperCase()}</div>`;
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-lg sm:text-xl font-semibold text-gray-900">
+                      {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
+                    </div>
+                    <div className="text-sm text-gray-500">{viewRow.email || "-"}</div>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600">{viewRow.email || "-"}</div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-center gap-3 flex-wrap">
-                <div className="text-sm text-gray-600">
-                  Created <span className="font-semibold text-[#008cfc]">{viewRow.created_at_display || "-"}</span>
+                <div className="flex flex-col items-start md:items-end gap-2">
+                  <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
+                    Application Summary
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Created <span className="font-medium text-gray-700">{viewRow.created_at_display || "-"}</span>
+                  </div>
+                  <div className="flex flex-nowrap gap-2 whitespace-nowrap">
+                    <StatusPill value="cancelled" />
+                  </div>
                 </div>
-                <StatusPill value="cancelled" />
               </div>
             </div>
 
-            <div className="px-6 sm:px-8 py-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none] bg-gray-50">
-              <div className="mb-4 flex items-center justify-center gap-2">
-                <SectionButton k="all" label="All" />
-                <SectionButton k="info" label="Personal Information" />
-                <SectionButton k="work" label="Work Details" />
-                <SectionButton k="rate" label="Service Rate" />
+            <div className="px-6 sm:px-8 py-4 flex-1 bg-gray-50 flex flex-col overflow-hidden">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-gray-200 shrink-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <SectionButton k="info" label="Personal Information" />
+                  <SectionButton k="work" label="Work Details" />
+                  <SectionButton k="rate" label="Service Rate" />
+                </div>
               </div>
-              {renderSection()}
+              <div className="flex-1 overflow-y-auto blue-scroll pt-3">
+                {renderSection()}
+              </div>
             </div>
 
-            <div className="px-6 sm:px-8 pb-8 pt-6.grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 bg-white">
+            <div className="px-6 sm:px-8 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row gap-3 sm:justify-end">
               <button
                 type="button"
                 onClick={() => { setViewRow(null); setShowDocs(false); }}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
               >
                 Close
               </button>
               <button
                 type="button"
                 onClick={() => setShowDocs(true)}
-                className="w-full inline-flex items-center justify-center rounded-lg border border-[#008cfc] bg-[#008cfc] px-3 py-1.5 text-sm font-medium text.white hover:bg-[#0077d6]"
+                className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium bg-[#0b82ff] text-white border border-[#0b82ff] hover:bg-[#086bd4]"
               >
                 View Documents
               </button>
@@ -1027,8 +1057,8 @@ export default function CanceledApplicationMenu() {
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDocs(false)} />
           <div className="relative w-full max-w-[900px] max-h-[80vh] overflow-hidden rounded-2xl border border-gray-300 bg-white shadow-2xl">
-            <div className="px-6.py-4 border-b bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white">
-              <div className="text-base font-semibold">Documents</div>
+            <div className="px-6 py-4 border-b bg-gray-50">
+              <div className="text-base font-semibold text-gray-900">Documents</div>
             </div>
             <div className="p-6 overflow-y-auto max-h-[65vh] [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
               {viewRow && (viewRow.documents || viewRow.docs) && Object.keys(viewRow.documents || viewRow.docs).length > 0 ? (
@@ -1065,7 +1095,7 @@ export default function CanceledApplicationMenu() {
                               href={url}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex.items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                              className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                             >
                               Open
                             </a>
@@ -1100,24 +1130,28 @@ export default function CanceledApplicationMenu() {
             <div className="px-6 py-4 bg-gradient-to-r from-orange-50 to-white border-b border-orange-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-orange-700">Cancellation Reason</h3>
-                <span className="inline-flex.items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
+                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
                   <span className="h-3 w-3 rounded-full bg-current opacity-30" />
                   {reasonRow?.primary_service || "Application"}
                 </span>
               </div>
-              <div className="mt-1 text-sm text-gray-600">Created {reasonRow?.created_at_display || "-"}</div>
-              <div className="text-xs text-gray-500">{reasonRow?.canceled_at ? `Cancelled ${fmtDateTime(reasonRow.canceled_at)}` : ""}</div>
+              <div className="mt-1 flex items-center justify-between text-sm text-gray-600">
+                <div>Created {reasonRow?.created_at_display || "-"}</div>
+                <div>{reasonRow?.canceled_at ? `Cancelled ${fmtDateTime(reasonRow.canceled_at)}` : ""}</div>
+              </div>
             </div>
+
             <div className="p-6">
               <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
                 <div className="text-[11px] font-semibold tracking-widest text-orange-700 uppercase">Reason</div>
-                <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
-                  {(() => {
-                    if (reasonRow?.reason_choice || reasonRow?.reason_other) return [reasonRow.reason_choice, reasonRow.reason_other].filter(Boolean).join(" — ") || "-";
-                    return "-";
-                  })()}
+                <div
+                  className="mt-2 text-[15px] font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap"
+                  title={getCancelReason(reasonRow)}
+                >
+                  {getCancelReason(reasonRow)}
                 </div>
               </div>
+
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-xl border border-gray-200 bg-white p-4">
                   <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Applicant</div>
@@ -1127,17 +1161,18 @@ export default function CanceledApplicationMenu() {
                   <div className="text-sm text-gray-600">{reasonRow?.email || "-"}</div>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4">
-                  <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Primary Service</div>
+                  <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service</div>
                   <div className="mt-1 text-[15px] font-semibold text-gray-900">{reasonRow?.task_or_role || "-"}</div>
                   <div className="text-sm text-gray-600">{reasonRow?.primary_service || "-"}</div>
                 </div>
               </div>
             </div>
-            <div className="px-6.pb-6 pt-4 border-t border-gray-200 bg-white">
+
+            <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
               <button
                 type="button"
                 onClick={() => { setReasonRow(null); }}
-                className="w-full.inline-flex.items-center justify-center rounded-lg border border-orange-300 px-3 py-2 text-sm font-medium text-orange-600 hover:bg-orange-50"
+                className="w-full inline-flex items-center justify-center rounded-lg border border-orange-300 px-3 py-2 text-sm font-medium text-orange-600 hover:bg-orange-50"
               >
                 Close
               </button>
