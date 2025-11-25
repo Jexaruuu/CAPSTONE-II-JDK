@@ -224,7 +224,7 @@ exports.submitFullRequest = async (req, res) => {
 
     const firstUpload = uploaded[0] || null;
     const urgentRaw = is_urgent ?? metadata.is_urgent ?? metadata.urgency ?? metadata.priority ?? '';
-       const toolsRaw = tools_provided ?? metadata.tools_provided ?? metadata.tools ?? '';
+    const toolsRaw = tools_provided ?? metadata.tools_provided ?? metadata.tools ?? '';
 
     const detailsRow = {
       request_group_id,
@@ -489,6 +489,36 @@ exports.byGroup = async (req, res) => {
     return res.status(200).json(row);
   } catch {
     return res.status(500).json({ message: 'Failed to load request' });
+  }
+};
+
+exports.deleteRequest = async (req, res) => {
+  try {
+    const gid = String(req.params.groupId || '').trim();
+    if (!gid) return res.status(400).json({ message: 'groupId is required' });
+
+    const { data: row, error: rowErr } = await supabaseAdmin
+      .from('csr_pending')
+      .select('request_group_id,status')
+      .eq('request_group_id', gid)
+      .maybeSingle();
+    if (rowErr) return res.status(500).json({ message: 'Failed to verify request' });
+    if (!row) return res.status(404).json({ message: 'Not found' });
+
+    const status = String(row.status || '').toLowerCase();
+    if (status !== 'pending' && status !== 'approved') {
+      return res.status(409).json({ message: 'Only pending or approved requests can be deleted' });
+    }
+
+    await supabaseAdmin.from('client_cancel_request').delete().eq('request_group_id', gid);
+    await supabaseAdmin.from('csr_pending').delete().eq('request_group_id', gid);
+    await supabaseAdmin.from('client_service_rate').delete().eq('request_group_id', gid);
+    await supabaseAdmin.from('client_service_request_details').delete().eq('request_group_id', gid);
+    await supabaseAdmin.from('client_information').delete().eq('request_group_id', gid);
+
+    return res.status(200).json({ message: 'Request deleted', request_group_id: gid });
+  } catch {
+    return res.status(500).json({ message: 'Failed to delete request' });
   }
 };
 

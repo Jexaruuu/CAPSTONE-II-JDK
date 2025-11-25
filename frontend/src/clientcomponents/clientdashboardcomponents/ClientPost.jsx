@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt, Trash2 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -162,6 +162,10 @@ const ClientPost = () => {
   const [showProfileGate, setShowProfileGate] = useState(false);
 
   const [currentItems, setCurrentItems] = useState([]);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteBusy, setShowDeleteBusy] = useState(false);
+  const [showDeleteDone, setShowDeleteDone] = useState(false);
 
   const buildAppU = () => {
     try {
@@ -602,6 +606,31 @@ const ClientPost = () => {
     return `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name)}`;
   }, [currentItem, capFirst]);
 
+  const handleDelete = async () => {
+    if (!currentItem?.id || deleting) return;
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteNow = async () => {
+    if (!currentItem?.id) return;
+    setShowDeleteConfirm(false);
+    setShowDeleteBusy(true);
+    setDeleting(true);
+    try {
+      await axios.delete(`${API_BASE}/api/clientservicerequests/${encodeURIComponent(currentItem.id)}`, {
+        withCredentials: true,
+        headers: headersWithU
+      });
+      setCurrentItems([]);
+      setShowDeleteBusy(false);
+      setShowDeleteDone(true);
+    } catch {
+      setShowDeleteBusy(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">
@@ -743,14 +772,26 @@ const ClientPost = () => {
               >
                 View
               </Link>
-              {!isPending && (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/clientreviewservicerequest?id=${encodeURIComponent(currentItem?.id || '')}`)}
-                  className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
-                >
-                  Edit Request
-                </button>
+              {(isPending || isApproved) && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/clientreviewservicerequest?id=${encodeURIComponent(currentItem?.id || '')}`)}
+                    className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+                  >
+                    Edit Request
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="h-10 w-10 rounded-md border border-red-300 text-red-600 hover:bg-red-50 transition flex items-center justify-center disabled:opacity-60"
+                    aria-label="Delete Request"
+                    title="Delete Request"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -978,6 +1019,105 @@ const ClientPost = () => {
               >
                 Go to Profile
               </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Are you sure do you get to delete this request?</div>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition"
+              >
+                No
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteNow}
+                className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteBusy && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-32 h-32">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '8px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-4 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="Logo" className="w-14 h-14 object-contain" onError={() => setLogoBroken(true)} />
+                ) : (
+                  <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-4 text-center">
+              <div className="text-base font-semibold text-gray-900">Deleting Request</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteDone && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteDone(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Request Successfully Deleted</div>
+            </div>
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setShowDeleteDone(false)}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>

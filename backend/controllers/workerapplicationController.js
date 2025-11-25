@@ -422,4 +422,44 @@ exports.listMine = async (req, res) => {
   }
 };
 
+exports.deleteApplication = async (req, res) => {
+  try {
+    const raw = String(req.params.id || '').trim();
+    if (!raw) return res.status(400).json({ message: 'id is required' });
 
+    let row = null;
+    let get = await supabaseAdmin
+      .from('wa_pending')
+      .select('id, request_group_id, status')
+      .eq('id', raw)
+      .maybeSingle();
+    if (!get.error && get.data) row = get.data;
+    if (!row) {
+      get = await supabaseAdmin
+        .from('wa_pending')
+        .select('id, request_group_id, status')
+        .eq('request_group_id', raw)
+        .maybeSingle();
+      if (!get.error && get.data) row = get.data;
+    }
+    if (!row) return res.status(404).json({ message: 'Not found' });
+
+    const status = String(row.status || '').toLowerCase();
+    if (status !== 'pending' && status !== 'approved') {
+      return res.status(409).json({ message: 'Only pending or approved applications can be deleted' });
+    }
+
+    const gid = row.request_group_id;
+
+    await supabaseAdmin.from('worker_cancel_application').delete().eq('request_group_id', gid);
+    await supabaseAdmin.from('wa_pending').delete().eq('request_group_id', gid);
+    await supabaseAdmin.from('worker_rate').delete().eq('request_group_id', gid);
+    await supabaseAdmin.from('worker_required_documents').delete().eq('request_group_id', gid);
+    await supabaseAdmin.from('worker_work_information').delete().eq('request_group_id', gid);
+    await supabaseAdmin.from('worker_information').delete().eq('request_group_id', gid);
+
+    return res.status(200).json({ message: 'Application deleted', request_group_id: gid });
+  } catch (err) {
+    return res.status(500).json({ message: friendlyError(err) });
+  }
+};

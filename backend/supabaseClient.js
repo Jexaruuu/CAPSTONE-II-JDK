@@ -1,4 +1,9 @@
 require("dotenv").config();
+try {
+  const path = require("path");
+  require("dotenv").config({ path: path.resolve(__dirname, ".env") });
+  require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
+} catch {}
 const { createClient } = require("@supabase/supabase-js");
 
 const DEV_AUTOCONFIRM = (process.env.DEV_AUTOCONFIRM || "false") === "true";
@@ -14,13 +19,18 @@ function computeRedirectTo() {
   return `${trimmed}/auth/callback`;
 }
 
+function pick(v) { return typeof v === "string" ? v.trim() : v; }
+
 function loadEnv() {
-  const url = process.env.SUPABASE_URL || "https://uoyzcboehvwxcadrqqfq.supabase.co";
-  const anon = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "";
+  const url = pick(process.env.SUPABASE_URL) || "https://uoyzcboehvwxcadrqqfq.supabase.co";
+  const anon =
+    pick(process.env.SUPABASE_ANON_KEY) ||
+    pick(process.env.SUPABASE_KEY) ||
+    "";
   const svc =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_SERVICE_KEY ||
-    process.env.SUPABASE_SECRET ||
+    pick(process.env.SUPABASE_SERVICE_ROLE_KEY) ||
+    pick(process.env.SUPABASE_SERVICE_KEY) ||
+    pick(process.env.SUPABASE_SECRET) ||
     "";
   return { url, anon, svc };
 }
@@ -40,12 +50,19 @@ function getSupabase() {
 }
 
 function getSupabaseAdmin() {
-  const { url, anon, svc } = loadEnv();
-  const key = svc || anon;
-  if (!_adminClient || url !== _last.url || key !== _last.svc) {
-    _adminClient = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { url, svc } = loadEnv();
+  if (!svc) {
+    const flags = [
+      `SUPABASE_SERVICE_ROLE_KEY:${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      `SUPABASE_SERVICE_KEY:${!!process.env.SUPABASE_SERVICE_KEY}`,
+      `SUPABASE_SECRET:${!!process.env.SUPABASE_SECRET}`
+    ].join("|");
+    throw new Error(`Service role key missing on server [${flags}]`);
+  }
+  if (!_adminClient || url !== _last.url || svc !== _last.svc) {
+    _adminClient = createClient(url, svc, { auth: { persistSession: false, autoRefreshToken: false } });
     _last.url = url;
-    _last.svc = key;
+    _last.svc = svc;
   }
   return _adminClient;
 }
