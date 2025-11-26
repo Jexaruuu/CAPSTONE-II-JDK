@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -81,6 +81,33 @@ const WorkerReviewPost = ({ handleBack }) => {
   useEffect(() => {
     try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
   }, []);
+
+  const buildAppU = () => {
+    try {
+      const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('worker_auth_uid') || '';
+      const e = a.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+      return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
+    } catch { return ''; }
+  };
+  const appU = useMemo(() => buildAppU(), []);
+  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const base = String(API_BASE || '').replace(/\/+$/, '');
+        const resp = await fetch(`${base}/api/workers/me`, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json', ...headersWithU } });
+        const txt = await resp.text();
+        const data = txt ? JSON.parse(txt) : {};
+        const wid = data?.id || data?.worker_id || null;
+        const au = data?.auth_uid || data?.uid || null;
+        if (wid) localStorage.setItem('worker_id', String(wid));
+        if (au) localStorage.setItem('worker_auth_uid', String(au));
+      } catch {}
+    };
+    fetchMe();
+  }, [headersWithU]);
 
   const jumpTop = () => {
     try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
@@ -178,12 +205,15 @@ const WorkerReviewPost = ({ handleBack }) => {
     setIsSubmitting(true);
     try {
       const base = String(API_BASE || '').replace(/\/+$/, '');
+      const workerIdLS = localStorage.getItem('worker_id') || null;
+      const workerAuth = (() => { try { return JSON.parse(localStorage.getItem('workerAuth') || '{}'); } catch { return {}; }})();
+      const emailVal = (email || workerAuth.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '').toString().trim();
 
       const payloadRaw = {
-        worker_id: localStorage.getItem('worker_id') || null,
+        worker_id: workerIdLS || null,
         first_name: first_name?.trim() || undefined,
         last_name: last_name?.trim() || undefined,
-        email_address: email?.trim() || undefined,
+        email_address: emailVal || undefined,
         contact_number: contact_number?.trim() || undefined,
         barangay: barangay?.trim() || undefined,
         street: street?.trim() || undefined,
@@ -210,13 +240,12 @@ const WorkerReviewPost = ({ handleBack }) => {
 
       const payload = pruneEmpty(payloadRaw) || {};
 
-const appU = encodeURIComponent(JSON.stringify({ r: "worker", e: email || null, au: localStorage.getItem("worker_auth_uid") || null }));
-const resp = await fetch(`${base}/api/workerapplication/submit`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'x-app-u': appU },
-  credentials: 'include',
-  body: JSON.stringify(payload)
-});
+      const resp = await fetch(`${base}/api/workerapplication/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...headersWithU },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
 
       let bodyText = '';
       try { bodyText = await resp.text(); } catch {}

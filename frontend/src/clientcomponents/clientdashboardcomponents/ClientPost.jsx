@@ -738,7 +738,7 @@ const ClientPost = () => {
                 {isDeclined && (
                   <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
                     <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                    Declined
+                    Declined Request
                   </span>
                 )}
                 {isApproved && (
@@ -753,7 +753,7 @@ const ClientPost = () => {
                       <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
                       <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
                     </span>
-                    Pending
+                    Pending Request
                   </span>
                 )}
                 <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
@@ -1113,7 +1113,7 @@ const ClientPost = () => {
             <div className="mt-6">
               <button
                 type="button"
-                onClick={() => setShowDeleteDone(false)}
+                onClick={() => { setShowDeleteDone(false); navigate('/clientdashboard'); }}
                 className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
               >
                 Done

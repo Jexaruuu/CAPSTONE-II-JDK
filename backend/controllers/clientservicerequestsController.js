@@ -497,17 +497,15 @@ exports.deleteRequest = async (req, res) => {
     const gid = String(req.params.groupId || '').trim();
     if (!gid) return res.status(400).json({ message: 'groupId is required' });
 
-    const { data: row, error: rowErr } = await supabaseAdmin
-      .from('csr_pending')
-      .select('request_group_id,status')
+    const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
+    const { data: dRow } = await supabaseAdmin
+      .from('client_service_request_details')
+      .select('image_name')
       .eq('request_group_id', gid)
       .maybeSingle();
-    if (rowErr) return res.status(500).json({ message: 'Failed to verify request' });
-    if (!row) return res.status(404).json({ message: 'Not found' });
-
-    const status = String(row.status || '').toLowerCase();
-    if (status !== 'pending' && status !== 'approved') {
-      return res.status(409).json({ message: 'Only pending or approved requests can be deleted' });
+    const imgName = dRow?.image_name || null;
+    if (imgName) {
+      await supabaseAdmin.storage.from(bucket).remove([imgName]).catch(() => {});
     }
 
     await supabaseAdmin.from('client_cancel_request').delete().eq('request_group_id', gid);

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import ClientNavigation from "../../clientcomponents/ClientNavigation";
 import ClientFooter from "../../clientcomponents/ClientFooter";
-import { Hammer, Zap, Wrench, Car, Shirt } from "lucide-react";
+import { Hammer, Zap, Wrench, Car, Shirt, Trash2 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -149,7 +149,7 @@ const formatRateType = (t) => {
   return s.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 };
 
-const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
+const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
   const d = item.details || {};
   const rate = item.rate || {};
   const Icon = iconForService(d.service_type || d.service_task);
@@ -163,17 +163,19 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
   const isDeclined = statusLower === "declined";
   const isExpiredReq = isExpiredDT(d.preferred_date, d.preferred_time);
   const cardBase = "rounded-2xl border p-5 md:p-6 shadow-sm transition-all duration-300";
-  const cardState = isCancelled
-    ? "border-gray-300 bg-white hover:border-orange-400 hover:ring-2 hover:ring-orange-400 hover:shadow-xl"
-    : isExpiredReq
-      ? "border-gray-200 bg-gray-50"
-      : isDeclined
-        ? "border-gray-300 bg-white hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
-        : isApproved
-          ? "border-gray-300 bg-white hover:border-emerald-600 hover:ring-2 hover:ring-emerald-600 hover:shadow-xl"
-          : (isPending
-              ? "border-gray-300 bg-white hover:border-yellow-500 hover:ring-2 hover:ring-yellow-500 hover:shadow-xl"
-              : "border-gray-300 bg-white hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl");
+  const cardState = isCancelled && isExpiredReq
+    ? "border-gray-200 bg-gray-50"
+    : isCancelled
+      ? "border-gray-300 bg-white hover:border-orange-400 hover:ring-2 hover:ring-orange-400 hover:shadow-xl"
+      : isExpiredReq
+        ? "border-gray-200 bg-gray-50"
+        : isDeclined
+          ? "border-gray-300 bg-white hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
+          : isApproved
+            ? "border-gray-300 bg-white hover:border-emerald-600 hover:ring-2 hover:ring-emerald-600 hover:shadow-xl"
+            : (isPending
+                ? "border-gray-300 bg-white hover:border-yellow-500 hover:ring-2 hover:ring-yellow-500 hover:shadow-xl"
+                : "border-gray-300 bg-white hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl");
   const profileUrl = React.useMemo(() => {
     const u = item?.info?.profile_picture_url || "";
     if (u) return u;
@@ -257,7 +259,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
           {(!isCancelled && !isDeclined && isApproved) && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Approved
+              Approved Request
             </span>
           )}
           {(!isCancelled && !isDeclined && !isExpiredReq && isPending) && (
@@ -322,6 +324,15 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason }) => {
             Edit Request
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => onDelete(item)}
+          className="h-10 w-10 rounded-md border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
+          aria-label="Delete Request"
+          title="Delete Request"
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
       </div>
     </div>
   );
@@ -337,18 +348,33 @@ export default function ClientCurrentServiceRequest() {
   const [logoBroken, setLogoBroken] = useState(false);
   const [showReason, setShowReason] = useState(false);
   const [reasonTarget, setReasonTarget] = useState(null);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteBusy, setShowDeleteBusy] = useState(false);
+  const [showDeleteDone, setShowDeleteDone] = useState(false);
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (showReason) {
+    if (showReason || showDelete || showDeleteConfirm || showDeleteBusy || showDeleteDone) {
       const original = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       return () => {
         document.body.style.overflow = original;
       };
     }
-  }, [showReason]);
+  }, [showReason, showDelete, showDeleteConfirm, showDeleteBusy, showDeleteDone]);
+
+  const getHiddenSet = () => {
+    try {
+      const ids = JSON.parse(localStorage.getItem("clientPostHiddenIds") || "[]");
+      return new Set((ids || []).map(String));
+    } catch {
+      return new Set();
+    }
+  };
 
   const markUserCancelled = (arr) => {
     let ids = [];
@@ -361,6 +387,11 @@ export default function ClientCurrentServiceRequest() {
       if (setIds.has(idStr)) return { ...r, status: "cancelled", user_cancelled: true };
       return r;
     });
+  };
+
+  const excludeHidden = (arr) => {
+    const hidden = getHiddenSet();
+    return (arr || []).filter(r => !hidden.has(String(r.id)));
   };
 
   const enrichProfiles = async (arr) => {
@@ -429,7 +460,8 @@ export default function ClientCurrentServiceRequest() {
           canceled_at: r.canceled_at || r.cancelled_at || null
         }));
         const withAvatars = await enrichProfiles(normalized);
-        setItems(markUserCancelled(withAvatars).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+        const hiddenExcluded = excludeHidden(markUserCancelled(withAvatars));
+        setItems(hiddenExcluded.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       } else if (statusKey === "expired") {
         const { data } = await axios.get(`${API_BASE}/api/pendingservicerequests/mine`, {
           params: { status: "all" },
@@ -451,7 +483,8 @@ export default function ClientCurrentServiceRequest() {
         }));
         const overridden = applyCancelledOverride(normalized, cancelledIds);
         const withAvatars = await enrichProfiles(overridden);
-        setItems(markUserCancelled(withAvatars).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+        const hiddenExcluded = excludeHidden(markUserCancelled(withAvatars));
+        setItems(hiddenExcluded.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       } else {
         const statusParam = statusKey === "all" ? "all" : statusKey;
         const { data } = await axios.get(`${API_BASE}/api/pendingservicerequests/mine`, {
@@ -474,7 +507,8 @@ export default function ClientCurrentServiceRequest() {
         }));
         const overridden = applyCancelledOverride(normalized, cancelledIds);
         const withAvatars = await enrichProfiles(overridden);
-        setItems(markUserCancelled(withAvatars).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+        const hiddenExcluded = excludeHidden(markUserCancelled(withAvatars));
+        setItems(hiddenExcluded.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       }
     } catch {
       setItems([]);
@@ -494,11 +528,11 @@ export default function ClientCurrentServiceRequest() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = items;
-    if (statusFilter === "pending") list = list.filter((i) => (i.status || "").toLowerCase() === "pending" && !i.user_cancelled && !isExpired(i?.details?.preferred_date));
+    if (statusFilter === "pending") list = list.filter((i) => (i.status || "").toLowerCase() === "pending" && !i.user_cancelled && !isExpiredDT(i?.details?.preferred_date, i?.details?.preferred_time));
     if (statusFilter === "approved") list = list.filter((i) => (i.status || "").toLowerCase() === "approved" && !i.user_cancelled);
     if (statusFilter === "declined") list = list.filter((i) => (i.status || "").toLowerCase() === "declined" && !i.user_cancelled);
-    if (statusFilter === "cancelled") list = list.filter((i) => (((i.status || "").toLowerCase() === "cancelled") || i.user_cancelled) && !isExpired(i?.details?.preferred_date));
-    if (statusFilter === "expired") list = list.filter((i) => isExpired(i?.details?.preferred_date));
+    if (statusFilter === "cancelled") list = list.filter((i) => ((i.status || "").toLowerCase() === "cancelled") || i.user_cancelled);
+    if (statusFilter === "expired") list = list.filter((i) => isExpiredDT(i?.details?.preferred_date, i?.details?.preferred_time));
     if (!q) return list;
     return list.filter((i) => {
       const s1 = (i.details?.service_type || "").toLowerCase();
@@ -628,6 +662,67 @@ export default function ClientCurrentServiceRequest() {
     setShowReason(true);
   };
 
+  const openDelete = (item) => {
+    setDeleteTarget(item);
+    setShowDeleteConfirm(true);
+  };
+
+  const pushHiddenId = (id) => {
+    let ids = [];
+    try {
+      ids = JSON.parse(localStorage.getItem("clientPostHiddenIds") || "[]");
+    } catch {}
+    const setIds = new Set((ids || []).map(String));
+    if (!setIds.has(String(id))) {
+      const out = [...setIds, String(id)];
+      localStorage.setItem("clientPostHiddenIds", JSON.stringify(out));
+    }
+  };
+
+  const removeFromList = (id) => {
+    setItems((prev) => prev.filter((x) => String(x.id) !== String(id)));
+  };
+
+const confirmDelete = async () => {
+  if (!deleteTarget) return;
+  setDeleting(true);
+  const id = deleteTarget.id;
+  try {
+    await axios.delete(`${API_BASE}/api/clientservicerequests/${encodeURIComponent(id)}`, { withCredentials: true });
+  } catch {}
+  pushHiddenId(id);
+  removeFromList(id);
+  try { window.dispatchEvent(new CustomEvent('client-request-deleted', { detail: { id: String(id) } })); } catch {}
+  setShowDelete(false);
+  setDeleteTarget(null);
+  setDeleting(false);
+};
+
+const confirmDeleteNow = async () => {
+  if (!deleteTarget?.id) return;
+  setShowDeleteConfirm(false);
+  setShowDeleteBusy(true);
+  setDeleting(true);
+  const id = deleteTarget.id;
+  try {
+    await axios.delete(`${API_BASE}/api/clientservicerequests/${encodeURIComponent(id)}`, { withCredentials: true });
+    pushHiddenId(id);
+    removeFromList(id);
+    setShowDeleteBusy(false);
+    setShowDeleteDone(true);
+    setDeleteTarget(null);
+  } catch {
+    pushHiddenId(id);
+    removeFromList(id);
+    setShowDeleteBusy(false);
+    setShowDeleteDone(true);
+    setDeleteTarget(null);
+  } finally {
+    try { window.dispatchEvent(new CustomEvent('client-request-deleted', { detail: { id: String(id) } })); } catch {}
+    setDeleting(false);
+  }
+};
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white via-[#F7FBFF] to-white">
       <ClientNavigation />
@@ -732,6 +827,7 @@ export default function ClientCurrentServiceRequest() {
                 onOpenMenu={onOpenMenu}
                 onView={onView}
                 onReason={onReason}
+                onDelete={openDelete}
               />
             ))
           )}
@@ -854,7 +950,7 @@ export default function ClientCurrentServiceRequest() {
                 className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
               >
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
-                <div className={`relative w-full max-w-[720px] rounded-2xl border ${borderCol} bg-white shadow-2xl overflow-hidden`}>
+                <div className={`relative w-full max-w-[720px] max-h-[80vh] rounded-2xl border ${borderCol} bg-white shadow-2xl overflow-auto`}>
                   <div className={`px-6 py-4 bg-gradient-to-r ${headGrad} to-white ${isCancel ? "border-b border-orange-200" : "border-b border-red-200"}`}>
                     <div className="flex items-center justify-between">
                       <h3 className={`text-lg font-semibold ${titleCol}`}>{title}</h3>
@@ -914,6 +1010,154 @@ export default function ClientCurrentServiceRequest() {
             );
           })()}
         </>
+      )}
+
+      {showDelete && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Delete service request"
+          tabIndex={-1}
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDelete(false)} />
+          <div className="relative w-full max-w-[460px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
+              <h3 className="text-lg font-semibold text-red-700">Delete Service Request</h3>
+              <div className="mt-1 text-sm text-gray-600">This action cannot be undone.</div>
+            </div>
+            <div className="p-6">
+              <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
+                <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">You are deleting</div>
+                <div className="mt-2 text-[15px] font-semibold text-gray-900">
+                  {(deleteTarget?.details?.service_type || "Request")} — {(deleteTarget?.details?.service_task || "-")}
+                </div>
+                <div className="text-sm text-gray-600">
+                  ID: {deleteTarget?.id}
+                </div>
+              </div>
+            </div>
+            <div className="px-6 pb-5 pt-3 border-t border-gray-200 bg-white">
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => setShowDelete(false)}
+                  className="h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={confirmDelete}
+                  className="h-10 px-4 rounded-md border border-red-300 text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deleting ? "Deleting..." : "Confirm Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Are you sure do you get to delete this request?</div>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition"
+              >
+                No
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteNow}
+                className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteBusy && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-32 h-32">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '8px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-4 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="Logo" className="w-14 h-14 object-contain" onError={() => setLogoBroken(true)} />
+                ) : (
+                  <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-4 text-center">
+              <div className="text-base font-semibold text-gray-900">Deleting Request</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteDone && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteDone(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Request Successfully Deleted</div>
+            </div>
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setShowDeleteDone(false)}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

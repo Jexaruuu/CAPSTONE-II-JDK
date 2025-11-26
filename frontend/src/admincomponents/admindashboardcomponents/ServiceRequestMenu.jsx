@@ -421,6 +421,16 @@ export default function AdminServiceRequests() {
   }, []);
 
   useEffect(() => {
+  const onDeleted = (e) => {
+    fetchCounts();
+    fetchItems(filter, searchTerm);
+    setCurrentPage(1);
+  };
+  window.addEventListener('client-request-deleted', onDeleted);
+  return () => window.removeEventListener('client-request-deleted', onDeleted);
+}, [filter, searchTerm]);
+
+  useEffect(() => {
     if (!ENABLE_SELECTION) return;
     const el = headerCheckboxRef.current;
     if (!el) return;

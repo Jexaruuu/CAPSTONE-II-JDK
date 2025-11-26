@@ -329,7 +329,7 @@ const ClientViewServiceRequest = () => {
 
   const handleGoAfterCancel = () => {
     jumpTop();
-    navigate('/current-service-request', { replace: true, state: { cancelled: id } });
+    navigate('/clientdashboard', { replace: true, state: { cancelled: id } });
   };
 
   return (
@@ -723,7 +723,7 @@ const ClientViewServiceRequest = () => {
                   onClick={handleGoAfterCancel}
                   className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                 >
-                  Go to Current Requests
+                  Go to Dashboard
                 </button>
               </div>
             </div>
