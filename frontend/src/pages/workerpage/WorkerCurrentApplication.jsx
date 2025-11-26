@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import WorkerNavigation from "../../workercomponents/WorkerNavigation";
 import WorkerFooter from "../../workercomponents/WorkerFooter";
-import { Hammer, Zap, Wrench, Car, Shirt } from "lucide-react";
+import { Hammer, Zap, Wrench, Car, Shirt, Trash2 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -135,7 +135,7 @@ const buildLocation = (info, work) => {
   return parts.join(", ");
 };
 
-const Card = ({ item, onView, onReason }) => {
+const Card = ({ item, onView, onReason, onDelete }) => {
   const info = item.info || {};
   const work = item.work || {};
   const rate = item.rate || {};
@@ -334,6 +334,15 @@ const Card = ({ item, onView, onReason }) => {
             View
           </Link>
         )}
+        <button
+          type="button"
+          onClick={() => onDelete(item)}
+          className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
+          aria-label="Delete Application"
+          title="Delete Application"
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
       </div>
     </div>
   );
@@ -350,6 +359,12 @@ export default function WorkerCurrentApplication() {
   const [logoBroken, setLogoBroken] = useState(false);
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteBusy, setShowDeleteBusy] = useState(false);
+  const [showDeleteDone, setShowDeleteDone] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (showReason) {
@@ -479,6 +494,32 @@ export default function WorkerCurrentApplication() {
   const onReason = (item) => {
     setReasonTarget(item);
     setShowReason(true);
+  };
+
+  const onDelete = (item) => {
+    if (!item?.id) return;
+    setDeleteTarget({ id: String(item.id) });
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteNow = async () => {
+    if (!deleteTarget?.id || deleting) return;
+    setShowDeleteConfirm(false);
+    setShowDeleteBusy(true);
+    setDeleting(true);
+    try {
+      await axios.delete(`${API_BASE}/api/workerapplications/${encodeURIComponent(deleteTarget.id)}`, {
+        withCredentials: true
+      });
+      setItems((prev) => prev.filter((it) => String(it.id) !== String(deleteTarget.id)));
+      setShowDeleteBusy(false);
+      setShowDeleteDone(true);
+    } catch {
+      setShowDeleteBusy(false);
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
   };
 
   const buildServiceTypeList = (work) => {
@@ -612,6 +653,7 @@ export default function WorkerCurrentApplication() {
                 item={item}
                 onView={onView}
                 onReason={onReason}
+                onDelete={onDelete}
               />
             ))
           )}
@@ -777,7 +819,6 @@ export default function WorkerCurrentApplication() {
   </>
 )}
 
-
       {false && (
         <div
           role="dialog"
@@ -812,6 +853,105 @@ export default function WorkerCurrentApplication() {
             <div className="mt-6 text-center space-y-1">
               <div className="text-lg font-semibold text-gray-900">Opening Application</div>
               <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Are you sure do you get to delete this application?</div>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition"
+              >
+                No
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteNow}
+                className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteBusy && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-32 h-32">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '8px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-4 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="Logo" className="w-14 h-14 object-contain" onError={() => setLogoBroken(true)} />
+                ) : (
+                  <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-4 text-center">
+              <div className="text-base font-semibold text-gray-900">Deleting Application</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteDone && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteDone(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Application Successfully Deleted</div>
+            </div>
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setShowDeleteDone(false)}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>

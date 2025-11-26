@@ -166,6 +166,17 @@ app.get("/api/account/me", async (req, res) => {
   }
 });
 
+app.get("/api/workers/me", async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "worker" || (!s.auth_uid && !s.email)) return res.status(401).json({ message: "Unauthorized" });
+    const payload = await workerModel.getWorkerAccountProfile({ auth_uid: s.auth_uid, email: s.email });
+    return res.status(200).json(payload);
+  } catch {
+    return res.status(400).json({ message: "Failed to load account" });
+  }
+});
+
 app.get("/test", (req, res) => res.json({ message: "Server is up and running" }));
 app.get("/healthz", (req, res) => res.status(200).send("ok"));
 

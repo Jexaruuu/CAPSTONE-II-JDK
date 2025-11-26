@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require('../supabaseClient');
+const { getSupabaseAdmin } = require('../supabaseClient');
 const crypto = require('crypto');
 
 function safeExtFromMime(mime) {
@@ -23,15 +23,15 @@ async function uploadDataUrlToBucket(bucket, dataUrl, filenameBase) {
   const ext = safeExtFromMime(decoded.mime);
   const name = sanitizeName(`${filenameBase}.${ext}`);
   const path = name;
-  const { error: upErr } = await supabaseAdmin.storage.from(bucket).upload(path, decoded.buffer, { contentType: decoded.mime, upsert: true });
+  const { error: upErr } = await getSupabaseAdmin().storage.from(bucket).upload(path, decoded.buffer, { contentType: decoded.mime, upsert: true });
   if (upErr) throw upErr;
-  const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
+  const { data: pub } = getSupabaseAdmin().storage.from(bucket).getPublicUrl(path);
   return { url: pub?.publicUrl || null, name };
 }
 async function findWorkerByEmail(email) {
   const e = String(email || '').trim();
   if (!e) return null;
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('user_worker')
     .select('id, auth_uid, email_address')
     .ilike('email_address', e)
@@ -43,7 +43,7 @@ async function findWorkerByEmail(email) {
 async function findWorkerById(id) {
   const n = parseInt(id, 10);
   if (!Number.isFinite(n)) return null;
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('user_worker')
     .select('id, auth_uid, email_address')
     .eq('id', n)
@@ -53,7 +53,7 @@ async function findWorkerById(id) {
   return data || null;
 }
 async function insertWorkerInformation(row) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('worker_information')
     .insert([row])
     .select('id')
@@ -62,7 +62,7 @@ async function insertWorkerInformation(row) {
   return data;
 }
 async function insertWorkerWorkInformation(row) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('worker_work_information')
     .insert([row])
     .select('id')
@@ -71,7 +71,7 @@ async function insertWorkerWorkInformation(row) {
   return data;
 }
 async function insertWorkerRate(row) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('worker_rate')
     .insert([row])
     .select('id')
@@ -80,7 +80,7 @@ async function insertWorkerRate(row) {
   return data;
 }
 async function insertWorkerRequiredDocuments(row) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('worker_required_documents')
     .insert([row])
     .select('id')
@@ -89,7 +89,7 @@ async function insertWorkerRequiredDocuments(row) {
   return data;
 }
 async function insertPendingApplication(row) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('wa_pending')
     .insert([row])
     .select('id, created_at')

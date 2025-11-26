@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -96,10 +97,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   useEffect(() => {
     const fetchMe = async () => {
       try {
-        const base = String(API_BASE || '').replace(/\/+$/, '');
-        const resp = await fetch(`${base}/api/workers/me`, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json', ...headersWithU } });
-        const txt = await resp.text();
-        const data = txt ? JSON.parse(txt) : {};
+        const { data } = await axios.get(`${String(API_BASE||'').replace(/\/+$/,'')}/api/workers/me`, { withCredentials: true, headers: { Accept: 'application/json', ...headersWithU } });
         const wid = data?.id || data?.worker_id || null;
         const au = data?.auth_uid || data?.uid || null;
         if (wid) localStorage.setItem('worker_id', String(wid));
@@ -200,6 +198,33 @@ const WorkerReviewPost = ({ handleBack }) => {
     }, 2000);
   };
 
+  const cleanNumber = (v) => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(String(v).toString().replace(/[^\d.]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const requireFields = (obj, keys) => {
+    const missing = [];
+    keys.forEach(k => {
+      const val = obj[k];
+      if (val === null || val === undefined || (typeof val === 'string' && val.trim() === '')) missing.push(k);
+    });
+    return missing;
+  };
+
+  const filterHostedOnly = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(u => {
+      const s = String(u || '');
+      if (!s) return false;
+      if (s.startsWith('data:')) return false;
+      if (/^https?:\/\//i.test(s)) return true;
+      if (/^\/?storage\/v1\/object\/public\//i.test(s)) return true;
+      return false;
+    });
+  };
+
   const handleConfirm = async () => {
     setSubmitError('');
     setIsSubmitting(true);
@@ -207,7 +232,7 @@ const WorkerReviewPost = ({ handleBack }) => {
       const base = String(API_BASE || '').replace(/\/+$/, '');
       const workerIdLS = localStorage.getItem('worker_id') || null;
       const workerAuth = (() => { try { return JSON.parse(localStorage.getItem('workerAuth') || '{}'); } catch { return {}; }})();
-      const emailVal = (email || workerAuth.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '').toString().trim();
+      const emailVal = (email || workerAuth.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '').toString().trim().toLowerCase();
 
       const payloadRaw = {
         worker_id: workerIdLS || null,
@@ -240,35 +265,110 @@ const WorkerReviewPost = ({ handleBack }) => {
 
       const payload = pruneEmpty(payloadRaw) || {};
 
-      const resp = await fetch(`${base}/api/workerapplication/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...headersWithU },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      });
+      const normalized = {
+        worker_id: payload.worker_id || '',
+        first_name: payload.first_name || '',
+        last_name: payload.last_name || '',
+        email_address: payload.email_address || '',
+        contact_number: payload.contact_number || '',
+        barangay: payload.barangay || '',
+        street: payload.street || '',
+        birth_date: payload.birth_date || '',
+        age: payload.age ?? null,
+        profile_picture: payload.profile_picture || '',
+        profile_picture_name: payload.profile_picture_name || '',
+        service_types: payload.service_types || [],
+        job_details: payload.job_details || {},
+        years_experience: payload.years_experience ?? null,
+        tools_provided: !!payload.tools_provided,
+        service_description: payload.work_description || '',
+        rate_type: payload.rate_type || '',
+        rate_from: payload.rate_from ?? null,
+        rate_to: payload.rate_to ?? null,
+        rate_value: payload.rate_value ?? null,
+        attachments: filterHostedOnly(payload.docs),
+        metadata: {
+          ...payload.metadata,
+          auth_uid: localStorage.getItem('worker_auth_uid') || workerAuth.auth_uid || workerAuth.uid || ''
+        }
+      };
 
-      let bodyText = '';
-      try { bodyText = await resp.text(); } catch {}
-
-      if (!resp.ok) {
-        let msg = '';
-        try { msg = JSON.parse(bodyText)?.message; } catch {}
-        throw new Error(msg || bodyText || `${resp.status} ${resp.statusText}`);
+      if (normalized.rate_type === 'Hourly Rate') {
+        normalized.rate_from = cleanNumber(normalized.rate_from);
+        normalized.rate_to = cleanNumber(normalized.rate_to);
+        normalized.rate_value = null;
+      } else if (normalized.rate_type === 'By the Job Rate') {
+        normalized.rate_value = cleanNumber(normalized.rate_value);
+        normalized.rate_from = null;
+        normalized.rate_to = null;
+      } else {
+        normalized.rate_from = null;
+        normalized.rate_to = null;
+        normalized.rate_value = null;
       }
 
-      try {
-        const json = bodyText ? JSON.parse(bodyText) : {};
-        setRequestGroupId(json?.request?.request_group_id || null);
-      } catch {
-        setRequestGroupId(null);
+      const missing = requireFields(normalized, [
+        'first_name',
+        'last_name',
+        'contact_number',
+        'street',
+        'barangay',
+        'service_types',
+        'service_description',
+        'rate_type'
+      ]);
+      if (missing.length) {
+        setIsSubmitting(false);
+        setSubmitError(`Missing fields: ${missing.join(', ')}`);
+        return;
       }
 
-      setIsSubmitting(false);
+      if (!(normalized.worker_id && String(normalized.worker_id).trim()) && !(normalized.email_address && String(normalized.email_address).trim())) {
+        setIsSubmitting(false);
+        setSubmitError('Unable to identify worker. Provide worker_id or a known email_address.');
+        return;
+      }
+
+      const jsonBody = {
+        worker_id: normalized.worker_id,
+        first_name: normalized.first_name,
+        last_name: normalized.last_name,
+        email_address: normalized.email_address,
+        contact_number: normalized.contact_number,
+        barangay: normalized.barangay,
+        street: normalized.street,
+        birth_date: normalized.birth_date,
+        age: normalized.age,
+        profile_picture: normalized.profile_picture,
+        profile_picture_name: normalized.profile_picture_name,
+        service_types: normalized.service_types,
+        job_details: normalized.job_details,
+        years_experience: normalized.years_experience,
+        tools_provided: normalized.tools_provided,
+        service_description: normalized.service_description,
+        work_description: normalized.service_description,
+        rate_type: normalized.rate_type,
+        rate_from: normalized.rate_from,
+        rate_to: normalized.rate_to,
+        rate_value: normalized.rate_value,
+        attachments: normalized.attachments,
+        metadata: normalized.metadata
+      };
+
+      const resp = await axios.post(
+        `${base}/api/workerapplication/submit`,
+        jsonBody,
+        { withCredentials: true, headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...headersWithU } }
+      );
+
+      setRequestGroupId(resp?.data?.request?.request_group_id || null);
       setShowSuccess(true);
     } catch (e) {
-      setIsSubmitting(false);
-      setSubmitError(String(e.message || 'Submission failed'));
+      const msg = e?.response?.data?.message || e?.message || 'Submission failed';
+      setSubmitError(msg);
       console.error('Worker submit failed:', e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

@@ -61,11 +61,13 @@ exports.submitFullApplication = async (req, res) => {
       years_experience,
       tools_provided,
       work_description,
+      service_description,
       rate_type,
       rate_from,
       rate_to,
       rate_value,
       docs = [],
+      attachments = [],
       metadata = {}
     } = req.body || {};
 
@@ -142,6 +144,8 @@ exports.submitFullApplication = async (req, res) => {
 
     const infoIns = await insertWorkerInformation(infoRow);
 
+    const workDesc = (work_description || service_description || '').toString().trim() || null;
+
     const detailsRow = {
       request_group_id,
       worker_id: effectiveWorkerId,
@@ -149,7 +153,7 @@ exports.submitFullApplication = async (req, res) => {
       job_details: job_details && typeof job_details === 'object' ? job_details : {},
       years_experience: years_experience ?? null,
       tools_provided: typeof tools_provided === 'string' ? tools_provided : (tools_provided ? 'Yes' : 'No'),
-      work_description: work_description || null
+      work_description: workDesc
     };
 
     const missingWork = [];
@@ -179,12 +183,13 @@ exports.submitFullApplication = async (req, res) => {
 
     const rateIns = await insertWorkerRate(rateRow);
 
+    const docsSource = (Array.isArray(docs) && docs.length) ? docs : attachments;
     let docsJson = {};
-    if (Array.isArray(docs) && docs.length) {
+    if (Array.isArray(docsSource) && docsSource.length) {
       try {
         const uploads = {};
-        for (let i = 0; i < docs.length; i++) {
-          const d = docs[i] || {};
+        for (let i = 0; i < docsSource.length; i++) {
+          const d = docsSource[i] || {};
           const rawKind = String(d.kind || d.type || d.label || '').trim();
           const kind = (rawKind || (d.name || `doc_${i}`)).toLowerCase().replace(/\.[a-z0-9]+$/i, '').replace(/\s+/g, '_');
           const dataUrl = d.data_url || d.dataUrl || null;
@@ -285,7 +290,7 @@ exports.listApproved = async (req, res) => {
     if (!email) return res.status(400).json({ message: 'Email is required' });
 
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('wa_pending')
       .select('id, request_group_id, status, created_at, email_address, info, work, rate, docs')
       .eq('status', 'approved')
@@ -305,7 +310,7 @@ exports.getByGroup = async (req, res) => {
   try {
     const gid = String(req.params.id || '').trim();
     if (!gid) return res.status(400).json({ message: 'Missing id' });
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('wa_pending')
       .select('id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, docs, reason_choice, reason_other, decision_reason')
       .eq('request_group_id', gid)
@@ -329,7 +334,7 @@ exports.cancel = async (req, res) => {
     const email_address = String(body.email_address || '').trim() || null;
     if (!gid) return res.status(400).json({ message: 'Missing application_group_id' });
 
-    const { data: existing, error: getErr } = await supabaseAdmin
+    const { data: existing, error: getErr } = await getSupabaseAdmin()
       .from('wa_pending')
       .select('id, request_group_id, status, email_address, info')
       .eq('request_group_id', gid)
@@ -342,7 +347,7 @@ exports.cancel = async (req, res) => {
       reason_choice,
       reason_other
     };
-    const { data: updated, error: upErr } = await supabaseAdmin
+    const { data: updated, error: upErr } = await getSupabaseAdmin()
       .from('wa_pending')
       .update(upd)
       .eq('id', existing.id)
@@ -351,7 +356,7 @@ exports.cancel = async (req, res) => {
     if (upErr) throw upErr;
 
     const canceled_at = new Date().toISOString();
-    const { error: insErr } = await supabaseAdmin
+    const { error: insErr } = await getSupabaseAdmin()
       .from('worker_cancel_application')
       .insert([{
         request_group_id: gid,
@@ -401,7 +406,7 @@ exports.listMine = async (req, res) => {
     const statusRaw = String(req.query.status || 'all').toLowerCase();
     const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10), 1), 50);
 
-    let query = supabaseAdmin
+    let query = getSupabaseAdmin()
       .from('wa_pending')
       .select('id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, docs, reason_choice, reason_other, decision_reason')
       .ilike('email_address', email)
@@ -428,14 +433,14 @@ exports.deleteApplication = async (req, res) => {
     if (!raw) return res.status(400).json({ message: 'id is required' });
 
     let row = null;
-    let get = await supabaseAdmin
+    let get = await getSupabaseAdmin()
       .from('wa_pending')
       .select('id, request_group_id, status')
       .eq('id', raw)
       .maybeSingle();
     if (!get.error && get.data) row = get.data;
     if (!row) {
-      get = await supabaseAdmin
+      get = await getSupabaseAdmin()
         .from('wa_pending')
         .select('id, request_group_id, status')
         .eq('request_group_id', raw)
@@ -445,18 +450,19 @@ exports.deleteApplication = async (req, res) => {
     if (!row) return res.status(404).json({ message: 'Not found' });
 
     const status = String(row.status || '').toLowerCase();
-    if (status !== 'pending' && status !== 'approved') {
-      return res.status(409).json({ message: 'Only pending or approved applications can be deleted' });
+    const allowed = new Set(['pending', 'approved', 'declined', 'cancelled', 'canceled']);
+    if (!allowed.has(status)) {
+      return res.status(409).json({ message: 'Cannot delete this application status' });
     }
 
     const gid = row.request_group_id;
 
-    await supabaseAdmin.from('worker_cancel_application').delete().eq('request_group_id', gid);
-    await supabaseAdmin.from('wa_pending').delete().eq('request_group_id', gid);
-    await supabaseAdmin.from('worker_rate').delete().eq('request_group_id', gid);
-    await supabaseAdmin.from('worker_required_documents').delete().eq('request_group_id', gid);
-    await supabaseAdmin.from('worker_work_information').delete().eq('request_group_id', gid);
-    await supabaseAdmin.from('worker_information').delete().eq('request_group_id', gid);
+    await getSupabaseAdmin().from('worker_cancel_application').delete().eq('request_group_id', gid);
+    await getSupabaseAdmin().from('wa_pending').delete().eq('request_group_id', gid);
+    await getSupabaseAdmin().from('worker_rate').delete().eq('request_group_id', gid);
+    await getSupabaseAdmin().from('worker_required_documents').delete().eq('request_group_id', gid);
+    await getSupabaseAdmin().from('worker_work_information').delete().eq('request_group_id', gid);
+    await getSupabaseAdmin().from('worker_information').delete().eq('request_group_id', gid);
 
     return res.status(200).json({ message: 'Application deleted', request_group_id: gid });
   } catch (err) {

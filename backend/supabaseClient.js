@@ -23,10 +23,7 @@ function pick(v) { return typeof v === "string" ? v.trim() : v; }
 
 function loadEnv() {
   const url = pick(process.env.SUPABASE_URL) || "https://uoyzcboehvwxcadrqqfq.supabase.co";
-  const anon =
-    pick(process.env.SUPABASE_ANON_KEY) ||
-    pick(process.env.SUPABASE_KEY) ||
-    "";
+  const anon = pick(process.env.SUPABASE_ANON_KEY) || pick(process.env.SUPABASE_KEY) || "";
   const svc =
     pick(process.env.SUPABASE_SERVICE_ROLE_KEY) ||
     pick(process.env.SUPABASE_SERVICE_KEY) ||
@@ -88,7 +85,7 @@ async function createSupabaseAuthUser(email, password, metadata = {}) {
     if (err.isEmailSendFailure && FALLBACK_AUTOCONFIRM) {
       try {
         const { data, error: err2 } = await getSupabaseAdmin().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: metadata });
-        if (err2) throw err2;
+        if (error) throw err2;
         return { user: data.user, error: null, autoConfirmed: true, usedFallback: true };
       } catch (e2) {
         e2.originalError = err;
