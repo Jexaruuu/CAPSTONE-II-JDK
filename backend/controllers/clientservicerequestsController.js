@@ -1,3 +1,4 @@
+// clientservicerequestsController.js
 const {
   uploadDataUrlToBucket,
   insertClientInformation,
@@ -203,7 +204,7 @@ exports.submitFullRequest = async (req, res) => {
       barangay: (barangay ?? metadata.barangay ?? '').toString(),
       additional_address: (addlVal ?? '').toString(),
       profile_picture_url: metadata.profile_picture ?? null,
-      profile_picture_name: metadata.profile_picture_name ?? null,
+      profile_picture_name: metadata.profile_picture_name ?? null
     };
 
     const missingInfo = [];
@@ -238,8 +239,8 @@ exports.submitFullRequest = async (req, res) => {
       is_urgent: yesNo(toBoolStrict(urgentRaw)),
       tools_provided: yesNo(toBoolStrict(toolsRaw)),
       service_description: description,
-      image_url: firstUpload?.url ?? metadata.image_url ?? null,
-      image_name: firstUpload?.name ?? metadata.image_name ?? null
+      request_image_url: firstUpload?.url || details.image || metadata.request_image_url || metadata.image_url || null,
+      image_name: firstUpload?.name || metadata.image_name || null
     };
 
     const missingDetails = [];
@@ -266,7 +267,7 @@ exports.submitFullRequest = async (req, res) => {
       rate_type: inferredRateType || null,
       rate_from: rate_from || null,
       rate_to: rate_to || null,
-      rate_value: rate_value || null,
+      rate_value: rate_value || null
     };
 
     const missingRate = [];
@@ -287,7 +288,7 @@ exports.submitFullRequest = async (req, res) => {
       contact_number: infoRow.contact_number,
       street: infoRow.street,
       barangay: infoRow.barangay,
-      additional_address: infoRow.additional_address,
+      additional_address: infoRow.additional_address
     };
 
     const pendingDetails = {
@@ -298,7 +299,7 @@ exports.submitFullRequest = async (req, res) => {
       is_urgent: detailsRow.is_urgent,
       tools_provided: detailsRow.tools_provided,
       service_description: detailsRow.service_description,
-      image_url: detailsRow.image_url,
+      request_image_url: detailsRow.request_image_url,
       image_name: detailsRow.image_name
     };
 
@@ -306,7 +307,7 @@ exports.submitFullRequest = async (req, res) => {
       rate_type: rateRow.rate_type,
       rate_from: rateRow.rate_from,
       rate_to: rateRow.rate_to,
-      rate_value: rateRow.rate_value,
+      rate_value: rateRow.rate_value
     };
 
     let pendingRow;
@@ -317,7 +318,7 @@ exports.submitFullRequest = async (req, res) => {
         info: pendingInfo,
         details: pendingDetails,
         rate: pendingRate,
-        status: 'pending',
+        status: 'pending'
       });
     } catch (e) {
       return res.status(400).json({ message: friendlyError(e) });
@@ -329,8 +330,8 @@ exports.submitFullRequest = async (req, res) => {
         id: pendingRow.id,
         request_group_id,
         status: 'pending',
-        created_at: pendingRow.created_at,
-      },
+        created_at: pendingRow.created_at
+      }
     });
   } catch (err) {
     return res.status(500).json({ message: friendlyError(err) });
@@ -357,7 +358,7 @@ exports.listApproved = async (req, res) => {
       const d = { ...(it.details || {}) };
       if (d.is_urgent !== undefined) d.is_urgent = yesNo(toBoolStrict(d.is_urgent));
       if (d.tools_provided !== undefined) d.tools_provided = yesNo(toBoolStrict(d.tools_provided));
-      if (!d.image_url && d.image_name) d.image_url = await publicOrSignedUrl(bucket, d.image_name);
+      if (!d.request_image_url && d.image_name) d.request_image_url = await publicOrSignedUrl(bucket, d.image_name);
       return { ...it, details: d };
     }));
     const gids = fixed.map(it => it.request_group_id).filter(Boolean);
@@ -414,7 +415,7 @@ exports.listCurrent = async (req, res) => {
       const row = await getCombinedByGroupId(g);
       if (!row) return null;
       const d = row.details || {};
-      if (!d.image_url && d.image_name) d.image_url = await publicOrSignedUrl(bucket, d.image_name);
+      if (!d.request_image_url && d.image_name) d.request_image_url = await publicOrSignedUrl(bucket, d.image_name);
       return { ...row, details: d };
     }));
     const items = combined.filter(Boolean).map(row => {
@@ -430,7 +431,7 @@ exports.listCurrent = async (req, res) => {
           preferred_date: d.preferred_date || '',
           preferred_time: d.preferred_time || '',
           is_urgent: d.is_urgent || '',
-          image_url: d.image_url || null,
+          request_image_url: d.request_image_url || null,
           image_name: d.image_name || null,
           service_description: d.service_description || ''
         },
@@ -458,8 +459,8 @@ exports.listCurrent = async (req, res) => {
       return { ...base, status: s };
     });
     return res.status(200).json({ items });
-  } catch {
-    return res.status(500).json({ message: 'Failed to load current requests' });
+  } catch (err) {
+    return res.status(500).json({ message: friendlyError(err) });
   }
 };
 
@@ -482,9 +483,9 @@ exports.byGroup = async (req, res) => {
     const row = await getCombinedByGroupId(gid);
     if (!row) return res.status(404).json({ message: 'Not found' });
     const d = row.details || {};
-    if (!d.image_url && d.image_name) {
+    if (!d.request_image_url && d.image_name) {
       const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
-      row.details = { ...d, image_url: await publicOrSignedUrl(bucket, d.image_name) };
+      row.details = { ...d, request_image_url: await publicOrSignedUrl(bucket, d.image_name) };
     }
     return res.status(200).json(row);
   } catch {

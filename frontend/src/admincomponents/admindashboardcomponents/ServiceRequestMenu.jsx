@@ -343,13 +343,22 @@ export default function AdminServiceRequests() {
       const items = Array.isArray(res?.data?.items) ? res.data.items : [];
       const mapped = items.map((r) => {
         const i = r.info || {};
-        const d = r.details || {};
+        const d0 = r.details || {};
+        const d = {
+          ...d0,
+          service_type: d0.service_type || d0.serviceType || "",
+          service_task: d0.service_task || d0.serviceTask || "",
+          request_image_url: d0.request_image_url || d0.requestImageUrl || d0.image_url || d0.imageUrl || null,
+          preferred_date: d0.preferred_date || d0.preferredDate || "",
+          preferred_time: d0.preferred_time || d0.preferredTime || "",
+          is_urgent: d0.is_urgent ?? d0.isUrgent ?? "",
+          tools_provided: d0.tools_provided ?? d0.toolsProvided ?? ""
+        };
         const rate = r.rate || {};
-        const statusNorm = String(r.status || "pending").toLowerCase();
-        const expired = isExpiredDT(d.preferred_date, d.preferred_time);
         const createdRaw =
           r.created_at || r.createdAt || d.created_at || d.createdAt || r.created || d.created || null;
         const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
+        const expired = isExpiredDT(d.preferred_date, d.preferred_time);
         return {
           id: r.id,
           request_group_id: r.request_group_id,
@@ -677,6 +686,10 @@ export default function AdminServiceRequests() {
   };
 
   const pickDetailImage = (details = {}) => {
+    const first = details?.request_image_url || details?.requestImageUrl;
+    if (typeof first === "string" && (first.startsWith("http://") || first.startsWith("https://") || first.startsWith("data:"))) {
+      return first;
+    }
     const keys = [
       "image_url",
       "photo_url",
@@ -771,8 +784,8 @@ export default function AdminServiceRequests() {
                   <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                  <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
-                  <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
+                  <Field label="Urgent" value={<YesNoPill yes={viewRow?.details?.is_urgent} />} />
+                  <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.details?.tools_provided} />} />
                 </div>
                 <div>
                   <Field
@@ -899,8 +912,8 @@ export default function AdminServiceRequests() {
                 <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                <Field label="Urgent" value={<YesNoPill yes={viewRow?.is_urgent} />} />
-                <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
+                <Field label="Urgent" value={<YesNoPill yes={viewRow?.details?.is_urgent} />} />
+                <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.details?.tools_provided} />} />
               </div>
               <div>
                 <Field

@@ -320,9 +320,11 @@ const ClientPost = () => {
   useEffect(() => {
     const loadCurrent = async () => {
       try {
+        const email = getClientEmail();
         const { data } = await axios.get(`${API_BASE}/api/client/service-requests`, {
           withCredentials: true,
-          headers: headersWithU
+          headers: headersWithU,
+          params: { email }
         });
         const items = Array.isArray(data?.items) ? data.items : [];
         const filtered = items.filter((it) => {

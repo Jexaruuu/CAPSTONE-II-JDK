@@ -128,7 +128,11 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     rate_value = savedRate.rateValue
   } = s;
 
-  const review_image = savedDetails.image || (Array.isArray(savedDetails.attachments) && savedDetails.attachments[0]) || '';
+  const review_image =
+    savedDetails.request_image_url ||
+    savedDetails.image ||
+    (Array.isArray(savedDetails.attachments) && savedDetails.attachments[0]) ||
+    '';
 
   const formatTime12h = (t) => {
     if (!t || typeof t !== 'string' || !t.includes(':')) return t || '-';
@@ -398,6 +402,72 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         return;
       }
 
+      const infoPayload = {
+        client_id: normalized.client_id,
+        clientId: normalized.client_id,
+        auth_uid: normalized.metadata.auth_uid,
+        first_name: normalized.first_name,
+        firstName: normalized.first_name,
+        last_name: normalized.last_name,
+        lastName: normalized.last_name,
+        email_address: normalized.email_address,
+        email: normalized.email_address,
+        contact_number: normalized.contact_number,
+        contactNumber: normalized.contact_number,
+        street: normalized.street,
+        barangay: normalized.barangay,
+        additional_address: normalized.additional_address,
+        additionalAddress: normalized.additional_address,
+        profile_picture: normalized.metadata.profile_picture,
+        profilePicture: normalized.metadata.profile_picture,
+        profile_picture_name: normalized.metadata.profile_picture_name,
+        profilePictureName: normalized.metadata.profile_picture_name
+      };
+
+      const detailsPayload = {
+        service_type: normalized.service_type,
+        serviceType: normalized.service_type,
+        service_task: normalized.service_task,
+        serviceTask: normalized.service_task,
+        preferred_date: normalized.preferred_date,
+        preferredDate: normalized.preferred_date,
+        preferred_time: normalized.preferred_time,
+        preferredTime: normalized.preferred_time,
+        is_urgent: normalized.is_urgent,
+        isUrgent: normalized.is_urgent,
+        tools_provided: normalized.tools_provided,
+        toolsProvided: normalized.tools_provided,
+        service_description: normalized.description,
+        attachments: Array.isArray(normalized.attachments) && normalized.attachments.length ? normalized.attachments : (normalized.attachment ? [normalized.attachment] : []),
+        image: normalized.attachment,
+        image_name: normalized.attachment_name
+      };
+
+      const ratePayload = {
+        rate_type: normalized.rate_type,
+        rateType: normalized.rate_type,
+        rate_from: normalized.rate_from,
+        rateFrom: normalized.rate_from,
+        rate_to: normalized.rate_to,
+        rateTo: normalized.rate_to,
+        rate_value: normalized.rate_value,
+        rateValue: normalized.rate_value
+      };
+
+      const metadataPayload = {
+        profile_picture: normalized.metadata.profile_picture,
+        profile_picture_name: normalized.metadata.profile_picture_name,
+        street: normalized.metadata.street,
+        additional_address: normalized.metadata.additional_address,
+        barangay: normalized.metadata.barangay,
+        contact_number: normalized.metadata.contact_number,
+        first_name: normalized.metadata.first_name,
+        last_name: normalized.metadata.last_name,
+        email: normalized.metadata.email,
+        auth_uid: normalized.metadata.auth_uid,
+        image_name: normalized.metadata.image_name
+      };
+
       const jsonBody = {
         client_id: normalized.client_id,
         first_name: normalized.first_name,
@@ -421,8 +491,10 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         rate_to: normalized.rate_to,
         rate_value: normalized.rate_value,
         attachments: Array.isArray(normalized.attachments) && normalized.attachments.length ? normalized.attachments : (normalized.attachment ? [normalized.attachment] : []),
-        metadata: normalized.metadata,
-        details: normalized.details
+        metadata: metadataPayload,
+        info: infoPayload,
+        details: detailsPayload,
+        rate: ratePayload
       };
 
       const jsonRes = await axios.post(

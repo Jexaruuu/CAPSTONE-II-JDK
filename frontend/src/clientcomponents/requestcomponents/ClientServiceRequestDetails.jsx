@@ -138,7 +138,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         setPreferredTime(data.preferredTime || '');
         setIsUrgent(data.isUrgent || '');
         setToolsProvided(data.toolsProvided || '');
-        const img = data.image || (Array.isArray(data.attachments) && data.attachments[0]) || null;
+        const img = data.image || data.request_image_url || (Array.isArray(data.attachments) && data.attachments[0]) || null;
         hydratedImage = img || null;
         hydratedImageName = data.imageName || '';
         setServiceDescription(globalDesc || data.serviceDescription || '');
@@ -278,12 +278,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         if (!res.ok) return;
         const j = await res.json();
         const row = Array.isArray(j.items) && j.items.length ? j.items[0] : null;
-        if (row && row.image_url) {
-          setImage(row.image_url);
+        const src = row && (row.request_image_url || row.image_url) ? (row.request_image_url || row.image_url) : null;
+        if (src) {
+          setImage(src);
           setImageName(row.image_name || '');
-          setAttachments([row.image_url]);
-          setRequestImageUrl(row.image_url);
-          localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify({ image: row.image_url, imageName: row.image_name || '' }));
+          setAttachments([src]);
+          setRequestImageUrl(src);
+          localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify({ image: src, imageName: row.image_name || '' }));
         }
       } catch {}
     };
@@ -668,7 +669,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                             className={`p-2 rounded-lg hover:bg-gray-100 ${canPrevPD() ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
                             aria-label="Previous month"
                           >‹</button>
-                          <div className="relative flex items中心 gap-2">
+                          <div className="relative flex items-center gap-2">
                             <div className="relative">
                               <button
                                 type="button"

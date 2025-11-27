@@ -1,3 +1,4 @@
+// clientservicerequestsModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 const crypto = require('crypto');
 
@@ -79,7 +80,7 @@ function newGroupId() {
 async function listDetailsByEmail(email, limit = 10) {
   const { data, error } = await supabaseAdmin
     .from('client_service_request_details')
-    .select('id, request_group_id, created_at, email_address, service_type, service_task, service_description, preferred_date, preferred_time, is_urgent, tools_provided, image_url, image_name')
+    .select('id, request_group_id, created_at, email_address, service_type, service_task, service_description, preferred_date, preferred_time, is_urgent, tools_provided, request_image_url, image_name')
     .eq('email_address', email)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -129,12 +130,11 @@ async function listPendingByEmail(email) {
   if (error) throw error;
   return Array.isArray(data) ? data : [];
 }
-
 async function getCancelledReasonsByGroupIds(groupIds) {
   if (!Array.isArray(groupIds) || groupIds.length === 0) return {};
   const { data, error } = await supabaseAdmin
     .from('client_cancel_request')
-    .select('request_group_id,reason_choice,reason_other,canceled_at')
+    .select('*')
     .in('request_group_id', groupIds);
   if (error) throw error;
   const m = {};
