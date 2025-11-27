@@ -166,10 +166,7 @@ const me = async (req, res) => {
     if (s.role !== "worker" || (!s.auth_uid && !s.email)) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const payload = await workerModel.getWorkerAccountProfile({
-      auth_uid: s.auth_uid,
-      email: s.email,
-    });
+    const payload = await workerModel.getWorkerAccountProfile({ auth_uid: s.auth_uid, email: s.email }, { db: req.supabaseUser });
     return res.status(200).json(payload);
   } catch {
     return res.status(400).json({ message: "Failed to load profile" });
@@ -186,16 +183,13 @@ const password = async (req, res) => {
     if (!current_password || !new_password || new_password !== confirm_password) {
       return res.status(400).json({ message: "Invalid request" });
     }
-    const row = await workerModel.getByAuthUid(s.auth_uid || null);
+    const row = await workerModel.getByAuthUid(s.auth_uid || null, { db: req.supabaseUser });
     const acctEmail = row?.email_address || s.email;
-    const sign = await supabase.auth.signInWithPassword({
-      email: acctEmail,
-      password: current_password,
-    });
+    const sign = await supabase.auth.signInWithPassword({ email: acctEmail, password: current_password });
     if (sign.error) return res.status(400).json({ message: "Current password is incorrect" });
     const uid = row?.auth_uid || s.auth_uid;
-    await workerModel.updateAuthPassword(uid, new_password);
-    await workerModel.updatePassword(uid, new_password);
+    await workerModel.updateAuthPassword(uid, new_password, { dbAuth: req.supabaseUser });
+    await workerModel.updatePassword(uid, new_password, { db: req.supabaseUser });
     return res.status(200).json({ message: "Password updated" });
   } catch {
     return res.status(400).json({ message: "Failed to update password" });
@@ -221,10 +215,8 @@ const updateProfile = async (req, res) => {
     if ("first_name" in patch) dbPatch.first_name = patch.first_name;
     if ("last_name" in patch) dbPatch.last_name = patch.last_name;
     if ("phone" in patch) dbPatch.contact_number = patch.phone ? patch.phone : null;
-    if ("facebook" in patch)
-      dbPatch.social_facebook = patch.facebook ? workerModel.normalizeFacebook(patch.facebook) : null;
-    if ("instagram" in patch)
-      dbPatch.social_instagram = patch.instagram ? workerModel.normalizeInstagram(patch.instagram) : null;
+    if ("facebook" in patch) dbPatch.social_facebook = patch.facebook ? workerModel.normalizeFacebook(patch.facebook) : null;
+    if ("instagram" in patch) dbPatch.social_instagram = patch.instagram ? workerModel.normalizeInstagram(patch.instagram) : null;
     if ("date_of_birth" in patch) {
       dbPatch.date_of_birth = patch.date_of_birth ? patch.date_of_birth : null;
       const a = computeAge(patch.date_of_birth);
@@ -245,16 +237,16 @@ const updateProfile = async (req, res) => {
     }
 
     const hasAny = Object.keys(dbPatch).length > 0;
-    const before = await workerModel.getByAuthUid(s.auth_uid || null);
+    const before = await workerModel.getByAuthUid(s.auth_uid || null, { db: req.supabaseUser });
     const uid = before?.auth_uid || s.auth_uid;
 
     if (hasAny) {
-      await workerModel.updateWorkerProfile(uid, dbPatch);
+      await workerModel.updateWorkerProfile(uid, dbPatch, { db: req.supabaseUser });
       if ("first_name" in patch || "last_name" in patch) {
         const meta = {};
         if ("first_name" in patch) meta.first_name = patch.first_name || "";
         if ("last_name" in patch) meta.last_name = patch.last_name || "";
-        await workerModel.updateAuthUserMeta(uid, meta);
+        await workerModel.updateAuthUserMeta(uid, meta, { dbAuth: req.supabaseUser });
       }
       const changes = [];
       if ("first_name" in patch || "last_name" in patch) changes.push("name");
@@ -267,7 +259,7 @@ const updateProfile = async (req, res) => {
       await notifModel.create({ auth_uid: uid, role: "worker", title, message });
     }
 
-    const payload = await workerModel.getWorkerAccountProfile({ auth_uid: uid, email: s.email });
+    const payload = await workerModel.getWorkerAccountProfile({ auth_uid: uid, email: s.email }, { db: req.supabaseUser });
     return res.status(200).json(payload);
   } catch {
     return res.status(400).json({ message: "Failed to update profile" });

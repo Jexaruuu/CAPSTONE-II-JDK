@@ -4,18 +4,19 @@ function stripTrailingSlash(p){return p.endsWith("/")?p.slice(0,-1):p}
 function normalizeFacebook(url){try{const raw=String(url).trim();const src=/^https?:\/\//i.test(raw)?raw:"https://"+raw;const u=new URL(src);let host=u.hostname.toLowerCase();if(host==="m.facebook.com"||host==="www.facebook.com"||host==="fb.com"||"www.fb.com"===host)host="facebook.com";const isId=u.pathname==="/profile.php"&&u.searchParams.has("id");if(isId)return`https://${host}/profile.php?id=${u.searchParams.get("id")}`;const seg=u.pathname.split("/").filter(Boolean)[0]||"";if(!seg)return`https://${host}`;return`https://${host}/${stripTrailingSlash(seg)}`}catch{return String(url||"").trim()}}
 function normalizeInstagram(url){try{const raw=String(url).trim();const src=/^https?:\/\//i.test(raw)?raw:"https://"+raw;const u=new URL(src);let host=u.hostname.toLowerCase();if(host==="www.instagram.com"||host==="m.instagram.com")host="instagram.com";const seg=u.pathname.split("/").filter(Boolean)[0]||"";if(!seg)return`https://${host}`;return`https://${host}/${stripTrailingSlash(seg)}`}catch{return String(url||"").trim()}}
 function computeAge(iso){if(!iso)return null;const d=new Date(String(iso));if(isNaN(d.getTime()))return null;const t=new Date();let a=t.getFullYear()-d.getFullYear();const m=t.getMonth()-d.getMonth();if(m<0||(m===0&&t.getDate()<d.getDate()))a--;return a>=0&&a<=120?a:null}
-async function getAuthUserById(auth_uid){if(!auth_uid)return null;const{data,error}=await supabaseAdmin.auth.admin.getUserById(auth_uid);if(error)return null;return data?.user||null}
+async function getAuthUserById(auth_uid){try{const{data,error}=await supabaseAdmin.auth.admin.getUserById(auth_uid);if(error)return null;return data?.user||null}catch{return null}}
 
 const createClient=async(auth_uid,firstName,lastName,sex,email,password,isAgreedToTerms,agreedAt)=>{const{data,error}=await supabaseAdmin.from("user_client").insert([{auth_uid,first_name:firstName,last_name:lastName,sex,email_address:String(email||"").trim().toLowerCase(),password,is_agreed_to_terms:isAgreedToTerms,agreed_at:agreedAt,contact_number:null,social_facebook:null,social_instagram:null,created_at:new Date().toISOString()}]);if(error)throw error;return data};
 const checkEmailExistence=async(email)=>{const e=String(email||"").trim().toLowerCase();const{data,error}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e);if(error)throw error;return data};
 const checkEmailExistenceAcrossAllUsers=async(email)=>{const e=String(email||"").trim().toLowerCase();const{data:cd,error:ce}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e);if(ce)throw ce;const{data:wd,error:we}=await supabaseAdmin.from("user_worker").select("*").ilike("email_address",e);if(we)throw we;return[...(cd||[]),...(wd||[])];
 };
-const getByAuthUid=async(auth_uid)=>{const{data,error}=await supabaseAdmin.from("user_client").select("*").eq("auth_uid",auth_uid).limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
-const getByEmail=async(email)=>{const e=String(email||"").trim().toLowerCase();if(!e)return null;const{data,error}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e).limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
+const getByAuthUid=async(auth_uid,opts={})=>{const db=opts.db||supabaseAdmin;const{data,error}=await db.from("user_client").select("*").eq("auth_uid",auth_uid).limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
+const getByEmail=async(email,opts={})=>{const db=opts.db||supabaseAdmin;const e=String(email||"").trim().toLowerCase();if(!e)return null;const{data,error}=await db.from("user_client").select("*").ilike("email_address",e).limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
 
-const getClientAccountProfile=async({auth_uid,email})=>{
-  const row=auth_uid?await getByAuthUid(auth_uid):await getByEmail(email);
-  const user=await getAuthUserById(row?.auth_uid||auth_uid);
+const getClientAccountProfile=async({auth_uid,email},opts={})=>{
+  const db=opts.db||supabase;
+  let row=null;try{row=auth_uid?await getByAuthUid(auth_uid,{db}):await getByEmail(email,{db})}catch{}
+  let user=null;try{user=await getAuthUserById(row?.auth_uid||auth_uid)}catch{}
   const created_at=row?.created_at||user?.created_at||null;
   const dob=row?.date_of_birth||user?.user_metadata?.date_of_birth||null;
   const age=row?.age!=null?row.age:computeAge(dob);
@@ -34,10 +35,30 @@ const getClientAccountProfile=async({auth_uid,email})=>{
   }
 };
 
-const updatePassword=async(auth_uid,password)=>{const{error}=await supabaseAdmin.from("user_client").update({password}).eq("auth_uid",auth_uid);if(error)throw error;return true};
-const updateAuthPassword=async(auth_uid,new_password)=>{const{error}=await supabaseAdmin.auth.admin.updateUserById(auth_uid,{password:new_password});if(error)throw error;return true};
-const updateClientProfile=async(auth_uid,patch)=>{const{data,error}=await supabaseAdmin.from("user_client").update(patch).eq("auth_uid",auth_uid).select("*").limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
-const updateAuthUserMeta=async(auth_uid,patch)=>{const user=await getAuthUserById(auth_uid);const base=user?.user_metadata||{};const next={...base,...patch};const{error}=await supabaseAdmin.auth.admin.updateUserById(auth_uid,{user_metadata:next});if(error)throw error;return true};
+const updatePassword=async(auth_uid,password,opts={})=>{const db=opts.db||supabaseAdmin;const{error}=await db.from("user_client").update({password}).eq("auth_uid",auth_uid);if(error)throw error;return true};
+const updateAuthPassword=async(auth_uid,new_password,opts={})=>{
+  if (opts.dbAuth) {
+    const { error } = await opts.dbAuth.auth.updateUser({ password: new_password });
+    if (error) throw error;
+    return true;
+  }
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(auth_uid,{password:new_password});
+  if (error) throw error;
+  return true
+};
+const updateClientProfile=async(auth_uid,patch,opts={})=>{const db=opts.db||supabaseAdmin;const{data,error}=await db.from("user_client").update(patch).eq("auth_uid",auth_uid).select("*").limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
+const updateAuthUserMeta=async(auth_uid,patch,opts={})=>{
+  if (opts.dbAuth){
+    const { data: me } = await opts.dbAuth.auth.getUser();
+    if (!me?.user || me.user.id!==auth_uid) return true;
+    const base = me.user.user_metadata||{};
+    const next={...base,...patch};
+    const { error } = await opts.dbAuth.auth.updateUser({ data: next });
+    if (error) throw error;
+    return true;
+  }
+  const user=await getAuthUserById(auth_uid);const base=user?.user_metadata||{};const next={...base,...patch};const{error}=await supabaseAdmin.auth.admin.updateUserById(auth_uid,{user_metadata:next});if(error)throw error;return true
+};
 
 async function isContactNumberTakenAcrossAll(phone,excludeAuthUid){const p=String(phone||"").trim();if(!p)return false;const q1=supabaseAdmin.from("user_client").select("auth_uid,contact_number");const q2=supabaseAdmin.from("user_worker").select("auth_uid,contact_number");const[{data:c,error:ec},{data:w,error:ew}]=await Promise.all([q1,q2]);if(ec)throw ec;if(ew)throw ew;const hits=[...(c||[]),...(w||[])].filter(r=>String(r.contact_number||"")===p).map(r=>r.auth_uid).filter(Boolean);if(!hits.length)return false;if(!excludeAuthUid)return true;return hits.some(uid=>uid!==excludeAuthUid)}
 function buildVariants(kind,canon){try{const u=new URL(canon);const path=u.pathname+(u.search||"");if(kind==="facebook"){const hosts=["facebook.com","www.facebook.com","m.facebook.com","fb.com","www.fb.com"];return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x,x.endsWith("/")?x:x+"/"])}else{const hosts=["instagram.com","www.instagram.com","m.instagram.com"];return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x,x.endsWith("/")?x:x+"/"])}}catch{return[canon,canon.endsWith("/")?canon:canon+"/"]}}

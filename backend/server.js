@@ -10,7 +10,7 @@ const workerRoutes = require("./routes/workerRoutes");
 const loginRoutes = require("./routes/loginRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const authRoutes = require("./routes/authRoutes");
-const { resendSignupEmail, setDefaultRedirectBase, ensureStorageBucket } = require("./supabaseClient");
+const { resendSignupEmail, setDefaultRedirectBase, ensureStorageBucket, getSupabaseFromRequest } = require("./supabaseClient");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 
@@ -75,6 +75,13 @@ app.use(
     }
   })
 );
+
+app.use((req, _res, next) => {
+  try {
+    req.supabaseUser = getSupabaseFromRequest(req);
+  } catch {}
+  next();
+});
 
 app.use((req, res, next) => {
   try {
@@ -146,11 +153,11 @@ app.get("/api/account/me", async (req, res) => {
     const s = sess(req);
     if (!s.role || (!s.auth_uid && !s.email)) return res.status(401).json({ message: "Unauthorized" });
     if (s.role === "client") {
-      const payload = await clientModel.getClientAccountProfile({ auth_uid: s.auth_uid, email: s.email });
+      const payload = await clientModel.getClientAccountProfile({ auth_uid: s.auth_uid, email: s.email }, { db: req.supabaseUser });
       return res.status(200).json(payload);
     }
     if (s.role === "worker") {
-      const payload = await workerModel.getWorkerAccountProfile({ auth_uid: s.auth_uid, email: s.email });
+      const payload = await workerModel.getWorkerAccountProfile({ auth_uid: s.auth_uid, email: s.email }, { db: req.supabaseUser });
       return res.status(200).json(payload);
     }
     if (s.role === "admin") {
@@ -170,7 +177,7 @@ app.get("/api/workers/me", async (req, res) => {
   try {
     const s = sess(req);
     if (s.role !== "worker" || (!s.auth_uid && !s.email)) return res.status(401).json({ message: "Unauthorized" });
-    const payload = await workerModel.getWorkerAccountProfile({ auth_uid: s.auth_uid, email: s.email });
+    const payload = await workerModel.getWorkerAccountProfile({ auth_uid: s.auth_uid, email: s.email }, { db: req.supabaseUser });
     return res.status(200).json(payload);
   } catch {
     return res.status(400).json({ message: "Failed to load account" });
@@ -292,13 +299,14 @@ app.use("/api/client/service-requests", clientservicerequestsRoutes);
 app.use("/api/admin/servicerequests", adminservicerequestsRoutes);
 app.use("/api/workerapplication", workerapplicationRoutes);
 app.use("/api/workerapplications", workerapplicationRoutes);
-app.use("/api/admin/workerapplications", adminworkerapplicationRoutes);
 app.use("/api/pendingservicerequests", pendingservicerequestsRoutes);
 app.use("/api/pendingworkerapplication", pendingworkerapplicationRoutes);
 app.use("/api/admin/servicerequests", adminServiceRequestsRoutes);
+app.use("/api/admin/workerapplications", adminworkerapplicationRoutes);
 
 ensureStorageBucket("user-notifications", true).catch(() => {});
 ensureStorageBucket(process.env.SUPABASE_BUCKET_SERVICE_IMAGES || "service-request-images", true).catch(() => {});
+ensureStorageBucket("wa-attachments", true).catch(() => {});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

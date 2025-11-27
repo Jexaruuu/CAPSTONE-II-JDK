@@ -1,9 +1,15 @@
 require("dotenv").config();
 try {
   const path = require("path");
-  require("dotenv").config({ path: path.resolve(__dirname, ".env") });
-  require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
+  const tryLoad = (p) => { try { require("dotenv").config({ path: p }); } catch {} };
+  const here = __dirname;
+  const cwd = process.cwd();
+  tryLoad(path.resolve(here, ".env"));
+  tryLoad(path.resolve(here, "../.env"));
+  tryLoad(path.resolve(here, "../../.env"));
+  tryLoad(path.resolve(cwd, ".env"));
 } catch {}
+
 const { createClient } = require("@supabase/supabase-js");
 
 const DEV_AUTOCONFIRM = (process.env.DEV_AUTOCONFIRM || "false") === "true";
@@ -12,14 +18,51 @@ const FALLBACK_AUTOCONFIRM = (process.env.FALLBACK_AUTOCONFIRM || "false") === "
 let dynamicRedirectBase = "";
 function setDefaultRedirectBase(base) { dynamicRedirectBase = base || ""; }
 function computeRedirectTo() {
-  const explicit = process.env.AUTH_REDIRECT_BASE_URL || process.env.EMAIL_REDIRECT_URL || "";
-  const base = dynamicRedirectBase || explicit || process.env.PUBLIC_APP_URL || "";
+  const explicit = (process.env.AUTH_REDIRECT_BASE_URL || process.env.EMAIL_REDIRECT_URL || "").trim();
+  const base = (dynamicRedirectBase || explicit || process.env.PUBLIC_APP_URL || "").trim();
   if (!base) return null;
   const trimmed = base.replace(/\/+$/, "");
   return `${trimmed}/auth/callback`;
 }
 
 function pick(v) { return typeof v === "string" ? v.trim() : v; }
+
+function decodeJwtRole(token) {
+  try {
+    const parts = String(token || "").split(".");
+    if (parts.length < 2) return "";
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = Buffer.from(b64, "base64").toString("utf8");
+    const obj = JSON.parse(json);
+    const r = obj.role || obj["https://supabase.io/role"] || "";
+    return String(r || "").toLowerCase();
+  } catch { return ""; }
+}
+
+function detectServiceKey() {
+  const cands = [
+    pick(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    pick(process.env.SUPABASE_SERVICE_KEY),
+    pick(process.env.SUPABASE_SECRET),
+    pick(process.env.SUPABASE_KEY),
+    pick(process.env.SUPABASE_ANON_KEY)
+  ].filter(Boolean);
+  for (const t of cands) {
+    if (decodeJwtRole(t) === "service_role") return t;
+  }
+  const scan = Object.entries(process.env)
+    .filter(([k, v]) => typeof v === "string" && /SUPABASE|SERVICE|SECRET|KEY/i.test(k))
+    .map(([, v]) => v);
+  for (const t of scan) {
+    if (decodeJwtRole(t) === "service_role") return t;
+  }
+  return "";
+}
+
+(function hydrateEnv() {
+  const svc = detectServiceKey();
+  if (svc && !process.env.SUPABASE_SERVICE_ROLE_KEY) process.env.SUPABASE_SERVICE_ROLE_KEY = svc;
+})();
 
 function loadEnv() {
   const url = pick(process.env.SUPABASE_URL) || "https://uoyzcboehvwxcadrqqfq.supabase.co";
@@ -50,9 +93,11 @@ function getSupabaseAdmin() {
   const { url, svc } = loadEnv();
   if (!svc) {
     const flags = [
-      `SUPABASE_SERVICE_ROLE_KEY:${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      `SUPABASE_SERVICE_KEY:${!!process.env.SUPABASE_SERVICE_KEY}`,
-      `SUPABASE_SECRET:${!!process.env.SUPABASE_SECRET}`
+      `SRK:${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      `SVC_KEY:${!!process.env.SUPABASE_SERVICE_KEY}`,
+      `SECRET:${!!process.env.SUPABASE_SECRET}`,
+      `KEY:${!!process.env.SUPABASE_KEY}`,
+      `ANON:${!!process.env.SUPABASE_ANON_KEY}`
     ].join("|");
     throw new Error(`Service role key missing on server [${flags}]`);
   }
@@ -62,6 +107,29 @@ function getSupabaseAdmin() {
     _last.svc = svc;
   }
   return _adminClient;
+}
+
+function getSupabaseForToken(token) {
+  const { url, anon } = loadEnv();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return createClient(url, anon, { global: { headers }, auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+function extractAuthToken(req) {
+  const h = String(req.headers?.authorization || "").trim();
+  if (/^bearer\s+/i.test(h)) return h.replace(/^bearer\s+/i, "").trim();
+  const x = String(req.headers?.["x-supabase-auth"] || "").trim();
+  if (x) return x;
+  const rawCookie = String(req.headers?.cookie || "");
+  const m = /(?:^|;\s*)sb-access-token=([^;]+)/.exec(rawCookie) || /(?:^|;\s*)sb:token=([^;]+)/.exec(rawCookie);
+  if (m) return decodeURIComponent(m[1]);
+  return "";
+}
+
+function getSupabaseFromRequest(req) {
+  const token = extractAuthToken(req);
+  if (!token) return getSupabase();
+  return getSupabaseForToken(token);
 }
 
 const supabase = new Proxy({}, { get: (_t, p) => getSupabase()[p] });
@@ -154,5 +222,7 @@ module.exports = {
   resendSignupEmail,
   createConfirmedUser,
   setDefaultRedirectBase,
-  ensureStorageBucket
+  ensureStorageBucket,
+  getSupabaseFromRequest,
+  getSupabaseForToken
 };

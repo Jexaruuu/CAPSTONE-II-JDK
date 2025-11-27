@@ -4,7 +4,7 @@ const {
   list,
   count,
   approve,
-  decline,
+  decline
 } = require("../controllers/adminworkerapplicationController");
 
 router.get("/", list);

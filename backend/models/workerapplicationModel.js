@@ -52,51 +52,68 @@ async function findWorkerById(id) {
   if (error) throw error;
   return data || null;
 }
+
+async function upsertByGroup(table, row, returning = 'id, request_group_id') {
+  const db = getSupabaseAdmin();
+  const gid = String(row.request_group_id || '').trim();
+  if (!gid) throw new Error('request_group_id is required');
+  const existing = await db.from(table).select('id, request_group_id').eq('request_group_id', gid).limit(1).maybeSingle();
+  if (existing.error) throw existing.error;
+  if (existing.data) {
+    const { data, error } = await db.from(table).update(row).eq('request_group_id', gid).select(returning).maybeSingle();
+    if (error) throw error;
+    return data;
+  } else {
+    const { data, error } = await db.from(table).insert([row]).select(returning).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+}
+
 async function insertWorkerInformation(row) {
-  const { data, error } = await getSupabaseAdmin()
-    .from('worker_information')
-    .insert([row])
-    .select('id')
-    .single();
-  if (error) throw error;
-  return data;
+  return upsertByGroup('worker_information', row, 'id, request_group_id');
 }
 async function insertWorkerWorkInformation(row) {
-  const { data, error } = await getSupabaseAdmin()
-    .from('worker_work_information')
-    .insert([row])
-    .select('id')
-    .single();
-  if (error) throw error;
-  return data;
+  const payload = {
+    ...row,
+    service_types: Array.isArray(row.service_types) ? row.service_types : [],
+    job_details: row.job_details && typeof row.job_details === 'object' ? row.job_details : {}
+  };
+  return upsertByGroup('worker_work_information', payload, 'id, request_group_id');
 }
 async function insertWorkerRate(row) {
-  const { data, error } = await getSupabaseAdmin()
-    .from('worker_rate')
-    .insert([row])
-    .select('id')
-    .single();
-  if (error) throw error;
-  return data;
+  return upsertByGroup('worker_rate', row, 'id, request_group_id');
 }
 async function insertWorkerRequiredDocuments(row) {
-  const { data, error } = await getSupabaseAdmin()
-    .from('worker_required_documents')
-    .insert([row])
-    .select('id')
-    .single();
-  if (error) throw error;
-  return data;
+  const payload = {
+    request_group_id: row.request_group_id,
+    worker_id: row.worker_id || null,
+    docs: row.docs && typeof row.docs === 'object' ? row.docs : {}
+  };
+  return upsertByGroup('worker_required_documents', payload, 'id, request_group_id');
 }
 async function insertPendingApplication(row) {
-  const { data, error } = await getSupabaseAdmin()
-    .from('wa_pending')
-    .insert([row])
-    .select('id, created_at')
-    .single();
-  if (error) throw error;
-  return data;
+  const payload = {
+    ...row,
+    email_address: String(row.email_address || '').trim().toLowerCase(),
+    status: String(row.status || 'pending').trim() || 'pending'
+  };
+  const db = getSupabaseAdmin();
+  const gid = String(payload.request_group_id || '').trim();
+  if (!gid) throw new Error('request_group_id is required');
+  const existing = await db.from('wa_pending').select('id, request_group_id, created_at, status').eq('request_group_id', gid).limit(1).maybeSingle();
+  if (existing.error) throw existing.error;
+  if (existing.data) {
+    const { data, error } = await db.from('wa_pending').update(payload).eq('request_group_id', gid).select('id, request_group_id, created_at, status').maybeSingle();
+    if (error) throw error;
+    return data;
+  } else {
+    const { data, error } = await db.from('wa_pending').insert([payload]).select('id, request_group_id, created_at, status').maybeSingle();
+    if (error) throw error;
+    return data;
+  }
 }
+
 function newGroupId() {
   return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
 }

@@ -266,7 +266,7 @@ const WorkerReviewPost = ({ handleBack }) => {
       const payload = pruneEmpty(payloadRaw) || {};
 
       const normalized = {
-        worker_id: payload.worker_id || '',
+        worker_id: payload.worker_id || null,
         first_name: payload.first_name || '',
         last_name: payload.last_name || '',
         email_address: payload.email_address || '',
@@ -364,9 +364,13 @@ const WorkerReviewPost = ({ handleBack }) => {
       setRequestGroupId(resp?.data?.request?.request_group_id || null);
       setShowSuccess(true);
     } catch (e) {
-      const msg = e?.response?.data?.message || e?.message || 'Submission failed';
+      const serverData = e?.response?.data;
+      const msg =
+        (serverData && (serverData.message || serverData.error || serverData.details)) ||
+        e?.message ||
+        'Submission failed';
       setSubmitError(msg);
-      console.error('Worker submit failed:', e);
+      console.error('Worker submit failed:', serverData || e);
     } finally {
       setIsSubmitting(false);
     }

@@ -1,193 +1,79 @@
-const { supabaseAdmin } = require("../supabaseClient");
+const { getSupabaseAdmin } = require("../supabaseClient");
 
-function likeTerm(q) {
-  const t = String(q || "").replace(/[%_]/g, " ").trim();
-  return `%${t}%`;
+function s(v){return String(v||"").trim()}
+function n(v){const t=s(v).toLowerCase();const m={canceled:"cancelled"};const x=m[t]||t;const a=new Set(["pending","approved","declined","cancelled","expired",""]);return a.has(x)?x:""}
+
+async function listApplications({status="",q="",limit=500}){
+  const db=getSupabaseAdmin();
+  let query=db.from("wa_pending")
+    .select("id,request_group_id,status,created_at,decided_at,email_address,info,work,rate,docs,reason_choice,reason_other,decision_reason")
+    .order("created_at",{ascending:false})
+    .limit(Math.min(Math.max(Number(limit)||1,1),1000));
+  const st=n(status);
+  if(st) query=query.eq("status",st);
+  const term=s(q);
+  if(term){
+    if(term.includes("@")) query=query.ilike("email_address",`%${term}%`);
+    else query=query.or(`request_group_id.ilike.%${term}%,decision_reason.ilike.%${term}%`);
+  }
+  const {data,error}=await query;
+  if(error) throw error;
+  return Array.isArray(data)?data:[];
 }
 
-async function listApplications({ status = "", q = "", limit = 500 }) {
-  const lim = Math.min(Math.max(parseInt(limit || 500, 10), 1), 1000);
-
-  if (["cancelled", "canceled"].includes(String(status || "").toLowerCase())) {
-    let baseQuery = supabaseAdmin
-      .from("worker_cancel_application")
-      .select("id, request_group_id, email_address, reason_choice, reason_other, canceled_at")
-      .order("canceled_at", { ascending: false })
-      .limit(lim);
-
-    if (q) {
-      const t = likeTerm(q);
-      baseQuery = baseQuery.or(
-        [
-          `email_address.ilike.${t}`,
-          `reason_choice.ilike.${t}`,
-          `reason_other.ilike.${t}`
-        ].join(",")
-      );
-    }
-
-    const { data: cancels, error: cancelErr } = await baseQuery;
-    if (cancelErr) throw cancelErr;
-
-    const rows = Array.isArray(cancels) ? cancels : [];
-    const gids = rows.map(r => r.request_group_id).filter(Boolean);
-    let waMap = {};
-    if (gids.length) {
-      const { data: waRows, error: waErr } = await supabaseAdmin
-        .from("wa_pending")
-        .select("id, request_group_id, created_at, email_address, info, work, rate, docs")
-        .in("request_group_id", gids);
-      if (waErr) throw waErr;
-      waMap = (waRows || []).reduce((acc, r) => { acc[r.request_group_id] = r; return acc; }, {});
-    }
-
-    const merged = rows.map((r) => {
-      const w = waMap[r.request_group_id] || {};
-      return {
-        id: w.id || r.id,
-        request_group_id: r.request_group_id,
-        status: "cancelled",
-        created_at: w.created_at || r.canceled_at || null,
-        email_address: r.email_address || w.email_address || null,
-        info: w.info || {},
-        work: w.work || {},
-        rate: w.rate || {},
-        docs: w.docs || {},
-        reason_choice: r.reason_choice || null,
-        reason_other: r.reason_other || null,
-        decision_reason: null,
-        decided_at: null,
-        canceled_at: r.canceled_at || null
-      };
-    });
-
-    if (q) {
-      const t = String(q).toLowerCase();
-      const f = (s) => String(s || "").toLowerCase();
-      return merged.filter((m) => {
-        const i = m.info || {};
-        const w = m.work || {};
-        const hay = [
-          m.email_address,
-          i.first_name, i.last_name, i.barangay, i.street,
-          w.work_description,
-          Array.isArray(w.service_types) ? w.service_types.join(",") : ""
-        ].map(f).join(" ");
-        return hay.includes(t);
-      });
-    }
-
-    return merged;
-  }
-
-  let query = supabaseAdmin
-    .from("wa_pending")
-    .select("id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, docs, reason_choice, reason_other, decision_reason")
-    .order("created_at", { ascending: false })
-    .limit(lim)
-    .neq("status", "cancelled");
-
-  if (status && status !== "all") {
-    if (status === "pending") {
-      query = query.or("status.eq.pending,status.is.null,status.eq.");
-    } else {
-      query = query.eq("status", status);
-    }
-  }
-
-  if (q) {
-    const t = likeTerm(q);
-    query = query.or(
-      [
-        `email_address.ilike.${t}`,
-        `info->>first_name.ilike.${t}`,
-        `info->>last_name.ilike.${t}`,
-        `info->>barangay.ilike.${t}`,
-        `work->>work_description.ilike.${t}`,
-        `work->>service_types.ilike.${t}`
-      ].join(",")
-    );
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return Array.isArray(data) ? data : [];
+async function countExact(where){
+  const db=getSupabaseAdmin();
+  const {count,error}=await db.from("wa_pending").select("*",{count:"exact",head:true}).match(where||{});
+  if(error) throw error;
+  return count||0;
 }
 
-async function countExact(filter) {
-  let q = supabaseAdmin.from("wa_pending").select("*", { count: "exact", head: true });
-  if (filter === "pending") {
-    const { count, error } = await q.or("status.eq.pending,status.is.null,status.eq.");
-    if (error) throw error;
-    return count || 0;
-  }
-  if (filter) {
-    const { count, error } = await q.eq("status", filter);
-    if (error) throw error;
-    return count || 0;
-  }
-  const { count, error } = await q.neq("status", "cancelled");
-  if (error) throw error;
-  return count || 0;
+async function countAllStatuses(){
+  const all=await countExact({});
+  const pending=await countExact({status:"pending"});
+  const approved=await countExact({status:"approved"});
+  const declined=await countExact({status:"declined"});
+  const cancelled=await countExact({status:"cancelled"});
+  const expired=await countExact({status:"expired"});
+  return {all,pending,approved,declined,cancelled,expired};
 }
 
-async function countAllStatuses() {
-  const [pending, approved, declined, total] = await Promise.all([
-    countExact("pending"),
-    countExact("approved"),
-    countExact("declined"),
-    countExact()
-  ]);
-  return { pending, approved, declined, total };
+async function findRow(idOrGroup){
+  const db=getSupabaseAdmin();
+  const key=s(idOrGroup);
+  let {data,error}=await db.from("wa_pending").select("id,request_group_id,status,reason_choice,reason_other,decision_reason,decided_at").eq("id",key).maybeSingle();
+  if((!data)||error){
+    const r=await db.from("wa_pending").select("id,request_group_id,status,reason_choice,reason_other,decision_reason,decided_at").eq("request_group_id",key).maybeSingle();
+    data=r.data; error=r.error;
+  }
+  if(error) throw error;
+  if(!data) throw new Error("Not found");
+  return data;
 }
 
-async function markStatus(id, status, extra = {}) {
-  const idKey = Number.isFinite(Number(id)) ? Number(id) : id;
-
-  const { data: existing, error: getErr } = await supabaseAdmin
-    .from("wa_pending")
-    .select("id, status, request_group_id")
-    .eq("id", idKey)
-    .maybeSingle();
-  if (getErr) throw getErr;
-  if (!existing) {
-    const e = new Error("Application not found");
-    e.status = 404;
-    throw e;
+async function markStatus(idOrGroup,nextStatus,extras={}){
+  const db=getSupabaseAdmin();
+  const row=await findRow(idOrGroup);
+  const status=n(nextStatus);
+  if(!status) throw new Error("Invalid status");
+  const nowIso=new Date().toISOString();
+  const upd={status};
+  if(status==="approved"){
+    upd.decided_at=nowIso;
+    upd.reason_choice=null;
+    upd.reason_other=null;
+    upd.decision_reason=null;
   }
-  if (existing.status === status && !extra) return existing;
-
-  const update = { status };
-  if (status === "declined") {
-    update.decided_at = extra.decided_at || new Date().toISOString();
-    update.reason_choice = extra.reason_choice ?? null;
-    update.reason_other = extra.reason_other ?? null;
-    update.decision_reason =
-      extra.decision_reason ?? ([extra.reason_choice, extra.reason_other].filter(Boolean).join(" — ") || null);
+  if(status==="declined"){
+    upd.decided_at=extras.decided_at||nowIso;
+    upd.reason_choice=s(extras.reason_choice||"")||null;
+    upd.reason_other=s(extras.reason_other||"")||null;
+    upd.decision_reason=s(extras.decision_reason||"")||null;
   }
-
-  const { data, error } = await supabaseAdmin
-    .from("wa_pending")
-    .update(update)
-    .eq("id", idKey)
-    .select("id, status, request_group_id, decided_at, reason_choice, reason_other, decision_reason")
-    .maybeSingle();
-  if (error) throw error;
-  return (
-    data || {
-      id: existing.id,
-      status,
-      request_group_id: existing.request_group_id,
-      decided_at: update.decided_at,
-      reason_choice: update.reason_choice,
-      reason_other: update.reason_other,
-      decision_reason: update.decision_reason
-    }
-  );
+  const {data,error}=await db.from("wa_pending").update(upd).eq("id",row.id)
+    .select("id,request_group_id,status,reason_choice,reason_other,decision_reason,decided_at").maybeSingle();
+  if(error) throw error;
+  return data;
 }
 
-module.exports = {
-  listApplications,
-  countAllStatuses,
-  markStatus
-};
+module.exports={listApplications,countAllStatuses,markStatus};
