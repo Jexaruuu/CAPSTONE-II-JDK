@@ -172,7 +172,7 @@ const ClientViewServiceRequest = () => {
   const rate_to = rateR.rate_to ?? s.rate_to ?? savedRate.rateTo;
   const rate_value = rateR.rate_value ?? s.rate_value ?? savedRate.rateValue;
 
-  const review_image = detR.image_url || detR.image || (Array.isArray(savedDetails.attachments) && savedDetails.attachments[0]) || savedDetails.image || '';
+  const review_image = detR.request_image_url || detR.image || (Array.isArray(savedDetails.attachments) && savedDetails.attachments[0]) || savedDetails.image || '';
 
   const formatTime12h = (t) => {
     if (!t || typeof t !== 'string' || !t.includes(':')) return t || '-';
