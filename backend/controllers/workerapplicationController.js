@@ -94,7 +94,7 @@ exports.submitFullApplication = async (req, res) => {
         }
       } catch {}
     }
-    if (!effectiveWorkerId) return res.status(400).json({ message: 'Unable to identify worker. Provide worker_id or a known email_address.' });
+    if (!canonicalEmail) return res.status(400).json({ message: 'Missing email_address for worker.' });
 
     const request_group_id = newGroupId();
 
