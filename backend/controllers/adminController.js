@@ -105,6 +105,7 @@ exports.registerAdmin = async (req, res) => {
       admin_no: adminNo,
       role: 'admin',
       created_at: new Date().toISOString(),
+      password
     };
 
     const inserted = await adminModel.createAdmin(profile);
@@ -115,7 +116,7 @@ exports.registerAdmin = async (req, res) => {
         hint:
           "Verify Supabase table 'user_admin' exists and has columns: " +
           "auth_uid uuid, first_name text, last_name text, sex text, " +
-          "email_address text UNIQUE, admin_no text UNIQUE, role text, created_at timestamptz DEFAULT now().",
+          "email_address text UNIQUE, admin_no text UNIQUE, role text, created_at timestamptz DEFAULT now(), password text.",
       });
     }
 

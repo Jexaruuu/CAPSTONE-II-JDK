@@ -7,7 +7,8 @@ const {
   insertPendingApplication,
   newGroupId,
   findWorkerByEmail,
-  findWorkerById
+  findWorkerById,
+  insertWorkerTermsAndAgreements
 } = require('../models/workerapplicationModel');
 const { supabaseAdmin, ensureStorageBucket, getSupabaseAdmin } = require('../supabaseClient');
 
@@ -25,7 +26,7 @@ function friendlyError(err) {
   const raw = err?.message || String(err);
   if (/row-level security/i.test(raw)) return 'Service role key missing on server';
   if (/bucket/i.test(raw) && /not.*found/i.test(raw)) return 'Storage bucket missing.';
-  if (/worker_information|worker_work_information|worker_rate|worker_required_documents|wa_pending/i.test(raw)) return `Database error: ${raw}`;
+  if (/worker_information|worker_work_information|worker_rate|worker_required_documents|worker_terms_and_agreements|worker_application_status/i.test(raw)) return `Database error: ${raw}`;
   return raw;
 }
 function ageFromBirthDate(birth_date) {
@@ -57,6 +58,7 @@ exports.submitFullApplication = async (req, res) => {
       profile_picture,
       profile_picture_name,
       service_types = [],
+      service_task = {},
       job_details = {},
       years_experience,
       tools_provided,
@@ -72,7 +74,6 @@ exports.submitFullApplication = async (req, res) => {
     } = req.body || {};
 
     let effectiveWorkerId = worker_id || null;
-    let effectiveAuthUid = null;
     let canonicalEmail = String(email_address || '').trim() || null;
 
     if (effectiveWorkerId) {
@@ -80,7 +81,6 @@ exports.submitFullApplication = async (req, res) => {
         const foundById = await findWorkerById(effectiveWorkerId);
         if (foundById) {
           canonicalEmail = canonicalEmail || foundById.email_address || null;
-          effectiveAuthUid = foundById.auth_uid || null;
         }
       } catch {}
     }
@@ -89,7 +89,6 @@ exports.submitFullApplication = async (req, res) => {
         const found = await findWorkerByEmail(canonicalEmail);
         if (found && found.id) {
           effectiveWorkerId = found.id;
-          effectiveAuthUid = found.auth_uid || null;
           canonicalEmail = found.email_address || canonicalEmail;
         }
       } catch {}
@@ -119,9 +118,7 @@ exports.submitFullApplication = async (req, res) => {
     }
 
     const infoRow = {
-      request_group_id,
       worker_id: effectiveWorkerId,
-      auth_uid: effectiveAuthUid,
       email_address: canonicalEmail || metadata.email || null,
       first_name: first_name || metadata.first_name || null,
       last_name: last_name || metadata.last_name || null,
@@ -146,11 +143,12 @@ exports.submitFullApplication = async (req, res) => {
 
     const workDesc = (work_description || service_description || '').toString().trim() || null;
 
+    const finalServiceTask = service_task && typeof service_task === 'object' ? service_task : (job_details && typeof job_details === 'object' ? job_details : {});
+
     const detailsRow = {
-      request_group_id,
       worker_id: effectiveWorkerId,
       service_types: Array.isArray(service_types) ? service_types : [],
-      job_details: job_details && typeof job_details === 'object' ? job_details : {},
+      service_task: finalServiceTask,
       years_experience: years_experience ?? null,
       tools_provided: typeof tools_provided === 'string' ? tools_provided : (tools_provided ? 'Yes' : 'No'),
       work_description: workDesc
@@ -166,9 +164,7 @@ exports.submitFullApplication = async (req, res) => {
     const workIns = await insertWorkerWorkInformation(detailsRow);
 
     const rateRow = {
-      request_group_id,
       worker_id: effectiveWorkerId,
-      email_address: infoRow.email_address,
       rate_type: rate_type || null,
       rate_from: rate_from || null,
       rate_to: rate_to || null,
@@ -184,35 +180,54 @@ exports.submitFullApplication = async (req, res) => {
     const rateIns = await insertWorkerRate(rateRow);
 
     const docsSource = (Array.isArray(docs) && docs.length) ? docs : attachments;
-    let docsJson = {};
+    const docCols = {
+      primary_id_front: null,
+      primary_id_back: null,
+      secondary_id: null,
+      nbi_police_clearance: null,
+      proof_of_address: null,
+      medical_certificate: null,
+      certificates: null
+    };
     if (Array.isArray(docsSource) && docsSource.length) {
-      try {
-        const uploads = {};
-        for (let i = 0; i < docsSource.length; i++) {
-          const d = docsSource[i] || {};
-          const rawKind = String(d.kind || d.type || d.label || '').trim();
-          const kind = (rawKind || (d.name || `doc_${i}`)).toLowerCase().replace(/\.[a-z0-9]+$/i, '').replace(/\s+/g, '_');
-          const dataUrl = d.data_url || d.dataUrl || null;
-          const urlAlready = typeof d.url === 'string' && d.url.startsWith('http') ? d.url : null;
-          const base = `${request_group_id}-${kind || `doc_${i}`}`;
-          if (urlAlready && !dataUrl) {
-            uploads[kind] = { url: urlAlready, name: d.name || kind };
-            continue;
-          }
-          if (!dataUrl) continue;
-          const up = await uploadDataUrlToBucket('wa-attachments', dataUrl, base);
-          uploads[kind] = { url: up?.url || null, name: up?.name || d.name || kind };
+      for (let i = 0; i < docsSource.length; i++) {
+        const d = docsSource[i] || {};
+        const raw = String(d.kind || d.type || d.label || d.name || '').toLowerCase();
+        const key =
+          /primary.*front/.test(raw) ? 'primary_id_front' :
+          /primary.*back/.test(raw) ? 'primary_id_back' :
+          /secondary/.test(raw) ? 'secondary_id' :
+          /(nbi|police)/.test(raw) ? 'nbi_police_clearance' :
+          /address/.test(raw) ? 'proof_of_address' :
+          /medical/.test(raw) ? 'medical_certificate' :
+          /certificate/.test(raw) ? 'certificates' : null;
+        if (!key) continue;
+        const hasUrl = typeof d.url === 'string' && /^https?:\/\//i.test(d.url);
+        if (hasUrl && !d.data_url && !docCols[key]) {
+          docCols[key] = d.url;
+          continue;
         }
-        docsJson = uploads;
-      } catch {
-        docsJson = {};
+        if (d.data_url && !docCols[key]) {
+          const up = await uploadDataUrlToBucket('wa-attachments', d.data_url, `${request_group_id}-${key}`);
+          docCols[key] = up?.url || null;
+        }
       }
     }
+    await insertWorkerRequiredDocuments({ worker_id: effectiveWorkerId, ...docCols });
 
+    const termsRow = {
+      request_group_id,
+      worker_id: effectiveWorkerId,
+      email_address: infoRow.email_address,
+      agree_verify: !!metadata.agree_verify,
+      agree_tos: !!metadata.agree_tos,
+      agree_privacy: !!metadata.agree_privacy,
+      agreed_at: new Date().toISOString()
+    };
     try {
-      await insertWorkerRequiredDocuments({ request_group_id, worker_id: effectiveWorkerId, docs: docsJson });
+      await insertWorkerTermsAndAgreements(termsRow);
     } catch (e) {
-      if (!/column .*docs/i.test(e?.message || '')) return res.status(400).json({ message: friendlyError(e) });
+      return res.status(400).json({ message: friendlyError(e) });
     }
 
     let preferredDate = null;
@@ -237,7 +252,7 @@ exports.submitFullApplication = async (req, res) => {
 
     const pendingWork = {
       service_types: detailsRow.service_types,
-      job_details: detailsRow.job_details,
+      service_task: detailsRow.service_task,
       years_experience: detailsRow.years_experience,
       tools_provided: detailsRow.tools_provided,
       work_description: detailsRow.work_description,
@@ -257,7 +272,6 @@ exports.submitFullApplication = async (req, res) => {
       info: pendingInfo,
       work: pendingWork,
       rate: pendingRate,
-      docs: docsJson,
       status: 'pending'
     });
 
@@ -291,8 +305,8 @@ exports.listApproved = async (req, res) => {
 
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
     const { data, error } = await getSupabaseAdmin()
-      .from('wa_pending')
-      .select('id, request_group_id, status, created_at, email_address, info, work, rate, docs')
+      .from('worker_application_status')
+      .select('id, request_group_id, status, created_at, email_address, info, work, rate')
       .eq('status', 'approved')
       .ilike('email_address', email)
       .order('created_at', { ascending: false })
@@ -301,8 +315,8 @@ exports.listApproved = async (req, res) => {
 
     const items = Array.isArray(data) ? data : [];
     return res.status(200).json({ items });
-  } catch {
-    return res.status(500).json({ message: 'Failed to load approved applications' });
+  } catch (err) {
+    return res.status(500).json({ message: friendlyError(err) });
   }
 };
 
@@ -311,16 +325,16 @@ exports.getByGroup = async (req, res) => {
     const gid = String(req.params.id || '').trim();
     if (!gid) return res.status(400).json({ message: 'Missing id' });
     const { data, error } = await getSupabaseAdmin()
-      .from('wa_pending')
-      .select('id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, docs, reason_choice, reason_other, decision_reason')
+      .from('worker_application_status')
+      .select('id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, reason_choice, reason_other, decision_reason')
       .eq('request_group_id', gid)
       .limit(1)
       .maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ message: 'Application not found' });
     return res.status(200).json(data);
-  } catch {
-    return res.status(500).json({ message: 'Failed to load application' });
+  } catch (err) {
+    return res.status(500).json({ message: friendlyError(err) });
   }
 };
 
@@ -335,7 +349,7 @@ exports.cancel = async (req, res) => {
     if (!gid) return res.status(400).json({ message: 'Missing application_group_id' });
 
     const { data: existing, error: getErr } = await getSupabaseAdmin()
-      .from('wa_pending')
+      .from('worker_application_status')
       .select('id, request_group_id, status, email_address, info')
       .eq('request_group_id', gid)
       .maybeSingle();
@@ -348,7 +362,7 @@ exports.cancel = async (req, res) => {
       reason_other
     };
     const { data: updated, error: upErr } = await getSupabaseAdmin()
-      .from('wa_pending')
+      .from('worker_application_status')
       .update(upd)
       .eq('id', existing.id)
       .select('id, request_group_id, status, reason_choice, reason_other')
@@ -407,8 +421,8 @@ exports.listMine = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10), 1), 50);
 
     let query = getSupabaseAdmin()
-      .from('wa_pending')
-      .select('id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, docs, reason_choice, reason_other, decision_reason')
+      .from('worker_application_status')
+      .select('id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, reason_choice, reason_other, decision_reason')
       .ilike('email_address', email)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -434,15 +448,15 @@ exports.deleteApplication = async (req, res) => {
 
     let row = null;
     let get = await getSupabaseAdmin()
-      .from('wa_pending')
-      .select('id, request_group_id, status')
+      .from('worker_application_status')
+      .select('id, request_group_id, status, email_address, info')
       .eq('id', raw)
       .maybeSingle();
     if (!get.error && get.data) row = get.data;
     if (!row) {
       get = await getSupabaseAdmin()
-        .from('wa_pending')
-        .select('id, request_group_id, status')
+        .from('worker_application_status')
+        .select('id, request_group_id, status, email_address, info')
         .eq('request_group_id', raw)
         .maybeSingle();
       if (!get.error && get.data) row = get.data;
@@ -458,11 +472,21 @@ exports.deleteApplication = async (req, res) => {
     const gid = row.request_group_id;
 
     await getSupabaseAdmin().from('worker_cancel_application').delete().eq('request_group_id', gid);
-    await getSupabaseAdmin().from('wa_pending').delete().eq('request_group_id', gid);
-    await getSupabaseAdmin().from('worker_rate').delete().eq('request_group_id', gid);
-    await getSupabaseAdmin().from('worker_required_documents').delete().eq('request_group_id', gid);
-    await getSupabaseAdmin().from('worker_work_information').delete().eq('request_group_id', gid);
-    await getSupabaseAdmin().from('worker_information').delete().eq('request_group_id', gid);
+    await getSupabaseAdmin().from('worker_terms_and_agreements').delete().eq('request_group_id', gid);
+    await getSupabaseAdmin().from('worker_application_status').delete().eq('request_group_id', gid);
+
+    let wrdWorkerId = null;
+    try {
+      const e = row.email_address || row.info?.email_address || null;
+      if (e) {
+        const w = await findWorkerByEmail(e);
+        if (w?.id) wrdWorkerId = w.id;
+      }
+    } catch {}
+    if (wrdWorkerId) {
+      await getSupabaseAdmin().from('worker_required_documents').delete().eq('worker_id', wrdWorkerId);
+      await getSupabaseAdmin().from('worker_work_information').delete().eq('worker_id', wrdWorkerId);
+    }
 
     return res.status(200).json({ message: 'Application deleted', request_group_id: gid });
   } catch (err) {

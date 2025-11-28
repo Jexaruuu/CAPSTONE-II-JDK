@@ -364,7 +364,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
                 {serviceTypesSelected.length > 0 && (
                   <div className="mb-4">
-                    <h4 className="text-base font-semibold mb-2">Service Details</h4>
+                    <h4 className="text-base font-semibold mb-2">Service Task</h4>
                     {serviceTypesSelected.map((jobType) => {
                       const hasDetail = (jobDetails[jobType] || []).some(
                         (v) => String(v || '').trim() !== ''

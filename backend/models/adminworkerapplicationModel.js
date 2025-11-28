@@ -5,8 +5,8 @@ function n(v){const t=s(v).toLowerCase();const m={canceled:"cancelled"};const x=
 
 async function listApplications({status="",q="",limit=500}){
   const db=getSupabaseAdmin();
-  let query=db.from("wa_pending")
-    .select("id,request_group_id,status,created_at,decided_at,email_address,info,work,rate,docs,reason_choice,reason_other,decision_reason")
+  let query=db.from("worker_application_status")
+    .select("id,request_group_id,status,created_at,decided_at,email_address,info,work,rate,reason_choice,reason_other,decision_reason")
     .order("created_at",{ascending:false})
     .limit(Math.min(Math.max(Number(limit)||1,1),1000));
   const st=n(status);
@@ -23,7 +23,7 @@ async function listApplications({status="",q="",limit=500}){
 
 async function countExact(where){
   const db=getSupabaseAdmin();
-  const {count,error}=await db.from("wa_pending").select("*",{count:"exact",head:true}).match(where||{});
+  const {count,error}=await db.from("worker_application_status").select("*",{count:"exact",head:true}).match(where||{});
   if(error) throw error;
   return count||0;
 }
@@ -41,9 +41,9 @@ async function countAllStatuses(){
 async function findRow(idOrGroup){
   const db=getSupabaseAdmin();
   const key=s(idOrGroup);
-  let {data,error}=await db.from("wa_pending").select("id,request_group_id,status,reason_choice,reason_other,decision_reason,decided_at").eq("id",key).maybeSingle();
+  let {data,error}=await db.from("worker_application_status").select("id,request_group_id,status,reason_choice,reason_other,decision_reason,decided_at").eq("id",key).maybeSingle();
   if((!data)||error){
-    const r=await db.from("wa_pending").select("id,request_group_id,status,reason_choice,reason_other,decision_reason,decided_at").eq("request_group_id",key).maybeSingle();
+    const r=await db.from("worker_application_status").select("id,request_group_id,status,reason_choice,reason_other,decision_reason,decided_at").eq("request_group_id",key).maybeSingle();
     data=r.data; error=r.error;
   }
   if(error) throw error;
@@ -70,7 +70,7 @@ async function markStatus(idOrGroup,nextStatus,extras={}){
     upd.reason_other=s(extras.reason_other||"")||null;
     upd.decision_reason=s(extras.decision_reason||"")||null;
   }
-  const {data,error}=await db.from("wa_pending").update(upd).eq("id",row.id)
+  const {data,error}=await db.from("worker_application_status").update(upd).eq("id",row.id)
     .select("id,request_group_id,status,reason_choice,reason_other,decision_reason,decided_at").maybeSingle();
   if(error) throw error;
   return data;

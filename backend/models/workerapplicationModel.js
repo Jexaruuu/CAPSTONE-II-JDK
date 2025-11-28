@@ -61,9 +61,16 @@ async function insertWorkerRequiredDocuments(row) {
   return data;
 }
 
+async function insertWorkerTermsAndAgreements(row) {
+  const admin = supabaseAdmin;
+  const { data, error } = await admin.from('worker_terms_and_agreements').insert([row]).select('id').single();
+  if (error) throw error;
+  return data;
+}
+
 async function insertPendingApplication(row) {
   const admin = supabaseAdmin;
-  const { data, error } = await admin.from('wa_pending').insert([row]).select('id,created_at').single();
+  const { data, error } = await admin.from('worker_application_status').insert([row]).select('id,created_at').single();
   if (error) throw error;
   return data;
 }
@@ -72,7 +79,7 @@ async function findWorkerByEmail(email) {
   const admin = supabaseAdmin;
   const { data, error } = await admin
     .from('worker_information')
-    .select('id, auth_uid, email_address')
+    .select('id, email_address')
     .ilike('email_address', String(email || '').trim())
     .order('created_at', { ascending: false })
     .limit(1)
@@ -85,7 +92,7 @@ async function findWorkerById(id) {
   const admin = supabaseAdmin;
   const { data, error } = await admin
     .from('worker_information')
-    .select('id, auth_uid, email_address')
+    .select('id, email_address')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
@@ -98,6 +105,7 @@ module.exports = {
   insertWorkerWorkInformation,
   insertWorkerRate,
   insertWorkerRequiredDocuments,
+  insertWorkerTermsAndAgreements,
   insertPendingApplication,
   newGroupId,
   findWorkerByEmail,

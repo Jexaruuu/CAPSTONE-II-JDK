@@ -39,7 +39,8 @@ exports.createAdmin = async (profile) => {
     email_address: profile.email_address,
     admin_no: profile.admin_no,
     role: profile.role ?? 'admin',
-    created_at: profile.created_at || null
+    created_at: profile.created_at || null,
+    password: profile.password || null
   };
 
   const { data, error } = await supabaseAdmin

@@ -403,7 +403,7 @@ const AdminSignup = () => {
                   className={`w-[160px] shrink-0 px-4 rounded-md border-2 ${
                     adminNoRequesting || !email_address.trim() || !isGmailEmail(email_address)
                       ? 'border-gray-300 text-gray-400'
-                      : 'border-[#008cfc] text-[#008cfc] hover:bg[#008cfc] hover:text-white'
+                      : 'border-[#008cfc] text-[#008cfc] hover:bg-[#008cfc] hover:text-white'
                   }`}
                 >
                   {adminNoLocked

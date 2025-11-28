@@ -5,7 +5,7 @@ const {
   getPendingById,
   markStatus,
   countByStatus
-} = require("../models/pendingworkerapplicationModel");
+} = require("../models/workerapplicationstatusModel");
 
 function cleanStr(s) {
   return String(s || "").trim();
@@ -17,7 +17,7 @@ exports.create = async (req, res) => {
     const data = await insertPendingApplication(row);
     return res.status(201).json(data);
   } catch (err) {
-    return res.status(400).json({ message: err?.message || "Failed to create pending application" });
+    return res.status(400).json({ message: err?.message || "Failed to create application status" });
   }
 };
 
@@ -30,7 +30,7 @@ exports.list = async (req, res) => {
     const filtered = email ? items.filter(it => cleanStr(it.email_address) === email) : items;
     return res.status(200).json({ items: filtered });
   } catch (err) {
-    return res.status(500).json({ message: err?.message || "Failed to load pending applications" });
+    return res.status(500).json({ message: err?.message || "Failed to load application statuses" });
   }
 };
 

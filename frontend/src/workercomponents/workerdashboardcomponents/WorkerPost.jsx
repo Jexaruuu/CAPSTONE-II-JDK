@@ -227,12 +227,14 @@ function WorkerPost() {
           return;
         }
         const a1 = axios.get(`${API_BASE}/api/workerapplications/approved`, {
-          params: { email, worker_id: workerId, limit: 10 },
-          withCredentials: true
+          params: { email, worker_id: workerId, limit: 20 },
+          withCredentials: true,
+          headers: headersWithU
         });
         const a2 = axios.get(`${API_BASE}/api/admin/workerapplications`, {
           params: { status: 'pending', q: email || '' },
-          withCredentials: true
+          withCredentials: true,
+          headers: headersWithU
         });
         const [rApproved, rPending] = await Promise.allSettled([a1, a2]);
         const itemsApproved = rApproved.status === 'fulfilled' ? (Array.isArray(rApproved.value?.data?.items) ? rApproved.value.data.items : []) : [];
@@ -257,12 +259,13 @@ function WorkerPost() {
         } else {
           setCurrentApp(null);
         }
-        setApproved(itemsApproved.map((it) => {
+        const approvedOnly = itemsApproved.map((it) => {
           const details = { ...(it.work || it.details || {}) };
           const t = toBoolStrict(details.tools_provided);
           if (t !== null) details.tools_provided = t ? 'Yes' : 'No';
           return { ...it, details };
-        }));
+        });
+        setApproved(approvedOnly);
         setCurrent(0);
       } catch {
         setCurrentApp(null);
