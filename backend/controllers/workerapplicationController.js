@@ -335,7 +335,6 @@ exports.cancel = async (req, res) => {
     const { error: insErr } = await getSupabaseAdmin()
       .from('worker_cancel_application')
       .insert([{
-        request_group_id: null,
         worker_id: worker_id || null,
         email_address: email_address || existing.email_address || null,
         reason_choice,
