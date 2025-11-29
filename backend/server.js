@@ -1,5 +1,19 @@
 require("dotenv").config();
 
+(function ensureServiceRoleKey() {
+  const strip = (s) => (typeof s === "string" ? s.trim().replace(/^['"]|['"]$/g, "") : s);
+  process.env.SUPABASE_URL = strip(process.env.SUPABASE_URL || "");
+  process.env.SUPABASE_ANON_KEY = strip(process.env.SUPABASE_ANON_KEY || "");
+  process.env.SUPABASE_SERVICE_ROLE_KEY = strip(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const v = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const mask = v.length > 16 ? `${v.slice(0,6)}...${v.slice(-6)}` : "set";
+    console.log(`[boot] SRK loaded: ${mask}`);
+  } else {
+    console.error("[boot] Missing SUPABASE_SERVICE_ROLE_KEY");
+  }
+})();
+
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -10,7 +24,7 @@ const workerRoutes = require("./routes/workerRoutes");
 const loginRoutes = require("./routes/loginRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const authRoutes = require("./routes/authRoutes");
-const { resendSignupEmail, setDefaultRedirectBase, ensureStorageBucket, getSupabaseFromRequest } = require("./supabaseClient");
+const { resendSignupEmail, setDefaultRedirectBase, ensureStorageBucket, getSupabaseFromRequest, getSupabaseAdmin } = require("./supabaseClient");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 
@@ -28,6 +42,14 @@ const notificationsRoutes = require("./routes/notificationsRoutes");
 const adminServiceRequestsRoutes = require("./routes/adminservicerequestsRoutes");
 
 dotenv.config();
+
+try {
+  getSupabaseAdmin();
+  console.log("[boot] Supabase admin client initialized");
+} catch (e) {
+  console.error("[boot] Failed to init Supabase admin client:", e?.message || e);
+  throw e;
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;

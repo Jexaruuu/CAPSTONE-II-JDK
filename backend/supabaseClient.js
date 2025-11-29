@@ -27,36 +27,8 @@ function computeRedirectTo() {
 
 function pick(v) { return typeof v === "string" ? v.trim() : v; }
 
-function decodeJwtRole(token) {
-  try {
-    const parts = String(token || "").split(".");
-    if (parts.length < 2) return "";
-    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const json = Buffer.from(b64, "base64").toString("utf8");
-    const obj = JSON.parse(json);
-    const r = obj.role || obj["https://supabase.io/role"] || "";
-    return String(r || "").toLowerCase();
-  } catch { return ""; }
-}
-
 function detectServiceKey() {
-  const cands = [
-    pick(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    pick(process.env.SUPABASE_SERVICE_KEY),
-    pick(process.env.SUPABASE_SECRET),
-    pick(process.env.SUPABASE_KEY),
-    pick(process.env.SUPABASE_ANON_KEY)
-  ].filter(Boolean);
-  for (const t of cands) {
-    if (decodeJwtRole(t) === "service_role") return t;
-  }
-  const scan = Object.entries(process.env)
-    .filter(([k, v]) => typeof v === "string" && /SUPABASE|SERVICE|SECRET|KEY/i.test(k))
-    .map(([, v]) => v);
-  for (const t of scan) {
-    if (decodeJwtRole(t) === "service_role") return t;
-  }
-  return "";
+  return pick(process.env.SUPABASE_SERVICE_ROLE_KEY) || "";
 }
 
 (function hydrateEnv() {
@@ -66,12 +38,8 @@ function detectServiceKey() {
 
 function loadEnv() {
   const url = pick(process.env.SUPABASE_URL) || "https://uoyzcboehvwxcadrqqfq.supabase.co";
-  const anon = pick(process.env.SUPABASE_ANON_KEY) || pick(process.env.SUPABASE_KEY) || "";
-  const svc =
-    pick(process.env.SUPABASE_SERVICE_ROLE_KEY) ||
-    pick(process.env.SUPABASE_SERVICE_KEY) ||
-    pick(process.env.SUPABASE_SECRET) ||
-    "";
+  const anon = pick(process.env.SUPABASE_ANON_KEY) || "";
+  const svc = pick(process.env.SUPABASE_SERVICE_ROLE_KEY) || detectServiceKey() || "";
   return { url, anon, svc };
 }
 
@@ -94,9 +62,6 @@ function getSupabaseAdmin() {
   if (!svc) {
     const flags = [
       `SRK:${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      `SVC_KEY:${!!process.env.SUPABASE_SERVICE_KEY}`,
-      `SECRET:${!!process.env.SUPABASE_SECRET}`,
-      `KEY:${!!process.env.SUPABASE_KEY}`,
       `ANON:${!!process.env.SUPABASE_ANON_KEY}`
     ].join("|");
     throw new Error(`Service role key missing on server [${flags}]`);
@@ -153,7 +118,7 @@ async function createSupabaseAuthUser(email, password, metadata = {}) {
     if (err.isEmailSendFailure && FALLBACK_AUTOCONFIRM) {
       try {
         const { data, error: err2 } = await getSupabaseAdmin().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: metadata });
-        if (error) throw err2;
+        if (err2) throw err2;
         return { user: data.user, error: null, autoConfirmed: true, usedFallback: true };
       } catch (e2) {
         e2.originalError = err;

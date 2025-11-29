@@ -8,7 +8,8 @@ const {
   newGroupId,
   findWorkerByEmail,
   findWorkerById,
-  insertWorkerTermsAndAgreements
+  insertWorkerTermsAndAgreements,
+  updateWorkerInformationWorkerId
 } = require('../models/workerapplicationModel');
 const { supabaseAdmin, ensureStorageBucket, getSupabaseAdmin } = require('../supabaseClient');
 
@@ -141,6 +142,11 @@ exports.submitFullApplication = async (req, res) => {
 
     const infoIns = await insertWorkerInformation(infoRow);
 
+    if (!effectiveWorkerId) {
+      effectiveWorkerId = infoIns.id;
+      try { await updateWorkerInformationWorkerId(infoIns.id, effectiveWorkerId); } catch {}
+    }
+
     const workDesc = (work_description || service_description || '').toString().trim() || null;
 
     const finalServiceTask = service_task && typeof service_task === 'object' ? service_task : (job_details && typeof job_details === 'object' ? job_details : {});
@@ -161,7 +167,7 @@ exports.submitFullApplication = async (req, res) => {
     if (!detailsRow.work_description) missingWork.push('work_description');
     if (missingWork.length) return res.status(400).json({ message: `Missing required worker_work_information fields: ${missingWork.join(', ')}` });
 
-    const workIns = await insertWorkerWorkInformation(detailsRow);
+    await insertWorkerWorkInformation(detailsRow);
 
     const rateRow = {
       worker_id: effectiveWorkerId,
@@ -177,7 +183,7 @@ exports.submitFullApplication = async (req, res) => {
     if (rateRow.rate_type === 'By the Job Rate' && !rateRow.rate_value) missingRate.push('rate_value');
     if (missingRate.length) return res.status(400).json({ message: `Missing required worker_rate fields: ${missingRate.join(', ')}` });
 
-    const rateIns = await insertWorkerRate(rateRow);
+    await insertWorkerRate(rateRow);
 
     const docsSource = (Array.isArray(docs) && docs.length) ? docs : attachments;
     const docCols = {
@@ -200,7 +206,7 @@ exports.submitFullApplication = async (req, res) => {
           /(nbi|police)/.test(raw) ? 'nbi_police_clearance' :
           /address/.test(raw) ? 'proof_of_address' :
           /medical/.test(raw) ? 'medical_certificate' :
-          /certificate/.test(raw) ? 'certificates' : null;
+          /(certificate|certs?)/.test(raw) ? 'certificates' : null;
         if (!key) continue;
         const hasUrl = typeof d.url === 'string' && /^https?:\/\//i.test(d.url);
         if (hasUrl && !d.data_url && !docCols[key]) {
@@ -216,7 +222,6 @@ exports.submitFullApplication = async (req, res) => {
     await insertWorkerRequiredDocuments({ worker_id: effectiveWorkerId, ...docCols });
 
     const termsRow = {
-      request_group_id,
       worker_id: effectiveWorkerId,
       email_address: infoRow.email_address,
       agree_verify: !!metadata.agree_verify,
@@ -230,48 +235,9 @@ exports.submitFullApplication = async (req, res) => {
       return res.status(400).json({ message: friendlyError(e) });
     }
 
-    let preferredDate = null;
-    try {
-      const perJob = Array.isArray(service_types) && service_types.length ? service_types[0] : null;
-      preferredDate = perJob ? new Date().toISOString().split('T')[0] : null;
-    } catch {}
-
-    const pendingInfo = {
-      first_name: infoRow.first_name,
-      last_name: infoRow.last_name,
-      email_address: infoRow.email_address,
-      contact_number: infoRow.contact_number,
-      street: infoRow.street,
-      barangay: infoRow.barangay,
-      birth_date: infoRow.birth_date,
-      age: infoRow.age,
-      profile_picture_url: infoRow.profile_picture_url,
-      profile_picture_name: infoRow.profile_picture_name,
-      additional_address: infoRow.street
-    };
-
-    const pendingWork = {
-      service_types: detailsRow.service_types,
-      service_task: detailsRow.service_task,
-      years_experience: detailsRow.years_experience,
-      tools_provided: detailsRow.tools_provided,
-      work_description: detailsRow.work_description,
-      preferred_date: preferredDate
-    };
-
-    const pendingRate = {
-      rate_type: rateRow.rate_type,
-      rate_from: rateRow.rate_from,
-      rate_to: rateRow.rate_to,
-      rate_value: rateRow.rate_value
-    };
-
     const pendingIns = await insertPendingApplication({
-      request_group_id,
+      worker_id: effectiveWorkerId,
       email_address: infoRow.email_address,
-      info: pendingInfo,
-      work: pendingWork,
-      rate: pendingRate,
       status: 'pending'
     });
 
@@ -279,9 +245,9 @@ exports.submitFullApplication = async (req, res) => {
       message: 'Application submitted',
       request: {
         id: pendingIns.id,
-        request_group_id,
         status: 'pending',
-        created_at: pendingIns.created_at
+        created_at: pendingIns.created_at,
+        worker_id: effectiveWorkerId
       }
     });
   } catch (err) {
@@ -306,7 +272,7 @@ exports.listApproved = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
     const { data, error } = await getSupabaseAdmin()
       .from('worker_application_status')
-      .select('id, request_group_id, status, created_at, email_address, info, work, rate')
+      .select('id, status, created_at, email_address')
       .eq('status', 'approved')
       .ilike('email_address', email)
       .order('created_at', { ascending: false })
@@ -322,12 +288,12 @@ exports.listApproved = async (req, res) => {
 
 exports.getByGroup = async (req, res) => {
   try {
-    const gid = String(req.params.id || '').trim();
-    if (!gid) return res.status(400).json({ message: 'Missing id' });
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ message: 'Missing id' });
     const { data, error } = await getSupabaseAdmin()
       .from('worker_application_status')
-      .select('id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, reason_choice, reason_other, decision_reason')
-      .eq('request_group_id', gid)
+      .select('id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason')
+      .eq('id', id)
       .limit(1)
       .maybeSingle();
     if (error) throw error;
@@ -341,31 +307,27 @@ exports.getByGroup = async (req, res) => {
 exports.cancel = async (req, res) => {
   try {
     const body = req.body || {};
-    const gid = String(body.application_group_id || '').trim();
+    const id = String(body.application_id || body.id || '').trim();
     const reason_choice = String(body.reason_choice || '').trim() || null;
     const reason_other = String(body.reason_other || '').trim() || null;
     const worker_id = body.worker_id ? Number(body.worker_id) : null;
     const email_address = String(body.email_address || '').trim() || null;
-    if (!gid) return res.status(400).json({ message: 'Missing application_group_id' });
+    if (!id) return res.status(400).json({ message: 'Missing application_id' });
 
     const { data: existing, error: getErr } = await getSupabaseAdmin()
       .from('worker_application_status')
-      .select('id, request_group_id, status, email_address, info')
-      .eq('request_group_id', gid)
+      .select('id, status, email_address')
+      .eq('id', id)
       .maybeSingle();
     if (getErr) throw getErr;
     if (!existing) return res.status(404).json({ message: 'Application not found' });
 
-    const upd = {
-      status: 'cancelled',
-      reason_choice,
-      reason_other
-    };
+    const upd = { status: 'cancelled', reason_choice, reason_other };
     const { data: updated, error: upErr } = await getSupabaseAdmin()
       .from('worker_application_status')
       .update(upd)
       .eq('id', existing.id)
-      .select('id, request_group_id, status, reason_choice, reason_other')
+      .select('id, status, reason_choice, reason_other')
       .maybeSingle();
     if (upErr) throw upErr;
 
@@ -373,7 +335,7 @@ exports.cancel = async (req, res) => {
     const { error: insErr } = await getSupabaseAdmin()
       .from('worker_cancel_application')
       .insert([{
-        request_group_id: gid,
+        request_group_id: null,
         worker_id: worker_id || null,
         email_address: email_address || existing.email_address || null,
         reason_choice,
@@ -384,7 +346,6 @@ exports.cancel = async (req, res) => {
 
     return res.status(200).json({
       id: updated?.id || existing.id,
-      request_group_id: gid,
       status: 'cancelled',
       canceled_at,
       reason_choice,
@@ -422,7 +383,7 @@ exports.listMine = async (req, res) => {
 
     let query = getSupabaseAdmin()
       .from('worker_application_status')
-      .select('id, request_group_id, status, created_at, decided_at, email_address, info, work, rate, reason_choice, reason_other, decision_reason')
+      .select('id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason')
       .ilike('email_address', email)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -446,21 +407,12 @@ exports.deleteApplication = async (req, res) => {
     const raw = String(req.params.id || '').trim();
     if (!raw) return res.status(400).json({ message: 'id is required' });
 
-    let row = null;
-    let get = await getSupabaseAdmin()
+    const { data: row, error } = await getSupabaseAdmin()
       .from('worker_application_status')
-      .select('id, request_group_id, status, email_address, info')
+      .select('id, status, email_address')
       .eq('id', raw)
       .maybeSingle();
-    if (!get.error && get.data) row = get.data;
-    if (!row) {
-      get = await getSupabaseAdmin()
-        .from('worker_application_status')
-        .select('id, request_group_id, status, email_address, info')
-        .eq('request_group_id', raw)
-        .maybeSingle();
-      if (!get.error && get.data) row = get.data;
-    }
+    if (error) throw error;
     if (!row) return res.status(404).json({ message: 'Not found' });
 
     const status = String(row.status || '').toLowerCase();
@@ -469,26 +421,8 @@ exports.deleteApplication = async (req, res) => {
       return res.status(409).json({ message: 'Cannot delete this application status' });
     }
 
-    const gid = row.request_group_id;
-
-    await getSupabaseAdmin().from('worker_cancel_application').delete().eq('request_group_id', gid);
-    await getSupabaseAdmin().from('worker_terms_and_agreements').delete().eq('request_group_id', gid);
-    await getSupabaseAdmin().from('worker_application_status').delete().eq('request_group_id', gid);
-
-    let wrdWorkerId = null;
-    try {
-      const e = row.email_address || row.info?.email_address || null;
-      if (e) {
-        const w = await findWorkerByEmail(e);
-        if (w?.id) wrdWorkerId = w.id;
-      }
-    } catch {}
-    if (wrdWorkerId) {
-      await getSupabaseAdmin().from('worker_required_documents').delete().eq('worker_id', wrdWorkerId);
-      await getSupabaseAdmin().from('worker_work_information').delete().eq('worker_id', wrdWorkerId);
-    }
-
-    return res.status(200).json({ message: 'Application deleted', request_group_id: gid });
+    await getSupabaseAdmin().from('worker_application_status').delete().eq('id', raw);
+    return res.status(200).json({ message: 'Application deleted', id: raw });
   } catch (err) {
     return res.status(500).json({ message: friendlyError(err) });
   }

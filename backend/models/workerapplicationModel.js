@@ -40,6 +40,13 @@ async function insertWorkerInformation(row) {
   return data;
 }
 
+async function updateWorkerInformationWorkerId(id, workerId) {
+  const admin = supabaseAdmin;
+  const { error } = await admin.from('worker_information').update({ worker_id: workerId }).eq('id', id);
+  if (error) throw error;
+  return true;
+}
+
 async function insertWorkerWorkInformation(row) {
   const admin = supabaseAdmin;
   const { data, error } = await admin.from('worker_work_information').insert([row]).select('id').single();
@@ -102,6 +109,7 @@ async function findWorkerById(id) {
 module.exports = {
   uploadDataUrlToBucket,
   insertWorkerInformation,
+  updateWorkerInformationWorkerId,
   insertWorkerWorkInformation,
   insertWorkerRate,
   insertWorkerRequiredDocuments,

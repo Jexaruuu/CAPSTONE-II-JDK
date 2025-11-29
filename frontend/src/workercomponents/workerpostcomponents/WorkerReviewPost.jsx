@@ -77,7 +77,6 @@ const WorkerReviewPost = ({ handleBack }) => {
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [requestGroupId, setRequestGroupId] = useState(null);
 
   useEffect(() => {
     try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
@@ -190,7 +189,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   };
 
   const handleBackClick = () => {
-    jumpTop();
+    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
     setIsLoadingBack(true);
     setTimeout(() => {
       if (typeof handleBack === 'function') handleBack();
@@ -229,7 +228,7 @@ const WorkerReviewPost = ({ handleBack }) => {
     setSubmitError('');
     setIsSubmitting(true);
     try {
-      const base = String(API_BASE || '').replace(/\/+$/, '');
+      const base = String(API_BASE || '').replace(/\/+$/,'');
       const workerIdLS = localStorage.getItem('worker_id') || null;
       const workerAuth = (() => { try { return JSON.parse(localStorage.getItem('workerAuth') || '{}'); } catch { return {}; }})();
       const emailVal = (email || workerAuth.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '').toString().trim().toLowerCase();
@@ -286,6 +285,7 @@ const WorkerReviewPost = ({ handleBack }) => {
         rate_from: payload.rate_from ?? null,
         rate_to: payload.rate_to ?? null,
         rate_value: payload.rate_value ?? null,
+        docs: Array.isArray(payload.docs) ? payload.docs : [],
         attachments: filterHostedOnly(payload.docs),
         metadata: {
           ...payload.metadata,
@@ -351,6 +351,7 @@ const WorkerReviewPost = ({ handleBack }) => {
         rate_from: normalized.rate_from,
         rate_to: normalized.rate_to,
         rate_value: normalized.rate_value,
+        docs: normalized.docs,
         attachments: normalized.attachments,
         metadata: normalized.metadata
       };
@@ -361,7 +362,6 @@ const WorkerReviewPost = ({ handleBack }) => {
         { withCredentials: true, headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...headersWithU } }
       );
 
-      setRequestGroupId(resp?.data?.request?.request_group_id || null);
       setShowSuccess(true);
     } catch (e) {
       const serverData = e?.response?.data;
@@ -378,9 +378,9 @@ const WorkerReviewPost = ({ handleBack }) => {
 
   const handleGoDashboard = () => {
     clearWorkerApplicationDrafts();
-    jumpTop();
+    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
     const path = '/workerdashboard';
-    try { navigate(path, { state: { submitted: true, request_group_id: requestGroupId, __forceTop: true }, replace: true }); } catch {}
+    try { navigate(path, { state: { submitted: true, __forceTop: true }, replace: true }); } catch {}
     try { window.location.assign(path); } catch {}
   };
 

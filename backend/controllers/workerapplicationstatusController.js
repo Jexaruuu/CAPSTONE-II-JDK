@@ -64,7 +64,7 @@ exports.approve = async (req, res) => {
     const id = cleanStr(req.params.id || "");
     if (!id) return res.status(400).json({ message: "Missing id" });
     const row = await markStatus(id, "approved");
-    return res.status(200).json({ id: row.id, status: row.status, request_group_id: row.request_group_id });
+    return res.status(200).json({ id: row.id, status: row.status });
   } catch (err) {
     return res.status(400).json({ message: err?.message || "Failed to approve" });
   }
@@ -76,7 +76,7 @@ exports.decline = async (req, res) => {
     if (!id) return res.status(400).json({ message: "Missing id" });
     const reason = cleanStr(req.body?.reason || "");
     const row = await markStatus(id, "declined", reason || null);
-    return res.status(200).json({ id: row.id, status: row.status, request_group_id: row.request_group_id });
+    return res.status(200).json({ id: row.id, status: row.status });
   } catch (err) {
     return res.status(400).json({ message: err?.message || "Failed to decline" });
   }
