@@ -131,7 +131,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   const profile_picture_name = s.profile_picture_name ?? savedInfo.profilePictureName ?? '';
 
   const service_types = s.service_types ?? savedWork.service_types ?? savedWork.serviceTypesSelected ?? [];
-  const job_details = s.job_details ?? savedWork.job_details ?? savedWork.jobDetails ?? {};
+  const service_task = s.service_task ?? savedWork.service_task ?? {};
   const years_experience = s.years_experience ?? savedWork.years_experience ?? savedWork.yearsExperience ?? '';
   const tools_provided = s.tools_provided ?? savedWork.tools_provided ?? savedWork.toolsProvided ?? '';
   const service_description = s.service_description ?? savedWork.service_description ?? savedWork.serviceDescription ?? '';
@@ -246,7 +246,7 @@ const WorkerReviewPost = ({ handleBack }) => {
         profile_picture: typeof profile_picture === 'string' ? profile_picture : undefined,
         profile_picture_name: profile_picture_name || undefined,
         service_types: onlyStrings(service_types),
-        job_details: onlyStringArrayValues(job_details),
+        service_task: onlyStringArrayValues(service_task),
         years_experience: toNum(years_experience),
         tools_provided: toBool(tools_provided),
         work_description: service_description || undefined,
@@ -277,7 +277,7 @@ const WorkerReviewPost = ({ handleBack }) => {
         profile_picture: payload.profile_picture || '',
         profile_picture_name: payload.profile_picture_name || '',
         service_types: payload.service_types || [],
-        job_details: payload.job_details || {},
+        service_task: payload.service_task || {},
         years_experience: payload.years_experience ?? null,
         tools_provided: !!payload.tools_provided,
         service_description: payload.work_description || '',
@@ -342,7 +342,7 @@ const WorkerReviewPost = ({ handleBack }) => {
         profile_picture: normalized.profile_picture,
         profile_picture_name: normalized.profile_picture_name,
         service_types: normalized.service_types,
-        job_details: normalized.job_details,
+        service_task: normalized.service_task,
         years_experience: normalized.years_experience,
         tools_provided: normalized.tools_provided,
         service_description: normalized.service_description,
@@ -484,9 +484,9 @@ const WorkerReviewPost = ({ handleBack }) => {
                     <LabelValue label="Years of Experience" value={years_experience} />
                     <div className="md:col-span-2">
                       <div className="text-sm font-semibold text-black mb-2">Selected Tasks</div>
-                      {job_details && typeof job_details === 'object' && Object.keys(job_details).length ? (
+                      {service_task && typeof service_task === 'object' && Object.keys(service_task).length ? (
                         <div className="space-y-2">
-                          {Object.entries(job_details).map(([k, v]) => (
+                          {Object.entries(service_task).map(([k, v]) => (
                             <div key={k} className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
                               <span className="font-semibold text-gray-700">{`${k.replace(/:?\s*$/,'')}:`}</span>
                               <span className="text-base md:text-lg font-medium text-[#008cfc]">{formatList(v)}</span>

@@ -133,7 +133,12 @@ function WorkerPost() {
     try {
       const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
       const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
-      const e = a.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+      const e =
+        a.email ||
+        localStorage.getItem('worker_email') ||
+        localStorage.getItem('email_address') ||
+        localStorage.getItem('email') ||
+        '';
       return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
     } catch {
       return '';
@@ -144,7 +149,99 @@ function WorkerPost() {
   const allowedPHPrefixes = useMemo(
     () =>
       new Set([
-        '905','906','907','908','909','910','912','913','914','915','916','917','918','919','920','921','922','923','925','926','927','928','929','930','931','932','933','934','935','936','937','938','939','940','941','942','943','944','945','946','947','948','949','950','951','952','953','954','955','956','957','958','959','960','961','962','963','964','965','966','967','968','969','970','971','972','973','974','975','976','977','978','979','980','981','982','983','984','985','986','987','988','989','990','991','992','993','994','995','996','997','998','999'
+        '905',
+        '906',
+        '907',
+        '908',
+        '909',
+        '910',
+        '912',
+        '913',
+        '914',
+        '915',
+        '916',
+        '917',
+        '918',
+        '919',
+        '920',
+        '921',
+        '922',
+        '923',
+        '925',
+        '926',
+        '927',
+        '928',
+        '929',
+        '930',
+        '931',
+        '932',
+        '933',
+        '934',
+        '935',
+        '936',
+        '937',
+        '938',
+        '939',
+        '940',
+        '941',
+        '942',
+        '943',
+        '944',
+        '945',
+        '946',
+        '947',
+        '948',
+        '949',
+        '950',
+        '951',
+        '952',
+        '953',
+        '954',
+        '955',
+        '956',
+        '957',
+        '958',
+        '959',
+        '960',
+        '961',
+        '962',
+        '963',
+        '964',
+        '965',
+        '966',
+        '967',
+        '968',
+        '969',
+        '970',
+        '971',
+        '972',
+        '973',
+        '974',
+        '975',
+        '976',
+        '977',
+        '978',
+        '979',
+        '980',
+        '981',
+        '982',
+        '983',
+        '984',
+        '985',
+        '986',
+        '987',
+        '988',
+        '989',
+        '990',
+        '991',
+        '992',
+        '993',
+        '994',
+        '995',
+        '996',
+        '997',
+        '998',
+        '999'
       ]),
     []
   );
@@ -186,6 +283,55 @@ function WorkerPost() {
     }, 2000);
   };
 
+  const getRateType = (item) => {
+    const d = item?.rate || item?.details || {};
+    const raw =
+      d.rate_type ||
+      d.pricing_type ||
+      d.price_rate ||
+      d.service_price_rate ||
+      '';
+    if (!raw) return '';
+    const s = String(raw).toLowerCase();
+    if (s.includes('hour')) return 'By the hour';
+    if (s.includes('job') || s.includes('fixed') || s.includes('project') || s.includes('task')) return 'By the Job';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+
+  const parseMaybeArray = (v) => {
+    if (Array.isArray(v)) return v.filter(Boolean).map(String);
+    const s = String(v ?? '').trim();
+    if (!s) return [];
+    try {
+      const x = JSON.parse(s);
+      return Array.isArray(x) ? x.filter(Boolean).map(String) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const getWorkDescription = (item) => {
+    const d = item?.details || item?.work || item?.work_information || {};
+    return d.work_description || item?.work_description || item?.service_description || '';
+  };
+
+  const getYearsExperience = (item) => {
+    const d = item?.details || item?.work || item?.work_information || {};
+    const v = d.years_experience ?? item?.years_experience;
+    if (v === 0) return '0';
+    return v !== undefined && v !== null && String(v).trim() !== '' ? String(v) : '';
+  };
+
+  const getToolsProvided = (item) => {
+    const d = item?.details || item?.work || item?.work_information || {};
+    const raw = d.tools_provided ?? item?.tools_provided ?? item?.tools_provide ?? '';
+    if (typeof raw === 'boolean') return raw ? 'Yes' : 'No';
+    const s = String(raw).trim().toLowerCase();
+    if (['yes', 'y', 'true', '1'].includes(s)) return 'Yes';
+    if (['no', 'n', 'false', '0'].includes(s)) return 'No';
+    return String(raw || '');
+  };
+
   useEffect(() => {
     if (!navLoading) return;
     const onPopState = () => {
@@ -196,7 +342,10 @@ function WorkerPost() {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       window.removeEventListener('popstate', onPopState, true);
@@ -226,45 +375,79 @@ function WorkerPost() {
           setLoading(false);
           return;
         }
-        const a1 = axios.get(`${API_BASE}/api/workerapplications/approved`, {
-          params: { email, worker_id: workerId, limit: 20 },
+        const params = { status: 'all', limit: 20 };
+        if (email) params.email = email;
+        if (workerId) params.worker_id = workerId;
+
+        const r = await axios.get(`${API_BASE}/api/workerapplications`, {
+          params,
           withCredentials: true,
           headers: headersWithU
         });
-        const a2 = axios.get(`${API_BASE}/api/admin/workerapplications`, {
-          params: { status: 'pending', q: email || '' },
-          withCredentials: true,
-          headers: headersWithU
-        });
-        const [rApproved, rPending] = await Promise.allSettled([a1, a2]);
-        const itemsApproved = rApproved.status === 'fulfilled' ? (Array.isArray(rApproved.value?.data?.items) ? rApproved.value.data.items : []) : [];
-        const itemsPending = rPending.status === 'fulfilled' ? (Array.isArray(rPending.value?.data?.items) ? rPending.value.data.items : []) : [];
-        const merged = [...itemsApproved, ...itemsPending].filter(Boolean);
-        merged.sort((a, b) => new Date(b?.created_at || 0) - new Date(a?.created_at || 0));
-        const pick = merged.find(it => String(it?.status || '').toLowerCase() !== 'declined') || null;
+
+        const rows = Array.isArray(r?.data?.items) ? r.data.items : [];
+        rows.sort((a, b) => new Date(b?.created_at || 0) - new Date(a?.created_at || 0));
+
+        const mergeWork = (it) => {
+          const w = it.work || it.work_information || it.workinfo || {};
+          const base = { ...(it.details || {}) };
+          const root = {
+            service_types: it.service_types,
+            work_description: it.work_description,
+            years_experience: it.years_experience,
+            tools_provided: it.tools_provided ?? it.tools_provide
+          };
+          return { ...w, ...root, ...base };
+        };
+
+        const normalize = (obj) => {
+          const yrs =
+            obj.years_experience ??
+            obj.yearsExperience ??
+            obj.experience?.years ??
+            obj.years ??
+            '';
+          const tpRaw =
+            obj.tools_provided ??
+            obj.tools_provide ??
+            obj.toolsProvided ??
+            obj.tools?.provided ??
+            obj.has_tools ??
+            '';
+          const t = toBoolStrict(tpRaw);
+          return {
+            ...obj,
+            years_experience: yrs,
+            tools_provided: t === null ? (String(tpRaw || '').trim() || '') : t ? 'Yes' : 'No',
+            work_description: obj.work_description ?? obj.description ?? obj.service_description ?? ''
+          };
+        };
+
+        const pick = rows.find((it) => String(it?.status || '').toLowerCase() !== 'declined') || null;
+
         if (pick) {
-          const d0 = { ...(pick.work || pick.details || {}) };
-          const t = toBoolStrict(d0.tools_provided);
-          if (t !== null) d0.tools_provided = t ? 'Yes' : 'No';
-          const normalized = { ...pick, details: d0, info: pick.info || pick.details || {} };
+          const merged = normalize(mergeWork(pick));
+          const normalized = { ...pick, details: merged, info: pick.info || {} };
           setCurrentApp(normalized);
           if (!workerFirstName) {
-            const fn = normalized?.info?.first_name || normalized?.details?.first_name || normalized?.info?.firstname || normalized?.details?.firstname || '';
+            const fn = normalized?.info?.first_name || '';
             if (fn) setWorkerFirstName(String(fn).trim());
           }
           if (!workerGender) {
-            const g = normalized?.info?.gender || normalized?.details?.gender || normalized?.info?.sex || normalized?.details?.sex || '';
+            const g = normalized?.info?.gender || normalized?.info?.sex || '';
             if (g) setWorkerGender(String(g).trim());
           }
         } else {
           setCurrentApp(null);
         }
-        const approvedOnly = itemsApproved.map((it) => {
-          const details = { ...(it.work || it.details || {}) };
-          const t = toBoolStrict(details.tools_provided);
-          if (t !== null) details.tools_provided = t ? 'Yes' : 'No';
-          return { ...it, details };
-        });
+
+        const approvedOnly = rows
+          .filter((it) => String(it.status || '').toLowerCase() === 'approved')
+          .map((it) => {
+            const details = normalize(mergeWork(it));
+            return { ...it, details };
+          });
+
         setApproved(approvedOnly);
         setCurrent(0);
       } catch {
@@ -275,6 +458,12 @@ function WorkerPost() {
       }
     };
     load();
+  }, []);
+
+  useEffect(() => {
+    const { firstName, gender } = getWorkerProfile();
+    if (firstName) setWorkerFirstName(firstName);
+    if (gender) setWorkerGender(gender);
   }, []);
 
   useEffect(() => {
@@ -295,13 +484,13 @@ function WorkerPost() {
     return () => clearInterval(id);
   }, []);
 
-  const totalSlides = Math.max(1, Math.ceil(approved.length / PER_PAGE));
+  const totalSlides = Math.max(1, Math.ceil(approved.length / 3));
 
   const recomputePositions = () => {
     const base = cardRefs.current[0]?.offsetLeft || 0;
     const cardPositions = cardRefs.current.map((el) => Math.max(0, (el?.offsetLeft || 0) - base));
     const slidePositions = [];
-    for (let i = 0; i < cardPositions.length; i += PER_PAGE) slidePositions.push(cardPositions[i]);
+    for (let i = 0; i < cardPositions.length; i += 3) slidePositions.push(cardPositions[i]);
     setPositions(slidePositions);
   };
 
@@ -391,7 +580,9 @@ function WorkerPost() {
     const wrap = trackRef.current;
     const pid = e?.pointerId ?? pointerIdRef.current;
     if (wrap && pid != null) {
-      try { wrap.releasePointerCapture?.(pid); } catch {}
+      try {
+        wrap.releasePointerCapture?.(pid);
+      } catch {}
       wrap.classList.remove('drag-active');
     }
     pointerIdRef.current = null;
@@ -419,8 +610,8 @@ function WorkerPost() {
   const capFirst = workerFirstName ? workerFirstName.charAt(0).toUpperCase() + workerFirstName.slice(1) : 'Worker';
 
   const buildLocation = (item) => {
-    const barangay = item?.info?.barangay ?? item?.details?.barangay ?? item?.details?.brgy ?? '';
-    const street = item?.info?.street ?? item?.details?.street ?? item?.details?.street_name ?? '';
+    const barangay = item?.info?.barangay ?? item?.details?.barangay ?? item?.details?.brgy ?? item?.barangay ?? '';
+    const street = item?.info?.street ?? item?.details?.street ?? item?.details?.street_name ?? item?.street ?? '';
     const parts = [];
     if (barangay) parts.push(`Barangay ${barangay}`);
     if (street) parts.push(street);
@@ -428,25 +619,10 @@ function WorkerPost() {
   };
 
   const buildServiceType = (item) => {
-    const d = item?.work || item?.details || {};
-    const st = d.service_types || d.service_type || d.primary_service || [];
+    const d = item?.work || item?.work_information || item?.workinfo || item?.details || {};
+    const st = d.service_types || d.service_type || d.primary_service || item?.service_types || [];
     if (Array.isArray(st) && st.length) return st[0];
     return typeof st === 'string' && st ? st : '';
-  };
-
-  const getRateType = (item) => {
-    const d = item?.rate || item?.details || {};
-    const raw =
-      d.rate_type ||
-      d.pricing_type ||
-      d.price_rate ||
-      d.service_price_rate ||
-      '';
-    if (!raw) return '';
-    const s = String(raw).toLowerCase();
-    if (s.includes('hour')) return 'By the hour';
-    if (s.includes('job') || s.includes('fixed') || s.includes('project') || s.includes('task')) return 'By the Job';
-    return s.charAt(0).toUpperCase() + s.slice(1);
   };
 
   const SHOW_CAROUSEL = false;
@@ -469,6 +645,10 @@ function WorkerPost() {
     return `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name)}`;
   }, [currentApp, capFirst]);
 
+  const currentWorkDescription = useMemo(() => getWorkDescription(currentApp), [currentApp]);
+  const currentYearsExperience = useMemo(() => getYearsExperience(currentApp), [currentApp]);
+  const currentToolsProvided = useMemo(() => getToolsProvided(currentApp), [currentApp]);
+
   const getGroupId = (it) => {
     const g =
       it?.application_group_id ??
@@ -490,16 +670,26 @@ function WorkerPost() {
   };
 
   const buildServiceTypesArr = (item) => {
-    const d = item?.work || item?.details || {};
-    const st = d.service_types || d.service_type || d.primary_service || [];
-    if (Array.isArray(st)) return st.filter(Boolean).map((x) => String(x));
-    if (typeof st === 'string' && st.trim()) return [st.trim()];
+    const d = item?.work || item?.work_information || item?.workinfo || item?.details || {};
+    const raw =
+      d.service_types ??
+      d.service_type ??
+      d.primary_service ??
+      item?.service_types ??
+      item?.service_type ??
+      item?.primary_service ??
+      [];
+    const arr = parseMaybeArray(raw);
+    if (arr.length) return arr;
+    if (Array.isArray(raw)) return raw.filter(Boolean).map((x) => String(x));
+    const s = String(raw || '').trim();
+    if (s) return [s];
     return [];
   };
 
   const buildServiceTypesText = (item) => {
     const arr = buildServiceTypesArr(item);
-    return arr.length ? arr.join(', ') : (buildServiceType(item) || 'Service');
+    return arr.length ? arr.join(', ') : buildServiceType(item) || 'Service';
   };
 
   const openDeleteModalForCurrent = () => {
@@ -561,12 +751,14 @@ function WorkerPost() {
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">
         <div className="relative h-36 sm=h-44 md:h-52 lg:h-72">
-          {banners.map((src, i) => (
+          {['/Banner1.png', '/Banner2.png'].map((src, i) => (
             <img
               key={i}
               src={src}
               alt=""
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${i === bannerIdx ? 'opacity-100' : 'opacity-0'}`}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${
+                i === bannerIdx ? 'opacity-100' : 'opacity-0'
+              }`}
             />
           ))}
         </div>
@@ -579,15 +771,6 @@ function WorkerPost() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-2xl font-semibold">{hasCurrent ? 'Current Work Application' : 'Work Application Post'}</h3>
-          {false && (
-            <Link
-              to="/workerpostapplication"
-              onClick={handleBecomeWorkerClick}
-              className="inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition"
-            >
-              + Become a worker
-            </Link>
-          )}
         </div>
 
         {hasCurrent ? (
@@ -599,7 +782,11 @@ function WorkerPost() {
                     src={profileUrl}
                     alt=""
                     className="w-20 h-20 rounded-full object-cover border border-blue-300"
-                    onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(capFirst || 'Worker')}`; }}
+                    onError={(e) => {
+                      e.currentTarget.src = `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(
+                        capFirst || 'Worker'
+                      )}`;
+                    }}
                   />
                 </div>
                 <div className="min-w-0">
@@ -608,7 +795,7 @@ function WorkerPost() {
                     <span className="text-[#008cfc]">{buildServiceTypesText(currentApp)}</span>
                   </div>
                   <div className="mt-1 text-base md:text-lg truncate">
-                    <span className="font-semibold">Work Description:</span> {currentApp?.details?.work_description || '-'}
+                    <span className="font-semibold">Work Description:</span> {currentWorkDescription || '-'}
                   </div>
                   <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago` : ''}</div>
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
@@ -620,17 +807,17 @@ function WorkerPost() {
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Years of Experience:</span>
                         <span className="text-[#008cfc] font-medium">
-                          {currentApp?.details?.years_experience !== undefined && currentApp?.details?.years_experience !== null && currentApp?.details?.years_experience !== ''
-                            ? String(currentApp.details.years_experience)
+                          {currentYearsExperience !== '' &&
+                          currentYearsExperience !== null &&
+                          currentYearsExperience !== undefined
+                            ? String(currentYearsExperience)
                             : '-'}
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Tools Provided:</span>
                         <span className="text-[#008cfc] font-medium">
-                          {typeof currentApp?.details?.tools_provided === 'boolean'
-                            ? currentApp.details.tools_provided ? 'Yes' : 'No'
-                            : (String(currentApp?.details?.tools_provided || '').trim() || '-')}
+                          {currentToolsProvided ? String(currentToolsProvided) : '-'}
                         </span>
                       </div>
                     </div>
@@ -658,9 +845,13 @@ function WorkerPost() {
                               return `₱${s}`;
                             };
                             if (t.includes('job') || t.includes('fixed')) return val ? `${peso(val)}` : '-';
-                            if (t.includes('hour') || t.includes('range')) return from || to ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}` : '-';
+                            if (t.includes('hour') || t.includes('range'))
+                              return from || to
+                                ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`
+                                : '-';
                             if (val) return peso(val);
-                            if (from || to) return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
+                            if (from || to)
+                              return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
                             return '-';
                           })()}
                         </span>
@@ -692,7 +883,10 @@ function WorkerPost() {
                     return srcs.map((t, i) => {
                       const Icon = getServiceIcon(t);
                       return (
-                        <div key={`${t}-${i}`} className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
+                        <div
+                          key={`${t}-${i}`}
+                          className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center"
+                        >
                           <Icon className="h-5 w-5" />
                         </div>
                       );
@@ -718,7 +912,11 @@ function WorkerPost() {
               </button>
               <button
                 type="button"
-                onClick={openDeleteModalForCurrent}
+                onClick={() => {
+                  if (!currentApp) return;
+                  setDeleteTarget({ id: currentApp.id || currentApp.request_group_id || '', label: 'current' });
+                  setShowDeleteConfirm(true);
+                }}
                 className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
                 aria-label="Delete Application"
                 title="Delete Application"
@@ -740,7 +938,9 @@ function WorkerPost() {
             <Link
               to="/workerpostapplication"
               onClick={handleBecomeWorkerClick}
-              className={`inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition ${hasCurrent ? 'pointer-events-none opacity-50' : ''}`}
+              className={`inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition ${
+                hasCurrent ? 'pointer-events-none opacity-50' : ''
+              }`}
             >
               + Become a worker
             </Link>
@@ -762,20 +962,28 @@ function WorkerPost() {
               <div
                 ref={trackRef}
                 onScroll={onTrackScroll}
-                className="flex space-x-6 overflow-x-scroll scroll-smooth pl-4 pr-4 select-none cursor-grab active:cursor-grabbing [touch-action:pan-x] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 onPointerDown={onDragPointerDown}
                 onPointerMove={onDragPointerMove}
                 onPointerUp={onDragPointerUp}
-                onPointerCancel={onDragPointerUp}
                 onPointerLeave={onDragPointerLeave}
                 onClickCapture={onTrackClickCapture}
+                className="flex space-x-6 overflow-x-scroll scroll-smooth pl-4 pr-4 select-none cursor-grab active:cursor-grabbing [touch-action:pan-x] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {approved.map((item, i) => {
                   const type = buildServiceType(item) || '';
                   const title = type || 'Approved Application';
                   const IconComp = getServiceIcon(type);
-                  const years = (item?.details?.years_experience ?? item?.experience?.years ?? item?.details?.yearsExperience ?? '');
-                  const tools = item?.details?.tools_provided ?? item?.details?.toolsProvided ?? item?.tools?.provided ?? '';
+                  const years =
+                    item?.details?.years_experience ??
+                    item?.experience?.years ??
+                    item?.details?.yearsExperience ??
+                    '';
+                  const tools =
+                    item?.details?.tools_provided ??
+                    item?.details?.tools_provide ??
+                    item?.details?.toolsProvided ??
+                    item?.tools?.provided ??
+                    '';
                   return (
                     <div
                       key={item.id || i}
@@ -783,9 +991,7 @@ function WorkerPost() {
                       className="overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto min-h-[220px] flex flex-col flex-shrink-0 border rounded-xl p-6 text-left cursor-default shadow-sm transition-all duration-300 hover:ring-2 hover:shadow-xl hover:ring-inset bg-blue-50 border-[#008cfc] hover:border-[#008cfc] hover:ring-[#008cfc]"
                     >
                       <div className="flex items-start justify-between">
-                        <div className="text-lg font-semibold text-gray-900">
-                          {title}
-                        </div>
+                        <div className="text-lg font-semibold text-gray-900">{title}</div>
                         <div className="h-9 w-9 rounded-lg border border-gray-400 text-[#008cfc] flex items-center justify-center bg-white">
                           <IconComp className="h-5 w-5" />
                         </div>
@@ -796,10 +1002,16 @@ function WorkerPost() {
                           <span className="font-medium text-gray-800">Location:</span> {buildLocation(item) || '-'}
                         </div>
                         <div className="text-gray-600">
-                          <span className="font-medium text-gray-800">Years of Experience:</span> {years !== '' && years !== null && years !== undefined ? String(years) : '-'}
+                          <span className="font-medium text-gray-800">Years of Experience:</span>{' '}
+                          {years !== '' && years !== null && years !== undefined ? String(years) : '-'}
                         </div>
                         <div className="text-gray-600">
-                          <span className="font-medium text-gray-800">Tools Provided:</span> {typeof tools === 'boolean' ? (tools ? 'Yes' : 'No') : (String(tools || '').trim() || '-')}
+                          <span className="font-medium text-gray-800">Tools Provided:</span>{' '}
+                          {typeof tools === 'boolean'
+                            ? tools
+                              ? 'Yes'
+                              : 'No'
+                            : String(tools || '').trim() || '-'}
                         </div>
                         <div className="text-gray-600">
                           <span className="font-medium text-gray-800">Service Price Rate:</span> {getRateType(item) || '-'}
@@ -810,9 +1022,27 @@ function WorkerPost() {
                         <div className="inline-flex items-center !h-11 whitespace-nowrap rounded-lg border border-yellow-200 bg-yellow-50 px-3 text-xs font-medium text-yellow-700">
                           Active Application
                           <span className="ml-2 inline-flex w-6 justify-between font-mono">
-                            <span className={`transition-opacity duration-200 ${dotStep >= 1 ? 'opacity-100' : 'opacity-0'}`}>.</span>
-                            <span className={`transition-opacity duration-200 ${dotStep >= 2 ? 'opacity-100' : 'opacity-0'}`}>.</span>
-                            <span className={`transition-opacity duration-200 ${dotStep >= 3 ? 'opacity-100' : 'opacity-0'}`}>.</span>
+                            <span
+                              className={`transition-opacity duration-200 ${
+                                dotStep >= 1 ? 'opacity-100' : 'opacity-0'
+                              }`}
+                            >
+                              .
+                            </span>
+                            <span
+                              className={`transition-opacity duration-200 ${
+                                dotStep >= 2 ? 'opacity-100' : 'opacity-0'
+                              }`}
+                            >
+                              .
+                            </span>
+                            <span
+                              className={`transition-opacity duration-200 ${
+                                dotStep >= 3 ? 'opacity-100' : 'opacity-0'
+                              }`}
+                            >
+                              .
+                            </span>
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -832,7 +1062,12 @@ function WorkerPost() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => openDeleteModalForItem(item)}
+                            onClick={() => {
+                              const id = item?.id || item?.request_group_id || '';
+                              if (!id) return;
+                              setDeleteTarget({ id, label: 'item' });
+                              setShowDeleteConfirm(true);
+                            }}
                             className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
                             aria-label="Delete Application"
                             title="Delete Application"
@@ -927,8 +1162,12 @@ function WorkerPost() {
               )}
             </div>
             <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">Please setup your personal information first to proceed</div>
-              <div className="text-sm text-gray-600">Contact Number and Date of Birth are required. Social links are optional.</div>
+              <div className="text-lg font-semibold text-gray-900">
+                Please setup your personal information first to proceed
+              </div>
+              <div className="text-sm text-gray-600">
+                Contact Number and Date of Birth are required. Social links are optional.
+              </div>
             </div>
             <div className="mt-6 grid grid-cols-2 gap-2">
               <button
@@ -940,7 +1179,10 @@ function WorkerPost() {
               </button>
               <Link
                 to="/worker-account-settings"
-                onClick={() => { setShowProfileGate(false); goTop(); }}
+                onClick={() => {
+                  setShowProfileGate(false);
+                  goTop();
+                }}
                 className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition text-center"
               >
                 Go to Profile
@@ -964,7 +1206,9 @@ function WorkerPost() {
               )}
             </div>
             <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">Are you sure do you get to delete this application?</div>
+              <div className="text-lg font-semibold text-gray-900">
+                Are you sure do you get to delete this application?
+              </div>
             </div>
             <div className="mt-6 grid grid-cols-2 gap-2">
               <button
@@ -1004,7 +1248,12 @@ function WorkerPost() {
               <div className="absolute inset-4 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img src="/jdklogo.png" alt="Logo" className="w-14 h-14 object-contain" onError={() => setLogoBroken(true)} />
+                  <img
+                    src="/jdklogo.png"
+                    alt="Logo"
+                    className="w-14 h-14 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
                 ) : (
                   <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>

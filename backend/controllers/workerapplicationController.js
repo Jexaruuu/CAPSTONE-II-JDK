@@ -59,8 +59,7 @@ exports.submitFullApplication = async (req, res) => {
       profile_picture,
       profile_picture_name,
       service_types = [],
-      service_task = {},
-      job_details = {},
+      service_task,
       years_experience,
       tools_provided,
       work_description,
@@ -149,7 +148,19 @@ exports.submitFullApplication = async (req, res) => {
 
     const workDesc = (work_description || service_description || '').toString().trim() || null;
 
-    const finalServiceTask = service_task && typeof service_task === 'object' ? service_task : (job_details && typeof job_details === 'object' ? job_details : {});
+    const normalizeTasks = (raw, types) => {
+      const out = {};
+      const keys = Array.isArray(types) ? types : [];
+      for (const t of keys) {
+        const arr = Array.isArray(raw?.[t]) ? raw[t] : [];
+        const vals = arr.map(v => String(v || '').trim()).filter(Boolean);
+        const uniq = Array.from(new Set(vals));
+        out[t] = uniq;
+      }
+      return out;
+    };
+
+    const finalServiceTask = normalizeTasks(service_task, service_types);
 
     const detailsRow = {
       worker_id: effectiveWorkerId,
@@ -165,6 +176,8 @@ exports.submitFullApplication = async (req, res) => {
     if (!detailsRow.years_experience && detailsRow.years_experience !== 0) missingWork.push('years_experience');
     if (!detailsRow.tools_provided) missingWork.push('tools_provided');
     if (!detailsRow.work_description) missingWork.push('work_description');
+    const emptyTaskTypes = (detailsRow.service_types || []).filter(t => !(detailsRow.service_task?.[t] || []).length);
+    if (emptyTaskTypes.length) missingWork.push('service_task');
     if (missingWork.length) return res.status(400).json({ message: `Missing required worker_work_information fields: ${missingWork.join(', ')}` });
 
     await insertWorkerWorkInformation(detailsRow);
@@ -380,7 +393,7 @@ exports.listMine = async (req, res) => {
     const statusRaw = String(req.query.status || 'all').toLowerCase();
     const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10), 1), 50);
 
-    let query = getSupabaseAdmin()
+    let base = getSupabaseAdmin()
       .from('worker_application_status')
       .select('id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason')
       .ilike('email_address', email)
@@ -388,13 +401,81 @@ exports.listMine = async (req, res) => {
       .limit(limit);
 
     if (statusRaw !== 'all') {
-      query = query.eq('status', statusRaw);
+      base = base.eq('status', statusRaw);
     }
 
-    const { data, error } = await query;
+    const { data: statusRows, error } = await base;
     if (error) throw error;
 
-    const items = Array.isArray(data) ? data : [];
+    const { data: infoRow } = await getSupabaseAdmin()
+      .from('worker_information')
+      .select('id, worker_id, email_address, first_name, last_name, contact_number, street, barangay, birth_date, age, profile_picture_url')
+      .ilike('email_address', email)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const wid = workerId || infoRow?.worker_id || infoRow?.id || null;
+
+       let detailsRow = null;
+    if (wid) {
+      const r1 = await getSupabaseAdmin()
+        .from('worker_work_information')
+        .select('service_types, service_task, years_experience, tools_provided, work_description, barangay, street')
+        .eq('worker_id', wid)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      detailsRow = r1?.data || null;
+    }
+
+    const normDetails = (() => {
+      const d = detailsRow || {};
+      const parseArr = (v) => {
+        if (Array.isArray(v)) return v;
+        const s = String(v ?? '').trim();
+        if (!s) return [];
+        try {
+          const x = JSON.parse(s);
+          return Array.isArray(x) ? x : [];
+        } catch { return []; }
+      };
+      const tools = (() => {
+        const raw = d.tools_provided ?? '';
+        if (typeof raw === 'boolean') return raw ? 'Yes' : 'No';
+        const s = String(raw).trim().toLowerCase();
+        if (['yes','y','true','1'].includes(s)) return 'Yes';
+        if (['no','n','false','0'].includes(s)) return 'No';
+        return String(raw || '');
+      })();
+      return {
+        ...d,
+        service_types: parseArr(d.service_types),
+        work_description: d.work_description ?? '',
+        years_experience: d.years_experience ?? '',
+        tools_provided: tools
+      };
+    })();
+
+    let rateRow = null;
+    if (wid) {
+      const r2 = await getSupabaseAdmin()
+        .from('worker_rate')
+        .select('rate_type, rate_from, rate_to, rate_value')
+        .eq('worker_id', wid)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      rateRow = r2?.data || null;
+    }
+
+    const items = (statusRows || []).map(r => ({
+      ...r,
+      info: infoRow || {},
+      details: normDetails,
+      rate: rateRow || {}
+    }));
+
     return res.status(200).json({ items });
   } catch (err) {
     return res.status(500).json({ message: friendlyError(err) });

@@ -7,7 +7,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   const [yearsExperience, setYearsExperience] = useState('');
   const [serviceDescription, setServiceDescription] = useState('');
   const [toolsProvided, setToolsProvided] = useState('');
-  const [jobDetails, setJobDetails] = useState({});
+  const [serviceTask, setServiceTask] = useState({});
   const dropdownRef = useRef(null);
 
   const [attempted, setAttempted] = useState(false);
@@ -134,18 +134,18 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     let updated;
     if (serviceTypesSelected.includes(type)) {
       updated = serviceTypesSelected.filter((t) => t !== type);
-      const copy = { ...jobDetails };
+      const copy = { ...serviceTask };
       delete copy[type];
-      setJobDetails(copy);
+      setServiceTask(copy);
     } else {
       updated = [...serviceTypesSelected, type];
-      setJobDetails((prev) => ({ ...prev, [type]: [''] }));
+      setServiceTask((prev) => ({ ...prev, [type]: [''] }));
     }
     setServiceTypesSelected(updated);
   };
 
   const handleJobDetailChange = (jobType, index, value) => {
-    setJobDetails((prev) => {
+    setServiceTask((prev) => {
       const updatedTasks = [...(prev[jobType] || [])];
       updatedTasks[index] = value;
       return { ...prev, [jobType]: updatedTasks };
@@ -153,11 +153,11 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   };
 
   const addTaskField = (jobType) => {
-    setJobDetails((prev) => ({ ...prev, [jobType]: [...(prev[jobType] || []), ''] }));
+    setServiceTask((prev) => ({ ...prev, [jobType]: [...(prev[jobType] || []), ''] }));
   };
 
   const removeTaskField = (jobType, index) => {
-    setJobDetails((prev) => {
+    setServiceTask((prev) => {
       const updatedTasks = prev[jobType].filter((_, i) => i !== index);
       return { ...prev, [jobType]: updatedTasks.length > 0 ? updatedTasks : [''] };
     });
@@ -174,7 +174,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       try {
         const d = JSON.parse(saved);
         setServiceTypesSelected(d.service_types || []);
-        setJobDetails(d.job_details || {});
+        setServiceTask(d.service_task || {});
         setServiceDescription(d.service_description || '');
         setYearsExperience(d.years_experience || '');
         setToolsProvided(d.tools_provided || '');
@@ -187,13 +187,13 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     if (!hydrated) return;
     const draft = {
       service_types: serviceTypesSelected,
-      job_details: jobDetails,
+      service_task: serviceTask,
       service_description: serviceDescription,
       years_experience: yearsExperience,
       tools_provided: toolsProvided
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
-  }, [hydrated, serviceTypesSelected, jobDetails, serviceDescription, yearsExperience, toolsProvided]);
+  }, [hydrated, serviceTypesSelected, serviceTask, serviceDescription, yearsExperience, toolsProvided]);
 
   useEffect(() => {
     if (!isLoadingNext) return;
@@ -235,7 +235,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   const hasServiceDetails =
     serviceTypesSelected.length > 0 &&
     serviceTypesSelected.every((t) =>
-      (jobDetails[t] || []).some((v) => String(v || '').trim() !== '')
+      (serviceTask[t] || []).some((v) => String(v || '').trim() !== '')
     );
 
   const isFormValid =
@@ -248,7 +248,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   const proceed = () => {
     const draft = {
       service_types: serviceTypesSelected,
-      job_details: jobDetails,
+      service_task: serviceTask,
       service_description: serviceDescription,
       years_experience: yearsExperience,
       tools_provided: toolsProvided
@@ -366,7 +366,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                   <div className="mb-4">
                     <h4 className="text-base font-semibold mb-2">Service Task</h4>
                     {serviceTypesSelected.map((jobType) => {
-                      const hasDetail = (jobDetails[jobType] || []).some(
+                      const hasDetail = (serviceTask[jobType] || []).some(
                         (v) => String(v || '').trim() !== ''
                       );
                       return (
@@ -375,7 +375,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                             {jobType} Services
                           </label>
 
-                          {jobDetails[jobType]?.map((task, index) => {
+                          {serviceTask[jobType]?.map((task, index) => {
                             const key = `${jobType}-${index}`;
                             const options = jobTasks[jobType] || [];
 
@@ -391,7 +391,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                                   <option value="">Select a service</option>
                                   {options.map((taskOption, i) => {
                                     const isSelectedElsewhere =
-                                      jobDetails[jobType]?.includes(taskOption) && taskOption !== task;
+                                      serviceTask[jobType]?.includes(taskOption) && taskOption !== task;
                                     return (
                                       <option key={i} value={taskOption} disabled={isSelectedElsewhere}>
                                         {taskOption}
@@ -428,7 +428,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                                       fullWidth
                                       title={`Select ${jobType} Service`}
                                       disabledLabel={(opt) =>
-                                        jobDetails[jobType]?.includes(opt) && opt !== task
+                                        serviceTask[jobType]?.includes(opt) && opt !== task
                                       }
                                       onSelect={(val) => {
                                         handleJobDetailChange(jobType, index, val);
@@ -438,7 +438,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                                   )}
                                 </div>
 
-                                {jobDetails[jobType].length > 1 && (
+                                {serviceTask[jobType].length > 1 && (
                                   <button
                                     type="button"
                                     onClick={() => removeTaskField(jobType, index)}
