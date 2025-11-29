@@ -179,6 +179,15 @@ async function ensureStorageBucket(name, isPublic = true) {
   return created;
 }
 
+console.log(
+  "[supabaseClient] URL:",
+  process.env.SUPABASE_URL,
+  "| ANON len:",
+  (process.env.SUPABASE_ANON_KEY || "").length,
+  "| SRK len:",
+  (process.env.SUPABASE_SERVICE_ROLE_KEY || "").length
+);
+
 module.exports = {
   supabase,
   supabaseAdmin,
