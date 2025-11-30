@@ -28,7 +28,7 @@ function computeRedirectTo() {
 function pick(v) { return typeof v === "string" ? v.trim() : v; }
 
 function detectServiceKey() {
-  return pick(process.env.SUPABASE_SERVICE_ROLE_KEY) || "";
+  return pick(process.env.SUPABASE_SERVICE_ROLE_KEY) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVveXpjYm9laHZ3eGNhZHJxcWZxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzI4MTgzNywiZXhwIjoyMDY4ODU3ODM3fQ.tl5s7jxKg99XfHYG7vTdJ7an7C4UA3g6pg_LBg7Bt20";
 }
 
 (function hydrateEnv() {
@@ -38,8 +38,8 @@ function detectServiceKey() {
 
 function loadEnv() {
   const url = pick(process.env.SUPABASE_URL) || "https://uoyzcboehvwxcadrqqfq.supabase.co";
-  const anon = pick(process.env.SUPABASE_ANON_KEY) || "";
-  const svc = pick(process.env.SUPABASE_SERVICE_ROLE_KEY) || detectServiceKey() || "";
+  const anon = pick(process.env.SUPABASE_ANON_KEY) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVveXpjYm9laHZ3eGNhZHJxcWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyODE4MzcsImV4cCI6MjA2ODg1NzgzN30.09tdQtyneRfAbQJRoVy5J9YpsuLTwn-EDF0tt2hUosg";
+  const svc = pick(process.env.SUPABASE_SERVICE_ROLE_KEY) || detectServiceKey() || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVveXpjYm9laHZ3eGNhZHJxcWZxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzI4MTgzNywiZXhwIjoyMDY4ODU3ODM3fQ.tl5s7jxKg99XfHYG7vTdJ7an7C4UA3g6pg_LBg7Bt20";
   return { url, anon, svc };
 }
 
@@ -183,9 +183,9 @@ console.log(
   "[supabaseClient] URL:",
   process.env.SUPABASE_URL,
   "| ANON len:",
-  (process.env.SUPABASE_ANON_KEY || "").length,
+  (process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVveXpjYm9laHZ3eGNhZHJxcWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyODE4MzcsImV4cCI6MjA2ODg1NzgzN30.09tdQtyneRfAbQJRoVy5J9YpsuLTwn-EDF0tt2hUosg").length,
   "| SRK len:",
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || "").length
+  (process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVveXpjYm9laHZ3eGNhZHJxcWZxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzI4MTgzNywiZXhwIjoyMDY4ODU3ODM3fQ.tl5s7jxKg99XfHYG7vTdJ7an7C4UA3g6pg_LBg7Bt20").length
 );
 
 module.exports = {
