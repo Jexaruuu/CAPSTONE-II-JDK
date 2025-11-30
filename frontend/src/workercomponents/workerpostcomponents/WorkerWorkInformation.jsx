@@ -41,7 +41,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
   useEffect(() => {
     document.addEventListener('mousedown', handleGlobalClick);
-    return () => { document.removeEventListener('mousedown', handleGlobalClick); };
+    return () => {
+      document.removeEventListener('mousedown', handleGlobalClick);
+    };
   }, [openTaskKey]);
 
   const PopList = ({
@@ -53,28 +55,34 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     emptyLabel = 'No options',
     disabledLabel
   }) => (
-    <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
+    <div
+      className={`absolute z-50 mt-2 ${
+        fullWidth ? 'left-0 right-0 w-full' : 'w-80'
+      } rounded-xl border border-gray-200 bg-white shadow-xl p-3`}
+    >
       <div className="text-sm font-semibold text-gray-800 px-2 pb-2">{title}</div>
       <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
-        {items && items.length ? items.map((it) => {
-          const isSel = value === it;
-          const isDisabled = disabledLabel && disabledLabel(it);
-          return (
-            <button
-              key={it}
-              type="button"
-              disabled={isDisabled}
-              onClick={() => !isDisabled && onSelect(it)}
-              className={[
-                'text-left py-2 px-3 rounded-lg text-sm',
-                isDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50',
-                isSel && !isDisabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
-              ].join(' ')}
-            >
-              {it}
-            </button>
-          );
-        }) : (
+        {items && items.length ? (
+          items.map((it) => {
+            const isSel = value === it;
+            const isDisabled = disabledLabel && disabledLabel(it);
+            return (
+              <button
+                key={it}
+                type="button"
+                disabled={isDisabled}
+                onClick={() => !isDisabled && onSelect(it)}
+                className={[
+                  'text-left py-2 px-3 rounded-lg text-sm',
+                  isDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50',
+                  isSel && !isDisabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
+                ].join(' ')}
+              >
+                {it}
+              </button>
+            );
+          })
+        ) : (
           <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
         )}
       </div>
@@ -104,28 +112,63 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
   const jobTasks = {
     Carpenter: [
-      'General Carpentry','Furniture Repair','Wood Polishing','Door & Window Fitting',
-      'Custom Furniture Design','Modular Kitchen Installation','Flooring & Decking',
-      'Cabinet & Wardrobe Fixing','Wall Paneling & False Ceiling','Wood Restoration & Refinishing'
+      'General Carpentry',
+      'Furniture Repair',
+      'Wood Polishing',
+      'Door & Window Fitting',
+      'Custom Furniture Design',
+      'Modular Kitchen Installation',
+      'Flooring & Decking',
+      'Cabinet & Wardrobe Fixing',
+      'Wall Paneling & False Ceiling',
+      'Wood Restoration & Refinishing'
     ],
     Laundry: [
-      'Dry Cleaning','Ironing','Wash & Fold','Steam Pressing','Stain Removal Treatment',
-      'Curtains & Upholstery Cleaning','Delicate Fabric Care','Shoe & Leather Cleaning',
-      'Express Same-Day Laundry','Eco-Friendly Washing'
+      'Dry Cleaning',
+      'Ironing',
+      'Wash & Fold',
+      'Steam Pressing',
+      'Stain Removal Treatment',
+      'Curtains & Upholstery Cleaning',
+      'Delicate Fabric Care',
+      'Shoe & Leather Cleaning',
+      'Express Same-Day Laundry',
+      'Eco-Friendly Washing'
     ],
     Electrician: [
-      'Wiring Repair','Appliance Installation','Lighting Fixtures','Circuit Breaker & Fuse Repair',
-      'CCTV & Security System Setup','Fan & Exhaust Installation','Inverter & Battery Setup',
-      'Switchboard & Socket Repair','Electrical Safety Inspection','Smart Home Automation'
+      'Wiring Repair',
+      'Appliance Installation',
+      'Lighting Fixtures',
+      'Circuit Breaker & Fuse Repair',
+      'CCTV & Security System Setup',
+      'Fan & Exhaust Installation',
+      'Inverter & Battery Setup',
+      'Switchboard & Socket Repair',
+      'Electrical Safety Inspection',
+      'Smart Home Automation'
     ],
     Plumber: [
-      'Leak Fixing','Pipe Installation','Bathroom Fittings','Drain Cleaning & Unclogging',
-      'Water Tank Installation','Gas Pipeline Installation','Septic Tank & Sewer Repair',
-      'Water Heater Installation','Toilet & Sink Repair','Kitchen Plumbing Solutions'
+      'Leak Fixing',
+      'Pipe Installation',
+      'Bathroom Fittings',
+      'Drain Cleaning & Unclogging',
+      'Water Tank Installation',
+      'Gas Pipeline Installation',
+      'Septic Tank & Sewer Repair',
+      'Water Heater Installation',
+      'Toilet & Sink Repair',
+      'Kitchen Plumbing Solutions'
     ],
     Carwasher: [
-      'Exterior Wash','Interior Detailing','Wax & Polish','Underbody Cleaning','Engine Bay Cleaning',
-      'Headlight Restoration','Ceramic Coating','Tire & Rim Cleaning','Vacuum & Odor Removal',
+      'Exterior Wash',
+      'Interior Detailing',
+      'Wax & Polish',
+      'Underbody Cleaning',
+      'Engine Bay Cleaning',
+      'Headlight Restoration',
+      'Ceramic Coating',
+      'Tire & Rim Cleaning',
+      'Vacuum & Odor Removal',
       'Paint Protection Film Application'
     ]
   };
@@ -165,7 +208,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
   useEffect(() => {
     document.addEventListener('mousedown', () => {});
-    return () => { document.removeEventListener('mousedown', () => {}); };
+    return () => {
+      document.removeEventListener('mousedown', () => {});
+    };
   }, []);
 
   useEffect(() => {
@@ -192,19 +237,26 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       years_experience: yearsExperience,
       tools_provided: toolsProvided
     };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch {}
   }, [hydrated, serviceTypesSelected, serviceTask, serviceDescription, yearsExperience, toolsProvided]);
 
   useEffect(() => {
     if (!isLoadingNext) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
 
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
 
     return () => {
@@ -216,11 +268,20 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
   const handleYearsChange = (e) => {
     const raw = e.target.value;
-    if (raw === '') { setYearsExperience(''); return; }
+    if (raw === '') {
+      setYearsExperience('');
+      return;
+    }
     const onlyDigits = raw.replace(/\D/g, '');
-    if (onlyDigits === '') { setYearsExperience(''); return; }
+    if (onlyDigits === '') {
+      setYearsExperience('');
+      return;
+    }
     let n = parseInt(onlyDigits, 10);
-    if (Number.isNaN(n)) { setYearsExperience(''); return; }
+    if (Number.isNaN(n)) {
+      setYearsExperience('');
+      return;
+    }
     if (n < 1) n = 1;
     if (n > 50) n = 50;
     setYearsExperience(String(n));
@@ -234,9 +295,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
   const hasServiceDetails =
     serviceTypesSelected.length > 0 &&
-    serviceTypesSelected.every((t) =>
-      (serviceTask[t] || []).some((v) => String(v || '').trim() !== '')
-    );
+    serviceTypesSelected.every((t) => (serviceTask[t] || []).some((v) => String(v || '').trim() !== ''));
 
   const isFormValid =
     serviceTypesSelected.length > 0 &&
@@ -253,7 +312,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       years_experience: yearsExperience,
       tools_provided: toolsProvided
     };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch {}
     onCollect?.(draft);
     handleNext?.();
   };
@@ -263,15 +324,21 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     if (!isFormValid) return;
     jumpTop();
     setIsLoadingNext(true);
-    setTimeout(() => { proceed(); }, 2000);
+    setTimeout(() => {
+      proceed();
+    }, 2000);
   };
 
   useEffect(() => {
     if (!isLoadingBack) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
-    return () => { window.removeEventListener('popstate', onPopState, true); };
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+    };
   }, [isLoadingBack]);
 
   useEffect(() => {
@@ -279,7 +346,10 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       document.body.style.overflow = prev;
@@ -290,7 +360,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   const onBackClick = () => {
     jumpTop();
     setIsLoadingBack(true);
-    setTimeout(() => { handleBack?.(); }, 2000);
+    setTimeout(() => {
+      handleBack?.();
+    }, 2000);
   };
 
   return (
@@ -298,7 +370,14 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+            <img
+              src="/jdklogo.png"
+              alt=""
+              className="h-8 w-8 object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
             <div className="text-2xl md:text-3xl font-semibold text-gray-900">Tell us about your work</div>
           </div>
           <div className="flex items-center gap-2">
@@ -401,22 +480,39 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                                 </select>
 
                                 <div className="relative">
-                                  <div className={`flex items-center rounded-xl border ${attempted && !task ? 'border-red-500' : 'border-gray-300'}`}>
+                                  <div
+                                    className={`flex items-center rounded-xl border ${
+                                      attempted && !task ? 'border-red-500' : 'border-gray-300'
+                                    }`}
+                                  >
                                     <button
                                       type="button"
-                                      onClick={() => setOpenTaskKey((k) => (k === key ? null : key))}
+                                      onClick={() =>
+                                        setOpenTaskKey((k) => (k === key ? null : key))
+                                      }
                                       className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
                                     >
                                       {task || 'Select a service'}
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => setOpenTaskKey((k) => (k === key ? null : key))}
+                                      onClick={() =>
+                                        setOpenTaskKey((k) => (k === key ? null : key))
+                                      }
                                       className="px-3 pr-4 text-gray-600 hover:text-gray-800"
                                       aria-label={`Open ${jobType} service options`}
                                     >
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-5 w-5"
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor"
+                                      >
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                                          clipRule="evenodd"
+                                        />
                                       </svg>
                                     </button>
                                   </div>
@@ -452,7 +548,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                           })}
 
                           {attempted && !hasDetail && (
-                            <p className="text-xs text-red-600 mt-1">Choose at least one {jobType} service.</p>
+                            <p className="text-xs text-red-600 mt-1">
+                              Choose at least one {jobType} service.
+                            </p>
                           )}
 
                           <button
@@ -477,7 +575,11 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                     value={serviceDescription}
                     onChange={(e) => setServiceDescription(e.target.value)}
                     placeholder="Describe the service you offer"
-                    className={`w-full h-[180px] px-4 py-3 border ${attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                    className={`w-full h-[180px] px-4 py-3 border ${
+                      attempted && !serviceDescription.trim()
+                        ? 'border-red-500'
+                        : 'border-gray-300'
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
                     required
                     aria-invalid={attempted && !serviceDescription.trim()}
                   />
@@ -487,7 +589,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Years of Experience *
+                  </label>
                   <input
                     type="number"
                     min="1"
@@ -498,7 +602,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                     value={yearsExperience}
                     onChange={handleYearsChange}
                     placeholder="Enter years of experience"
-                    className={`w-full px-4 py-3 border ${attempted && !isYearsValid ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                    className={`w-full px-4 py-3 border ${
+                      attempted && !isYearsValid ? 'border-red-500' : 'border-gray-300'
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
                     required
                     aria-invalid={attempted && !isYearsValid}
                   />
@@ -508,7 +614,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                 </div>
 
                 <div className="mb-2 relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Do you have your own tools or equipment? *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Do you have your own tools or equipment? *
+                  </label>
 
                   <select
                     value={toolsProvided}
@@ -522,7 +630,11 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                     <option value="No">No</option>
                   </select>
 
-                  <div className={`flex items-center rounded-xl border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'}`}>
+                  <div
+                    className={`flex items-center rounded-xl border ${
+                      attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
                     <button
                       type="button"
                       onClick={() => setToolsOpen((s) => !s)}
@@ -536,8 +648,17 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                       className="px-3 pr-4 text-gray-600 hover:text-gray-800"
                       aria-label="Open tools provided options"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -551,7 +672,10 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                       value={toolsProvided}
                       fullWidth
                       title="Select Tools Provided"
-                      onSelect={(v) => { setToolsProvided(v); setToolsOpen(false); }}
+                      onSelect={(v) => {
+                        setToolsProvided(v);
+                        setToolsOpen(false);
+                      }}
                     />
                   )}
                 </div>
@@ -573,7 +697,11 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             onClick={onNextClick}
             disabled={!isFormValid}
             aria-disabled={!isFormValid}
-            className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm mt-2.5 ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
+            className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm mt-2.5 ${
+              isFormValid
+                ? 'bg-[#008cfc] text-white hover:bg-blue-700'
+                : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
+            }`}
           >
             Next : Required Documents
           </button>
@@ -587,8 +715,14 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
           aria-label="Loading next step"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -596,12 +730,23 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
-                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
@@ -624,8 +769,14 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
           aria-label="Back to Step 1"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -633,12 +784,23 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
-                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>

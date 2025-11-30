@@ -38,23 +38,23 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
     (file) => {
       if (!file) {
         setError(undefined);
-        onChange(null, undefined);
+        onChange(null);
         return;
       }
       if (!ALLOWED_TYPES.includes(file.type)) {
         const msg = 'Only PDF, JPG, or PNG files are allowed.';
         setError(msg);
-        onChange(null, msg);
+        onChange(null);
         return;
       }
       if (file.size > MAX_BYTES) {
         const msg = 'File too large. Max size is 5MB.';
         setError(msg);
-        onChange(null, msg);
+        onChange(null);
         return;
       }
       setError(undefined);
-      onChange(file, undefined);
+      onChange(file);
     },
     [onChange]
   );
@@ -65,6 +65,7 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
     const file = e.dataTransfer.files?.[0] || null;
     validateAndSet(file);
   };
+
   const handleChange = (e) => {
     const file = e.target.files?.[0] || null;
     validateAndSet(file);
@@ -123,14 +124,6 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
         )}
       </label>
 
-      {false && previewURL && (
-        <div className="mt-3">
-          <div className="w-full h-40 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-            <img src={previewURL} alt="Preview" className="w-full h-full object-contain" />
-          </div>
-        </div>
-      )}
-
       {value && (
         <div className="mt-3 flex items-center justify-between">
           <div className="text-xs text-gray-600 truncate">
@@ -153,8 +146,6 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
   );
 }
 
-const STORAGE_KEY = 'workerDocuments';
-
 const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [primaryFront, setPrimaryFront] = useState(null);
   const [primaryBack, setPrimaryBack] = useState(null);
@@ -163,14 +154,6 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
   const [address, setAddress] = useState(null);
   const [medical, setMedical] = useState(null);
   const [certs, setCerts] = useState(null);
-
-  const [primaryFrontB64, setPrimaryFrontB64] = useState(null);
-  const [primaryBackB64, setPrimaryBackB64] = useState(null);
-  const [secondaryIdB64, setSecondaryIdB64] = useState(null);
-  const [nbiB64, setNbiB64] = useState(null);
-  const [addressB64, setAddressB64] = useState(null);
-  const [medicalB64, setMedicalB64] = useState(null);
-  const [certsB64, setCertsB64] = useState(null);
 
   const [attempted, setAttempted] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
@@ -187,67 +170,6 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
 
-  useEffect(() => {
-    if (!isLoadingNext) return;
-    jumpTop();
-    const onPopState = () => {
-      window.history.pushState(null, '', window.location.href);
-    };
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', onPopState, true);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    window.addEventListener('keydown', blockKeys, true);
-    return () => {
-      window.removeEventListener('popstate', onPopState, true);
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener('keydown', blockKeys, true);
-    };
-  }, [isLoadingNext]);
-
-  useEffect(() => {
-    if (!isLoadingBack) return;
-    jumpTop();
-    const onPopState = () => {
-      window.history.pushState(null, '', window.location.href);
-    };
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', onPopState, true);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    window.addEventListener('keydown', blockKeys, true);
-    return () => {
-      window.removeEventListener('popstate', onPopState, true);
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener('keydown', blockKeys, true);
-    };
-  }, [isLoadingBack]);
-
-  const fileToDataURL = (file) =>
-    new Promise((resolve, reject) => {
-      if (!file) return resolve(null);
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result);
-      fr.onerror = reject;
-      fr.readAsDataURL(file);
-    });
-
-  const wrapSetter = (setFile, setB64) => async (file) => {
-    setFile(file);
-    const b64 = await fileToDataURL(file);
-    setB64(b64);
-  };
-
   const isFormValid =
     !!primaryFront &&
     !!primaryBack &&
@@ -257,30 +179,17 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
     !!medical &&
     !!certs;
 
-  const proceed = async () => {
-    const docs = [];
-    if (primaryFront && primaryFrontB64) docs.push({ kind: 'primary_front', name: primaryFront.name, data_url: primaryFrontB64 });
-    if (primaryBack && primaryBackB64) docs.push({ kind: 'primary_back', name: primaryBack.name, data_url: primaryBackB64 });
-    if (secondaryId && secondaryIdB64) docs.push({ kind: 'secondary_id', name: secondaryId.name, data_url: secondaryIdB64 });
-    if (nbi && nbiB64) docs.push({ kind: 'nbi', name: nbi.name, data_url: nbiB64 });
-    if (address && addressB64) docs.push({ kind: 'address', name: address.name, data_url: addressB64 });
-    if (medical && medicalB64) docs.push({ kind: 'medical', name: medical.name, data_url: medicalB64 });
-    if (certs && certsB64) docs.push({ kind: 'certs', name: certs.name, data_url: certsB64 });
-
-    const draft = {
-      primary_front_name: primaryFront?.name || null,
-      primary_back_name: primaryBack?.name || null,
-      secondary_id_name: secondaryId?.name || null,
-      nbi_name: nbi?.name || null,
-      address_name: address?.name || null,
-      medical_name: medical?.name || null,
-      certs_name: certs?.name || null
+  const proceed = () => {
+    const docs = {
+      primary_front: primaryFront,
+      primary_back: primaryBack,
+      secondary_id: secondaryId,
+      nbi: nbi,
+      address: address,
+      medical: medical,
+      certs: certs
     };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
-      localStorage.setItem('workerDocumentsData', JSON.stringify(docs));
-    } catch {}
-    onCollect?.({ docs });
+    onCollect?.(docs);
     handleNext?.();
   };
 
@@ -290,6 +199,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
     jumpTop();
     setIsLoadingNext(true);
     setTimeout(() => {
+      setIsLoadingNext(false);
       proceed();
     }, 2000);
   };
@@ -298,6 +208,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
     jumpTop();
     setIsLoadingBack(true);
     setTimeout(() => {
+      setIsLoadingBack(false);
       handleBack?.();
     }, 2000);
   };
@@ -316,7 +227,8 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
 
           <div className="px-6 pt-5">
             <p className="text-base text-gray-600">
-              Upload clear scans/photos of your documents. Accepted formats: <span className="font-medium">PDF, JPG, PNG</span> (max 5MB each).
+              Upload clear scans/photos of your documents. Accepted formats:{' '}
+              <span className="font-medium">PDF, JPG, PNG</span> (max 5MB each).
             </p>
           </div>
 
@@ -328,7 +240,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
                   required
                   hint="UMID, Passport, Driver’s License, etc."
                   value={primaryFront}
-                  onChange={wrapSetter(setPrimaryFront, setPrimaryFrontB64)}
+                  onChange={setPrimaryFront}
                 />
                 {attempted && !primaryFront && (
                   <p className="text-xs text-red-600 -mt-3">Please upload your Primary ID (Front).</p>
@@ -340,7 +252,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
                   required
                   hint="UMID, Passport, Driver’s License, etc."
                   value={primaryBack}
-                  onChange={wrapSetter(setPrimaryBack, setPrimaryBackB64)}
+                  onChange={setPrimaryBack}
                 />
                 {attempted && !primaryBack && (
                   <p className="text-xs text-red-600 -mt-3">Please upload your Primary ID (Back).</p>
@@ -352,7 +264,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
                   required
                   hint="UMID, Passport, Driver’s License, etc."
                   value={secondaryId}
-                  onChange={wrapSetter(setSecondaryId, setSecondaryIdB64)}
+                  onChange={setSecondaryId}
                 />
                 {attempted && !secondaryId && (
                   <p className="text-xs text-red-600 -mt-3">Please upload a Secondary ID.</p>
@@ -364,7 +276,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
                   required
                   hint="Barangay Certificate also accepted"
                   value={nbi}
-                  onChange={wrapSetter(setNbi, setNbiB64)}
+                  onChange={setNbi}
                 />
                 {attempted && !nbi && (
                   <p className="text-xs text-red-600 -mt-3">Please upload your NBI/Police Clearance.</p>
@@ -376,7 +288,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
                   required
                   hint="Barangay Certificate, Utility Bill"
                   value={address}
-                  onChange={wrapSetter(setAddress, setAddressB64)}
+                  onChange={setAddress}
                 />
                 {attempted && !address && (
                   <p className="text-xs text-red-600 -mt-3">Please upload a Proof of Address.</p>
@@ -388,7 +300,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
                   required
                   hint="Latest medical/fit-to-work certificate"
                   value={medical}
-                  onChange={wrapSetter(setMedical, setMedicalB64)}
+                  onChange={setMedical}
                 />
                 {attempted && !medical && (
                   <p className="text-xs text-red-600 -mt-3">Please upload your Medical Certificate.</p>
@@ -401,7 +313,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
                     required
                     hint="TESDA, Training Certificates, etc."
                     value={certs}
-                    onChange={wrapSetter(setCerts, setCertsB64)}
+                    onChange={setCerts}
                   />
                   {attempted && !certs && (
                     <p className="text-xs text-red-600 -mt-3">Please upload your Certificates.</p>
@@ -412,31 +324,6 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
 
             {attempted && !isFormValid && (
               <p className="text-xs text-red-600 mt-3">Please upload all required documents to continue.</p>
-            )}
-
-            {false && (
-              <div className="flex flex-col sm:flex-row justify-between gap-3 mt-8">
-                <button
-                  type="button"
-                  onClick={onBackClick}
-                  className="w-full sm:w-1/3 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
-                >
-                  Back : Work Information
-                </button>
-                <button
-                  type="button"
-                  onClick={onNextClick}
-                  disabled={!isFormValid}
-                  aria-disabled={!isFormValid}
-                  className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${
-                    isFormValid
-                      ? 'bg-[#008cfc] text-white hover:bg-blue-700'
-                      : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
-                  }`}
-                >
-                  Next : Set Your Price Rate
-                </button>
-              </div>
             )}
           </div>
         </div>

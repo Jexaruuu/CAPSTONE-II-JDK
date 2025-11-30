@@ -1,31 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt, Trash2 } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-
-function getWorkerEmail() {
-  try {
-    const auth = JSON.parse(localStorage.getItem('workerAuth') || '{}');
-    if (auth && auth.email) return auth.email;
-  } catch {}
-  return (
-    localStorage.getItem('workerEmail') ||
-    localStorage.getItem('worker_email') ||
-    localStorage.getItem('email_address') ||
-    localStorage.getItem('email') ||
-    ''
-  );
-}
-
-function getWorkerId() {
-  try {
-    const auth = JSON.parse(localStorage.getItem('workerAuth') || '{}');
-    if (auth && (auth.id || auth.worker_id)) return String(auth.id || auth.worker_id);
-  } catch {}
-  return String(localStorage.getItem('worker_id') || localStorage.getItem('id') || '').trim();
-}
 
 function getWorkerProfile() {
   let firstName = '';
@@ -121,30 +96,12 @@ function WorkerPost() {
   const [logoBroken, setLogoBroken] = useState(false);
   const [showProfileGate, setShowProfileGate] = useState(false);
 
-  const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDeleteBusy, setShowDeleteBusy] = useState(false);
   const [showDeleteDone, setShowDeleteDone] = useState(false);
-
-  const appU = useMemo(() => {
-    try {
-      const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
-      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
-      const e =
-        a.email ||
-        localStorage.getItem('worker_email') ||
-        localStorage.getItem('email_address') ||
-        localStorage.getItem('email') ||
-        '';
-      return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
-    } catch {
-      return '';
-    }
-  }, []);
-  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
 
   const allowedPHPrefixes = useMemo(
     () =>
@@ -253,26 +210,23 @@ function WorkerPost() {
   const isValidPHMobile = (d) =>
     d && d.length === 10 && d[0] === '9' && !isTriviallyFake(d) && allowedPHPrefixes.has(d.slice(0, 3));
 
-  const checkProfileComplete = async () => {
+  const checkProfileComplete = () => {
     try {
-      const { data } = await axios.get(`${API_BASE}/api/workers/me`, {
-        withCredentials: true,
-        headers: headersWithU
-      });
-      const phone = String(data?.phone || '').trim();
-      const dob = String(data?.date_of_birth || '').trim();
-      const phoneOk = isValidPHMobile(phone);
-      const dobOk = !!dob;
-      return phoneOk && dobOk;
+      const raw = localStorage.getItem('workerInformationForm');
+      if (!raw) return false;
+      const d = JSON.parse(raw);
+      const phone = String(d.contactNumber || '').replace(/\D/g, '');
+      const dob = String(d.birth_date || '').trim();
+      return isValidPHMobile(phone) && !!dob;
     } catch {
       return false;
     }
   };
 
-  const handleBecomeWorkerClick = async (e) => {
+  const handleBecomeWorkerClick = (e) => {
     e.preventDefault();
     if (navLoading) return;
-    const ok = await checkProfileComplete();
+    const ok = checkProfileComplete();
     if (!ok) {
       setShowProfileGate(true);
       return;
@@ -360,104 +314,8 @@ function WorkerPost() {
     if (gender) setWorkerGender(gender);
   }, []);
 
-  const FETCH_APPLICATIONS = true;
-
   useEffect(() => {
-    const email = getWorkerEmail();
-    const workerId = getWorkerId();
-    const load = async () => {
-      try {
-        if (!FETCH_APPLICATIONS) {
-          setLoading(false);
-          return;
-        }
-        if (!email && !workerId) {
-          setLoading(false);
-          return;
-        }
-        const params = { status: 'all', limit: 20 };
-        if (email) params.email = email;
-        if (workerId) params.worker_id = workerId;
-
-        const r = await axios.get(`${API_BASE}/api/workerapplications`, {
-          params,
-          withCredentials: true,
-          headers: headersWithU
-        });
-
-        const rows = Array.isArray(r?.data?.items) ? r.data.items : [];
-        rows.sort((a, b) => new Date(b?.created_at || 0) - new Date(a?.created_at || 0));
-
-        const mergeWork = (it) => {
-          const w = it.work || it.work_information || it.workinfo || {};
-          const base = { ...(it.details || {}) };
-          const root = {
-            service_types: it.service_types,
-            work_description: it.work_description,
-            years_experience: it.years_experience,
-            tools_provided: it.tools_provided ?? it.tools_provide
-          };
-          return { ...w, ...root, ...base };
-        };
-
-        const normalize = (obj) => {
-          const yrs =
-            obj.years_experience ??
-            obj.yearsExperience ??
-            obj.experience?.years ??
-            obj.years ??
-            '';
-          const tpRaw =
-            obj.tools_provided ??
-            obj.tools_provide ??
-            obj.toolsProvided ??
-            obj.tools?.provided ??
-            obj.has_tools ??
-            '';
-          const t = toBoolStrict(tpRaw);
-          return {
-            ...obj,
-            years_experience: yrs,
-            tools_provided: t === null ? (String(tpRaw || '').trim() || '') : t ? 'Yes' : 'No',
-            work_description: obj.work_description ?? obj.description ?? obj.service_description ?? ''
-          };
-        };
-
-        const pick = rows.find((it) => String(it?.status || '').toLowerCase() !== 'declined') || null;
-
-        if (pick) {
-          const merged = normalize(mergeWork(pick));
-          const normalized = { ...pick, details: merged, info: pick.info || {} };
-          setCurrentApp(normalized);
-          if (!workerFirstName) {
-            const fn = normalized?.info?.first_name || '';
-            if (fn) setWorkerFirstName(String(fn).trim());
-          }
-          if (!workerGender) {
-            const g = normalized?.info?.gender || normalized?.info?.sex || '';
-            if (g) setWorkerGender(String(g).trim());
-          }
-        } else {
-          setCurrentApp(null);
-        }
-
-        const approvedOnly = rows
-          .filter((it) => String(it.status || '').toLowerCase() === 'approved')
-          .map((it) => {
-            const details = normalize(mergeWork(it));
-            return { ...it, details };
-          });
-
-        setApproved(approvedOnly);
-        setCurrent(0);
-      } catch {
-        setCurrentApp(null);
-        setApproved([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -692,59 +550,24 @@ function WorkerPost() {
     return arr.length ? arr.join(', ') : buildServiceType(item) || 'Service';
   };
 
-  const openDeleteModalForCurrent = () => {
-    if (!currentApp) return;
-    setDeleteTarget({ id: currentApp.id || currentApp.request_group_id || '', label: 'current' });
-    setShowDeleteConfirm(true);
-  };
-
-  const openDeleteModalForItem = (item) => {
-    const id = item?.id || item?.request_group_id || '';
-    if (!id) return;
-    setDeleteTarget({ id, label: 'item' });
-    setShowDeleteConfirm(true);
-  };
-
-  const performDelete = async () => {
+  const confirmDeleteNow = () => {
     if (!deleteTarget?.id || deleting) return;
-    setDeleting(true);
-    try {
-      await axios.delete(`${API_BASE}/api/workerapplications/${encodeURIComponent(deleteTarget.id)}`, {
-        withCredentials: true,
-        headers: headersWithU
-      });
-      window.location.reload();
-    } catch {
-    } finally {
-      setDeleting(false);
-      setShowDelete(false);
-      setDeleteTarget(null);
-    }
-  };
-
-  const confirmDeleteNow = async () => {
-    if (!deleteTarget?.id) return;
     setShowDeleteConfirm(false);
     setShowDeleteBusy(true);
     setDeleting(true);
-    try {
-      await axios.delete(`${API_BASE}/api/workerapplications/${encodeURIComponent(deleteTarget.id)}`, {
-        withCredentials: true,
-        headers: headersWithU
-      });
+    setTimeout(() => {
       if (deleteTarget.label === 'current') {
         setCurrentApp(null);
       } else {
-        setApproved((prev) => prev.filter((it) => String(it?.id || it?.request_group_id || '') !== deleteTarget.id));
+        setApproved((prev) =>
+          prev.filter((it) => String(it?.id || it?.request_group_id || '') !== deleteTarget.id)
+        );
       }
       setShowDeleteBusy(false);
       setShowDeleteDone(true);
-    } catch {
-      setShowDeleteBusy(false);
-    } finally {
       setDeleting(false);
       setDeleteTarget(null);
-    }
+    }, 800);
   };
 
   return (
@@ -948,7 +771,7 @@ function WorkerPost() {
         )}
       </div>
 
-      {false && approved.length > 0 && (
+      {SHOW_CAROUSEL && approved.length > 0 && (
         <div className="mb-8">
           <div className="relative w-full flex justify-center items-center">
             <button

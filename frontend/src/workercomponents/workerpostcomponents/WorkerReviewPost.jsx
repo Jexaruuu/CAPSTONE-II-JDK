@@ -1,51 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
-const toBool = (v) => {
-  if (typeof v === 'boolean') return v;
-  const s = String(v ?? '').trim().toLowerCase();
-  if (['1','true','t','yes','y'].includes(s)) return true;
-  if (['0','false','f','no','n'].includes(s)) return false;
-  return false;
-};
-
-const toNum = (v) => {
-  if (v === '' || v === null || v === undefined) return undefined;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : undefined;
-};
-
-const onlyStrings = (arr) =>
-  Array.isArray(arr) ? arr.map(String).filter((s) => s.length > 0) : [];
-
-const onlyStringArrayValues = (obj) => {
-  if (!obj || typeof obj !== 'object') return {};
-  const out = {};
-  for (const [k, v] of Object.entries(obj)) {
-    out[String(k)] = onlyStrings(v);
-  }
-  return out;
-};
-
-const pruneEmpty = (o) => {
-  if (o === null || o === undefined) return undefined;
-  if (Array.isArray(o)) {
-    const a = o.map(pruneEmpty).filter((v) => v !== undefined);
-    return a.length ? a : undefined;
-  }
-  if (typeof o === 'object') {
-    const r = {};
-    Object.entries(o).forEach(([k, v]) => {
-      const pv = pruneEmpty(v);
-      if (pv !== undefined && pv !== '') r[k] = pv;
-    });
-    return Object.keys(r).length ? r : undefined;
-  }
-  return o;
-};
 
 function computeAge(iso) {
   if (!iso) return null;
@@ -76,46 +30,54 @@ const WorkerReviewPost = ({ handleBack }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
   }, []);
 
-  const buildAppU = () => {
-    try {
-      const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
-      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('worker_auth_uid') || '';
-      const e = a.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
-      return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
-    } catch { return ''; }
-  };
-  const appU = useMemo(() => buildAppU(), []);
-  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
-
-  useEffect(() => {
-    const fetchMe = async () => {
-      try {
-        const { data } = await axios.get(`${String(API_BASE||'').replace(/\/+$/,'')}/api/workers/me`, { withCredentials: true, headers: { Accept: 'application/json', ...headersWithU } });
-        const wid = data?.id || data?.worker_id || null;
-        const au = data?.auth_uid || data?.uid || null;
-        if (wid) localStorage.setItem('worker_id', String(wid));
-        if (au) localStorage.setItem('worker_auth_uid', String(au));
-      } catch {}
-    };
-    fetchMe();
-  }, [headersWithU]);
-
   const jumpTop = () => {
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
   };
 
-  const savedInfo = (() => { try { return JSON.parse(localStorage.getItem('workerInformationForm') || '{}'); } catch { return {}; }})();
-  const savedWork = (() => { try { return JSON.parse(localStorage.getItem('workerWorkInformation') || '{}'); } catch { return {}; }})();
-  const savedDocsMeta = (() => { try { return JSON.parse(localStorage.getItem('workerDocuments') || '{}'); } catch { return {}; }})();
-  const savedDocsData = (() => { try { return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]'); } catch { return []; }})();
-  const savedRate = (() => { try { return JSON.parse(localStorage.getItem('workerRate') || '{}'); } catch { return {}; }})();
-  const savedAgree = (() => { try { return JSON.parse(localStorage.getItem('workerAgreements') || '{}'); } catch { return {}; }})();
+  const savedInfo = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('workerInformationForm') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const savedWork = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('workerWorkInformation') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const savedDocsData = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]');
+    } catch {
+      return [];
+    }
+  })();
+  const savedRate = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('workerRate') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const savedAgree = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('workerAgreements') || '{}');
+    } catch {
+      return {};
+    }
+  })();
 
   const s = location.state || {};
 
@@ -128,13 +90,13 @@ const WorkerReviewPost = ({ handleBack }) => {
   const street = s.street ?? savedInfo.street ?? '';
   const barangay = s.barangay ?? savedInfo.barangay ?? '';
   const profile_picture = s.profile_picture ?? savedInfo.profilePicture ?? null;
-  const profile_picture_name = s.profile_picture_name ?? savedInfo.profilePictureName ?? '';
 
   const service_types = s.service_types ?? savedWork.service_types ?? savedWork.serviceTypesSelected ?? [];
-  const service_task = s.service_task ?? savedWork.service_task ?? {};
+  const service_task = s.service_task ?? savedWork.service_task ?? savedWork.serviceTaskSelected ?? [];
   const years_experience = s.years_experience ?? savedWork.years_experience ?? savedWork.yearsExperience ?? '';
   const tools_provided = s.tools_provided ?? savedWork.tools_provided ?? savedWork.toolsProvided ?? '';
-  const service_description = s.service_description ?? savedWork.service_description ?? savedWork.serviceDescription ?? '';
+  const service_description =
+    s.service_description ?? savedWork.service_description ?? savedWork.serviceDescription ?? '';
 
   const rate_type = s.rate_type ?? savedRate.rate_type ?? savedRate.rateType ?? '';
   const rate_from = s.rate_from ?? savedRate.rate_from ?? savedRate.rateFrom ?? '';
@@ -144,7 +106,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   const docsFromState = Array.isArray(s.docs) ? s.docs : [];
   const docs = docsFromState.length ? docsFromState : savedDocsData;
 
-  const formatList = (arr) => Array.isArray(arr) && arr.length ? arr.join(', ') : '-';
+  const formatList = (arr) => (Array.isArray(arr) && arr.length ? arr.join(', ') : '-');
 
   const normalizeLocalPH10 = (v) => {
     let d = String(v || '').replace(/\D/g, '');
@@ -161,7 +123,11 @@ const WorkerReviewPost = ({ handleBack }) => {
     <div className="inline-flex items-center gap-2">
       <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
       <span className="text-gray-700 text-sm">+63</span>
-      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-[#008cfc] font-medium' : 'text-gray-400'}`}>
+      <span
+        className={`text-base md:text-lg leading-6 ${
+          contactLocal10 ? 'text-[#008cfc] font-medium' : 'text-gray-400'
+        }`}
+      >
         {contactLocal10 || '9XXXXXXXXX'}
       </span>
     </div>
@@ -189,7 +155,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   };
 
   const handleBackClick = () => {
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+    jumpTop();
     setIsLoadingBack(true);
     setTimeout(() => {
       if (typeof handleBack === 'function') handleBack();
@@ -197,197 +163,33 @@ const WorkerReviewPost = ({ handleBack }) => {
     }, 2000);
   };
 
-  const cleanNumber = (v) => {
-    if (v === null || v === undefined || v === '') return null;
-    const n = Number(String(v).toString().replace(/[^\d.]/g, ''));
-    return Number.isFinite(n) ? n : null;
-  };
-
-  const requireFields = (obj, keys) => {
-    const missing = [];
-    keys.forEach(k => {
-      const val = obj[k];
-      if (val === null || val === undefined || (typeof val === 'string' && val.trim() === '')) missing.push(k);
-    });
-    return missing;
-  };
-
-  const filterHostedOnly = (arr) => {
-    if (!Array.isArray(arr)) return [];
-    return arr.filter(u => {
-      const s = String(u || '');
-      if (!s) return false;
-      if (s.startsWith('data:')) return false;
-      if (/^https?:\/\//i.test(s)) return true;
-      if (/^\/?storage\/v1\/object\/public\//i.test(s)) return true;
-      return false;
-    });
-  };
-
-  const handleConfirm = async () => {
-    setSubmitError('');
+  const handleConfirm = () => {
+    jumpTop();
     setIsSubmitting(true);
-    try {
-      const base = String(API_BASE || '').replace(/\/+$/,'');
-      const workerIdLS = localStorage.getItem('worker_id') || null;
-      const workerAuth = (() => { try { return JSON.parse(localStorage.getItem('workerAuth') || '{}'); } catch { return {}; }})();
-      const emailVal = (email || workerAuth.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '').toString().trim().toLowerCase();
-
-      const payloadRaw = {
-        worker_id: workerIdLS || null,
-        first_name: first_name?.trim() || undefined,
-        last_name: last_name?.trim() || undefined,
-        email_address: emailVal || undefined,
-        contact_number: contact_number?.trim() || undefined,
-        barangay: barangay?.trim() || undefined,
-        street: street?.trim() || undefined,
-        birth_date: birth_date || undefined,
-        age: toNum(age),
-        profile_picture: typeof profile_picture === 'string' ? profile_picture : undefined,
-        profile_picture_name: profile_picture_name || undefined,
-        service_types: onlyStrings(service_types),
-        service_task: onlyStringArrayValues(service_task),
-        years_experience: toNum(years_experience),
-        tools_provided: toBool(tools_provided),
-        work_description: service_description || undefined,
-        rate_type: rate_type || undefined,
-        rate_from: toNum(rate_from),
-        rate_to: toNum(rate_to),
-        rate_value: toNum(rate_value),
-        docs: Array.isArray(docs) ? docs : [],
-        metadata: {
-          agree_verify: !!savedAgree.agree_verify,
-          agree_tos: !!savedAgree.agree_tos,
-          agree_privacy: !!savedAgree.agree_privacy
-        }
-      };
-
-      const payload = pruneEmpty(payloadRaw) || {};
-
-      const normalized = {
-        worker_id: payload.worker_id || null,
-        first_name: payload.first_name || '',
-        last_name: payload.last_name || '',
-        email_address: payload.email_address || '',
-        contact_number: payload.contact_number || '',
-        barangay: payload.barangay || '',
-        street: payload.street || '',
-        birth_date: payload.birth_date || '',
-        age: payload.age ?? null,
-        profile_picture: payload.profile_picture || '',
-        profile_picture_name: payload.profile_picture_name || '',
-        service_types: payload.service_types || [],
-        service_task: payload.service_task || {},
-        years_experience: payload.years_experience ?? null,
-        tools_provided: !!payload.tools_provided,
-        service_description: payload.work_description || '',
-        rate_type: payload.rate_type || '',
-        rate_from: payload.rate_from ?? null,
-        rate_to: payload.rate_to ?? null,
-        rate_value: payload.rate_value ?? null,
-        docs: Array.isArray(payload.docs) ? payload.docs : [],
-        attachments: filterHostedOnly(payload.docs),
-        metadata: {
-          ...payload.metadata,
-          auth_uid: localStorage.getItem('worker_auth_uid') || workerAuth.auth_uid || workerAuth.uid || ''
-        }
-      };
-
-      if (normalized.rate_type === 'Hourly Rate') {
-        normalized.rate_from = cleanNumber(normalized.rate_from);
-        normalized.rate_to = cleanNumber(normalized.rate_to);
-        normalized.rate_value = null;
-      } else if (normalized.rate_type === 'By the Job Rate') {
-        normalized.rate_value = cleanNumber(normalized.rate_value);
-        normalized.rate_from = null;
-        normalized.rate_to = null;
-      } else {
-        normalized.rate_from = null;
-        normalized.rate_to = null;
-        normalized.rate_value = null;
-      }
-
-      const missing = requireFields(normalized, [
-        'first_name',
-        'last_name',
-        'contact_number',
-        'street',
-        'barangay',
-        'service_types',
-        'service_description',
-        'rate_type'
-      ]);
-      if (missing.length) {
-        setIsSubmitting(false);
-        setSubmitError(`Missing fields: ${missing.join(', ')}`);
-        return;
-      }
-
-      if (!(normalized.worker_id && String(normalized.worker_id).trim()) && !(normalized.email_address && String(normalized.email_address).trim())) {
-        setIsSubmitting(false);
-        setSubmitError('Unable to identify worker. Provide worker_id or a known email_address.');
-        return;
-      }
-
-      const jsonBody = {
-        worker_id: normalized.worker_id,
-        first_name: normalized.first_name,
-        last_name: normalized.last_name,
-        email_address: normalized.email_address,
-        contact_number: normalized.contact_number,
-        barangay: normalized.barangay,
-        street: normalized.street,
-        birth_date: normalized.birth_date,
-        age: normalized.age,
-        profile_picture: normalized.profile_picture,
-        profile_picture_name: normalized.profile_picture_name,
-        service_types: normalized.service_types,
-        service_task: normalized.service_task,
-        years_experience: normalized.years_experience,
-        tools_provided: normalized.tools_provided,
-        service_description: normalized.service_description,
-        work_description: normalized.service_description,
-        rate_type: normalized.rate_type,
-        rate_from: normalized.rate_from,
-        rate_to: normalized.rate_to,
-        rate_value: normalized.rate_value,
-        docs: normalized.docs,
-        attachments: normalized.attachments,
-        metadata: normalized.metadata
-      };
-
-      const resp = await axios.post(
-        `${base}/api/workerapplication/submit`,
-        jsonBody,
-        { withCredentials: true, headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...headersWithU } }
-      );
-
-      setShowSuccess(true);
-    } catch (e) {
-      const serverData = e?.response?.data;
-      const msg =
-        (serverData && (serverData.message || serverData.error || serverData.details)) ||
-        e?.message ||
-        'Submission failed';
-      setSubmitError(msg);
-      console.error('Worker submit failed:', serverData || e);
-    } finally {
+    setTimeout(() => {
       setIsSubmitting(false);
-    }
+      setShowSuccess(true);
+    }, 2000);
   };
 
   const handleGoDashboard = () => {
     clearWorkerApplicationDrafts();
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+    jumpTop();
     const path = '/workerdashboard';
-    try { navigate(path, { state: { submitted: true, __forceTop: true }, replace: true }); } catch {}
-    try { window.location.assign(path); } catch {}
+    try {
+      navigate(path, { state: { submitted: true, __forceTop: true }, replace: true });
+    } catch {}
+    try {
+      window.location.assign(path);
+    } catch {}
   };
 
   useEffect(() => {
     const lock = isSubmitting || showSuccess || isLoadingBack;
     if (!lock) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
     const html = document.documentElement;
@@ -396,7 +198,10 @@ const WorkerReviewPost = ({ handleBack }) => {
     const prevBodyOverflow = body.style.overflow;
     html.style.overflow = 'hidden';
     body.style.overflow = 'hidden';
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       window.removeEventListener('popstate', onPopState, true);
@@ -412,7 +217,14 @@ const WorkerReviewPost = ({ handleBack }) => {
         <div className="mx-auto w-full max-w-[1420px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 grid place-items-center rounded-xl border border-blue-100 bg-white shadow-sm">
-              <img src="/jdklogo.png" alt="" className="h-6 w-6 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+              <img
+                src="/jdklogo.png"
+                alt=""
+                className="h-6 w-6 object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
             </div>
             <div className="text-2xl md:text-3xl font-semibold text-gray-900">Review Worker Application</div>
           </div>
@@ -427,7 +239,7 @@ const WorkerReviewPost = ({ handleBack }) => {
 
       <div className="mx-auto w-full max-w-[1420px] px-6">
         <div className="space-y-6 mt-5">
-          <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
               <h3 className="text-xl md:text-[22px] font-semibold">Personal Information</h3>
               <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
@@ -452,11 +264,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                   <div className="text-sm font-semibold text-black mb-3">Worker Profile Picture</div>
                   {profile_picture ? (
                     <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
-                      <img
-                        src={profile_picture}
-                        alt="Profile"
-                        className="h-full w-full object-cover"
-                      />
+                      <img src={profile_picture} alt="Profile" className="h-full w-full object-cover" />
                     </div>
                   ) : (
                     <div className="w-32 h-32 md:w-40 md:h-40 rounded-full grid place-items-center bg-gray-50 text-gray-400 border border-dashed">
@@ -470,7 +278,7 @@ const WorkerReviewPost = ({ handleBack }) => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl overflow-hidden">
+              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
                   <h3 className="text-xl md:text-[22px] font-semibold">Work Details</h3>
                   <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
@@ -487,9 +295,14 @@ const WorkerReviewPost = ({ handleBack }) => {
                       {service_task && typeof service_task === 'object' && Object.keys(service_task).length ? (
                         <div className="space-y-2">
                           {Object.entries(service_task).map(([k, v]) => (
-                            <div key={k} className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-                              <span className="font-semibold text-gray-700">{`${k.replace(/:?\s*$/,'')}:`}</span>
-                              <span className="text-base md:text-lg font-medium text-[#008cfc]">{formatList(v)}</span>
+                            <div
+                              key={k}
+                              className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4"
+                            >
+                              <span className="font-semibold text-gray-700">{`${k.replace(/:?\s*$/, '')}:`}</span>
+                              <span className="text-base md:text-lg font-medium text-[#008cfc]">
+                                {formatList(v)}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -505,7 +318,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl overflow-hidden">
+              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
                   <h3 className="text-xl md:text-[22px] font-semibold">Service Rate</h3>
                   <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
@@ -530,7 +343,7 @@ const WorkerReviewPost = ({ handleBack }) => {
             </div>
 
             <aside className="lg:col-span-1 flex flex-col">
-              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 overflow-hidden flex flex-col transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 overflow-hidden flex flex-col transition-all duration-300">
                 <div className="bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] px-6 py-5 text-white rounded-t-2xl">
                   <div className="text-base font-medium">Summary</div>
                   <div className="text-xs text-white/90">Review everything before submitting</div>
@@ -541,35 +354,46 @@ const WorkerReviewPost = ({ handleBack }) => {
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Worker:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc]">
+                      {first_name || '-'} {last_name || ''}
+                    </span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Services:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{formatList(service_types)}</span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">
+                      {formatList(service_types)}
+                    </span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Experience:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{years_experience || '-'}</span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc]">
+                      {years_experience || '-'}
+                    </span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Tools:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{tools_provided || '-'}</span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc]">
+                      {tools_provided || '-'}
+                    </span>
                   </div>
                   <div className="h-px bg-gray-100 my-2" />
                   <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Rate:</span>
                     {rate_type === 'Hourly Rate' ? (
-                      <div className="text-lg font-semibold text-[#008cfc]">₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-normal text-[#008cfc] opacity-80">per hour</span></div>
+                      <div className="text-lg font-semibold text-[#008cfc]">
+                        ₱{rate_from || 0}–₱{rate_to || 0}{' '}
+                        <span className="text-sm font-normal text-[#008cfc] opacity-80">per hour</span>
+                      </div>
                     ) : rate_type === 'By the Job Rate' ? (
-                      <div className="text-lg font-semibold text-[#008cfc]">₱{rate_value ?? 0} <span className="text-sm font-normal text-[#008cfc] opacity-80">per job</span></div>
+                      <div className="text-lg font-semibold text-[#008cfc]">
+                        ₱{rate_value || 0}{' '}
+                        <span className="text-sm font-normal text-[#008cfc] opacity-80">per job</span>
+                      </div>
                     ) : (
                       <div className="text-gray-500 text-sm">No rate provided</div>
                     )}
                   </div>
                 </div>
-                {submitError ? (
-                  <div className="px-6 py-3 text-sm text-red-700 bg-red-50 border-t border-red-100">{submitError}</div>
-                ) : null}
                 <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
                   <button
                     type="button"
@@ -590,10 +414,7 @@ const WorkerReviewPost = ({ handleBack }) => {
             </aside>
           </div>
 
-          {false && (
-            <>
-            </>
-          )}
+          {false && <></>}
         </div>
       </div>
 
@@ -604,8 +425,14 @@ const WorkerReviewPost = ({ handleBack }) => {
           aria-label="Submitting application"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -652,8 +479,14 @@ const WorkerReviewPost = ({ handleBack }) => {
           aria-label="Back to Step 5"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -700,8 +533,14 @@ const WorkerReviewPost = ({ handleBack }) => {
           aria-label="Application submitted"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -724,7 +563,9 @@ const WorkerReviewPost = ({ handleBack }) => {
             <div className="mt-6 text-center space-y-2">
               <div className="text-lg font-semibold text-gray-900">Application Submitted!</div>
               <div className="text-sm text-gray-600">Please wait for admin approval.</div>
-              <div className="text-xs text-gray-500">The details below will remain on this page for your reference.</div>
+              <div className="text-xs text-gray-500">
+                The details below will remain on this page for your reference.
+              </div>
             </div>
 
             <div className="mt-6">

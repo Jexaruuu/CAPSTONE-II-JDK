@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { compressImageFileToDataURL } from '../../utils/imageCompression';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const STORAGE_KEY = 'workerInformationForm';
 
 const clearWorkerApplicationDrafts = () => {
@@ -44,8 +42,8 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const [dpView, setDpView] = useState(new Date());
   const dpRef = useRef(null);
 
-  const [birthLocked] = useState(true);
-  const [contactLocked] = useState(true);
+  const [birthLocked] = useState(false);
+  const [contactLocked] = useState(false);
 
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const navigate = useNavigate();
@@ -195,7 +193,9 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
 
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
-    return () => { document.removeEventListener('mousedown', handleClickOutside); };
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -222,9 +222,9 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
 
   useEffect(() => {
     const authFirst = localStorage.getItem('first_name') || '';
-    const authLast  = localStorage.getItem('last_name') || '';
+    const authLast = localStorage.getItem('last_name') || '';
     if (authFirst) setFirstName(authFirst);
-    if (authLast)  setLastName(authLast);
+    if (authLast) setLastName(authLast);
     if (authFirst && authLast) setNameLocked(true);
   }, []);
 
@@ -251,117 +251,37 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
       profilePictureName,
       age: birthAge ? Number(birthAge) : null
     };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch {}
   }, [
-    hydrated, firstName, lastName, birthDate, contactNumber, email, barangay,
-    street, profilePicture, profilePictureName, birthAge
+    hydrated,
+    firstName,
+    lastName,
+    birthDate,
+    contactNumber,
+    email,
+    barangay,
+    street,
+    profilePicture,
+    profilePictureName,
+    birthAge
   ]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    const normalizePhone10 = (raw) => {
-      const digits = String(raw || '').replace(/\D/g, '');
-      if (digits.startsWith('63') && digits.length === 12) return digits.slice(2);
-      if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
-      if (digits.length === 10 && digits.startsWith('9')) return digits;
-      if (digits.length === 13 && digits.startsWith('639')) return digits.slice(3);
-      return digits.slice(-10);
-    };
-    const hdr = {
-      'x-app-u': encodeURIComponent(
-        JSON.stringify({
-          r: 'worker',
-          e: localStorage.getItem('email_address') || localStorage.getItem('email') || null,
-          au: localStorage.getItem('auth_uid') || null
-        })
-      )
-    };
-    (async () => {
-      try {
-        const { data: p } = await axios.get(`${API_BASE}/api/account/me`, {
-          withCredentials: true,
-          headers: hdr
-        });
-        const dob = p?.date_of_birth || '';
-        const ph = normalizePhone10(p?.phone || p?.contact_number || '');
-        if (!birthDate && dob) {
-          const d = new Date(dob);
-          if (!isNaN(d.getTime())) {
-            const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            setBirthDate(ymd);
-            setDpView(d);
-          }
-        }
-        if (!contactNumber && ph) setContactNumber(ph);
-      } catch {}
-    })();
-  }, [hydrated, birthDate, contactNumber]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    const normalizePhone10 = (raw) => {
-      const digits = String(raw || '').replace(/\D/g, '');
-      if (digits.startsWith('63') && digits.length === 12) return digits.slice(2);
-      if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
-      if (digits.length === 10 && digits.startsWith('9')) return digits;
-      if (digits.length === 13 && digits.startsWith('639')) return digits.slice(3);
-      return digits.slice(-10);
-    };
-    const hdr = {
-      'x-app-u': encodeURIComponent(
-        JSON.stringify({
-          r: 'worker',
-          e: localStorage.getItem('email_address') || localStorage.getItem('email') || null,
-          au: localStorage.getItem('auth_uid') || null
-        })
-      )
-    };
-    (async () => {
-      try {
-        const { data: w } = await axios.get(`${API_BASE}/api/workers/me`, {
-          withCredentials: true,
-          headers: hdr
-        });
-        const fn = w?.first_name || w?.firstName || '';
-        const ln = w?.last_name || w?.lastName || '';
-        const em = w?.email_address || w?.email || '';
-        const dob = w?.birth_date || w?.date_of_birth || '';
-        const ph = normalizePhone10(w?.contact_number || w?.phone || '');
-        const brgy = w?.barangay || '';
-        const st = w?.street || '';
-        const ppUrl = w?.profile_picture_url || w?.profile_picture || '';
-        const ppName = w?.profile_picture_name || '';
-        if (!nameLocked) {
-          if (!firstName && fn) setFirstName(fn);
-          if (!lastName && ln) setLastName(ln);
-        }
-        if (!emailLocked && validateEmail(em) && !email) setEmail(em);
-        if (!birthDate && dob) {
-          const d = new Date(dob);
-          if (!isNaN(d.getTime())) {
-            const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            setBirthDate(ymd);
-            setDpView(d);
-          }
-        }
-        if (!contactNumber && ph) setContactNumber(ph);
-        if (!barangay && brgy) setBarangay(brgy);
-        if (!street && st) setStreet(st);
-        if (!profilePicture && ppUrl) setProfilePicture(ppUrl);
-        if (!profilePictureName && ppName) setProfilePictureName(ppName);
-      } catch {}
-    })();
-  }, [hydrated, nameLocked, emailLocked, firstName, lastName, email, birthDate, contactNumber, barangay, street, profilePicture, profilePictureName]);
-
-  useEffect(() => {
     if (!isLoadingNext) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       window.removeEventListener('popstate', onPopState, true);
@@ -372,10 +292,14 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
 
   useEffect(() => {
     if (!isLoadingBack) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
-    return () => { window.removeEventListener('popstate', onPopState, true); };
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+    };
   }, [isLoadingBack]);
 
   useEffect(() => {
@@ -383,7 +307,10 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       document.body.style.overflow = prev;
@@ -403,7 +330,9 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
       profilePicture,
       profilePictureName
     };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch {}
     onCollect?.({
       auth_uid: localStorage.getItem('auth_uid') || '',
       first_name: firstName,
@@ -425,12 +354,16 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
     if (!isFormValid) return;
     jumpTop();
     setIsLoadingNext(true);
-    setTimeout(() => { proceed(); }, 2000);
+    setTimeout(() => {
+      proceed();
+    }, 2000);
   };
 
   const onBackClick = (e) => {
     e.preventDefault();
-    try { clearWorkerApplicationDrafts(); } catch {}
+    try {
+      clearWorkerApplicationDrafts();
+    } catch {}
     jumpTop();
     setIsLoadingBack(true);
     setTimeout(() => {
@@ -464,7 +397,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             <div className="text-2xl md:text-3xl font-semibold text-gray-900">Please fill in your details</div>
           </div>
           <div className="flex items-center gap-2">
@@ -497,7 +430,9 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                     <input
                       type="text"
                       value={firstName}
-                      onChange={(e) => { if (!nameLocked) setFirstName(e.target.value); }}
+                      onChange={(e) => {
+                        if (!nameLocked) setFirstName(e.target.value);
+                      }}
                       placeholder="First Name"
                       readOnly={nameLocked}
                       aria-readonly={nameLocked}
@@ -513,7 +448,9 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                     <input
                       type="text"
                       value={lastName}
-                      onChange={(e) => { if (!nameLocked) setLastName(e.target.value); }}
+                      onChange={(e) => {
+                        if (!nameLocked) setLastName(e.target.value);
+                      }}
                       placeholder="Last Name"
                       readOnly={nameLocked}
                       aria-readonly={nameLocked}
@@ -587,8 +524,10 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                         </div>
 
                         <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
-                          {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d) => (
-                            <div key={d} className="py-1">{d}</div>
+                          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+                            <div key={d} className="py-1">
+                              {d}
+                            </div>
                           ))}
                         </div>
 
@@ -607,7 +546,9 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                               const idx = r * 7 + c;
                               const dayNum = idx - offset + 1;
                               if (dayNum < 1 || dayNum > last.getDate()) {
-                                row.push(<div key={`x-${r}-${c}`} className="py-2" />);
+                                row.push(
+                                  <div key={`x-${r}-${c}`} className="py-2" />
+                                );
                               } else {
                                 const d = new Date(dpView.getFullYear(), dpView.getMonth(), dayNum);
                                 const disabled = !inRange(d);
@@ -623,9 +564,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                                     }}
                                     className={[
                                       'py-2 rounded-lg transition text-sm',
-                                      disabled
-                                        ? 'text-gray-300 cursor-not-allowed'
-                                        : 'hover:bg-blue-50 text-gray-700',
+                                      disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700',
                                       isSelected && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
                                     ].join(' ')}
                                   >
@@ -646,14 +585,19 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                         <div className="flex items-center justify-between mt-3 px-2">
                           <button
                             type="button"
-                            onClick={() => { setBirthDate(''); setDpOpen(false); }}
+                            onClick={() => {
+                              setBirthDate('');
+                              setDpOpen(false);
+                            }}
                             className="text-xs text-gray-500 hover:text-gray-700"
                           >
                             Clear
                           </button>
                           <button
                             type="button"
-                            onClick={() => { setDpView(new Date(maxDOBDate)); }}
+                            onClick={() => {
+                              setDpView(new Date(maxDOBDate));
+                            }}
                             className="text-xs text-blue-600 hover:text-blue-700"
                           >
                             Jump to latest allowed
@@ -715,7 +659,9 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                     <input
                       type="email"
                       value={email}
-                      onChange={(e) => { if (!emailLocked) setEmail(e.target.value); }}
+                      onChange={(e) => {
+                        if (!emailLocked) setEmail(e.target.value);
+                      }}
                       placeholder="Email Address"
                       readOnly={emailLocked}
                       aria-readonly={emailLocked}
@@ -763,7 +709,10 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                             <button
                               key={index}
                               type="button"
-                              onClick={() => { setBarangay(barangayName); setShowDropdown(false); }}
+                              onClick={() => {
+                                setBarangay(barangayName);
+                                setShowDropdown(false);
+                              }}
                               className="text-left px-3 py-2 rounded-lg hover:bg-blue-50 text-sm text-gray-700"
                               role="option"
                               aria-selected={barangayName === barangay}
@@ -776,7 +725,10 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                           <span className="text-xs text-gray-400">&nbsp;</span>
                           <button
                             type="button"
-                            onClick={() => { setBarangay(''); setShowDropdown(false); }}
+                            onClick={() => {
+                              setBarangay('');
+                              setShowDropdown(false);
+                            }}
                             className="text-xs text-gray-500 hover:text-gray-700"
                           >
                             Clear
@@ -879,8 +831,14 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
           aria-label="Preparing Step 2"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -927,8 +885,14 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
           aria-label="Going back to Dashboard"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />

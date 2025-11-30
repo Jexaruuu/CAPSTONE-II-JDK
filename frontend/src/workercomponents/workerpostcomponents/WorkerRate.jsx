@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'workerRate';
-
 const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [rateType, setRateType] = useState('');
   const [rateFrom, setRateFrom] = useState('');
@@ -9,38 +7,21 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [rateValue, setRateValue] = useState('');
 
   const [attempted, setAttempted] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [isLoadingBack, setIsLoadingBack] = useState(false);
 
   useEffect(() => {
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
   }, []);
 
   const jumpTop = () => {
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
   };
-
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const d = JSON.parse(saved);
-        setRateType(d.rate_type || '');
-        setRateFrom(d.rate_from || '');
-        setRateTo(d.rate_to || '');
-        setRateValue(d.rate_value || '');
-      } catch {}
-    }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    const draft = { rate_type: rateType, rate_from: rateFrom, rate_to: rateTo, rate_value: rateValue };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
-  }, [hydrated, rateType, rateFrom, rateTo, rateValue]);
 
   const handleRateTypeChange = (e) => {
     setRateType(e.target.value);
@@ -48,6 +29,7 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
     setRateTo('');
     setRateValue('');
   };
+
   const handleRateValueChange = (e) => setRateValue(e.target.value);
   const handleRateFromChange = (e) => setRateFrom(e.target.value);
   const handleRateToChange = (e) => setRateTo(e.target.value);
@@ -58,6 +40,7 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
     const to = Number(rateTo);
     return Number.isFinite(from) && Number.isFinite(to) && from > 0 && to > 0 && to >= from;
   };
+
   const isJobValid = () => {
     if (!rateValue) return false;
     const v = Number(rateValue);
@@ -71,10 +54,14 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
 
   useEffect(() => {
     if (!isLoadingNext) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
-    return () => { window.removeEventListener('popstate', onPopState, true); };
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+    };
   }, [isLoadingNext]);
 
   useEffect(() => {
@@ -82,7 +69,10 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       document.body.style.overflow = prevOverflow;
@@ -92,10 +82,14 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
 
   useEffect(() => {
     if (!isLoadingBack) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
-    return () => { window.removeEventListener('popstate', onPopState, true); };
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+    };
   }, [isLoadingBack]);
 
   useEffect(() => {
@@ -103,7 +97,10 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       document.body.style.overflow = prev;
@@ -112,8 +109,13 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   }, [isLoadingBack]);
 
   const proceed = () => {
-    const draft = { rate_type: rateType, rate_from: rateFrom, rate_to: rateTo, rate_value: rateValue };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
+    const draft = {
+  rate_type: rateType,
+  rate_from: rateFrom,
+  rate_to: rateTo,
+  rate_value: rateValue,
+};
+localStorage.setItem('workerRate', JSON.stringify(draft));
     onCollect?.(draft);
     handleNext?.();
   };
@@ -123,13 +125,17 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
     if (!isFormValid) return;
     jumpTop();
     setIsLoadingNext(true);
-    setTimeout(() => { proceed(); }, 2000);
+    setTimeout(() => {
+      proceed();
+    }, 2000);
   };
 
   const onBackClick = () => {
     jumpTop();
     setIsLoadingBack(true);
-    setTimeout(() => { handleBack?.(); }, 2000);
+    setTimeout(() => {
+      handleBack?.();
+    }, 2000);
   };
 
   return (
@@ -137,7 +143,14 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+            <img
+              src="/jdklogo.png"
+              alt=""
+              className="h-8 w-8 object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
             <div className="text-2xl md:text-3xl font-semibold text-gray-900">Please choose your service rate</div>
           </div>
           <div className="flex items-center gap-2">
@@ -164,7 +177,9 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
 
             <div className="flex space-x-6 mb-6">
               <div
-                className={`w-1/2 cursor-pointer p-4 border rounded-xl text-center ${rateType === 'Hourly Rate' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+                className={`w-1/2 cursor-pointer p-4 border rounded-xl text-center ${
+                  rateType === 'Hourly Rate' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                }`}
                 onClick={() => handleRateTypeChange({ target: { value: 'Hourly Rate' } })}
               >
                 <div className="flex justify-center mb-2">
@@ -174,7 +189,9 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
               </div>
 
               <div
-                className={`w-1/2 cursor-pointer p-4 border rounded-xl text-center ${rateType === 'By the Job Rate' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+                className={`w-1/2 cursor-pointer p-4 border rounded-xl text-center ${
+                  rateType === 'By the Job Rate' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                }`}
                 onClick={() => handleRateTypeChange({ target: { value: 'By the Job Rate' } })}
               >
                 <div className="flex justify-center mb-2">
@@ -198,7 +215,9 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
                         pattern="\d*"
                         value={rateFrom}
                         onChange={handleRateFromChange}
-                        className={`w-full pl-8 px-4 py-3 border ${attempted && !isHourlyValid() && !rateFrom ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                        className={`w-full pl-8 px-4 py-3 border ${
+                          attempted && !isHourlyValid() && !rateFrom ? 'border-red-500' : 'border-gray-300'
+                        } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
                         required
                       />
                     </div>
@@ -213,7 +232,9 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
                         pattern="\d*"
                         value={rateTo}
                         onChange={handleRateToChange}
-                        className={`w-full pl-8 px-4 py-3 border ${attempted && !isHourlyValid() && !rateTo ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                        className={`w-full pl-8 px-4 py-3 border ${
+                          attempted && !isHourlyValid() && !rateTo ? 'border-red-500' : 'border-gray-300'
+                        } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
                         required
                       />
                     </div>
@@ -240,11 +261,15 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
                     pattern="\d*"
                     value={rateValue}
                     onChange={handleRateValueChange}
-                    className={`w-full pl-8 px-4 py-3 border ${attempted && !isJobValid() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                    className={`w-full pl-8 px-4 py-3 border ${
+                      attempted && !isJobValid() ? 'border-red-500' : 'border-gray-300'
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
                     required
                   />
                 </div>
-                {attempted && !isJobValid() && <p className="text-xs text-red-600 mt-1">Enter a valid amount greater than 0.</p>}
+                {attempted && !isJobValid() && (
+                  <p className="text-xs text-red-600 mt-1">Enter a valid amount greater than 0.</p>
+                )}
                 <p className="text-base text-gray-600 mt-2">Set your price range.</p>
                 <p className="text-base text-gray-600 mt-4">
                   Share what your fixed price that affordable for plumbing, carpentry, electrical, car wash, or laundry.
@@ -268,7 +293,9 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
             onClick={onNextClick}
             disabled={!isFormValid}
             aria-disabled={!isFormValid}
-            className={`sm:w-1/3 w-full px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
+            className={`sm:w-1/3 w-full px-6 py-3 rounded-xl transition shadow-sm ${
+              isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
+            }`}
           >
             Next : Terms &amp; Condition Agreements
           </button>
@@ -289,7 +316,9 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
             onClick={onNextClick}
             disabled={!isFormValid}
             aria-disabled={!isFormValid}
-            className={`px-8 py-3 rounded-md shadow-md transition duration-300 -mt-4 ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
+            className={`px-8 py-3 rounded-md shadow-md transition duration-300 -mt-4 ${
+              isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
+            }`}
           >
             Next : Terms & Condition Agreements
           </button>
@@ -303,8 +332,14 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
           aria-label="Loading next step"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -312,12 +347,23 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
-                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
@@ -340,8 +386,14 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
           aria-label="Back to Step 3"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -349,12 +401,23 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
-                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>

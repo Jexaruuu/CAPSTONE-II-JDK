@@ -1,15 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-
-const STORAGE_KEY = 'workerAgreements';
 
 const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [agreeVerify, setAgreeVerify] = useState(false);
   const [agreeTos, setAgreeTos] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
 
-  const [hydrated, setHydrated] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
@@ -17,45 +13,31 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
   const canProceed = agreeVerify && agreeTos && agreePrivacy;
 
   useEffect(() => {
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
   }, []);
 
   const jumpTop = () => {
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {}
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const d = JSON.parse(saved);
-        setAgreeVerify(!!d.agree_verify);
-        setAgreeTos(!!d.agree_tos);
-        setAgreePrivacy(!!d.agree_privacy);
-      } catch {}
-    }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    const draft = {
-      agree_verify: agreeVerify,
-      agree_tos: agreeTos,
-      agree_privacy: agreePrivacy
-    };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
-  }, [hydrated, agreeVerify, agreeTos, agreePrivacy]);
-
-  useEffect(() => {
     if (!isLoadingNext) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       window.removeEventListener('popstate', onPopState, true);
@@ -66,13 +48,18 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
 
   useEffect(() => {
     if (!isLoadingBack) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       window.removeEventListener('popstate', onPopState, true);
@@ -87,7 +74,6 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
       agree_tos: agreeTos,
       agree_privacy: agreePrivacy
     };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
     onCollect?.(draft);
     handleNext?.();
   };
@@ -114,7 +100,14 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+            <img
+              src="/jdklogo.png"
+              alt=""
+              className="h-8 w-8 object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
             <div className="text-2xl md:text-3xl font-semibold text-gray-900">Terms & Agreements</div>
           </div>
           <div className="flex items-center gap-2">
@@ -181,7 +174,8 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
                 />
                 <div>
                   <div className="text-sm text-gray-800">
-                    I consent to the collection and processing of my personal data in accordance with the Data Privacy Act (RA 10173). <span className="text-red-500">*</span>
+                    I consent to the collection and processing of my personal data in accordance with the Data Privacy
+                    Act (RA 10173). <span className="text-red-500">*</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     Your data will be protected and processed in compliance with Philippine law.
@@ -189,28 +183,6 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
                 </div>
               </label>
             </div>
-
-            {false && (
-              <div className="flex justify-between mt-8 ml-3">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 -mt-4"
-                >
-                  Back : Set Your Price Rate
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onNextClick}
-                  className={`px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 -mt-4 ${!canProceed ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  disabled={!canProceed}
-                  aria-disabled={!canProceed}
-                >
-                  Next : Review Application
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -226,7 +198,9 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
           <button
             type="button"
             onClick={onNextClick}
-            className={`sm:w-1/3 w-full px-6 py-3 rounded-xl transition shadow-sm ${canProceed ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}
+            className={`sm:w-1/3 w-full px-6 py-3 rounded-xl transition shadow-sm ${
+              canProceed ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
+            }`}
             disabled={!canProceed}
             aria-disabled={!canProceed}
           >
@@ -242,8 +216,14 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
           aria-label="Loading next step"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-white cursor-wait"
         >
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
@@ -290,8 +270,14 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
             aria-label="Loading next step"
             tabIndex={-1}
             autoFocus
-            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onKeyDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -340,8 +326,14 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
             aria-label="Back to previous step"
             tabIndex={-1}
             autoFocus
-            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onKeyDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
