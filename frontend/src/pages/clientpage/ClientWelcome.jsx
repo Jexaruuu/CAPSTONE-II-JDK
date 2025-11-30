@@ -1,14 +1,69 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ClientNavigation from '../../clientcomponents/ClientNavigation';
 import ClientFooter from '../../clientcomponents/ClientFooter';
 
-const ClientWelcomePage = () => {
-  const firstName = localStorage.getItem('first_name');
-  const lastName = localStorage.getItem('last_name');
-  const sex = localStorage.getItem('sex'); // ✅ Retrieve sex from localStorage
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-  // ✅ Determine prefix based on sex
+function buildAppU() {
+  try {
+    const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
+    const e =
+      a.email ||
+      localStorage.getItem('clientEmail') ||
+      localStorage.getItem('client_email') ||
+      localStorage.getItem('email_address') ||
+      localStorage.getItem('email') ||
+      '';
+    const au =
+      a.auth_uid ||
+      a.authUid ||
+      a.uid ||
+      a.id ||
+      localStorage.getItem('client_auth_uid') ||
+      null;
+    return { e, r: 'client', au };
+  } catch {
+    return {
+      e:
+        localStorage.getItem('clientEmail') ||
+        localStorage.getItem('client_email') ||
+        localStorage.getItem('email_address') ||
+        localStorage.getItem('email') ||
+        '',
+      r: 'client',
+      au: null,
+    };
+  }
+}
+
+const ClientWelcomePage = () => {
+  const [firstName, setFirstName] = useState(localStorage.getItem('first_name') || '');
+  const [lastName, setLastName] = useState(localStorage.getItem('last_name') || '');
+  const [sex, setSex] = useState(localStorage.getItem('sex') || '');
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    const x = encodeURIComponent(JSON.stringify(buildAppU()));
+    fetch(`${API_BASE}/api/client/me`, {
+      headers: { 'x-app-u': x },
+      credentials: 'include',
+      signal: ctrl.signal
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(p => {
+        if (!p) return;
+        const fn = p.first_name || '';
+        const ln = p.last_name || '';
+        const sx = p.sex || '';
+        setFirstName(fn); localStorage.setItem('first_name', fn);
+        setLastName(ln);  localStorage.setItem('last_name', ln);
+        setSex(sx);       localStorage.setItem('sex', sx);
+      })
+      .catch(() => {})
+    return () => ctrl.abort();
+  }, []);
+
   const prefix = sex === 'Male' ? 'Mr.' : sex === 'Female' ? 'Ms.' : '';
 
   return (
@@ -16,7 +71,6 @@ const ClientWelcomePage = () => {
       <ClientNavigation />
       <div className="max-w-[1525px] mx-auto px-6 py-[66.5px]">
         <div className="flex flex-col justify-start items-start">
-          {/* Logo above the welcome text */}
           <div className="mb-6">
             <img
               src="/Bluelogo.png"
@@ -35,7 +89,6 @@ const ClientWelcomePage = () => {
             <span className='text-[#008cfc]'>JDK HOMECARE</span> provides better home service and maintenance solutions. Whether it’s cleaning, repairs, or anything in between, we’ve got you covered. Your satisfaction is our priority!
           </p>
 
-          {/* Buttons */}
           <div className="flex justify-start gap-6">
             <Link
               to="/clientpostrequest"
@@ -45,7 +98,6 @@ const ClientWelcomePage = () => {
             </Link>
           </div>
 
-          {/* Footer Section */}
           <p className="text-left mt-12 text-sm text-gray-500">
             We’re here to help you make your home a better place to live.
           </p>

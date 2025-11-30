@@ -1,9 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
+import React, { useEffect, useMemo, useState } from "react";
 import WorkerNavigation from "../../workercomponents/WorkerNavigation";
 import WorkerFooter from "../../workercomponents/WorkerFooter";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const formatDate = (iso) => {
   try {
@@ -17,37 +14,6 @@ const formatDate = (iso) => {
 };
 
 const BlueDot = () => <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#008cfc]" aria-hidden />;
-
-function buildAppU() {
-  try {
-    const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
-    const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem("worker_auth_uid") || "";
-    const e = a.email || localStorage.getItem("worker_email") || localStorage.getItem("email_address") || localStorage.getItem("email") || "";
-    return encodeURIComponent(JSON.stringify({ r: "worker", e, au }));
-  } catch {}
-  return "";
-}
-
-async function ensureSession() {
-  try {
-    const appU = buildAppU();
-    const { data } = await axios.get(`${API_BASE}/api/account/me`, {
-      withCredentials: true,
-      headers: appU ? { "x-app-u": appU } : {}
-    });
-    const uid = data?.auth_uid || "";
-    const email = data?.email_address || "";
-    if (uid) localStorage.setItem("worker_auth_uid", uid);
-    if (email) {
-      localStorage.setItem("email_address", email);
-      localStorage.setItem("email", email);
-      localStorage.setItem("worker_email", email);
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function deriveType(n) {
   if (n.type) return n.type;
@@ -77,7 +43,7 @@ function statusBadgeClass(read) {
 }
 
 function stripRedundantFieldUpdateTitle(title) {
-  const t = (title || '').trim();
+  const t = (title || "").trim();
   if (/^(birth\s*date|birthdate)\s*updated$/i.test(t)) return true;
   if (/^(contact|contact\s*number|phone|mobile)(\s*(no\.|number))?\s*updated$/i.test(t)) return true;
   if (/^(profile\s*)?picture\s*updated$/i.test(t)) return true;
@@ -86,15 +52,15 @@ function stripRedundantFieldUpdateTitle(title) {
 }
 
 function collapseProfileChangeDuplicates(arr) {
-  const keepTypes = new Set(['DOB', 'Contact', 'Photo', 'Socials']);
+  const keepTypes = new Set(["DOB", "Contact", "Photo", "Socials"]);
   const map = new Map();
   for (const n of arr) {
-    const text = `${n.title || ''} ${n.message || ''}`.toLowerCase();
-    let type = 'Other';
-    if (/(birthdate|date of birth|\bdob\b)/.test(text)) type = 'DOB';
-    else if (/(contact number|phone|contact)/.test(text)) type = 'Contact';
-    else if (/(profile picture|photo|avatar)/.test(text)) type = 'Photo';
-    else if (/(facebook|instagram|social|socials)/.test(text)) type = 'Socials';
+    const text = `${n.title || ""} ${n.message || ""}`.toLowerCase();
+    let type = "Other";
+    if (/(birthdate|date of birth|\bdob\b)/.test(text)) type = "DOB";
+    else if (/(contact number|phone|contact)/.test(text)) type = "Contact";
+    else if (/(profile picture|photo|avatar)/.test(text)) type = "Photo";
+    else if (/(facebook|instagram|social|socials)/.test(text)) type = "Socials";
     if (keepTypes.has(type)) {
       const prev = map.get(type);
       if (!prev || new Date(n.created_at) > new Date(prev.created_at)) map.set(type, n);
@@ -109,85 +75,56 @@ function collapseProfileChangeDuplicates(arr) {
 export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [notifs, setNotifs] = useState([]);
-  const [sessionReady, setSessionReady] = useState(false);
-  const esRef = useRef(null);
-
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
-
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const ok = await ensureSession();
-      setSessionReady(ok);
-      try {
-        const appU = buildAppU();
-        const { data } = await axios.get(`${API_BASE}/api/notifications`, {
-          withCredentials: true,
-          headers: appU ? { "x-app-u": appU } : {}
-        });
-        if (!cancelled) {
-          const arr = Array.isArray(data) ? data : data?.items || [];
-          const normalized = arr.map((n, i) => ({
-            id: n.id ?? `${i}`,
-            title: n.title ?? "Notification",
-            message: n.message ?? "",
-            created_at: n.created_at ?? new Date().toISOString(),
-            read: !!n.read,
-            type: n.type || deriveType(n)
-          })).filter(n => !stripRedundantFieldUpdateTitle(n.title));
-          const collapsed = collapseProfileChangeDuplicates(normalized).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-          setNotifs(collapsed);
-        }
-      } catch {
-        if (!cancelled) setNotifs([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    if (!sessionReady) return;
-    try { if (esRef.current) { esRef.current.close(); esRef.current = null; } } catch {}
-    const appU = buildAppU();
-    if (!appU) return;
-    const src = new EventSource(`${API_BASE}/api/notifications/stream?app_u=${appU}`, { withCredentials: true });
-    esRef.current = src;
-    const onNotification = (e) => {
-      try {
-        const j = JSON.parse(e.data || "{}");
-        if (j && j.id) {
-          const title = (j.title || '').trim();
-          if (stripRedundantFieldUpdateTitle(title)) return;
-          setNotifs((prev) => {
-            const candidate = { id: j.id, title: j.title || "Notification", message: j.message || "", created_at: j.created_at || new Date().toISOString(), read: !!j.read, type: j.type || deriveType(j) };
-            const next = collapseProfileChangeDuplicates([candidate, ...prev]);
-            return next.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-          });
-        }
-      } catch {}
-    };
-    src.addEventListener("notification", onNotification);
-    src.onerror = () => {};
+    setLoading(true);
+    try {
+      const raw =
+        localStorage.getItem("workerNotifications") ||
+        localStorage.getItem("worker_notifications") ||
+        "[]";
+      const parsed = JSON.parse(raw);
+      const arr = Array.isArray(parsed) ? parsed : [];
+      const normalized = arr
+        .map((n, i) => ({
+          id: n.id ?? `${i}`,
+          title: n.title ?? "Notification",
+          message: n.message ?? "",
+          created_at: n.created_at ?? new Date().toISOString(),
+          read: !!n.read,
+          type: n.type || deriveType(n)
+        }))
+        .filter((n) => !stripRedundantFieldUpdateTitle(n.title));
+      const collapsed = collapseProfileChangeDuplicates(normalized).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      if (!cancelled) setNotifs(collapsed);
+    } catch {
+      if (!cancelled) setNotifs([]);
+    } finally {
+      if (!cancelled) setLoading(false);
+    }
     return () => {
-      try { src.close(); } catch {}
-      esRef.current = null;
+      cancelled = true;
     };
-  }, [sessionReady]);
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let base = showUnreadOnly ? notifs.filter(n => !n.read) : notifs;
-    if (typeFilter !== "All") base = base.filter(n => (n.type || "Message") === typeFilter);
+    let base = showUnreadOnly ? notifs.filter((n) => !n.read) : notifs;
+    if (typeFilter !== "All") base = base.filter((n) => (n.type || "Message") === typeFilter);
     if (!q) return base;
-    return base.filter(n => (n.title || "").toLowerCase().includes(q) || (n.message || "").toLowerCase().includes(q));
+    return base.filter(
+      (n) =>
+        (n.title || "").toLowerCase().includes(q) ||
+        (n.message || "").toLowerCase().includes(q)
+    );
   }, [notifs, showUnreadOnly, query, typeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -200,44 +137,56 @@ export default function NotificationsPage() {
     setPage(1);
   }, [showUnreadOnly, query, typeFilter, notifs.length]);
 
-  const markRead = async (id) => {
-    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  const persistNotifs = (next) => {
     try {
-      const appU = buildAppU();
-      await axios.post(`${API_BASE}/api/notifications/${id}/read`, {}, { withCredentials: true, headers: appU ? { "x-app-u": appU } : {} });
-      try { localStorage.setItem('workerNotifSuppressed', '1'); } catch {}
+      localStorage.setItem("workerNotifications", JSON.stringify(next));
+    } catch {}
+  };
+
+  const markRead = (id) => {
+    setNotifs((prev) => {
+      const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+      persistNotifs(next);
+      try {
+        localStorage.setItem("workerNotifSuppressed", "1");
+      } catch {}
       window.dispatchEvent(new Event("worker-notifications-suppress"));
       window.dispatchEvent(new Event("worker-notifications-refresh"));
-    } catch {}
+      return next;
+    });
   };
 
-  const dismiss = async (id) => {
-    setNotifs((prev) => prev.filter((n) => n.id !== id));
-    try {
-      const appU = buildAppU();
-      await axios.delete(`${API_BASE}/api/notifications/${id}`, { withCredentials: true, headers: appU ? { "x-app-u": appU } : {} });
+  const dismiss = (id) => {
+    setNotifs((prev) => {
+      const next = prev.filter((n) => n.id !== id);
+      persistNotifs(next);
       window.dispatchEvent(new Event("worker-notifications-refresh"));
-    } catch {}
+      return next;
+    });
   };
 
-  const markAllRead = async () => {
-    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
-    try {
-      const appU = buildAppU();
-      await axios.post(`${API_BASE}/api/notifications/read-all`, {}, { withCredentials: true, headers: appU ? { "x-app-u": appU } : {} });
-      try { localStorage.setItem('workerNotifSuppressed', '1'); } catch {}
+  const markAllRead = () => {
+    setNotifs((prev) => {
+      const next = prev.map((n) => ({ ...n, read: true }));
+      persistNotifs(next);
+      try {
+        localStorage.setItem("workerNotifSuppressed", "1");
+      } catch {}
       window.dispatchEvent(new Event("worker-notifications-suppress"));
       window.dispatchEvent(new Event("worker-notifications-refresh"));
-    } catch {}
+      return next;
+    });
   };
 
-  const unreadCount = useMemo(() => notifs.filter(n => !n.read).length, [notifs]);
+  const unreadCount = useMemo(() => notifs.filter((n) => !n.read).length, [notifs]);
 
   const renderPageButton = (p) => (
     <button
       key={p}
       onClick={() => setPage(p)}
-      className={["h-9 min-w-9 px-3 rounded-md border", p === currentPage ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 text-gray-700 hover:bg-gray-50"].join(" ")}
+      className={["h-9 min-w-9 px-3 rounded-md border", p === currentPage ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 text-gray-700 hover:bg-gray-50"].join(
+        " "
+      )}
       aria-current={p === currentPage ? "page" : undefined}
     >
       {p}
@@ -271,7 +220,9 @@ export default function NotificationsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowUnreadOnly((v) => !v)}
-              className={`rounded-xl border px-3 py-2 text-sm ${showUnreadOnly ? "border-[#008cfc] text-[#008cfc]" : "border-slate-200 text-slate-700"}`}
+              className={`rounded-xl border px-3 py-2 text-sm ${
+                showUnreadOnly ? "border-[#008cfc] text-[#008cfc]" : "border-slate-200 text-slate-700"
+              }`}
             >
               Unread Notifications
             </button>
@@ -319,19 +270,31 @@ export default function NotificationsPage() {
                         <p className="truncate text-slate-900 font-medium">{n.title}</p>
                         {!n.read && <BlueDot />}
                       </div>
-                      {n.message && <p className="mt-1 text-sm text-slate-600 line-clamp-2">{n.message}</p>}
+                      {n.message && (
+                        <p className="mt-1 text-sm text-slate-600 line-clamp-2">{n.message}</p>
+                      )}
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${typeBadgeClass(n.type)}`}>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${typeBadgeClass(
+                        n.type
+                      )}`}
+                    >
                       <span className="h-3 w-3 rounded-full bg-current opacity-30" />
                       {n.type || "Message"}
                     </span>
                   </div>
-                  <div className="col-span-2 text-sm text-slate-600">{formatDate(n.created_at)}</div>
+                  <div className="col-span-2 text-sm text-slate-600">
+                    {formatDate(n.created_at)}
+                  </div>
                   <div className="col-span-2">
                     <div className="flex justify-end items-center gap-2">
-                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium ${statusBadgeClass(n.read)}`}>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium ${statusBadgeClass(
+                          n.read
+                        )}`}
+                      >
                         <span className="h-3 w-3 rounded-full bg-current opacity-30" />
                         {n.read ? "Read" : "Unread"}
                       </span>

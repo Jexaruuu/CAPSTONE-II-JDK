@@ -1,22 +1,79 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import WorkerNavigation from '../../workercomponents/WorkerNavigation'; // You can rename this to WorkerNavigation if available
-import WorkerFooter from '../../workercomponents/WorkerFooter'; // You can rename this to WorkerFooter if available
+import WorkerNavigation from '../../workercomponents/WorkerNavigation';
+import WorkerFooter from '../../workercomponents/WorkerFooter';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+function buildAppU() {
+  try {
+    const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+    const e =
+      a.email ||
+      localStorage.getItem('workerEmail') ||
+      localStorage.getItem('worker_email') ||
+      localStorage.getItem('email_address') ||
+      localStorage.getItem('email') ||
+      '';
+    const au =
+      a.auth_uid ||
+      a.authUid ||
+      a.uid ||
+      a.id ||
+      localStorage.getItem('worker_auth_uid') ||
+      null;
+    return { e, r: 'worker', au };
+  } catch {
+    return {
+      e:
+        localStorage.getItem('workerEmail') ||
+        localStorage.getItem('worker_email') ||
+        localStorage.getItem('email_address') ||
+        localStorage.getItem('email') ||
+        '',
+      r: 'worker',
+      au: null,
+    };
+  }
+}
 
 const WorkerWelcomePage = () => {
-  const firstName = localStorage.getItem('first_name');
-  const lastName = localStorage.getItem('last_name');
-  const sex = localStorage.getItem('sex'); // ✅ Retrieve sex from localStorage
+  const [firstName, setFirstName] = useState(localStorage.getItem('first_name') || '');
+  const [lastName, setLastName] = useState(localStorage.getItem('last_name') || '');
+  const [sex, setSex] = useState(localStorage.getItem('sex') || '');
 
-  // ✅ Determine prefix based on sex
+  useEffect(() => {
+    const x = encodeURIComponent(JSON.stringify(buildAppU()));
+    fetch(`${API_BASE}/api/worker/me`, {
+      headers: { 'x-app-u': x },
+      credentials: 'include',
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p) => {
+        if (!p) return;
+        if (typeof p.first_name === 'string') {
+          setFirstName(p.first_name || '');
+          localStorage.setItem('first_name', p.first_name || '');
+        }
+        if (typeof p.last_name === 'string') {
+          setLastName(p.last_name || '');
+          localStorage.setItem('last_name', p.last_name || '');
+        }
+        if (typeof p.sex === 'string') {
+          setSex(p.sex || '');
+          localStorage.setItem('sex', p.sex || '');
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const prefix = sex === 'Male' ? 'Mr.' : sex === 'Female' ? 'Ms.' : '';
 
   return (
     <div className="min-h-screen bg-white overflow-hidden">
-      <WorkerNavigation /> {/* Replace with WorkerNavigation if you have one */}
-        <div className="max-w-[1525px] mx-auto px-6 py-[66.5px]">
+      <WorkerNavigation />
+      <div className="max-w-[1525px] mx-auto px-6 py-[66.5px]">
         <div className="flex flex-col justify-start items-start">
-          {/* Logo above the welcome text */}
           <div className="mb-6">
             <img
               src="/Bluelogo.png"
@@ -26,13 +83,14 @@ const WorkerWelcomePage = () => {
           </div>
 
           <h1 className="text-5xl font-bold text-left mb-6">
-            Welcome Worker, {prefix} <span className='text-[#008cfc]'>{`${firstName} ${lastName}`}</span>!
+            Welcome Worker, {prefix}{' '}
+            <span className="text-[#008cfc]">{`${firstName} ${lastName}`}</span>!
           </h1>
           <p className="text-xl text-left mb-6">
             We’re excited to have you on board. Start browsing job requests and find opportunities that match your skills!
           </p>
           <p className="text-left mb-8">
-            <span className='text-[#008cfc]'>JDK HOMECARE</span> connects skilled workers like you with clients needing home maintenance. Let’s deliver great service together!
+            <span className="text-[#008cfc]">JDK HOMECARE</span> connects skilled workers like you with clients needing home maintenance. Let’s deliver great service together!
           </p>
 
           <div className="flex justify-start gap-6">
@@ -44,13 +102,12 @@ const WorkerWelcomePage = () => {
             </Link>
           </div>
 
-          {/* Footer Section */}
           <p className="text-left mt-12 text-sm text-gray-500">
             Let’s help more homes get the care they deserve.
           </p>
         </div>
       </div>
-      <WorkerFooter /> {/* Replace with WorkerFooter if you have one */}
+      <WorkerFooter />
     </div>
   );
 };

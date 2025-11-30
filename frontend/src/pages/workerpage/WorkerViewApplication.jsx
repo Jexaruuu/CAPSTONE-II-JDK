@@ -1,11 +1,8 @@
-// WorkerViewApplication.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
 import WorkerNavigation from '../../workercomponents/WorkerNavigation';
 import WorkerFooter from '../../workercomponents/WorkerFooter';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const CONFIRM_FLAG = 'workerApplicationJustViewed';
 const GLOBAL_DESC_KEY = 'workerApplicationDescription';
 
@@ -44,42 +41,36 @@ const WorkerViewApplication = () => {
     } catch {}
   };
 
-  const buildAppU = () => {
-    try {
-      const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
-      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
-      const e = a.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
-      return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
-    } catch { return ''; }
-  };
-  const appU = useMemo(() => buildAppU(), []);
-  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
-
   useEffect(() => {
-    const fetchMe = async () => {
-      try {
-        const { data } = await axios.get(`${API_BASE}/api/workers/me`, { withCredentials: true, headers: headersWithU });
-        const wid = data?.id || null;
-        const au = data?.auth_uid || null;
-        if (wid) localStorage.setItem('worker_id', String(wid));
-        if (au) localStorage.setItem('auth_uid', String(au));
-        setWorkerIdState(wid || null);
-      } catch {
-        const widLS = localStorage.getItem('worker_id');
-        setWorkerIdState(widLS ? Number(widLS) : null);
-      }
-    };
-    fetchMe();
-  }, [headersWithU]);
+    const widLS = localStorage.getItem('worker_id');
+    setWorkerIdState(widLS ? Number(widLS) : null);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    const run = async () => {
-      if (!id) { setLoading(false); return; }
+    const run = () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
-        const { data } = await axios.get(`${API_BASE}/api/workerapplication/by-group/${encodeURIComponent(id)}`, { withCredentials: true, headers: headersWithU });
-        if (!cancelled) setRow(data || null);
+        const fromSession = (() => {
+          try {
+            const raw =
+              sessionStorage.getItem('wa_view_payload') ||
+              sessionStorage.getItem('worker_app_view_payload') ||
+              'null';
+            return JSON.parse(raw);
+          } catch {
+            return null;
+          }
+        })();
+        const fromState =
+          location.state &&
+          (location.state.row || location.state.item || location.state.data);
+        const data = fromSession || fromState || null;
+        if (!cancelled) setRow(data);
       } catch {
         if (!cancelled) setRow(null);
       } finally {
@@ -87,8 +78,10 @@ const WorkerViewApplication = () => {
       }
     };
     run();
-    return () => { cancelled = true; };
-  }, [id, headersWithU]);
+    return () => {
+      cancelled = true;
+    };
+  }, [id, location.state]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -108,10 +101,34 @@ const WorkerViewApplication = () => {
     };
   }, [loading, showCancel, submittingCancel, leavingDone, showCancelSuccess]);
 
-  const savedInfo = (() => { try { return JSON.parse(localStorage.getItem('workerInformationForm') || '{}'); } catch { return {}; }})();
-  const savedWork = (() => { try { return JSON.parse(localStorage.getItem('workerWorkInformation') || '{}'); } catch { return {}; }})();
-  const savedRate = (() => { try { return JSON.parse(localStorage.getItem('workerRate') || '{}'); } catch { return {}; }})();
-  const savedDocs = (() => { try { return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]'); } catch { return []; }})();
+  const savedInfo = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('workerInformationForm') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const savedWork = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('workerWorkInformation') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const savedRate = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('workerRate') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const savedDocs = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]');
+    } catch {
+      return [];
+    }
+  })();
 
   const s = location.state || {};
 
@@ -119,7 +136,7 @@ const WorkerViewApplication = () => {
   const infoR = fx.info || {};
   const workR = fx.work || {};
   const rateR = fx.rate || {};
-  const docsR = Array.isArray(fx.documents) ? fx.documents : (fx.docs || []);
+  const docsR = Array.isArray(fx.documents) ? fx.documents : fx.docs || [];
 
   const first_name = infoR.first_name ?? s.first_name ?? savedInfo.firstName;
   const last_name = infoR.last_name ?? s.last_name ?? savedInfo.lastName;
@@ -296,17 +313,24 @@ const WorkerViewApplication = () => {
     await new Promise((r) => setTimeout(r, 30));
     setSubmittingCancel(true);
     try {
-      await axios.post(
-        `${API_BASE}/api/workerapplication/cancel`,
-        {
-          application_group_id: id,
-          worker_id: workerIdState || null,
-          email_address: email || null,
-          reason_choice: reason || null,
-          reason_other: otherReason || null
-        },
-        { withCredentials: true, headers: headersWithU }
-      );
+      try {
+        const key = 'workerApplications';
+        const raw = localStorage.getItem(key) || '[]';
+        const base = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+        const updated = base.map((app) => {
+          const appId = String(app.id ?? app.request_group_id ?? '');
+          if (appId !== String(id || '')) return app;
+          return {
+            ...app,
+            status: 'cancelled',
+            reason_choice: reason || null,
+            reason_other: otherReason || null,
+            decision_reason: app.decision_reason || null,
+            decided_at: new Date().toISOString()
+          };
+        });
+        localStorage.setItem(key, JSON.stringify(updated));
+      } catch {}
       try {
         window.dispatchEvent(new CustomEvent('worker-application-cancelled', { detail: { id } }));
       } catch {}
@@ -318,15 +342,27 @@ const WorkerViewApplication = () => {
         localStorage.removeItem('workerRate');
         localStorage.removeItem(GLOBAL_DESC_KEY);
         sessionStorage.removeItem('worker_app_view_payload');
+        sessionStorage.removeItem('wa_view_payload');
         const k = 'workerPostHiddenIds';
         const raw = localStorage.getItem(k);
         const arr = Array.isArray(JSON.parse(raw || '[]')) ? JSON.parse(raw || '[]') : [];
         if (!arr.includes(id)) arr.push(id);
         localStorage.setItem(k, JSON.stringify(arr));
       } catch {}
+      setRow((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'cancelled',
+              reason_choice: reason || null,
+              reason_other: otherReason || null,
+              decided_at: new Date().toISOString()
+            }
+          : prev
+      );
       setShowCancelSuccess(true);
     } catch (e) {
-      const msg = e?.response?.data?.message || 'Failed to cancel. Try again.';
+      const msg = 'Failed to cancel. Try again.';
       setCancelErr(msg);
       setSubmittingCancel(false);
       setShowCancel(true);
