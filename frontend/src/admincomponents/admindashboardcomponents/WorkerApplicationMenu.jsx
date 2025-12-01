@@ -643,8 +643,8 @@ export default function WorkerApplicationMenu() {
           email: r.email_address || i.email_address || "",
           barangay: i.barangay || "",
           additional_address: i.additional_address || i.street || "",
-          birth_date_raw: i.birth_date || null,
-          birth_date_display: i.birth_date ? fmtDateOnly(i.birth_date) : "",
+          date_of_birth_raw: i.date_of_birth || null,
+          date_of_birth_display: i.date_of_birth ? fmtDateOnly(i.date_of_birth) : "",
           age: i.age ?? null,
           contact_number:
             i.contact_number ||
@@ -963,7 +963,7 @@ export default function WorkerApplicationMenu() {
             }
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
-              <Field label="Date of Birth" value={viewRow?.birth_date_display || "-"} />
+              <Field label="Date of Birth" value={viewRow?.date_of_birth_display || "-"} />
               <Field label="Age" value={viewRow?.age ?? "-"} />
               <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
               <Field label="Barangay" value={viewRow?.barangay || "-"} />
@@ -1055,7 +1055,7 @@ export default function WorkerApplicationMenu() {
           }
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
-            <Field label="Date of Birth" value={viewRow?.birth_date_display || "-"} />
+            <Field label="Date of Birth" value={viewRow?.date_of_birth_display || "-"} />
             <Field label="Age" value={viewRow?.age ?? "-"} />
             <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
             <Field label="Barangay" value={viewRow?.barangay || "-"} />

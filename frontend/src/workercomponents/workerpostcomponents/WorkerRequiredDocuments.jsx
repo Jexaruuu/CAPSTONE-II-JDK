@@ -1,23 +1,61 @@
-import React, { useState, useCallback, useEffect } from 'react';
+// WorkerRequiredDocuments.jsx
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const MAX_BYTES = 5 * 1024 * 1024;
-
-const boxBase =
-  'flex items-center justify-center w-full h-44 border-2 border-dashed rounded-xl bg-gray-50 hover:bg-gray-100 transition';
+const boxBase = 'flex items-center justify-center w-full h-44 border-2 border-dashed rounded-xl bg-gray-50 hover:bg-gray-100 transition';
 const boxInner = 'text-center text-sm text-gray-700';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 function humanSize(bytes) {
   if (!bytes && bytes !== 0) return '';
   const units = ['B', 'KB', 'MB', 'GB'];
   let i = 0;
   let v = bytes;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i++;
-  }
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
   return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+async function fileToDataUrl(file) {
+  if (!file) return null;
+  const b64 = await new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+  return String(b64 || '');
+}
+
+function buildAppU() {
+  try {
+    const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+    const e =
+      a.email ||
+      localStorage.getItem('workerEmail') ||
+      localStorage.getItem('worker_email') ||
+      localStorage.getItem('email_address') ||
+      localStorage.getItem('email') ||
+      '';
+    const au =
+      a.auth_uid ||
+      a.authUid ||
+      a.uid ||
+      a.id ||
+      localStorage.getItem('worker_auth_uid') ||
+      localStorage.getItem('auth_uid') ||
+      null;
+    return encodeURIComponent(JSON.stringify({ e, r: 'worker', au }));
+  } catch {
+    const e =
+      localStorage.getItem('workerEmail') ||
+      localStorage.getItem('worker_email') ||
+      localStorage.getItem('email_address') ||
+      localStorage.getItem('email') ||
+      '';
+    return encodeURIComponent(JSON.stringify({ e, r: 'worker', au: null }));
+  }
 }
 
 function DocDrop({ label, hint, required = false, value, onChange }) {
@@ -36,23 +74,9 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
 
   const validateAndSet = useCallback(
     (file) => {
-      if (!file) {
-        setError(undefined);
-        onChange(null);
-        return;
-      }
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        const msg = 'Only PDF, JPG, or PNG files are allowed.';
-        setError(msg);
-        onChange(null);
-        return;
-      }
-      if (file.size > MAX_BYTES) {
-        const msg = 'File too large. Max size is 5MB.';
-        setError(msg);
-        onChange(null);
-        return;
-      }
+      if (!file) { setError(undefined); onChange(null); return; }
+      if (!ALLOWED_TYPES.includes(file.type)) { setError('Only PDF, JPG, or PNG files are allowed.'); onChange(null); return; }
+      if (file.size > MAX_BYTES) { setError('File too large. Max size is 5MB.'); onChange(null); return; }
       setError(undefined);
       onChange(file);
     },
@@ -80,15 +104,8 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
       </div>
 
       <label
-        className={[
-          boxBase,
-          dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300',
-          'ring-1 ring-gray-100 hover:ring-blue-100 relative overflow-hidden'
-        ].join(' ')}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
+        className={[boxBase, dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300', 'ring-1 ring-gray-100 hover:ring-blue-100 relative overflow-hidden'].join(' ')}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
@@ -96,11 +113,7 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
 
         {previewURL ? (
           <>
-            <img
-              src={previewURL}
-              alt="Preview"
-              className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-xl"
-            />
+            <img src={previewURL} alt="Preview" className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-xl" />
             <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-gray-200 px-3 py-2 text-[11px] text-gray-700">
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate">{value?.name}</span>
@@ -115,9 +128,7 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
               <>
                 <div className="font-medium text-gray-900">Click to upload or drag and drop</div>
                 <div className="text-xs text-gray-500 mt-1">PDF, JPG, or PNG • Max 5MB</div>
-                {value && value.type === 'application/pdf' && (
-                  <div className="text-[11px] text-gray-500 mt-2 break-all">{value.name}</div>
-                )}
+                {value && value.type === 'application/pdf' && <div className="text-[11px] text-gray-500 mt-2 break-all">{value.name}</div>}
               </>
             ) : null}
           </div>
@@ -127,16 +138,9 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
       {value && (
         <div className="mt-3 flex items-center justify-between">
           <div className="text-xs text-gray-600 truncate">
-            <span className="font-medium text-gray-800">Selected:</span>{' '}
-            <span className="truncate">{value.name}</span>
+            <span className="font-medium text-gray-800">Selected:</span> <span className="truncate">{value.name}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => validateAndSet(null)}
-            className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700"
-          >
-            Clear
-          </button>
+          <button type="button" onClick={() => validateAndSet(null)} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700">Clear</button>
         </div>
       )}
 
@@ -159,37 +163,73 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+  const [meEmail, setMeEmail] = useState('');
 
-  const jumpTop = () => {
-    try {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    } catch {}
-  };
+  const appU = useMemo(() => buildAppU(), []);
+  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+
+  const jumpTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {} };
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
 
-  const isFormValid =
-    !!primaryFront &&
-    !!primaryBack &&
-    !!secondaryId &&
-    !!nbi &&
-    !!address &&
-    !!medical &&
-    !!certs;
-
-  const proceed = () => {
-    const docs = {
-      primary_front: primaryFront,
-      primary_back: primaryBack,
-      secondary_id: secondaryId,
-      nbi: nbi,
-      address: address,
-      medical: medical,
-      certs: certs
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/workers/me`, { credentials: 'include', headers: headersWithU });
+        if (r.ok) {
+          const j = await r.json();
+          const em = j?.email_address || '';
+          if (em) {
+            setMeEmail(em);
+            const known = localStorage.getItem('workerEmail') || localStorage.getItem('email_address') || '';
+            if (!known) { try { localStorage.setItem('workerEmail', em); } catch {} }
+          }
+        }
+      } catch {}
     };
-    onCollect?.(docs);
+    run();
+  }, [headersWithU]);
+
+  const isFormValid = !!primaryFront && !!primaryBack && !!secondaryId && !!nbi && !!address && !!medical && !!certs;
+
+  const proceed = async () => {
+    const docsData = {
+      primary_front: await fileToDataUrl(primaryFront),
+      primary_back: await fileToDataUrl(primaryBack),
+      secondary_id: await fileToDataUrl(secondaryId),
+      nbi: await fileToDataUrl(nbi),
+      address: await fileToDataUrl(address),
+      medical: await fileToDataUrl(medical),
+      certs: await fileToDataUrl(certs)
+    };
+    const docsMeta = {
+      primary_front_name: primaryFront?.name || '',
+      primary_back_name: primaryBack?.name || '',
+      secondary_id_name: secondaryId?.name || '',
+      nbi_name: nbi?.name || '',
+      address_name: address?.name || '',
+      medical_name: medical?.name || '',
+      certs_name: certs?.name || '',
+      primary_front_type: primaryFront?.type || '',
+      primary_back_type: primaryBack?.type || '',
+      secondary_id_type: secondaryId?.type || '',
+      nbi_type: nbi?.type || '',
+      address_type: address?.type || '',
+      medical_type: medical?.type || '',
+      certs_type: certs?.type || '',
+      primary_front_size: primaryFront?.size || 0,
+      primary_back_size: primaryBack?.size || 0,
+      secondary_id_size: secondaryId?.size || 0,
+      nbi_size: nbi?.size || 0,
+      address_size: address?.size || 0,
+      medical_size: medical?.size || 0,
+      certs_size: certs?.size || 0
+    };
+    try { localStorage.setItem('workerDocumentsData', JSON.stringify(docsData)); } catch {}
+    try { localStorage.setItem('workerDocuments', JSON.stringify(docsMeta)); } catch {}
+    onCollect?.({ email_address: meEmail || '', ...docsMeta, ...docsData });
     handleNext?.();
   };
 
@@ -198,9 +238,9 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
     if (!isFormValid) return;
     jumpTop();
     setIsLoadingNext(true);
-    setTimeout(() => {
+    setTimeout(async () => {
+      await proceed();
       setIsLoadingNext(false);
-      proceed();
     }, 2000);
   };
 
@@ -227,174 +267,64 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
 
           <div className="px-6 pt-5">
             <p className="text-base text-gray-600">
-              Upload clear scans/photos of your documents. Accepted formats:{' '}
-              <span className="font-medium">PDF, JPG, PNG</span> (max 5MB each).
+              Upload clear scans/photos of your documents. Accepted formats: <span className="font-medium">PDF, JPG, PNG</span> (max 5MB each).
             </p>
           </div>
 
           <div className="px-6 pb-6 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <>
-                <DocDrop
-                  label="Primary ID (Front)"
-                  required
-                  hint="UMID, Passport, Driver’s License, etc."
-                  value={primaryFront}
-                  onChange={setPrimaryFront}
-                />
-                {attempted && !primaryFront && (
-                  <p className="text-xs text-red-600 -mt-3">Please upload your Primary ID (Front).</p>
-                )}
+                <DocDrop label="Primary ID (Front)" required hint="UMID, Passport, Driver’s License, etc." value={primaryFront} onChange={setPrimaryFront} />
+                {attempted && !primaryFront && <p className="text-xs text-red-600 -mt-3">Please upload your Primary ID (Front).</p>}
               </>
               <>
-                <DocDrop
-                  label="Primary ID (Back)"
-                  required
-                  hint="UMID, Passport, Driver’s License, etc."
-                  value={primaryBack}
-                  onChange={setPrimaryBack}
-                />
-                {attempted && !primaryBack && (
-                  <p className="text-xs text-red-600 -mt-3">Please upload your Primary ID (Back).</p>
-                )}
+                <DocDrop label="Primary ID (Back)" required hint="UMID, Passport, Driver’s License, etc." value={primaryBack} onChange={setPrimaryBack} />
+                {attempted && !primaryBack && <p className="text-xs text-red-600 -mt-3">Please upload your Primary ID (Back).</p>}
               </>
               <>
-                <DocDrop
-                  label="Secondary ID"
-                  required
-                  hint="UMID, Passport, Driver’s License, etc."
-                  value={secondaryId}
-                  onChange={setSecondaryId}
-                />
-                {attempted && !secondaryId && (
-                  <p className="text-xs text-red-600 -mt-3">Please upload a Secondary ID.</p>
-                )}
+                <DocDrop label="Secondary ID" required hint="UMID, Passport, Driver’s License, etc." value={secondaryId} onChange={setSecondaryId} />
+                {attempted && !secondaryId && <p className="text-xs text-red-600 -mt-3">Please upload a Secondary ID.</p>}
               </>
               <>
-                <DocDrop
-                  label="NBI/Police Clearance"
-                  required
-                  hint="Barangay Certificate also accepted"
-                  value={nbi}
-                  onChange={setNbi}
-                />
-                {attempted && !nbi && (
-                  <p className="text-xs text-red-600 -mt-3">Please upload your NBI/Police Clearance.</p>
-                )}
+                <DocDrop label="NBI/Police Clearance" required hint="Barangay Certificate also accepted" value={nbi} onChange={setNbi} />
+                {attempted && !nbi && <p className="text-xs text-red-600 -mt-3">Please upload your NBI/Police Clearance.</p>}
               </>
               <>
-                <DocDrop
-                  label="Proof of Address"
-                  required
-                  hint="Barangay Certificate, Utility Bill"
-                  value={address}
-                  onChange={setAddress}
-                />
-                {attempted && !address && (
-                  <p className="text-xs text-red-600 -mt-3">Please upload a Proof of Address.</p>
-                )}
+                <DocDrop label="Proof of Address" required hint="Barangay Certificate, Utility Bill" value={address} onChange={setAddress} />
+                {attempted && !address && <p className="text-xs text-red-600 -mt-3">Please upload a Proof of Address.</p>}
               </>
               <>
-                <DocDrop
-                  label="Medical Certificate"
-                  required
-                  hint="Latest medical/fit-to-work certificate"
-                  value={medical}
-                  onChange={setMedical}
-                />
-                {attempted && !medical && (
-                  <p className="text-xs text-red-600 -mt-3">Please upload your Medical Certificate.</p>
-                )}
+                <DocDrop label="Medical Certificate" required hint="Latest medical/fit-to-work certificate" value={medical} onChange={setMedical} />
+                {attempted && !medical && <p className="text-xs text-red-600 -mt-3">Please upload your Medical Certificate.</p>}
               </>
               <div className="md:col-span-2">
                 <>
-                  <DocDrop
-                    label="Certificates"
-                    required
-                    hint="TESDA, Training Certificates, etc."
-                    value={certs}
-                    onChange={setCerts}
-                  />
-                  {attempted && !certs && (
-                    <p className="text-xs text-red-600 -mt-3">Please upload your Certificates.</p>
-                  )}
+                  <DocDrop label="Certificates" required hint="TESDA, Training Certificates, etc." value={certs} onChange={setCerts} />
+                  {attempted && !certs && <p className="text-xs text-red-600 -mt-3">Please upload your Certificates.</p>}
                 </>
               </div>
             </div>
 
-            {attempted && !isFormValid && (
-              <p className="text-xs text-red-600 mt-3">Please upload all required documents to continue.</p>
-            )}
+            {attempted && !isFormValid && <p className="text-xs text-red-600 mt-3">Please upload all required documents to continue.</p>}
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between gap-3 mt-6">
-          <button
-            type="button"
-            onClick={onBackClick}
-            className="w-full sm:w-1/3 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
-          >
-            Back : Work Information
-          </button>
-          <button
-            type="button"
-            onClick={onNextClick}
-            disabled={!isFormValid}
-            aria-disabled={!isFormValid}
-            className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${
-              isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
-            }`}
-          >
-            Next : Set Your Price Rate
-          </button>
+          <button type="button" onClick={onBackClick} className="w-full sm:w-1/3 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Back : Work Information</button>
+          <button type="button" onClick={onNextClick} disabled={!isFormValid} aria-disabled={!isFormValid} className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}>Next : Set Your Price Rate</button>
         </div>
       </div>
 
       {isLoadingNext &&
         createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Loading next step"
-            tabIndex={-1}
-            autoFocus
-            onKeyDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
-          >
+          <div role="dialog" aria-modal="true" aria-label="Loading next step" tabIndex={-1} autoFocus onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
               <div className="relative mx-auto w-40 h-40">
-                <div
-                  className="absolute inset-0 animate-spin rounded-full"
-                  style={{
-                    borderWidth: '10px',
-                    borderStyle: 'solid',
-                    borderColor: '#008cfc22',
-                    borderTopColor: '#008cfc',
-                    borderRadius: '9999px'
-                  }}
-                />
+                <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
                 <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  {!logoBroken ? (
-                    <img
-                      src="/jdklogo.png"
-                      alt="JDK Homecare Logo"
-                      className="w-20 h-20 object-contain"
-                      onError={() => setLogoBroken(true)}
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
-                      <span className="font-bold text-[#008cfc]">JDK</span>
-                    </div>
-                  )}
+                  {!logoBroken ? <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} /> : <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center"><span className="font-bold text-[#008cfc]">JDK</span></div>}
                 </div>
               </div>
               <div className="mt-6 text-center">
@@ -408,49 +338,14 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
 
       {isLoadingBack &&
         createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Back to previous step"
-            tabIndex={-1}
-            autoFocus
-            onKeyDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
-          >
+          <div role="dialog" aria-modal="true" aria-label="Back to previous step" tabIndex={-1} autoFocus onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
               <div className="relative mx-auto w-40 h-40">
-                <div
-                  className="absolute inset-0 animate-spin rounded-full"
-                  style={{
-                    borderWidth: '10px',
-                    borderStyle: 'solid',
-                    borderColor: '#008cfc22',
-                    borderTopColor: '#008cfc',
-                    borderRadius: '9999px'
-                  }}
-                />
+                <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
                 <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  {!logoBroken ? (
-                    <img
-                      src="/jdklogo.png"
-                      alt="JDK Homecare Logo"
-                      className="w-20 h-20 object-contain"
-                      onError={() => setLogoBroken(true)}
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
-                      <span className="font-bold text-[#008cfc]">JDK</span>
-                    </div>
-                  )}
+                  {!logoBroken ? <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} /> : <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center"><span className="font-bold text-[#008cfc]">JDK</span></div>}
                 </div>
               </div>
               <div className="mt-6 text-center">

@@ -1,5 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const CONFIRM_FLAG = 'workerApplicationJustSubmitted';
 
 function computeAge(iso) {
   if (!iso) return null;
@@ -12,6 +16,21 @@ function computeAge(iso) {
   return a >= 0 && a <= 120 ? a : null;
 }
 
+const coerceYears = (v) => {
+  const n = Number(String(v ?? '').replace(/[^\d.]/g, ''));
+  if (!Number.isFinite(n) || n < 1) return 1;
+  if (n > 50) return 50;
+  return Math.floor(n);
+};
+
+const normalizeToolsProvided = (v) => {
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+  const s = String(Array.isArray(v) ? v[0] : v).trim().toLowerCase();
+  if (['yes','y','true','1'].includes(s)) return 'Yes';
+  if (['no','n','false','0'].includes(s)) return 'No';
+  return 'No';
+};
+
 const clearWorkerApplicationDrafts = () => {
   try {
     localStorage.removeItem('workerInformationForm');
@@ -23,6 +42,36 @@ const clearWorkerApplicationDrafts = () => {
   } catch {}
 };
 
+function buildAppU() {
+  try {
+    const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+    const e =
+      a.email ||
+      localStorage.getItem('workerEmail') ||
+      localStorage.getItem('worker_email') ||
+      localStorage.getItem('email_address') ||
+      localStorage.getItem('email') ||
+      '';
+    const au =
+      a.auth_uid ||
+      a.authUid ||
+      a.uid ||
+      a.id ||
+      localStorage.getItem('worker_auth_uid') ||
+      localStorage.getItem('auth_uid') ||
+      null;
+    return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
+  } catch {
+    const e =
+      localStorage.getItem('workerEmail') ||
+      localStorage.getItem('worker_email') ||
+      localStorage.getItem('email_address') ||
+      localStorage.getItem('email') ||
+      '';
+    return encodeURIComponent(JSON.stringify({ r: 'worker', e, au: null }));
+  }
+}
+
 const WorkerReviewPost = ({ handleBack }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -30,6 +79,9 @@ const WorkerReviewPost = ({ handleBack }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [applicationGroupId, setApplicationGroupId] = useState(null);
+  const [workerIdState, setWorkerIdState] = useState(null);
 
   useEffect(() => {
     try {
@@ -42,6 +94,26 @@ const WorkerReviewPost = ({ handleBack }) => {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     } catch {}
   };
+
+  const appU = useMemo(() => buildAppU(), []);
+  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/workers/me`, { withCredentials: true, headers: headersWithU });
+        const wid = data?.id || null;
+        const au = data?.auth_uid || null;
+        if (wid) localStorage.setItem('worker_id', String(wid));
+        if (au) localStorage.setItem('auth_uid', String(au));
+        setWorkerIdState(wid || null);
+      } catch {
+        const widLS = localStorage.getItem('worker_id');
+        setWorkerIdState(widLS ? Number(widLS) : null);
+      }
+    };
+    fetchMe();
+  }, [headersWithU]);
 
   const savedInfo = (() => {
     try {
@@ -83,8 +155,8 @@ const WorkerReviewPost = ({ handleBack }) => {
 
   const first_name = s.first_name ?? savedInfo.firstName ?? '';
   const last_name = s.last_name ?? savedInfo.lastName ?? '';
-  const birth_date = s.birth_date ?? savedInfo.birth_date ?? '';
-  const age = s.age ?? savedInfo.age ?? computeAge(birth_date);
+  const date_of_birth = s.date_of_birth ?? savedInfo.date_of_birth ?? '';
+  const age = s.age ?? savedInfo.age ?? computeAge(date_of_birth);
   const contact_number = s.contact_number ?? savedInfo.contactNumber ?? '';
   const email = s.email ?? savedInfo.email ?? '';
   const street = s.street ?? savedInfo.street ?? '';
@@ -92,11 +164,10 @@ const WorkerReviewPost = ({ handleBack }) => {
   const profile_picture = s.profile_picture ?? savedInfo.profilePicture ?? null;
 
   const service_types = s.service_types ?? savedWork.service_types ?? savedWork.serviceTypesSelected ?? [];
-  const service_task = s.service_task ?? savedWork.service_task ?? savedWork.serviceTaskSelected ?? [];
+  const service_task = s.service_task ?? savedWork.service_task ?? savedWork.serviceTaskSelected ?? {};
   const years_experience = s.years_experience ?? savedWork.years_experience ?? savedWork.yearsExperience ?? '';
   const tools_provided = s.tools_provided ?? savedWork.tools_provided ?? savedWork.toolsProvided ?? '';
-  const service_description =
-    s.service_description ?? savedWork.service_description ?? savedWork.serviceDescription ?? '';
+  const service_description = s.service_description ?? savedWork.service_description ?? savedWork.serviceDescription ?? '';
 
   const rate_type = s.rate_type ?? savedRate.rate_type ?? savedRate.rateType ?? '';
   const rate_from = s.rate_from ?? savedRate.rate_from ?? savedRate.rateFrom ?? '';
@@ -121,13 +192,9 @@ const WorkerReviewPost = ({ handleBack }) => {
 
   const contactDisplay = (
     <div className="inline-flex items-center gap-2">
-      <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
+      <img src="/philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
       <span className="text-gray-700 text-sm">+63</span>
-      <span
-        className={`text-base md:text-lg leading-6 ${
-          contactLocal10 ? 'text-[#008cfc] font-medium' : 'text-gray-400'
-        }`}
-      >
+      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-[#008cfc] font-medium' : 'text-gray-400'}`}>
         {contactLocal10 || '9XXXXXXXXX'}
       </span>
     </div>
@@ -163,25 +230,323 @@ const WorkerReviewPost = ({ handleBack }) => {
     }, 2000);
   };
 
-  const handleConfirm = () => {
-    jumpTop();
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+  const requireFields = (obj, keys) => {
+    const missing = [];
+    keys.forEach((k) => {
+      const val = obj[k];
+      if (val === null || val === undefined || (typeof val === 'string' && val.trim() === '')) missing.push(k);
+    });
+    return missing;
+  };
+
+  const asStringArray = (v) => {
+    if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
+    if (typeof v === 'string') return v.split(',').map((x) => x.trim()).filter(Boolean);
+    return [];
+  };
+
+  const buildServiceTaskObject = (serviceTaskRaw, serviceTypesRaw) => {
+    const out = {};
+    if (serviceTaskRaw && typeof serviceTaskRaw === 'object' && !Array.isArray(serviceTaskRaw)) {
+      Object.entries(serviceTaskRaw).forEach(([category, tasks]) => {
+        const norm = Array.isArray(tasks)
+          ? tasks.map(String).map((x) => x.trim()).filter(Boolean)
+          : (String(tasks || '').trim() ? [String(tasks).trim()] : []);
+        if (norm.length) out[category] = Array.from(new Set(norm));
+      });
+    }
+    const types = asStringArray(serviceTypesRaw);
+    types.forEach((cat) => {
+      if (!out[cat] || !out[cat].length) out[cat] = ['general'];
+    });
+    if (!Object.keys(out).length) out.General = ['general'];
+    return out;
+  };
+
+  const handleConfirm = async () => {
+    try {
+      setSubmitError('');
+      setIsSubmitting(true);
+
+      const infoDraft = (() => {
+        try {
+          return JSON.parse(localStorage.getItem('workerInformationForm') || '{}');
+        } catch {
+          return {};
+        }
+      })();
+      const workDraft = (() => {
+        try {
+          return JSON.parse(localStorage.getItem('workerWorkInformation') || '{}');
+        } catch {
+          return {};
+        }
+      })();
+      const docsDraft = (() => {
+        try {
+          return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]');
+        } catch {
+          return [];
+        }
+      })();
+      const rateDraft = (() => {
+        try {
+          return JSON.parse(localStorage.getItem('workerRate') || '{}');
+        } catch {
+          return {};
+        }
+      })();
+      const agreeDraft = (() => {
+        try {
+          return JSON.parse(localStorage.getItem('workerAgreements') || '{}');
+        } catch {
+          return {};
+        }
+      })();
+
+      const payload = {
+        info: {
+          firstName: infoDraft.firstName || '',
+          lastName: infoDraft.lastName || '',
+          contactNumber: infoDraft.contactNumber || '',
+          email: (infoDraft.email || '').trim(),
+          street: infoDraft.street || '',
+          barangay: infoDraft.barangay || '',
+          profilePicture: infoDraft.profilePicture || '',
+          profilePictureName: infoDraft.profilePictureName || '',
+          birthDate: infoDraft.date_of_birth || '',
+          age: infoDraft.age || computeAge(infoDraft.date_of_birth || '')
+        },
+        work: {
+          serviceTypes: workDraft.service_types || workDraft.serviceTypesSelected || [],
+          serviceTask: workDraft.service_task || workDraft.serviceTaskSelected || {},
+          yearsExperience: workDraft.years_experience || workDraft.yearsExperience || '',
+          toolsProvided: workDraft.tools_provided || workDraft.toolsProvided || '',
+          serviceDescription: workDraft.service_description || workDraft.serviceDescription || ''
+        },
+        documents: Array.isArray(docsDraft) ? docsDraft : [],
+        rate: {
+          rateType: rateDraft.rateType || rateDraft.rate_type || '',
+          rateFrom: rateDraft.rateFrom || rateDraft.rate_from || '',
+          rateTo: rateDraft.rateTo || rateDraft.rate_to || '',
+          rateValue: rateDraft.rateValue || rateDraft.rate_value || ''
+        },
+        agreements: {
+          consent_background_checks: !!agreeDraft.agree_verify,
+          consent_terms_privacy: !!agreeDraft.agree_tos,
+          consent_data_privacy: !!agreeDraft.agree_privacy
+        }
+      };
+
+      const workerAuth = (() => {
+        try {
+          return JSON.parse(localStorage.getItem('workerAuth') || '{}');
+        } catch {
+          return {};
+        }
+      })();
+      const emailVal =
+        (payload.info.email ||
+          savedInfo.email ||
+          workerAuth.email ||
+          localStorage.getItem('worker_email') ||
+          localStorage.getItem('email_address') ||
+          localStorage.getItem('email') ||
+          '').toString().trim().toLowerCase();
+
+      const workerId =
+        workerIdState ||
+        infoDraft.worker_id ||
+        infoDraft.workerId ||
+        Number(localStorage.getItem('worker_id')) ||
+        null;
+
+      const normalized = {
+        worker_id: workerId || '',
+        first_name: (payload.info.firstName || '').trim(),
+        last_name: (payload.info.lastName || '').trim(),
+        email_address: emailVal,
+        contact_number: (payload.info.contactNumber || '').trim(),
+        barangay: (payload.info.barangay || '').trim() || 'N/A',
+        street: (payload.info.street || '').trim() || 'N/A',
+        date_of_birth: (payload.info.birthDate || '').trim(),
+        age: payload.info.age || null,
+        profile_picture: payload.info.profilePicture || '',
+        profile_picture_name: payload.info.profilePictureName || '',
+        service_types: asStringArray(payload.work.serviceTypes),
+        service_task: buildServiceTaskObject(payload.work.serviceTask, payload.work.serviceTypes),
+        years_experience: coerceYears(payload.work.yearsExperience),
+        tools_provided: normalizeToolsProvided(payload.work.toolsProvided),
+        service_description: (payload.work.serviceDescription || '').trim(),
+        rate_type: (payload.rate.rateType || '').trim(),
+        rate_from: null,
+        rate_to: null,
+        rate_value: null,
+        documents: Array.isArray(payload.documents) ? payload.documents : [],
+        agreements: {
+          consent_background_checks: !!payload.agreements.consent_background_checks,
+          consent_terms_privacy: !!payload.agreements.consent_terms_privacy,
+          consent_data_privacy: !!payload.agreements.consent_data_privacy
+        },
+        metadata: {
+          profile_picture_name: payload.info.profilePictureName || '',
+          auth_uid: localStorage.getItem('auth_uid') || workerAuth.auth_uid || ''
+        }
+      };
+
+      if (normalized.rate_type === 'Hourly Rate') {
+        normalized.rate_from = (() => {
+          const n = Number(payload.rate.rateFrom);
+          return Number.isFinite(n) ? n : null;
+        })();
+        normalized.rate_to = (() => {
+          const n = Number(payload.rate.rateTo);
+          return Number.isFinite(n) ? n : null;
+        })();
+      } else if (normalized.rate_type === 'By the Job Rate') {
+        normalized.rate_value = (() => {
+          const n = Number(payload.rate.rateValue);
+          return Number.isFinite(n) ? n : null;
+        })();
+      }
+
+      const missing = requireFields(normalized, [
+        'first_name',
+        'last_name',
+        'contact_number',
+        'street',
+        'barangay',
+        'service_types',
+        'service_description',
+        'rate_type'
+      ]);
+      if (missing.length) {
+        setIsSubmitting(false);
+        setSubmitError(`Missing fields: ${missing.join(', ')}`);
+        return;
+      }
+
+      if (!(normalized.worker_id && String(normalized.worker_id).trim()) && !(normalized.email_address && String(normalized.email_address).trim())) {
+        setIsSubmitting(false);
+        setSubmitError('Unable to identify worker. Provide worker_id or a known email_address.');
+        return;
+      }
+
+      const infoPayload = {
+        worker_id: normalized.worker_id,
+        workerId: normalized.worker_id,
+        auth_uid: normalized.metadata.auth_uid,
+        first_name: normalized.first_name,
+        firstName: normalized.first_name,
+        last_name: normalized.last_name,
+        lastName: normalized.last_name,
+        email_address: normalized.email_address,
+        email: normalized.email_address,
+        contact_number: normalized.contact_number,
+        contactNumber: normalized.contact_number,
+        street: normalized.street,
+        barangay: normalized.barangay,
+        profile_picture: normalized.profile_picture,
+        profilePicture: normalized.profile_picture,
+        profile_picture_name: normalized.profile_picture_name,
+        profilePictureName: normalized.profile_picture_name,
+        date_of_birth: normalized.date_of_birth,
+        age: normalized.age
+      };
+
+      const workPayload = {
+        service_types: normalized.service_types,
+        serviceTypes: normalized.service_types,
+        service_task: normalized.service_task,
+        serviceTask: normalized.service_task,
+        years_experience: normalized.years_experience,
+        yearsExperience: normalized.years_experience,
+        tools_provided: normalized.tools_provided,
+        toolsProvided: normalized.tools_provided,
+        service_description: normalized.service_description,
+        work_description: normalized.service_description
+      };
+
+      const ratePayload = {
+        rate_type: normalized.rate_type,
+        rateType: normalized.rate_type,
+        rate_from: normalized.rate_from,
+        rateFrom: normalized.rate_from,
+        rate_to: normalized.rate_to,
+        rateTo: normalized.rate_to,
+        rate_value: normalized.rate_value,
+        rateValue: normalized.rate_value
+      };
+
+      const jsonBody = {
+        worker_id: normalized.worker_id,
+        first_name: normalized.first_name,
+        last_name: normalized.last_name,
+        email_address: normalized.email_address,
+        contact_number: normalized.contact_number,
+        street: normalized.street,
+        barangay: normalized.barangay,
+        date_of_birth: normalized.date_of_birth,
+        age: normalized.age,
+        service_types: normalized.service_types,
+        service_task: normalized.service_task,
+        years_experience: normalized.years_experience,
+        tools_provided: normalized.tools_provided,
+        service_description: normalized.service_description,
+        rate_type: normalized.rate_type,
+        rate_from: normalized.rate_from,
+        rate_to: normalized.rate_to,
+        rate_value: normalized.rate_value,
+        documents: normalized.documents,
+        agreements: normalized.agreements,
+        metadata: normalized.metadata,
+        info: infoPayload,
+        details: {
+          service_types: normalized.service_types,
+          service_task: normalized.service_task,
+          years_experience: normalized.years_experience,
+          tools_provided: normalized.tools_provided,
+          service_description: normalized.service_description,
+          work_description: normalized.service_description
+        },
+        rate: ratePayload
+      };
+
+      const submitBody = {
+        info: infoPayload,
+        details: workPayload,
+        rate: ratePayload,
+        documents: normalized.documents,
+        agreements: normalized.agreements,
+        email_address: normalized.email_address,
+        worker_id: normalized.worker_id,
+        metadata: normalized.metadata
+      };
+
+      const res = await axios.post(`${API_BASE}/api/workerapplications/submit`, submitBody, {
+        withCredentials: true,
+        headers: { 'Content-Type': 'application/json', ...headersWithU }
+      });
+
+      setApplicationGroupId(res?.data?.application?.request_group_id || res?.data?.request_group_id || null);
       setShowSuccess(true);
-    }, 2000);
+      localStorage.setItem(CONFIRM_FLAG, '1');
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Submission failed';
+      setSubmitError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGoDashboard = () => {
-    clearWorkerApplicationDrafts();
+    try {
+      clearWorkerApplicationDrafts();
+      localStorage.setItem(CONFIRM_FLAG, '1');
+      window.dispatchEvent(new Event('worker-application-submitted'));
+    } catch {}
     jumpTop();
-    const path = '/workerdashboard';
-    try {
-      navigate(path, { state: { submitted: true, __forceTop: true }, replace: true });
-    } catch {}
-    try {
-      window.location.assign(path);
-    } catch {}
+    navigate('/workerdashboard', { state: { submitted: true, request_group_id: applicationGroupId, __forceTop: true }, replace: true });
   };
 
   useEffect(() => {
@@ -254,10 +619,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                   <LabelValue label="Last Name" value={last_name} />
                   <LabelValue label="Contact Number" value={contactDisplay} />
                   <LabelValue label="Email" value={email} />
-                  <LabelValue
-                    label="Address"
-                    value={street && barangay ? `${street}, ${barangay}` : street || barangay}
-                  />
+                  <LabelValue label="Address" value={street && barangay ? `${street}, ${barangay}` : street || barangay} />
                 </div>
 
                 <div className="md:col-span-1 flex flex-col items-center">
@@ -295,14 +657,9 @@ const WorkerReviewPost = ({ handleBack }) => {
                       {service_task && typeof service_task === 'object' && Object.keys(service_task).length ? (
                         <div className="space-y-2">
                           {Object.entries(service_task).map(([k, v]) => (
-                            <div
-                              key={k}
-                              className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4"
-                            >
+                            <div key={k} className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
                               <span className="font-semibold text-gray-700">{`${k.replace(/:?\s*$/, '')}:`}</span>
-                              <span className="text-base md:text-lg font-medium text-[#008cfc]">
-                                {formatList(v)}
-                              </span>
+                              <span className="text-base md:text-lg font-medium text-[#008cfc]">{formatList(v)}</span>
                             </div>
                           ))}
                         </div>
@@ -330,10 +687,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                   <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                     <LabelValue label="Rate Type" value={rate_type} />
                     {rate_type === 'Hourly Rate' ? (
-                      <LabelValue
-                        label="Rate"
-                        value={rate_from && rate_to ? `₱${rate_from} - ₱${rate_to} per hour` : ''}
-                      />
+                      <LabelValue label="Rate" value={rate_from && rate_to ? `₱${rate_from} - ₱${rate_to} per hour` : ''} />
                     ) : (
                       <LabelValue label="Rate" value={rate_value ? `₱${rate_value}` : ''} />
                     )}
@@ -354,46 +708,39 @@ const WorkerReviewPost = ({ handleBack }) => {
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Worker:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">
-                      {first_name || '-'} {last_name || ''}
-                    </span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Services:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">
-                      {formatList(service_types)}
-                    </span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{formatList(service_types)}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Experience:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">
-                      {years_experience || '-'}
-                    </span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{years_experience || '-'}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Tools:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">
-                      {tools_provided || '-'}
-                    </span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{tools_provided || '-'}</span>
                   </div>
                   <div className="h-px bg-gray-100 my-2" />
                   <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Rate:</span>
                     {rate_type === 'Hourly Rate' ? (
                       <div className="text-lg font-semibold text-[#008cfc]">
-                        ₱{rate_from || 0}–₱{rate_to || 0}{' '}
-                        <span className="text-sm font-normal text-[#008cfc] opacity-80">per hour</span>
+                        ₱{rate_from || 0}–₱{rate_to || 0} <span className="text-sm font-normal text-[#008cfc] opacity-80">per hour</span>
                       </div>
                     ) : rate_type === 'By the Job Rate' ? (
                       <div className="text-lg font-semibold text-[#008cfc]">
-                        ₱{rate_value || 0}{' '}
-                        <span className="text-sm font-normal text-[#008cfc] opacity-80">per job</span>
+                        ₱{rate_value || 0} <span className="text-sm font-normal text-[#008cfc] opacity-80">per job</span>
                       </div>
                     ) : (
                       <div className="text-gray-500 text-sm">No rate provided</div>
                     )}
                   </div>
                 </div>
+                {submitError ? (
+                  <div className="px-6 py-3 text-sm text-red-700 bg-red-50 border-t border-red-100">{submitError}</div>
+                ) : null}
                 <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
                   <button
                     type="button"
@@ -563,9 +910,7 @@ const WorkerReviewPost = ({ handleBack }) => {
             <div className="mt-6 text-center space-y-2">
               <div className="text-lg font-semibold text-gray-900">Application Submitted!</div>
               <div className="text-sm text-gray-600">Please wait for admin approval.</div>
-              <div className="text-xs text-gray-500">
-                The details below will remain on this page for your reference.
-              </div>
+              <div className="text-xs text-gray-500">The details below will remain on this page for your reference.</div>
             </div>
 
             <div className="mt-6">

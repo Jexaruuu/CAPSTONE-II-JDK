@@ -1,8 +1,40 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { compressImageFileToDataURL } from '../../utils/imageCompression';
+import axios from 'axios';
 
 const STORAGE_KEY = 'workerInformationForm';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+function buildAppU() {
+  try {
+    const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+    const e =
+      a.email ||
+      localStorage.getItem('workerEmail') ||
+      localStorage.getItem('worker_email') ||
+      localStorage.getItem('email_address') ||
+      localStorage.getItem('email') ||
+      '';
+    const au =
+      a.auth_uid ||
+      a.authUid ||
+      a.uid ||
+      a.id ||
+      localStorage.getItem('worker_auth_uid') ||
+      localStorage.getItem('auth_uid') ||
+      null;
+    return encodeURIComponent(JSON.stringify({ e, r: 'worker', au }));
+  } catch {
+    const e =
+      localStorage.getItem('workerEmail') ||
+      localStorage.getItem('worker_email') ||
+      localStorage.getItem('email_address') ||
+      localStorage.getItem('email') ||
+      '';
+    return encodeURIComponent(JSON.stringify({ e, r: 'worker', au: null }));
+  }
+}
 
 const clearWorkerApplicationDrafts = () => {
   try {
@@ -42,11 +74,14 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const [dpView, setDpView] = useState(new Date());
   const dpRef = useRef(null);
 
-  const [birthLocked] = useState(false);
-  const [contactLocked] = useState(false);
+  const [birthLocked, setBirthLocked] = useState(false);
+  const [contactLocked, setContactLocked] = useState(false);
 
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const navigate = useNavigate();
+
+  const appU = useMemo(() => buildAppU(), []);
+  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -205,14 +240,14 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
         const d = JSON.parse(saved);
         setFirstName(d.firstName || '');
         setLastName(d.lastName || '');
-        setBirthDate(d.birth_date || '');
+        setBirthDate(d.date_of_birth || '');
         setContactNumber(d.contactNumber || '');
         setEmail(d.email || '');
         setBarangay(d.barangay || '');
         setStreet(d.street || '');
         setProfilePicture(d.profilePicture || null);
         setProfilePictureName(d.profilePictureName || '');
-        if (d.birth_date) setDpView(new Date(d.birth_date));
+        if (d.date_of_birth) setDpView(new Date(d.date_of_birth));
       } catch {}
     } else {
       setDpView(new Date(maxDOBDate));
@@ -238,11 +273,46 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   }, [hydrated]);
 
   useEffect(() => {
+    let mounted = true;
+    axios
+      .get(`${API_BASE}/api/workers/me`, { withCredentials: true, headers: headersWithU })
+      .then((r) => r.data)
+      .then((p) => {
+        if (!mounted || !p) return;
+        const dob = p?.date_of_birth ? String(p.date_of_birth).slice(0, 10) : '';
+        const phone = p?.phone ? String(p.phone) : '';
+        const fn = p?.first_name || '';
+        const ln = p?.last_name || '';
+        const em = p?.email_address || '';
+        if (fn) setFirstName(fn);
+        if (ln) setLastName(ln);
+        if (em && validateEmail(em)) {
+          setEmail(em);
+          setEmailLocked(true);
+        }
+        if (dob) {
+          setBirthDate(dob);
+          setBirthLocked(true);
+        }
+        if (phone) {
+          const v = phone.replace(/\D/g, '').slice(0, 10);
+          setContactNumber(v);
+          setContactLocked(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [headersWithU]);
+
+  useEffect(() => {
     if (!hydrated) return;
     const draft = {
       firstName,
       lastName,
-      birth_date: birthDate,
+      date_of_birth: birthDate,
       contactNumber,
       email,
       barangay,
@@ -322,7 +392,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
     const draft = {
       firstName,
       lastName,
-      birth_date: birthDate,
+      date_of_birth: birthDate,
       contactNumber,
       email,
       barangay,
@@ -337,7 +407,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
       auth_uid: localStorage.getItem('auth_uid') || '',
       first_name: firstName,
       last_name: lastName,
-      birth_date: birthDate,
+      date_of_birth: birthDate,
       contact_number: contactNumber,
       email_address: email,
       barangay,

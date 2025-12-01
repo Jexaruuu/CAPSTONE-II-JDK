@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 
+const STORAGE_KEY = 'workerRate';
+
 const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [rateType, setRateType] = useState('');
   const [rateFrom, setRateFrom] = useState('');
   const [rateTo, setRateTo] = useState('');
   const [rateValue, setRateValue] = useState('');
-
   const [attempted, setAttempted] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [isLoadingBack, setIsLoadingBack] = useState(false);
@@ -22,6 +24,20 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     } catch {}
   };
+
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        setRateType(data.rate_type || '');
+        setRateFrom(data.rate_from || '');
+        setRateTo(data.rate_to || '');
+        setRateValue(data.rate_value || '');
+      } catch {}
+    }
+    setHydrated(true);
+  }, []);
 
   const handleRateTypeChange = (e) => {
     setRateType(e.target.value);
@@ -51,6 +67,19 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
     rateType &&
     ((rateType === 'Hourly Rate' && isHourlyValid()) ||
       (rateType === 'By the Job Rate' && isJobValid()));
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const draft = {
+      rate_type: rateType,
+      rate_from: rateFrom,
+      rate_to: rateTo,
+      rate_value: rateValue
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch {}
+  }, [hydrated, rateType, rateFrom, rateTo, rateValue]);
 
   useEffect(() => {
     if (!isLoadingNext) return;
@@ -110,12 +139,14 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
 
   const proceed = () => {
     const draft = {
-  rate_type: rateType,
-  rate_from: rateFrom,
-  rate_to: rateTo,
-  rate_value: rateValue,
-};
-localStorage.setItem('workerRate', JSON.stringify(draft));
+      rate_type: rateType,
+      rate_from: rateFrom,
+      rate_to: rateTo,
+      rate_value: rateValue
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch {}
     onCollect?.(draft);
     handleNext?.();
   };
@@ -139,7 +170,7 @@ localStorage.setItem('workerRate', JSON.stringify(draft));
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-[#F7FBFF] to-white pb-24">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -151,11 +182,13 @@ localStorage.setItem('workerRate', JSON.stringify(draft));
                 e.currentTarget.style.display = 'none';
               }}
             />
-            <div className="text-2xl md:text-3xl font-semibold text-gray-900">Please choose your service rate</div>
+            <div className="text-2xl md:text-3xl font-semibold text-gray-900">
+              Please choose your service rate
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-sm text-gray-500">Step 4 of 5</div>
-            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden">
+            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden ring-1 ring-white">
               <div className="h-full w-3/4 bg-[#008cfc]" />
             </div>
           </div>
@@ -163,9 +196,11 @@ localStorage.setItem('workerRate', JSON.stringify(draft));
       </div>
 
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-5">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-            <h3 className="text-xl md:text-2xl font-semibold">Service Price Rate</h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
+            <h3 className="text-xl md:text-2xl font-semibold text-gray-900">
+              Service Price Rate
+            </h3>
             <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Rate
@@ -173,106 +208,160 @@ localStorage.setItem('workerRate', JSON.stringify(draft));
           </div>
 
           <div className="px-6 py-6">
-            <p className="text-base text-gray-600 mb-6">Please choose the service rate type and enter the price.</p>
+            <p className="text-base text-gray-600 mb-6">
+              Please choose the service rate type and enter the price.
+            </p>
 
-            <div className="flex space-x-6 mb-6">
-              <div
-                className={`w-1/2 cursor-pointer p-4 border rounded-xl text-center ${
-                  rateType === 'Hourly Rate' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-                }`}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <button
+                type="button"
                 onClick={() => handleRateTypeChange({ target: { value: 'Hourly Rate' } })}
-              >
-                <div className="flex justify-center mb-2">
-                  <img src="/Clock.png" alt="Rate Icon" className="w-6 h-6" />
-                </div>
-                <p className="text-base font-semibold">By the hour</p>
-              </div>
-
-              <div
-                className={`w-1/2 cursor-pointer p-4 border rounded-xl text-center ${
-                  rateType === 'By the Job Rate' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                className={`p-4 border rounded-xl text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 ${
+                  rateType === 'Hourly Rate'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-300 hover:bg-gray-50'
                 }`}
-                onClick={() => handleRateTypeChange({ target: { value: 'By the Job Rate' } })}
               >
-                <div className="flex justify-center mb-2">
-                  <img src="/Contract.png" alt="Rate Icon" className="w-6 h-6" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 grid place-items-center rounded-lg bg-blue-100">
+                    <img src="/Clock.png" alt="" className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-base font-semibold text-gray-900">By the hour</p>
+                    <p className="text-sm text-gray-500">Charge per hour of work</p>
+                  </div>
                 </div>
-                <p className="text-base font-semibold">By the job</p>
-              </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleRateTypeChange({ target: { value: 'By the Job Rate' } })
+                }
+                className={`p-4 border rounded-xl text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 ${
+                  rateType === 'By the Job Rate'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 grid place-items-center rounded-lg bg-blue-100">
+                    <img src="/Contract.png" alt="" className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-base font-semibold text-gray-900">By the job</p>
+                    <p className="text-sm text-gray-500">Single fixed price</p>
+                  </div>
+                </div>
+              </button>
             </div>
 
             {rateType === 'Hourly Rate' && (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Enter the Rate (Per Hour)</label>
-                <div className="flex space-x-6">
-                  <div className="w-1/2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₱</span>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter the Rate (Per Hour)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      From
+                    </label>
+                    <div
+                      className={`relative rounded-xl border ${
+                        attempted && !isHourlyValid() && !rateFrom
+                          ? 'border-red-500'
+                          : 'border-gray-300'
+                      } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
+                    >
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                        ₱
+                      </span>
                       <input
                         type="number"
                         inputMode="numeric"
                         pattern="\d*"
                         value={rateFrom}
                         onChange={handleRateFromChange}
-                        className={`w-full pl-8 px-4 py-3 border ${
-                          attempted && !isHourlyValid() && !rateFrom ? 'border-red-500' : 'border-gray-300'
-                        } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                        className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
                         required
                       />
                     </div>
                   </div>
-                  <div className="w-1/2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₱</span>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      To
+                    </label>
+                    <div
+                      className={`relative rounded-xl border ${
+                        attempted && !isHourlyValid() && !rateTo
+                          ? 'border-red-500'
+                          : 'border-gray-300'
+                      } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
+                    >
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                        ₱
+                      </span>
                       <input
                         type="number"
                         inputMode="numeric"
                         pattern="\d*"
                         value={rateTo}
                         onChange={handleRateToChange}
-                        className={`w-full pl-8 px-4 py-3 border ${
-                          attempted && !isHourlyValid() && !rateTo ? 'border-red-500' : 'border-gray-300'
-                        } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                        className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
                         required
                       />
                     </div>
                   </div>
                 </div>
                 {attempted && rateFrom && rateTo && !isHourlyValid() && (
-                  <p className="text-xs text-red-600 mt-1">Enter valid amounts, and make sure “To” ≥ “From”.</p>
+                  <p className="text-xs text-red-600 mt-1">
+                    Enter valid amounts, and make sure “To” is greater than or equal to “From”.
+                  </p>
                 )}
-                <p className="text-base text-gray-600 mt-1">This is the average rate for similar home services.</p>
-                <p className="text-base text-gray-600 mt-5">
-                  Offer your budget-friendly rates for plumbing, carpentry, electrical work, car washing, and laundry.
+                <p className="text-base text-gray-600 mt-2">
+                  This can be your usual hourly rate for home services.
+                </p>
+                <p className="text-base text-gray-600 mt-4">
+                  Offer your budget-friendly rates for plumbing, carpentry, electrical work, car
+                  washing, and laundry.
                 </p>
               </div>
             )}
 
             {rateType === 'By the Job Rate' && (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Enter the Rate</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₱</span>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter the Rate
+                </label>
+                <div
+                  className={`relative rounded-xl border ${
+                    attempted && !isJobValid() ? 'border-red-500' : 'border-gray-300'
+                  } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
+                >
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                    ₱
+                  </span>
                   <input
                     type="number"
                     inputMode="numeric"
                     pattern="\d*"
                     value={rateValue}
                     onChange={handleRateValueChange}
-                    className={`w-full pl-8 px-4 py-3 border ${
-                      attempted && !isJobValid() ? 'border-red-500' : 'border-gray-300'
-                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                    className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
                     required
                   />
                 </div>
                 {attempted && !isJobValid() && (
-                  <p className="text-xs text-red-600 mt-1">Enter a valid amount greater than 0.</p>
+                  <p className="text-xs text-red-600 mt-1">
+                    Enter a valid amount greater than 0.
+                  </p>
                 )}
-                <p className="text-base text-gray-600 mt-2">Set your price range.</p>
+                <p className="text-base text-gray-600 mt-2">
+                  Set a fixed price for your service.
+                </p>
                 <p className="text-base text-gray-600 mt-4">
-                  Share what your fixed price that affordable for plumbing, carpentry, electrical, car wash, or laundry.
+                  You and the client can discuss and agree on this fixed price based on the scope of
+                  work.
                 </p>
               </div>
             )}
@@ -283,7 +372,7 @@ localStorage.setItem('workerRate', JSON.stringify(draft));
           <button
             type="button"
             onClick={onBackClick}
-            className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+            className="sm:w-1/3 w-full px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
           >
             Back : Required Documents
           </button>
@@ -294,36 +383,15 @@ localStorage.setItem('workerRate', JSON.stringify(draft));
             disabled={!isFormValid}
             aria-disabled={!isFormValid}
             className={`sm:w-1/3 w-full px-6 py-3 rounded-xl transition shadow-sm ${
-              isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
-            }`}
+              isFormValid
+                ? 'bg-[#008cfc] text-white hover:bg-[#0077d6]'
+                : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
+            } focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40`}
           >
             Next : Terms &amp; Condition Agreements
           </button>
         </div>
       </form>
-
-      {false && (
-        <div className="flex justify-between mt-8 ml-3">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="px-8 py-3 bg-gray-300 text-white rounded-md shadow-md hover:bg-gray-400 transition duration-300 -mt-4"
-          >
-            Back : Required Documents
-          </button>
-          <button
-            type="button"
-            onClick={onNextClick}
-            disabled={!isFormValid}
-            aria-disabled={!isFormValid}
-            className={`px-8 py-3 rounded-md shadow-md transition duration-300 -mt-4 ${
-              isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
-            }`}
-          >
-            Next : Terms & Condition Agreements
-          </button>
-        </div>
-      )}
 
       {isLoadingNext && (
         <div
@@ -340,10 +408,10 @@ localStorage.setItem('workerRate', JSON.stringify(draft));
             e.preventDefault();
             e.stopPropagation();
           }}
-          className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
@@ -394,10 +462,10 @@ localStorage.setItem('workerRate', JSON.stringify(draft));
             e.preventDefault();
             e.stopPropagation();
           }}
-          className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
+          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"

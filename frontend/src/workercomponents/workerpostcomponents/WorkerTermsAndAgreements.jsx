@@ -1,16 +1,50 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+function buildAppU() {
+  try {
+    const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+    const e =
+      a.email ||
+      localStorage.getItem('workerEmail') ||
+      localStorage.getItem('worker_email') ||
+      localStorage.getItem('email_address') ||
+      localStorage.getItem('email') ||
+      '';
+    const au =
+      a.auth_uid ||
+      a.authUid ||
+      a.uid ||
+      a.id ||
+      localStorage.getItem('worker_auth_uid') ||
+      localStorage.getItem('auth_uid') ||
+      null;
+    return encodeURIComponent(JSON.stringify({ e, r: 'worker', au }));
+  } catch {
+    const e =
+      localStorage.getItem('workerEmail') ||
+      localStorage.getItem('worker_email') ||
+      localStorage.getItem('email_address') ||
+      localStorage.getItem('email') ||
+      '';
+    return encodeURIComponent(JSON.stringify({ e, r: 'worker', au: null }));
+  }
+}
 
 const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [agreeVerify, setAgreeVerify] = useState(false);
   const [agreeTos, setAgreeTos] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
-
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
-
+  const [meEmail, setMeEmail] = useState('');
   const canProceed = agreeVerify && agreeTos && agreePrivacy;
+
+  const appU = useMemo(() => buildAppU(), []);
+  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
 
   useEffect(() => {
     try {
@@ -23,6 +57,31 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     } catch {}
   };
+
+  useEffect(() => {
+    const draft = { agree_verify: agreeVerify, agree_tos: agreeTos, agree_privacy: agreePrivacy };
+    try {
+      localStorage.setItem('workerAgreements', JSON.stringify(draft));
+    } catch {}
+  }, [agreeVerify, agreeTos, agreePrivacy]);
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/workers/me`, { credentials: 'include', headers: headersWithU });
+        if (r.ok) {
+          const j = await r.json();
+          const em = j?.email_address || '';
+          if (em) {
+            setMeEmail(em);
+            const known = localStorage.getItem('workerEmail') || localStorage.getItem('email_address') || '';
+            if (!known) { try { localStorage.setItem('workerEmail', em); } catch {} }
+          }
+        }
+      } catch {}
+    };
+    run();
+  }, [headersWithU]);
 
   useEffect(() => {
     if (!isLoadingNext) return;
@@ -69,11 +128,10 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
   }, [isLoadingBack]);
 
   const proceed = () => {
-    const draft = {
-      agree_verify: agreeVerify,
-      agree_tos: agreeTos,
-      agree_privacy: agreePrivacy
-    };
+    const draft = { email_address: meEmail || '', agree_verify: agreeVerify, agree_tos: agreeTos, agree_privacy: agreePrivacy };
+    try {
+      localStorage.setItem('workerAgreements', JSON.stringify(draft));
+    } catch {}
     onCollect?.(draft);
     handleNext?.();
   };

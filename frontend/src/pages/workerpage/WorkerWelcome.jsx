@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import WorkerNavigation from '../../workercomponents/WorkerNavigation';
 import WorkerFooter from '../../workercomponents/WorkerFooter';
+import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -44,11 +45,12 @@ const WorkerWelcomePage = () => {
 
   useEffect(() => {
     const x = encodeURIComponent(JSON.stringify(buildAppU()));
-    fetch(`${API_BASE}/api/worker/me`, {
-      headers: { 'x-app-u': x },
-      credentials: 'include',
-    })
-      .then((r) => (r.ok ? r.json() : null))
+    axios
+      .get(`${API_BASE}/api/worker/me`, {
+        headers: { 'x-app-u': x },
+        withCredentials: true,
+      })
+      .then((r) => r.data)
       .then((p) => {
         if (!p) return;
         if (typeof p.first_name === 'string') {

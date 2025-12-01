@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt, Trash2 } from 'lucide-react';
+import axios from 'axios';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 function getWorkerProfile() {
   let firstName = '';
@@ -106,99 +109,7 @@ function WorkerPost() {
   const allowedPHPrefixes = useMemo(
     () =>
       new Set([
-        '905',
-        '906',
-        '907',
-        '908',
-        '909',
-        '910',
-        '912',
-        '913',
-        '914',
-        '915',
-        '916',
-        '917',
-        '918',
-        '919',
-        '920',
-        '921',
-        '922',
-        '923',
-        '925',
-        '926',
-        '927',
-        '928',
-        '929',
-        '930',
-        '931',
-        '932',
-        '933',
-        '934',
-        '935',
-        '936',
-        '937',
-        '938',
-        '939',
-        '940',
-        '941',
-        '942',
-        '943',
-        '944',
-        '945',
-        '946',
-        '947',
-        '948',
-        '949',
-        '950',
-        '951',
-        '952',
-        '953',
-        '954',
-        '955',
-        '956',
-        '957',
-        '958',
-        '959',
-        '960',
-        '961',
-        '962',
-        '963',
-        '964',
-        '965',
-        '966',
-        '967',
-        '968',
-        '969',
-        '970',
-        '971',
-        '972',
-        '973',
-        '974',
-        '975',
-        '976',
-        '977',
-        '978',
-        '979',
-        '980',
-        '981',
-        '982',
-        '983',
-        '984',
-        '985',
-        '986',
-        '987',
-        '988',
-        '989',
-        '990',
-        '991',
-        '992',
-        '993',
-        '994',
-        '995',
-        '996',
-        '997',
-        '998',
-        '999'
+        '905','906','907','908','909','910','912','913','914','915','916','917','918','919','920','921','922','923','925','926','927','928','929','930','931','932','933','934','935','936','937','938','939','940','941','942','943','944','945','946','947','948','949','950','951','952','953','954','955','956','957','958','959','960','961','962','963','964','965','966','967','968','969','970','971','972','973','974','975','976','977','978','979','980','981','982','983','984','985','986','987','988','989','990','991','992','993','994','995','996','997','998','999'
       ]),
     []
   );
@@ -210,23 +121,61 @@ function WorkerPost() {
   const isValidPHMobile = (d) =>
     d && d.length === 10 && d[0] === '9' && !isTriviallyFake(d) && allowedPHPrefixes.has(d.slice(0, 3));
 
+  const appU = useMemo(() => {
+    try {
+      const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+      const au =
+        a.auth_uid ||
+        a.authUid ||
+        a.uid ||
+        a.id ||
+        localStorage.getItem('auth_uid') ||
+        '';
+      const e =
+        a.email ||
+        localStorage.getItem('worker_email') ||
+        localStorage.getItem('email_address') ||
+        localStorage.getItem('email') ||
+        '';
+      return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
+    } catch {
+      return '';
+    }
+  }, []);
+  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+
   const checkProfileComplete = () => {
     try {
       const raw = localStorage.getItem('workerInformationForm');
       if (!raw) return false;
       const d = JSON.parse(raw);
       const phone = String(d.contactNumber || '').replace(/\D/g, '');
-      const dob = String(d.birth_date || '').trim();
+      const dob = String(d.date_of_birth || '').trim();
       return isValidPHMobile(phone) && !!dob;
     } catch {
       return false;
     }
   };
 
-  const handleBecomeWorkerClick = (e) => {
+  const checkProfileCompleteServer = async () => {
+    try {
+      const { data } = await axios.get(`${API_BASE}/api/workers/me`, {
+        withCredentials: true,
+        headers: headersWithU
+      });
+      const phone = String(data?.phone || '').replace(/\D/g, '');
+      const dob = String(data?.date_of_birth || '').trim();
+      return isValidPHMobile(phone) && !!dob;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleBecomeWorkerClick = async (e) => {
     e.preventDefault();
     if (navLoading) return;
-    const ok = checkProfileComplete();
+    let ok = await checkProfileCompleteServer();
+    if (ok === null) ok = checkProfileComplete();
     if (!ok) {
       setShowProfileGate(true);
       return;
@@ -771,7 +720,7 @@ function WorkerPost() {
         )}
       </div>
 
-      {SHOW_CAROUSEL && approved.length > 0 && (
+      {false && approved.length > 0 && (
         <div className="mb-8">
           <div className="relative w-full flex justify-center items-center">
             <button
@@ -845,27 +794,9 @@ function WorkerPost() {
                         <div className="inline-flex items-center !h-11 whitespace-nowrap rounded-lg border border-yellow-200 bg-yellow-50 px-3 text-xs font-medium text-yellow-700">
                           Active Application
                           <span className="ml-2 inline-flex w-6 justify-between font-mono">
-                            <span
-                              className={`transition-opacity duration-200 ${
-                                dotStep >= 1 ? 'opacity-100' : 'opacity-0'
-                              }`}
-                            >
-                              .
-                            </span>
-                            <span
-                              className={`transition-opacity duration-200 ${
-                                dotStep >= 2 ? 'opacity-100' : 'opacity-0'
-                              }`}
-                            >
-                              .
-                            </span>
-                            <span
-                              className={`transition-opacity duration-200 ${
-                                dotStep >= 3 ? 'opacity-100' : 'opacity-0'
-                              }`}
-                            >
-                              .
-                            </span>
+                            <span className={`transition-opacity duration-200 ${dotStep >= 1 ? 'opacity-100' : 'opacity-0'}`}>.</span>
+                            <span className={`transition-opacity duration-200 ${dotStep >= 2 ? 'opacity-100' : 'opacity-0'}`}>.</span>
+                            <span className={`transition-opacity duration-200 ${dotStep >= 3 ? 'opacity-100' : 'opacity-0'}`}>.</span>
                           </span>
                         </div>
                         <div className="flex items-center gap-2">

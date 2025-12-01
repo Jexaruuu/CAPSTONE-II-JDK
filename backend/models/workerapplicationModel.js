@@ -1,4 +1,5 @@
-const { supabaseAdmin, getSupabaseAdmin } = require('../supabaseClient');
+// models/workerapplicationModel.js
+const { supabaseAdmin } = require('../supabaseClient');
 const crypto = require('crypto');
 
 function safeExtFromMime(mime) {
@@ -19,74 +20,57 @@ function sanitizeName(name) {
 function newGroupId() {
   return crypto.randomUUID ? crypto.randomUUID() : [Date.now().toString(36), Math.random().toString(36).slice(2)].join('-');
 }
-
 async function uploadDataUrlToBucket(bucket, dataUrl, baseName) {
-  const admin = supabaseAdmin;
   const parsed = decodeDataUrl(dataUrl);
   if (!parsed) return { url: null, name: null };
   const ext = safeExtFromMime(parsed.mime);
   const safeBase = sanitizeName(baseName || `file_${Date.now()}`);
-  const path = `${safeBase}.${ext}`;
-  const { data: up, error: upErr } = await admin.storage.from(bucket).upload(path, parsed.buffer, { contentType: parsed.mime, upsert: true });
+  const uniq = `${safeBase}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+  const path = `${uniq}.${ext}`;
+  const { error: upErr } = await supabaseAdmin.storage.from(bucket).upload(path, parsed.buffer, { contentType: parsed.mime, upsert: true });
   if (upErr) throw upErr;
-  const { data: pub } = admin.storage.from(bucket).getPublicUrl(up.path);
-  return { url: pub.publicUrl || null, name: path };
+  const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
+  return { url: pub?.publicUrl || null, name: path };
 }
-
 async function insertWorkerInformation(row) {
-  const admin = supabaseAdmin;
-  const { data, error } = await admin.from('worker_information').insert([row]).select('id').single();
+  const { data, error } = await supabaseAdmin.from('worker_information').insert([row]).select('id').single();
   if (error) throw error;
   return data;
 }
-
 async function updateWorkerInformationWorkerId(id, workerId) {
-  const admin = supabaseAdmin;
-  const { error } = await admin.from('worker_information').update({ worker_id: workerId }).eq('id', id);
+  const { error } = await supabaseAdmin.from('worker_information').update({ worker_id: workerId }).eq('id', id);
   if (error) throw error;
   return true;
 }
-
 async function insertWorkerWorkInformation(row) {
-  const admin = supabaseAdmin;
-  const { data, error } = await admin.from('worker_work_information').insert([row]).select('id').single();
+  const { data, error } = await supabaseAdmin.from('worker_work_information').insert([row]).select('id').single();
   if (error) throw error;
   return data;
 }
-
 async function insertWorkerRate(row) {
-  const admin = supabaseAdmin;
-  const { data, error } = await admin.from('worker_rate').insert([row]).select('id').single();
+  const { data, error } = await supabaseAdmin.from('worker_service_rate').insert([row]).select('id').single();
   if (error) throw error;
   return data;
 }
-
 async function insertWorkerRequiredDocuments(row) {
-  const admin = supabaseAdmin;
-  const { data, error } = await admin.from('worker_required_documents').insert([row]).select('id').single();
+  const { data, error } = await supabaseAdmin.from('worker_required_documents').insert([row]).select('id').single();
   if (error) throw error;
   return data;
 }
-
 async function insertWorkerTermsAndAgreements(row) {
-  const admin = supabaseAdmin;
-  const { data, error } = await admin.from('worker_terms_and_agreements').insert([row]).select('id').single();
+  const { data, error } = await supabaseAdmin.from('worker_agreements').insert([row]).select('id').single();
   if (error) throw error;
   return data;
 }
-
 async function insertPendingApplication(row) {
-  const admin = supabaseAdmin;
-  const { data, error } = await admin.from('worker_application_status').insert([row]).select('id,created_at').single();
+  const { data, error } = await supabaseAdmin.from('worker_application_status').insert([row]).select('id,created_at').single();
   if (error) throw error;
   return data;
 }
-
 async function findWorkerByEmail(email) {
-  const admin = supabaseAdmin;
-  const { data, error } = await admin
+  const { data, error } = await supabaseAdmin
     .from('worker_information')
-    .select('id, email_address')
+    .select('id, auth_uid, email_address')
     .ilike('email_address', String(email || '').trim())
     .order('created_at', { ascending: false })
     .limit(1)
@@ -94,12 +78,10 @@ async function findWorkerByEmail(email) {
   if (error) throw error;
   return data;
 }
-
 async function findWorkerById(id) {
-  const admin = supabaseAdmin;
-  const { data, error } = await admin
+  const { data, error } = await supabaseAdmin
     .from('worker_information')
-    .select('id, email_address')
+    .select('id, auth_uid, email_address')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;

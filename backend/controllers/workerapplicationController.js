@@ -1,3 +1,4 @@
+// controllers/workerapplicationController.js
 const {
   uploadDataUrlToBucket,
   insertWorkerInformation,
@@ -11,7 +12,7 @@ const {
   insertWorkerTermsAndAgreements,
   updateWorkerInformationWorkerId
 } = require('../models/workerapplicationModel');
-const { supabaseAdmin, ensureStorageBucket, getSupabaseAdmin } = require('../supabaseClient');
+const { ensureStorageBucket, getSupabaseAdmin } = require('../supabaseClient');
 
 function dateOnlyFrom(input) {
   if (!input) return null;
@@ -27,11 +28,11 @@ function friendlyError(err) {
   const raw = err?.message || String(err);
   if (/row-level security/i.test(raw)) return 'Service role key missing on server';
   if (/bucket/i.test(raw) && /not.*found/i.test(raw)) return 'Storage bucket missing.';
-  if (/worker_information|worker_work_information|worker_rate|worker_required_documents|worker_terms_and_agreements|worker_application_status/i.test(raw)) return `Database error: ${raw}`;
+  if (/worker_information|worker_work_information|worker_service_rate|worker_required_documents|worker_agreements|worker_application_status/i.test(raw)) return `Database error: ${raw}`;
   return raw;
 }
-function ageFromBirthDate(birth_date) {
-  const d = dateOnlyFrom(birth_date);
+function ageFromBirthDate(date_of_birth) {
+  const d = dateOnlyFrom(date_of_birth);
   if (!d) return null;
   const t = new Date();
   let a = t.getFullYear() - d.getFullYear();
@@ -39,96 +40,102 @@ function ageFromBirthDate(birth_date) {
   if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
   return a >= 0 && a <= 120 ? a : null;
 }
+function pick(obj, keys, alt = null) {
+  for (const k of keys) {
+    const v = k.split('.').reduce((a, p) => (a && a[p] !== undefined ? a[p] : undefined), obj);
+    if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+  }
+  return alt;
+}
+function normalizeDocs(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(x => {
+    if (typeof x === 'string') return { data_url: x };
+    const o = x || {};
+    return {
+      kind: o.kind || o.type || o.label || o.name || '',
+      url: o.url || '',
+      data_url: o.data_url || o.dataUrl || o.dataURL || o.base64 || ''
+    };
+  });
+}
 
 exports.submitFullApplication = async (req, res) => {
   try {
     try { getSupabaseAdmin(); } catch (e) { return res.status(500).json({ message: e.message || 'Service role key missing on server' }); }
     await ensureStorageBucket('wa-attachments', true);
 
-    const {
-      worker_id,
-      first_name,
-      last_name,
-      email_address,
-      contact_number,
-      barangay,
-      street,
-      address,
-      birth_date,
-      age,
-      profile_picture,
-      profile_picture_name,
-      service_types = [],
-      service_task,
-      years_experience,
-      tools_provided,
-      work_description,
-      service_description,
-      rate_type,
-      rate_from,
-      rate_to,
-      rate_value,
-      docs = [],
-      attachments = [],
-      metadata = {}
-    } = req.body || {};
+    const src = req.body || {};
+    const info = src.info || src.information || src.profile || {};
+    const work = src.work || {};
+    const details = src.details || src.detail || work || {};
+    const rateObj = src.rate || src.pricing || {};
+    const metadata = src.metadata || {};
+    const docsIn = normalizeDocs(src.docs || src.attachments || src.documents || []);
 
-    let effectiveWorkerId = worker_id || null;
-    let canonicalEmail = String(email_address || '').trim() || null;
+    let worker_id = pick(src, ['worker_id', 'info.worker_id', 'info.workerId']) || null;
+    let email_address =
+      pick(src, ['email_address', 'email', 'info.email_address', 'info.email', 'metadata.email']) || null;
+    let auth_uid =
+      pick(src, ['auth_uid', 'authUid', 'info.auth_uid', 'info.authUid', 'metadata.auth_uid']) || null;
 
-    if (effectiveWorkerId) {
+    if (worker_id) {
       try {
-        const foundById = await findWorkerById(effectiveWorkerId);
-        if (foundById) {
-          canonicalEmail = canonicalEmail || foundById.email_address || null;
+        const foundById = await findWorkerById(worker_id);
+        if (foundById?.email_address) email_address = email_address || foundById.email_address;
+        if (foundById?.auth_uid) auth_uid = auth_uid || foundById.auth_uid;
+      } catch {}
+    }
+    if (!worker_id && email_address) {
+      try {
+        const found = await findWorkerByEmail(email_address);
+        if (found?.id) {
+          worker_id = found.id;
+          email_address = found.email_address || email_address;
+          auth_uid = auth_uid || found.auth_uid || null;
         }
       } catch {}
     }
-    if (!effectiveWorkerId && canonicalEmail) {
-      try {
-        const found = await findWorkerByEmail(canonicalEmail);
-        if (found && found.id) {
-          effectiveWorkerId = found.id;
-          canonicalEmail = found.email_address || canonicalEmail;
-        }
-      } catch {}
-    }
-    if (!canonicalEmail) return res.status(400).json({ message: 'Missing email_address for worker.' });
+    if (!email_address) return res.status(400).json({ message: 'Missing email_address for worker.' });
 
     const request_group_id = newGroupId();
 
-    let streetVal = street ?? metadata.street ?? null;
-    if ((!streetVal) && typeof address === 'string' && address.trim()) streetVal = address.trim();
-
-    let profileUpload = { url: null, name: null };
+    let profileUp = { url: null, name: null };
+    const profile_picture = pick(src, ['profile_picture', 'info.profile_picture', 'info.profilePicture', 'metadata.profile_picture']);
+    const profile_picture_name = pick(src, ['profile_picture_name', 'info.profile_picture_name', 'info.profilePictureName', 'metadata.profile_picture_name']);
     if (profile_picture) {
       try {
-        profileUpload = await uploadDataUrlToBucket('wa-attachments', profile_picture, `${request_group_id}-profile`);
+        profileUp = await uploadDataUrlToBucket('wa-attachments', profile_picture, `${request_group_id}-profile`);
       } catch {
-        profileUpload = { url: null, name: null };
+        profileUp = { url: null, name: null };
       }
     }
 
-    let ageVal = null;
-    if (age !== undefined && age !== null && String(age).trim() !== '') {
-      const n = parseInt(age, 10);
-      ageVal = Number.isFinite(n) ? n : null;
-    } else {
-      ageVal = ageFromBirthDate(birth_date || metadata.birth_date || null);
-    }
+    const date_of_birth = pick(src, ['date_of_birth', 'info.date_of_birth', 'info.birthDate', 'metadata.date_of_birth']);
+    const age = pick(src, ['age', 'info.age']);
+    const ageVal = age !== undefined && age !== null && String(age).trim() !== '' ? (Number.isFinite(parseInt(age, 10)) ? parseInt(age, 10) : null) : ageFromBirthDate(date_of_birth || null);
+
+    const street = pick(src, ['street', 'info.street', 'metadata.street', 'address', 'info.address', 'metadata.address']);
+    const barangay = pick(src, ['barangay', 'info.barangay', 'metadata.barangay']);
+    const contact_number = pick(src, ['contact_number', 'info.contact_number', 'info.contactNumber', 'metadata.contact_number']);
+
+    const first_name = pick(src, ['first_name', 'info.first_name', 'info.firstName', 'metadata.first_name', 'metadata.firstName']);
+    const last_name = pick(src, ['last_name', 'info.last_name', 'info.lastName', 'metadata.last_name', 'metadata.lastName']);
 
     const infoRow = {
-      worker_id: effectiveWorkerId,
-      email_address: canonicalEmail || metadata.email || null,
-      first_name: first_name || metadata.first_name || null,
-      last_name: last_name || metadata.last_name || null,
-      contact_number: (contact_number ?? metadata.contact_number ?? '').toString(),
-      street: (streetVal ?? '').toString(),
-      barangay: (barangay ?? metadata.barangay ?? '').toString(),
-      birth_date: birth_date || metadata.birth_date || null,
+      request_group_id,
+      worker_id,
+      auth_uid,
+      email_address,
+      first_name,
+      last_name,
+      contact_number: (contact_number ?? '').toString(),
+      street: (street ?? '').toString(),
+      barangay: (barangay ?? '').toString(),
+      date_of_birth: date_of_birth || null,
       age: ageVal,
-      profile_picture_url: profileUpload.url || metadata.profile_picture_url || null,
-      profile_picture_name: profileUpload.name || profile_picture_name || metadata.profile_picture_name || null
+      profile_picture_url: profileUp.url || null,
+      profile_picture_name: profileUp.name || profile_picture_name || null
     };
 
     const missingInfo = [];
@@ -140,13 +147,18 @@ exports.submitFullApplication = async (req, res) => {
     if (missingInfo.length) return res.status(400).json({ message: `Missing required worker_information fields: ${missingInfo.join(', ')}` });
 
     const infoIns = await insertWorkerInformation(infoRow);
-
-    if (!effectiveWorkerId) {
-      effectiveWorkerId = infoIns.id;
-      try { await updateWorkerInformationWorkerId(infoIns.id, effectiveWorkerId); } catch {}
+    if (!worker_id) {
+      worker_id = infoIns.id;
+      try { await updateWorkerInformationWorkerId(infoIns.id, worker_id); } catch {}
     }
 
-    const workDesc = (work_description || service_description || '').toString().trim() || null;
+    const service_types =
+      Array.isArray(details.service_types || details.serviceTypes || src.service_types) ? (details.service_types || details.serviceTypes || src.service_types) : [];
+    const service_task_raw = details.service_task || details.serviceTask || src.service_task || {};
+    const years_experience = pick(src, ['years_experience', 'details.years_experience', 'work.years_experience', 'work.yearsExperience']);
+    const tools_provided = pick(src, ['tools_provided', 'details.tools_provided', 'work.tools_provided', 'work.toolsProvided', 'metadata.tools_provided']);
+    const work_description =
+      pick(src, ['work_description', 'service_description', 'details.work_description', 'details.service_description', 'work.service_description', 'work.serviceDescription']) || '';
 
     const normalizeTasks = (raw, types) => {
       const out = {};
@@ -154,26 +166,26 @@ exports.submitFullApplication = async (req, res) => {
       for (const t of keys) {
         const arr = Array.isArray(raw?.[t]) ? raw[t] : [];
         const vals = arr.map(v => String(v || '').trim()).filter(Boolean);
-        const uniq = Array.from(new Set(vals));
-        out[t] = uniq;
+        out[t] = Array.from(new Set(vals));
       }
       return out;
     };
-
-    const finalServiceTask = normalizeTasks(service_task, service_types);
+    const service_task = normalizeTasks(service_task_raw, service_types);
 
     const detailsRow = {
-      worker_id: effectiveWorkerId,
-      service_types: Array.isArray(service_types) ? service_types : [],
-      service_task: finalServiceTask,
+      request_group_id,
+      worker_id,
+      auth_uid,
+      service_types,
+      service_task,
       years_experience: years_experience ?? null,
       tools_provided: typeof tools_provided === 'string' ? tools_provided : (tools_provided ? 'Yes' : 'No'),
-      work_description: workDesc
+      work_description: work_description || null
     };
 
     const missingWork = [];
     if (!detailsRow.service_types || !detailsRow.service_types.length) missingWork.push('service_types');
-    if (!detailsRow.years_experience && detailsRow.years_experience !== 0) missingWork.push('years_experience');
+    if (detailsRow.years_experience === null || detailsRow.years_experience === undefined || String(detailsRow.years_experience) === '') missingWork.push('years_experience');
     if (!detailsRow.tools_provided) missingWork.push('tools_provided');
     if (!detailsRow.work_description) missingWork.push('work_description');
     const emptyTaskTypes = (detailsRow.service_types || []).filter(t => !(detailsRow.service_task?.[t] || []).length);
@@ -182,12 +194,31 @@ exports.submitFullApplication = async (req, res) => {
 
     await insertWorkerWorkInformation(detailsRow);
 
+    const rate_type = pick(src, ['rate_type', 'rateType', 'rate.rate_type', 'rate.rateType', 'pricing.rate_type', 'pricing.rateType']) || null;
+    const rate_from = (() => {
+      const v = pick(src, ['rate_from', 'rateFrom', 'rate.rate_from', 'rate.rateFrom', 'pricing.rate_from', 'pricing.rateFrom']);
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    })();
+    const rate_to = (() => {
+      const v = pick(src, ['rate_to', 'rateTo', 'rate.rate_to', 'rate.rateTo', 'pricing.rate_to', 'pricing.rateTo']);
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    })();
+    const rate_value = (() => {
+      const v = pick(src, ['rate_value', 'rateValue', 'rate.rate_value', 'rate.rateValue', 'pricing.rate_value', 'pricing.rateValue']);
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    })();
+
     const rateRow = {
-      worker_id: effectiveWorkerId,
-      rate_type: rate_type || null,
-      rate_from: rate_from || null,
-      rate_to: rate_to || null,
-      rate_value: rate_value || null
+      request_group_id,
+      worker_id,
+      auth_uid,
+      rate_type,
+      rate_from,
+      rate_to,
+      rate_value
     };
 
     const missingRate = [];
@@ -198,8 +229,10 @@ exports.submitFullApplication = async (req, res) => {
 
     await insertWorkerRate(rateRow);
 
-    const docsSource = (Array.isArray(docs) && docs.length) ? docs : attachments;
     const docCols = {
+      request_group_id,
+      worker_id,
+      auth_uid,
       primary_id_front: null,
       primary_id_back: null,
       secondary_id: null,
@@ -208,60 +241,60 @@ exports.submitFullApplication = async (req, res) => {
       medical_certificate: null,
       certificates: null
     };
-    if (Array.isArray(docsSource) && docsSource.length) {
-      for (let i = 0; i < docsSource.length; i++) {
-        const d = docsSource[i] || {};
-        const raw = String(d.kind || d.type || d.label || d.name || '').toLowerCase();
-        const key =
-          /primary.*front/.test(raw) ? 'primary_id_front' :
-          /primary.*back/.test(raw) ? 'primary_id_back' :
-          /secondary/.test(raw) ? 'secondary_id' :
-          /(nbi|police)/.test(raw) ? 'nbi_police_clearance' :
-          /address/.test(raw) ? 'proof_of_address' :
-          /medical/.test(raw) ? 'medical_certificate' :
-          /(certificate|certs?)/.test(raw) ? 'certificates' : null;
-        if (!key) continue;
-        const hasUrl = typeof d.url === 'string' && /^https?:\/\//i.test(d.url);
-        if (hasUrl && !d.data_url && !docCols[key]) {
-          docCols[key] = d.url;
-          continue;
-        }
-        if (d.data_url && !docCols[key]) {
-          const up = await uploadDataUrlToBucket('wa-attachments', d.data_url, `${request_group_id}-${key}`);
-          docCols[key] = up?.url || null;
-        }
+    for (let i = 0; i < docsIn.length; i++) {
+      const d = docsIn[i] || {};
+      const raw = String(d.kind || '').toLowerCase();
+      const key =
+        /primary.*front/.test(raw) ? 'primary_id_front' :
+        /primary.*back/.test(raw) ? 'primary_id_back' :
+        /secondary/.test(raw) ? 'secondary_id' :
+        /(nbi|police)/.test(raw) ? 'nbi_police_clearance' :
+        /address/.test(raw) ? 'proof_of_address' :
+        /medical/.test(raw) ? 'medical_certificate' :
+        /(certificate|certs?)/.test(raw) ? 'certificates' : null;
+      if (!key) continue;
+      if (typeof d.url === 'string' && /^https?:\/\//i.test(d.url) && !docCols[key]) {
+        docCols[key] = d.url;
+        continue;
+      }
+      if (d.data_url && !docCols[key]) {
+        const up = await uploadDataUrlToBucket('wa-attachments', d.data_url, `${request_group_id}-${key}`);
+        docCols[key] = up?.url || null;
       }
     }
-    await insertWorkerRequiredDocuments({ worker_id: effectiveWorkerId, ...docCols });
+    await insertWorkerRequiredDocuments(docCols);
 
     const termsRow = {
-      worker_id: effectiveWorkerId,
-      email_address: infoRow.email_address,
-      agree_verify: !!metadata.agree_verify,
-      agree_tos: !!metadata.agree_tos,
-      agree_privacy: !!metadata.agree_privacy,
+      request_group_id,
+      worker_id,
+      auth_uid,
+      email_address,
+      agree_verify: !!(metadata.agree_verify || src.agree_verify || src.agreements?.consent_background_checks),
+      agree_tos: !!(metadata.agree_tos || src.agree_tos || src.agreements?.consent_terms_privacy),
+      agree_privacy: !!(metadata.agree_privacy || src.agree_privacy || src.agreements?.consent_data_privacy),
       agreed_at: new Date().toISOString()
     };
-    try {
-      await insertWorkerTermsAndAgreements(termsRow);
-    } catch (e) {
-      return res.status(400).json({ message: friendlyError(e) });
-    }
+    try { await insertWorkerTermsAndAgreements(termsRow); } catch (e) { return res.status(400).json({ message: friendlyError(e) }); }
 
     const pendingIns = await insertPendingApplication({
-      worker_id: effectiveWorkerId,
-      email_address: infoRow.email_address,
+      request_group_id,
+      worker_id,
+      auth_uid,
+      email_address,
       status: 'pending'
     });
 
     return res.status(201).json({
       message: 'Application submitted',
-      request: {
+      application: {
         id: pendingIns.id,
+        request_group_id,
         status: 'pending',
         created_at: pendingIns.created_at,
-        worker_id: effectiveWorkerId
-      }
+        worker_id,
+        auth_uid
+      },
+      request_group_id
     });
   } catch (err) {
     return res.status(500).json({ message: friendlyError(err) });
@@ -275,9 +308,7 @@ exports.listApproved = async (req, res) => {
     if (!email && workerId) {
       try {
         const foundById = await findWorkerById(workerId);
-        if (foundById?.email_address) {
-          email = String(foundById.email_address).trim();
-        }
+        if (foundById?.email_address) email = String(foundById.email_address).trim();
       } catch {}
     }
     if (!email) return res.status(400).json({ message: 'Email is required' });
@@ -285,15 +316,14 @@ exports.listApproved = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
     const { data, error } = await getSupabaseAdmin()
       .from('worker_application_status')
-      .select('id, status, created_at, email_address')
+      .select('id, request_group_id, status, created_at, email_address')
       .eq('status', 'approved')
       .ilike('email_address', email)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw error;
 
-    const items = Array.isArray(data) ? data : [];
-    return res.status(200).json({ items });
+    return res.status(200).json({ items: Array.isArray(data) ? data : [] });
   } catch (err) {
     return res.status(500).json({ message: friendlyError(err) });
   }
@@ -305,7 +335,7 @@ exports.getByGroup = async (req, res) => {
     if (!id) return res.status(400).json({ message: 'Missing id' });
     const { data, error } = await getSupabaseAdmin()
       .from('worker_application_status')
-      .select('id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason')
+      .select('id, request_group_id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason, auth_uid, worker_id')
       .eq('id', id)
       .limit(1)
       .maybeSingle();
@@ -329,7 +359,7 @@ exports.cancel = async (req, res) => {
 
     const { data: existing, error: getErr } = await getSupabaseAdmin()
       .from('worker_application_status')
-      .select('id, status, email_address')
+      .select('id, status, email_address, request_group_id, auth_uid, worker_id')
       .eq('id', id)
       .maybeSingle();
     if (getErr) throw getErr;
@@ -348,7 +378,9 @@ exports.cancel = async (req, res) => {
     const { error: insErr } = await getSupabaseAdmin()
       .from('worker_cancel_application')
       .insert([{
-        worker_id: worker_id || null,
+        request_group_id: existing.request_group_id || null,
+        worker_id: worker_id || existing.worker_id || null,
+        auth_uid: existing.auth_uid || null,
         email_address: email_address || existing.email_address || null,
         reason_choice,
         reason_other,
@@ -376,40 +408,29 @@ exports.listMine = async (req, res) => {
     if (!email && workerId) {
       try {
         const foundById = await findWorkerById(workerId);
-        if (foundById?.email_address) {
-          email = String(foundById.email_address).trim();
-        }
+        if (foundById?.email_address) email = String(foundById.email_address).trim();
       } catch {}
     }
-
-    if (!email && req.session?.user?.email_address) {
-      email = String(req.session.user.email_address).trim();
-    }
-
-    if (!email) {
-      return res.status(200).json({ items: [] });
-    }
+    if (!email && req.session?.user?.email_address) email = String(req.session.user.email_address).trim();
+    if (!email) return res.status(200).json({ items: [] });
 
     const statusRaw = String(req.query.status || 'all').toLowerCase();
     const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10), 1), 50);
 
     let base = getSupabaseAdmin()
       .from('worker_application_status')
-      .select('id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason')
+      .select('id, request_group_id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason, auth_uid, worker_id')
       .ilike('email_address', email)
       .order('created_at', { ascending: false })
       .limit(limit);
-
-    if (statusRaw !== 'all') {
-      base = base.eq('status', statusRaw);
-    }
+    if (statusRaw !== 'all') base = base.eq('status', statusRaw);
 
     const { data: statusRows, error } = await base;
     if (error) throw error;
 
     const { data: infoRow } = await getSupabaseAdmin()
       .from('worker_information')
-      .select('id, worker_id, email_address, first_name, last_name, contact_number, street, barangay, birth_date, age, profile_picture_url')
+      .select('id, request_group_id, worker_id, auth_uid, email_address, first_name, last_name, contact_number, street, barangay, date_of_birth, age, profile_picture_url')
       .ilike('email_address', email)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -417,11 +438,11 @@ exports.listMine = async (req, res) => {
 
     const wid = workerId || infoRow?.worker_id || infoRow?.id || null;
 
-       let detailsRow = null;
+    let detailsRow = null;
     if (wid) {
       const r1 = await getSupabaseAdmin()
         .from('worker_work_information')
-        .select('service_types, service_task, years_experience, tools_provided, work_description, barangay, street')
+        .select('request_group_id, auth_uid, service_types, service_task, years_experience, tools_provided, work_description, barangay, street, worker_id')
         .eq('worker_id', wid)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -435,10 +456,7 @@ exports.listMine = async (req, res) => {
         if (Array.isArray(v)) return v;
         const s = String(v ?? '').trim();
         if (!s) return [];
-        try {
-          const x = JSON.parse(s);
-          return Array.isArray(x) ? x : [];
-        } catch { return []; }
+        try { const x = JSON.parse(s); return Array.isArray(x) ? x : []; } catch { return []; }
       };
       const tools = (() => {
         const raw = d.tools_provided ?? '';
@@ -460,8 +478,8 @@ exports.listMine = async (req, res) => {
     let rateRow = null;
     if (wid) {
       const r2 = await getSupabaseAdmin()
-        .from('worker_rate')
-        .select('rate_type, rate_from, rate_to, rate_value')
+        .from('worker_service_rate')
+        .select('request_group_id, auth_uid, rate_type, rate_from, rate_to, rate_value, worker_id')
         .eq('worker_id', wid)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -497,9 +515,7 @@ exports.deleteApplication = async (req, res) => {
 
     const status = String(row.status || '').toLowerCase();
     const allowed = new Set(['pending', 'approved', 'declined', 'cancelled', 'canceled']);
-    if (!allowed.has(status)) {
-      return res.status(409).json({ message: 'Cannot delete this application status' });
-    }
+    if (!allowed.has(status)) return res.status(409).json({ message: 'Cannot delete this application status' });
 
     await getSupabaseAdmin().from('worker_application_status').delete().eq('id', raw);
     return res.status(200).json({ message: 'Application deleted', id: raw });
