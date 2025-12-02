@@ -470,6 +470,30 @@ function WorkerPost() {
   const currentYearsExperience = useMemo(() => getYearsExperience(currentApp), [currentApp]);
   const currentToolsProvided = useMemo(() => getToolsProvided(currentApp), [currentApp]);
 
+  const toolsBoolLocal = useMemo(() => {
+    const d = currentApp?.details || currentApp?.work || currentApp?.work_information || {};
+    const raw =
+      (d && (d.tools_provided ?? d.tools_provide)) ??
+      currentApp?.tools_provided ??
+      currentApp?.tools_provide ??
+      currentToolsProvided;
+    return toBoolStrict(raw);
+  }, [currentApp, currentToolsProvided]);
+
+  const toolsTextLocal =
+    toolsBoolLocal === null
+      ? (currentToolsProvided ? String(currentToolsProvided) : '-')
+      : toolsBoolLocal
+      ? 'Yes'
+      : 'No';
+
+  const toolsClassLocal =
+    toolsBoolLocal === null
+      ? 'font-medium'
+      : toolsBoolLocal
+      ? 'text-green-600 font-semibold'
+      : 'text-red-600 font-semibold';
+
   const getGroupId = (it) => {
     const g =
       it?.application_group_id ??
@@ -649,9 +673,7 @@ function WorkerPost() {
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Tools Provided:</span>
-                        <span className="text-[#008cfc] font-medium">
-                          {currentToolsProvided ? String(currentToolsProvided) : '-'}
-                        </span>
+                        <span className={toolsClassLocal}>{toolsTextLocal}</span>
                       </div>
                     </div>
                     <div className="space-y-1.5 md:pl-10">
@@ -817,6 +839,13 @@ function WorkerPost() {
                     item?.details?.toolsProvided ??
                     item?.tools?.provided ??
                     '';
+
+                  const tBool = toBoolStrict(tools);
+                  const tText =
+                    tBool === null ? (String(tools || '').trim() || '-') : tBool ? 'Yes' : 'No';
+                  const tClass =
+                    tBool === null ? 'text-gray-700' : tBool ? 'text-green-600 font-medium' : 'text-red-600 font-medium';
+
                   return (
                     <div
                       key={item.id || i}
@@ -840,11 +869,7 @@ function WorkerPost() {
                         </div>
                         <div className="text-gray-600">
                           <span className="font-medium text-gray-800">Tools Provided:</span>{' '}
-                          {typeof tools === 'boolean'
-                            ? tools
-                              ? 'Yes'
-                              : 'No'
-                            : String(tools || '').trim() || '-'}
+                          <span className={tClass}>{tText}</span>
                         </div>
                         <div className="text-gray-600">
                           <span className="font-medium text-gray-800">Service Price Rate:</span> {getRateType(item) || '-'}

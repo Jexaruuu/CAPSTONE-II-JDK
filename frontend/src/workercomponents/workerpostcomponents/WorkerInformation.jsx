@@ -69,19 +69,16 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
   const [nameLocked, setNameLocked] = useState(false);
   const [emailLocked, setEmailLocked] = useState(false);
   const fileInputRef = useRef(null);
-
   const [dpOpen, setDpOpen] = useState(false);
   const [dpView, setDpView] = useState(new Date());
   const dpRef = useRef(null);
-
   const [birthLocked, setBirthLocked] = useState(false);
   const [contactLocked, setContactLocked] = useState(false);
-
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const navigate = useNavigate();
-
   const appU = useMemo(() => buildAppU(), []);
   const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+  const [barangayQuery, setBarangayQuery] = useState('');
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -100,6 +97,11 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
     'Taculing','Tangub','Villa Esperanza'
   ];
   const sortedBarangays = useMemo(() => [...barangays].sort(), []);
+  const filteredBarangays = useMemo(() => {
+    const q = barangayQuery.trim().toLowerCase();
+    if (!q) return sortedBarangays;
+    return sortedBarangays.filter((b) => b.toLowerCase().includes(q));
+  }, [sortedBarangays, barangayQuery]);
 
   const validateEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || '').trim());
 
@@ -211,7 +213,10 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
     }
   };
 
-  const toggleDropdown = () => setShowDropdown(!showDropdown);
+  const toggleDropdown = () => {
+    setBarangayQuery('');
+    setShowDropdown(!showDropdown);
+  };
   const handleClickOutside = (event) => {
     if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
       setShowDropdown(false);
@@ -774,29 +779,42 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                         className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-2"
                         role="listbox"
                       >
+                        <div className="px-2 pb-2">
+                          <input
+                            value={barangayQuery}
+                            onChange={(e) => setBarangayQuery(e.target.value)}
+                            placeholder="Search…"
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
                         <div className="grid grid-cols-3 gap-1 max-h-56 overflow-y-auto px-1">
-                          {sortedBarangays.map((barangayName, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onClick={() => {
-                                setBarangay(barangayName);
-                                setShowDropdown(false);
-                              }}
-                              className="text-left px-3 py-2 rounded-lg hover:bg-blue-50 text-sm text-gray-700"
-                              role="option"
-                              aria-selected={barangayName === barangay}
-                            >
-                              {barangayName}
-                            </button>
-                          ))}
+                          {filteredBarangays.length ? (
+                            filteredBarangays.map((barangayName, index) => (
+                              <button
+                                key={`${barangayName}-${index}`}
+                                type="button"
+                                onClick={() => {
+                                  setBarangay(barangayName);
+                                  setShowDropdown(false);
+                                }}
+                                className="text-left px-3 py-2 rounded-lg hover:bg-blue-50 text-sm text-gray-700"
+                                role="option"
+                                aria-selected={barangayName === barangay}
+                              >
+                                {barangayName}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="col-span-3 text-center text-xs text-gray-400 py-3">No options</div>
+                          )}
                         </div>
                         <div className="flex items-center justify-between mt-2 px-2">
-                          <span className="text-xs text-gray-400">&nbsp;</span>
+                          <span className="text-xs text-gray-400">{filteredBarangays.length} result{filteredBarangays.length === 1 ? '' : 's'}</span>
                           <button
                             type="button"
                             onClick={() => {
                               setBarangay('');
+                              setBarangayQuery('');
                               setShowDropdown(false);
                             }}
                             className="text-xs text-gray-500 hover:text-gray-700"
@@ -854,7 +872,7 @@ const WorkerInformation = ({ title, setTitle, handleNext, onCollect }) => {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="rounded-xl bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition w-full"
+                      className="rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition w-full"
                     >
                       Choose Photo
                     </button>

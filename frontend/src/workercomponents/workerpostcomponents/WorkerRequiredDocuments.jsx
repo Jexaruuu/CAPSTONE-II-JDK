@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const MAX_BYTES = 5 * 1024 * 1024;
-const boxBase = 'flex items-center justify-center w-full h-44 border-2 border-dashed rounded-xl bg-gray-50 hover:bg-gray-100 transition';
+const boxBase = 'relative flex items-center justify-center w-full h-48 rounded-2xl border-2 border-dashed transition';
 const boxInner = 'text-center text-sm text-gray-700';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -95,16 +95,23 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
     validateAndSet(file);
   };
 
+  const statusPill = value ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-50 text-blue-700 border-blue-200';
+  const borderState = dragOver ? 'border-[#008cfc]' : 'border-blue-300';
+
   return (
-    <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <h4 className="text-[15px] font-semibold text-gray-900">
-          {label} {required && <span className="text-red-500">*</span>}
-        </h4>
+    <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <h4 className="text-[15px] font-semibold text-gray-900">{label} {required && <span className="text-red-500">*</span>}</h4>
+        </div>
+        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium ${statusPill}`}>
+          <span className={`h-2 w-2 rounded-full ${value ? 'bg-[#008cfc]' : 'bg-[#008cfc]/60'}`} />
+          {value ? 'Uploaded' : 'Required'}
+        </span>
       </div>
 
       <label
-        className={[boxBase, dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300', 'ring-1 ring-gray-100 hover:ring-blue-100 relative overflow-hidden'].join(' ')}
+        className={[boxBase, borderState, dragOver ? 'bg-blue-50/40' : 'bg-gray-50 hover:bg-gray-100', 'ring-1 ring-blue-100 hover:ring-blue-200 overflow-hidden'].join(' ')}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
@@ -113,8 +120,8 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
 
         {previewURL ? (
           <>
-            <img src={previewURL} alt="Preview" className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-xl" />
-            <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-gray-200 px-3 py-2 text-[11px] text-gray-700">
+            <img src={previewURL} alt="Preview" className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-2xl" />
+            <div className="absolute inset-x-0 bottom-0 bg-white/85 backdrop-blur-sm border-t border-blue-100 px-3 py-2 text-[11px] text-gray-700">
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate">{value?.name}</span>
                 <span className="shrink-0">{humanSize(value?.size || 0)}</span>
@@ -123,28 +130,67 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
             </div>
           </>
         ) : (
-          <div className={boxInner}>
-            {!value || (value && value.type === 'application/pdf') ? (
-              <>
+          <div className="flex flex-col items-center justify-center">
+            {value && value.type === 'application/pdf' ? (
+              <div className="flex flex-col items-center">
+                <div className="h-12 w-12 rounded-xl border border-blue-200 grid place-items-center bg-white shadow-sm">
+                  <svg viewBox="0 0 24 24" className="h-6 w-6 text-blue-600" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                </div>
+                <div className="mt-2 text-[11px] text-gray-700 max-w-[85%] truncate">{value.name}</div>
+                <div className="text-[10px] text-gray-500">{humanSize(value?.size || 0)}</div>
+                <div className="text-[10px] text-gray-500 mt-1">Click to replace or drag a new file</div>
+              </div>
+            ) : (
+              <div className={boxInner}>
                 <div className="font-medium text-gray-900">Click to upload or drag and drop</div>
                 <div className="text-xs text-gray-500 mt-1">PDF, JPG, or PNG • Max 5MB</div>
-                {value && value.type === 'application/pdf' && <div className="text-[11px] text-gray-500 mt-2 break-all">{value.name}</div>}
-              </>
-            ) : null}
+              </div>
+            )}
           </div>
         )}
+
+        <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-blue-100" />
       </label>
 
-      {value && (
-        <div className="mt-3 flex items-center justify-between">
-          <div className="text-xs text-gray-600 truncate">
-            <span className="font-medium text-gray-800">Selected:</span> <span className="truncate">{value.name}</span>
-          </div>
-          <button type="button" onClick={() => validateAndSet(null)} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700">Clear</button>
+      <div className="mt-3 flex items-center justify-between">
+        <div className="text-xs text-gray-600 truncate">
+          {value ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="font-medium text-gray-800">Selected:</span>
+              <span className="truncate max-w-[220px]">{value.name}</span>
+              <span className="text-gray-400">•</span>
+              <span>{humanSize(value.size || 0)}</span>
+            </span>
+          ) : (
+            <span className="text-gray-400">No file selected</span>
+          )}
         </div>
-      )}
+        {value ? (
+          <div className="flex items-center gap-2">
+            {previewURL && (
+              <a
+                href={previewURL}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs px-2.5 py-1 rounded-md border border-blue-200 hover:bg-blue-50 text-blue-700"
+              >
+                View
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => validateAndSet(null)}
+              className="text-xs px-2.5 py-1 rounded-md border border-blue-200 hover:bg-blue-50 text-blue-700"
+            >
+              Clear
+            </button>
+          </div>
+        ) : (
+          <span className="text-[11px] text-gray-400">{hint || ''}</span>
+        )}
+      </div>
 
-      {hint && <p className="text-[11px] text-gray-500 mt-2">{hint}</p>}
+      {hint && value && <p className="text-[11px] text-gray-500 mt-2">{hint}</p>}
       {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
     </div>
   );
@@ -167,6 +213,12 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
 
   const appU = useMemo(() => buildAppU(), []);
   const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+
+  const uploadedCount = useMemo(
+    () =>
+      [primaryFront, primaryBack, secondaryId, nbi, address, medical, certs].filter(Boolean).length,
+    [primaryFront, primaryBack, secondaryId, nbi, address, medical, certs]
+  );
 
   const jumpTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {} };
 
@@ -255,20 +307,34 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
 
   return (
     <form className="space-y-8">
+      <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
+        <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <div className="text-2xl md:text-3xl font-semibold text-gray-900">Please upload your documents</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:block text-sm text-gray-500">Step 3 of 4</div>
+            <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden">
+              <div className="h-full w-3/4 bg-[#008cfc]" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="w-full max-w-[1535px] mx-auto px-6">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-            <h3 className="text-xl md:text-2xl font-semibold">Required Documents</h3>
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Documents
-            </span>
-          </div>
-
-          <div className="px-6 pt-5">
-            <p className="text-base text-gray-600">
-              Upload clear scans/photos of your documents. Accepted formats: <span className="font-medium">PDF, JPG, PNG</span> (max 5MB each).
-            </p>
+            <div className="flex items-center gap-3">
+              <h3 className="text-xl md:text-2xl font-semibold">Required Documents</h3>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500">{uploadedCount}/7 uploaded</span>
+              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                Documents
+              </span>
+            </div>
           </div>
 
           <div className="px-6 pb-6 pt-4">
@@ -305,13 +371,15 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
               </div>
             </div>
 
-            {attempted && !isFormValid && <p className="text-xs text-red-600 mt-3">Please upload all required documents to continue.</p>}
+            {attempted && !(primaryFront && primaryBack && secondaryId && nbi && address && medical && certs) && (
+              <p className="text-xs text-red-600 mt-3">Please upload all required documents to continue.</p>
+            )}
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between gap-3 mt-6">
           <button type="button" onClick={onBackClick} className="w-full sm:w-1/3 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Back : Work Information</button>
-          <button type="button" onClick={onNextClick} disabled={!isFormValid} aria-disabled={!isFormValid} className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}>Next : Set Your Price Rate</button>
+          <button type="button" onClick={onNextClick} disabled={!(primaryFront && primaryBack && secondaryId && nbi && address && medical && certs)} aria-disabled={!(primaryFront && primaryBack && secondaryId && nbi && address && medical && certs)} className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${(primaryFront && primaryBack && secondaryId && nbi && address && medical && certs) ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}>Next : Set Your Price Rate</button>
         </div>
       </div>
 

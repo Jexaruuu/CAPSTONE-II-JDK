@@ -189,76 +189,64 @@ const WorkerReviewPost = ({ handleBack }) => {
     return '';
   };
 
- const normalizeDocsForSubmit = (arr) => {
-  const toKind = (s = "") => {
-    const t = String(s).toLowerCase().replace(/\s+/g, " ").trim();
-    if ((/primary/.test(t) || /main/.test(t)) && (/(front|face)/.test(t) || /id\s*front/.test(t))) return "primary_id_front";
-    if ((/primary/.test(t) || /main/.test(t)) && (/(back|rear|reverse)/.test(t) || /id\s*back/.test(t))) return "primary_id_back";
-    if (/secondary|alternate|alt/.test(t)) return "secondary_id";
-    if (/(nbi|police)/.test(t)) return "nbi_police_clearance";
-    if (/proof.*address|address.*proof|billing|bill/.test(t)) return "proof_of_address";
-    if (/medical|med\s*cert|health/.test(t)) return "medical_certificate";
-    if (/certificate|certs?\b|tesda|ncii|nc2/.test(t)) return "certificates";
-    return "";
-  };
+  const normalizeDocsForSubmit = (arr) => {
+    const toKind = (s = "") => {
+      const t = String(s).toLowerCase().replace(/\s+/g, " ").trim();
+      if ((/primary/.test(t) || /main/.test(t)) && (/(front|face)/.test(t) || /id\s*front/.test(t))) return "primary_id_front";
+      if ((/primary/.test(t) || /main/.test(t)) && (/(back|rear|reverse)/.test(t) || /id\s*back/.test(t))) return "primary_id_back";
+      if (/secondary|alternate|alt/.test(t)) return "secondary_id";
+      if (/(nbi|police)/.test(t)) return "nbi_police_clearance";
+      if (/proof.*address|address.*proof|billing|bill/.test(t)) return "proof_of_address";
+      if (/medical|med\s*cert|health/.test(t)) return "medical_certificate";
+      if (/certificate|certs?\b|tesda|ncii|nc2/.test(t)) return "certificates";
+      return "";
+    };
 
-  const pull = (v) => {
-    const s = typeof v === "string" ? v : "";
-    return { url: /^https?:\/\//i.test(s) ? s : "", data_url: s.startsWith("data:") ? s : "" };
-  };
+    const pull = (v) => {
+      const s = typeof v === "string" ? v : "";
+      return { url: /^https?:\/\//i.test(s) ? s : "", data_url: s.startsWith("data:") ? s : "" };
+    };
 
-  const pushIf = (out, kind, v) => {
-    const { url, data_url } = pull(v);
-    if (kind && (url || data_url)) out.push({ kind, url, data_url });
-  };
+    const pushIf = (out, kind, v) => {
+      const { url, data_url } = pull(v);
+      if (kind && (url || data_url)) out.push({ kind, url, data_url });
+    };
 
-  const out = [];
+    const out = [];
 
-  if (arr && !Array.isArray(arr) && typeof arr === "object") {
-    pushIf(out, "primary_id_front", arr.primary_id_front || arr.primary_front);
-    pushIf(out, "primary_id_back", arr.primary_id_back || arr.primary_back);
-    pushIf(out, "secondary_id", arr.secondary_id);
-    pushIf(out, "nbi_police_clearance", arr.nbi_police_clearance || arr.nbi);
-    pushIf(out, "proof_of_address", arr.proof_of_address || arr.address);
-    pushIf(out, "medical_certificate", arr.medical_certificate || arr.medical);
-    pushIf(out, "certificates", arr.certificates || arr.certs);
-    return out;
-  }
+    if (arr && !Array.isArray(arr) && typeof arr === "object") {
+      pushIf(out, "primary_id_front", arr.primary_id_front || arr.primary_front);
+      pushIf(out, "primary_id_back", arr.primary_id_back || arr.primary_back);
+      pushIf(out, "secondary_id", arr.secondary_id);
+      pushIf(out, "nbi_police_clearance", arr.nbi_police_clearance || arr.nbi);
+      pushIf(out, "proof_of_address", arr.proof_of_address || arr.address);
+      pushIf(out, "medical_certificate", arr.medical_certificate || arr.medical);
+      pushIf(out, "certificates", arr.certificates || arr.certs);
+      return out;
+    }
 
-  (Array.isArray(arr) ? arr : []).forEach((d) => {
-    const guess =
-      d?.kind || d?.type || d?.label || d?.name || d?.field || d?.slot || d?.filename || d?.fileName || d?.title || d?.meta?.kind || d?.meta?.label || d?.meta?.name;
-    let kind = toKind(guess);
+    (Array.isArray(arr) ? arr : []).forEach((d) => {
+      const guess =
+        d?.kind || d?.type || d?.label || d?.name || d?.field || d?.slot || d?.filename || d?.fileName || d?.title || d?.meta?.kind || d?.meta?.label || d?.meta?.name;
+      let kind = toKind(guess);
 
-    if (!kind) {
-      for (const k of Object.keys(d || {})) {
-        const mk = toKind(k);
-        if (mk) pushIf(out, mk, d[k]);
+      if (!kind) {
+        for (const k of Object.keys(d || {})) {
+          const mk = toKind(k);
+          if (mk) pushIf(out, mk, d[k]);
+        }
       }
-    }
 
-    const rawUrl = d?.url || d?.link || d?.href;
-    const rawData = d?.data_url || d?.dataUrl || d?.dataURL || d?.base64 || d?.imageData || d?.blobData;
-    const url = typeof rawUrl === "string" && /^https?:\/\//i.test(rawUrl) ? rawUrl : "";
-    const data_url = typeof rawData === "string" && rawData.startsWith("data:") ? rawData : "";
+      const rawUrl = d?.url || d?.link || d?.href;
+      const rawData = d?.data_url || d?.dataUrl || d?.dataURL || d?.base64 || d?.imageData || d?.blobData;
+      const url = typeof rawUrl === "string" && /^https?:\/\//i.test(rawUrl) ? rawUrl : "";
+      const data_url = typeof rawData === "string" && rawData.startsWith("data:") ? rawData : "";
 
-    if (!kind && (url || data_url)) {
-      const f = String(d?.filename || d?.fileName || "").toLowerCase();
-      kind =
-        (/(front|face)/.test(f) && /prim/.test(f)) ? "primary_id_front" :
-        (/(back|rear|reverse)/.test(f) && /prim/.test(f)) ? "primary_id_back" :
-        (/second/.test(f) || /alt/.test(f)) ? "secondary_id" :
-        (/(nbi|police)/.test(f)) ? "nbi_police_clearance" :
-        (/address|billing|bill/.test(f)) ? "proof_of_address" :
-        (/medical|medcert|health/.test(f)) ? "medical_certificate" :
-        (/certificate|certs?|tesda|ncii|nc2/.test(f)) ? "certificates" : "";
-    }
+      if (!kind && (url || data_url)) out.push({ kind, url, data_url });
+    });
 
-    if (kind && (url || data_url)) out.push({ kind, url, data_url });
-  });
-
-  return out;
-};
+    return out;
+  };
 
   const contactLocal10 = normalizeLocalPH10(contact_number);
 
@@ -283,11 +271,11 @@ const WorkerReviewPost = ({ handleBack }) => {
     const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
       <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-        <span className="font-semibold text-gray-700">{labelText}</span>
+        <span className="font-medium text-gray-600">{labelText}</span>
         {isElement ? (
-          <div className="text-base md:text-lg">{display}</div>
+          <div className="text-[15px] md:text-base">{display}</div>
         ) : (
-          <span className="text-base md:text-lg font-medium text-[#008cfc]">{display}</span>
+          <span className="text-[15px] md:text-base font-semibold text-[#0a83eb]">{display}</span>
         )}
       </div>
     );
@@ -589,16 +577,16 @@ const WorkerReviewPost = ({ handleBack }) => {
         rate: ratePayload
       };
 
-   const submitBody = {
-  info: infoPayload,
-  details: workPayload,
-  rate: ratePayload,
-  documents: normalizeDocsForSubmit(normalized.documents),
-  agreements: normalized.agreements,
-  email_address: normalized.email_address,
-  worker_id: normalized.worker_id,
-  metadata: normalized.metadata
-};
+      const submitBody = {
+        info: infoPayload,
+        details: workPayload,
+        rate: ratePayload,
+        documents: normalizeDocsForSubmit(normalized.documents),
+        agreements: normalized.agreements,
+        email_address: normalized.email_address,
+        worker_id: normalized.worker_id,
+        metadata: normalized.metadata
+      };
 
       const res = await axios.post(`${API_BASE}/api/workerapplications/submit`, submitBody, {
         withCredentials: true,
@@ -608,10 +596,6 @@ const WorkerReviewPost = ({ handleBack }) => {
       setApplicationGroupId(res?.data?.application?.request_group_id || res?.data?.request_group_id || null);
       setShowSuccess(true);
       localStorage.setItem(CONFIRM_FLAG, '1');
-      setApplicationGroupId(res?.data?.application?.request_group_id || res?.data?.request_group_id || null);
-setShowSuccess(true);
-localStorage.setItem(CONFIRM_FLAG, '1');
-try { window.dispatchEvent(new Event('worker-application-submitted')); } catch {}
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Submission failed';
       setSubmitError(msg);
@@ -657,6 +641,32 @@ try { window.dispatchEvent(new Event('worker-application-submitted')); } catch {
     };
   }, [isSubmitting, showSuccess, isLoadingBack]);
 
+  const TaskPill = ({ children }) => (
+    <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 text-blue-700 text-xs md:text-sm px-2.5 py-1">
+      {children}
+    </span>
+  );
+
+  const TaskGroup = ({ title, items = [] }) => (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-xs ring-1 ring-black/5">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50/60">
+        <div className="text-sm font-semibold text-gray-800">{title}</div>
+        <span className="text-[11px] rounded-full px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200">{items.length}</span>
+      </div>
+      <div className="p-4">
+        {items.length ? (
+          <div className="flex flex-wrap gap-2">
+            {items.map((it, i) => (
+              <TaskPill key={`${title}-${i}`}>{it}</TaskPill>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs text-gray-500">No tasks selected</div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
@@ -672,10 +682,10 @@ try { window.dispatchEvent(new Event('worker-application-submitted')); } catch {
                 }}
               />
             </div>
-            <div className="text-2xl md:text-3xl font-semibold text-gray-900">Review Worker Application</div>
+            <div className="text-2xl md:text-[28px] font-semibold tracking-tight text-gray-900">Review Worker Application</div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden sm:block text-sm text-gray-500 tracking-wide">Step 6 of 6</div>
+            <div className="hidden sm:block text-sm text-gray-500">Step 6 of 6</div>
             <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden ring-1 ring-white">
               <div className="h-full w-full bg-[#008cfc]" />
             </div>
@@ -685,26 +695,27 @@ try { window.dispatchEvent(new Event('worker-application-submitted')); } catch {
 
       <div className="mx-auto w-full max-w-[1420px] px-6">
         <div className="space-y-6 mt-5">
-          <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
-              <h3 className="text-xl md:text-[22px] font-semibold">Personal Information</h3>
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                <span className="h-3 w-3 rounded-full bg-white/60" />
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4">
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900">Personal Information</h3>
+              <span className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="h-2 w-2 rounded-full bg-current opacity-60" />
                 Worker
               </span>
             </div>
+            <div className="border-t border-gray-100" />
             <div className="px-6 py-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 text-base">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-6">
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
                   <LabelValue label="First Name" value={first_name} />
                   <LabelValue label="Last Name" value={last_name} />
                   <LabelValue label="Contact Number" value={contactDisplay} />
                   <LabelValue label="Email" value={email} />
-                  <LabelValue label="Address" value={street && barangay ? `${street}, ${barangay}` : street || barangay} />
+                  <LabelValue label="Barangay" value={barangay} />
+                  <LabelValue label="Street" value={street} />
                 </div>
-
                 <div className="md:col-span-1 flex flex-col items-center">
-                  <div className="text-sm font-semibold text-black mb-3">Worker Profile Picture</div>
+                  <div className="text-sm font-medium text-gray-700 mb-3">Worker Profile Picture</div>
                   {profile_picture ? (
                     <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
                       <img src={profile_picture} alt="Profile" className="h-full w-full object-cover" />
@@ -721,51 +732,53 @@ try { window.dispatchEvent(new Event('worker-application-submitted')); } catch {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
-                  <h3 className="text-xl md:text-[22px] font-semibold">Work Details</h3>
-                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                    <span className="h-3 w-3 rounded-full bg-white/60" />
-                    Details
-                  </span>
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4">
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-900">Work Details</h3>
+                  <span className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">Details</span>
                 </div>
+                <div className="border-t border-gray-100" />
                 <div className="px-6 py-6">
-                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                    <LabelValue label="Service Types" value={formatList(service_types)} />
-                    <LabelValue label="Years of Experience" value={years_experience} />
-                    <div className="md:col-span-2">
-                      <div className="text-sm font-semibold text-black mb-2">Selected Tasks</div>
-                      {service_task && typeof service_task === 'object' && Object.keys(service_task).length ? (
-                        <div className="space-y-2">
-                          {Object.entries(service_task).map(([k, v]) => (
-                            <div key={k} className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-                              <span className="font-semibold text-gray-700">{`${k.replace(/:?\s*$/, '')}:`}</span>
-                              <span className="text-base md:text-lg font-medium text-[#008cfc]">{formatList(v)}</span>
-                            </div>
-                          ))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
+                    <div className="space-y-5">
+                      <LabelValue label="Service Types" value={formatList(service_types)} />
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="text-md font-medium text-gray-600">Service Tasks:</div>
+                          {service_task && typeof service_task === 'object' && Object.keys(service_task).length ? (
+                            <span className="text-[11px] rounded-full px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200">
+                              {Object.values(service_task).reduce((a, arr) => a + (Array.isArray(arr) ? arr.length : 0), 0)} total
+                            </span>
+                          ) : null}
                         </div>
-                      ) : (
-                        <div className="text-sm text-gray-500">-</div>
-                      )}
+                        {service_task && typeof service_task === 'object' && Object.keys(service_task).length ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {Object.entries(service_task).map(([k, v]) => (
+                              <TaskGroup key={k} title={k} items={Array.isArray(v) ? v : []} />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500">-</div>
+                        )}
+                      </div>
                     </div>
-                    <LabelValue label="Tools Provided" value={tools_provided} />
-                    <div className="md:col-span-2">
+                    <div className="space-y-5">
+                      <LabelValue label="Years of Experience" value={years_experience} />
+                      <LabelValue label="Tools Provided" value={tools_provided} />
                       <LabelValue label="Description" value={service_description || '-'} />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 transition-all duration-300 overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] text-white rounded-t-2xl">
-                  <h3 className="text-xl md:text-[22px] font-semibold">Service Rate</h3>
-                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white/10 text-white border-white/20">
-                    <span className="h-3 w-3 rounded-full bg-white/60" />
-                    Pricing
-                  </span>
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4">
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Rate</h3>
+                  <span className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">Pricing</span>
                 </div>
+                <div className="border-t border-gray-100" />
                 <div className="px-6 py-6">
-                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
                     <LabelValue label="Rate Type" value={rate_type} />
                     {rate_type === 'Hourly Rate' ? (
                       <LabelValue label="Rate" value={rate_from && rate_to ? `₱${rate_from} - ₱${rate_to} per hour` : ''} />
@@ -778,47 +791,39 @@ try { window.dispatchEvent(new Event('worker-application-submitted')); } catch {
             </div>
 
             <aside className="lg:col-span-1 flex flex-col">
-              <div className="bg-white rounded-2xl border border-gray-300 shadow-sm ring-1 ring-gray-100/60 overflow-hidden flex flex-col transition-all duration-300">
-                <div className="bg-gradient-to-r from-[#008cfc] to-[#4aa6ff] px-6 py-5 text-white rounded-t-2xl">
-                  <div className="text-base font-medium">Summary</div>
-                  <div className="text-xs text-white/90">Review everything before submitting</div>
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden flex flex-col">
+                <div className="px-6 py-4 flex items-center justify-between">
+                  <div className="text-base font-semibold text-gray-900">Summary</div>
+                  <span className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">Review</span>
                 </div>
+                <div className="border-t border-gray-100" />
                 <div className="px-6 py-5 space-y-4 flex-1">
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                    <span className="text-sm font-semibold text-white/80 sr-only">.</span>
+                    <span className="text-sm font-medium text-gray-600">Worker:</span>
+                    <span className="text-base font-semibold text-[#0a83eb]">{first_name || '-'} {last_name || ''}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                    <span className="text-sm font-semibold text-gray-700">Worker:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">
-                      {first_name || '-'} {last_name || ''}
-                    </span>
+                    <span className="text-sm font-medium text-gray-600">Services:</span>
+                    <span className="text-base font-semibold text-[#0a83eb] truncate max-w-[60%] text-right sm:text-left">{formatList(service_types)}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                    <span className="text-sm font-semibold text-gray-700">Services:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">
-                      {formatList(service_types)}
-                    </span>
+                    <span className="text-sm font-medium text-gray-600">Experience:</span>
+                    <span className="text-base font-semibold text-[#0a83eb]">{years_experience || '-'}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                    <span className="text-sm font-semibold text-gray-700">Experience:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{years_experience || '-'}</span>
-                  </div>
-                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                    <span className="text-sm font-semibold text-gray-700">Tools:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{tools_provided || '-'}</span>
+                    <span className="text-sm font-medium text-gray-600">Tools:</span>
+                    <span className="text-base font-semibold text-[#0a83eb]">{tools_provided || '-'}</span>
                   </div>
                   <div className="h-px bg-gray-100 my-2" />
                   <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">
-                    <span className="text-sm font-semibold text-gray-700">Rate:</span>
+                    <span className="text-sm font-medium text-gray-600">Rate:</span>
                     {rate_type === 'Hourly Rate' ? (
-                      <div className="text-lg font-semibold text-[#008cfc]">
-                        ₱{rate_from || 0}–₱{rate_to || 0}{' '}
-                        <span className="text-sm font-normal text-[#008cfc] opacity-80">per hour</span>
+                      <div className="text-lg font-bold text-[#0a83eb]">
+                        ₱{rate_from || 0}–₱{rate_to || 0} <span className="text-sm font-medium text-[#0a83eb] opacity-80">per hour</span>
                       </div>
                     ) : rate_type === 'By the Job Rate' ? (
-                      <div className="text-lg font-semibold text-[#008cfc]">
-                        ₱{rate_value || 0}{' '}
-                        <span className="text-sm font-normal text-[#008cfc] opacity-80">per job</span>
+                      <div className="text-lg font-bold text-[#0a83eb]">
+                        ₱{rate_value || 0} <span className="text-sm font-medium text-[#0a83eb] opacity-80">per job</span>
                       </div>
                     ) : (
                       <div className="text-gray-500 text-sm">No rate provided</div>
@@ -832,14 +837,14 @@ try { window.dispatchEvent(new Event('worker-application-submitted')); } catch {
                   <button
                     type="button"
                     onClick={handleBackClick}
-                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                    className="w-full sm:w-1/2 h-[48px] px-5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                   >
                     Back
                   </button>
                   <button
                     type="button"
                     onClick={handleConfirm}
-                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                    className="w-full sm:w-1/2 h-[48px] px-5 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                   >
                     Confirm
                   </button>

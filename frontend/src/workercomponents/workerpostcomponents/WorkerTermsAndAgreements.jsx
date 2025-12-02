@@ -189,53 +189,67 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
 
           <div className="px-6 py-6">
             <div className="space-y-5">
-              <label className="flex items-start gap-3 cursor-pointer">
+              <label className="flex items-start gap-3 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={agreeVerify}
                   onChange={(e) => setAgreeVerify(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
+                  className="peer sr-only"
                 />
+                <span className="relative h-5 w-5 rounded-md border border-gray-300 bg-white transition peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 peer-checked:bg-[#008cfc] peer-checked:border-[#008cfc] grid place-items-center" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 opacity-0 peer-checked:opacity-100 transition" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </span>
                 <div>
-                  <div className="text-sm text-gray-800">
+                  <div className="text-[15px] md:text-base text-gray-900">
                     I consent to background checks and verify my documents. <span className="text-red-500">*</span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-[13px] md:text-sm text-gray-500 mt-1">
                     JD HOMECARE may verify the authenticity of your submitted documents.
                   </div>
                 </div>
               </label>
 
-              <label className="flex items-start gap-3 cursor-pointer">
+              <label className="flex items-start gap-3 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={agreeTos}
                   onChange={(e) => setAgreeTos(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
+                  className="peer sr-only"
                 />
+                <span className="relative h-5 w-5 rounded-md border border-gray-300 bg-white transition peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 peer-checked:bg-[#008cfc] peer-checked:border-[#008cfc] grid place-items-center" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 opacity-0 peer-checked:opacity-100 transition" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </span>
                 <div>
-                  <div className="text-sm text-gray-800">
+                  <div className="text-[15px] md:text-base text-gray-900">
                     I agree to JD HOMECARE&apos;s Terms of Service and Privacy Policy. <span className="text-red-500">*</span>
                   </div>
-                  <a href="#" onClick={(e) => e.preventDefault()} className="text-sm text-blue-600 hover:underline">
+                  <a href="#" onClick={(e) => e.preventDefault()} className="text-[13px] md:text-sm text-blue-600 hover:underline">
                     View Terms of Service and Privacy Policy
                   </a>
                 </div>
               </label>
 
-              <label className="flex items-start gap-3 cursor-pointer">
+              <label className="flex items-start gap-3 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={agreePrivacy}
                   onChange={(e) => setAgreePrivacy(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
+                  className="peer sr-only"
                 />
+                <span className="relative h-5 w-5 rounded-md border border-gray-300 bg-white transition peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 peer-checked:bg-[#008cfc] peer-checked:border-[#008cfc] grid place-items-center" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 opacity-0 peer-checked:opacity-100 transition" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </span>
                 <div>
-                  <div className="text-sm text-gray-800">
-                    I consent to the collection and processing of my personal data in accordance with the Data Privacy
-                    Act (RA 10173). <span className="text-red-500">*</span>
+                  <div className="text-[15px] md:text-base text-gray-900">
+                    I consent to the collection and processing of my personal data in accordance with the Data Privacy Act (RA 10173). <span className="text-red-500">*</span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-[13px] md:text-sm text-gray-500 mt-1">
                     Your data will be protected and processed in compliance with Philippine law.
                   </div>
                 </div>
@@ -253,7 +267,7 @@ const WorkerTermsAndAgreements = ({ title, setTitle, handleNext, handleBack, onC
             Back : Set Your Price Rate
           </button>
 
-          <button
+        <button
             type="button"
             onClick={onNextClick}
             className={`sm:w-1/3 w-full px-6 py-3 rounded-xl transition shadow-sm ${

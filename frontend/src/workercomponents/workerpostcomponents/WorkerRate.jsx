@@ -46,15 +46,22 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
     setRateValue('');
   };
 
-  const handleRateValueChange = (e) => setRateValue(e.target.value);
-  const handleRateFromChange = (e) => setRateFrom(e.target.value);
-  const handleRateToChange = (e) => setRateTo(e.target.value);
+  const blockNonNumeric = (e) => {
+    const k = e.key;
+    if (k.length === 1 && !/[0-9]/.test(k)) e.preventDefault();
+  };
+
+  const sanitizeDigits = (v) => v.replace(/\D/g, '');
+
+  const handleRateValueChange = (e) => setRateValue(sanitizeDigits(e.target.value));
+  const handleRateFromChange = (e) => setRateFrom(sanitizeDigits(e.target.value));
+  const handleRateToChange = (e) => setRateTo(sanitizeDigits(e.target.value));
 
   const isHourlyValid = () => {
     if (!rateFrom || !rateTo) return false;
     const from = Number(rateFrom);
     const to = Number(rateTo);
-    return Number.isFinite(from) && Number.isFinite(to) && from > 0 && to > 0 && to >= from;
+    return Number.isFinite(from) && Number.isFinite(to) && from > 0 && to > 0 && to > from;
   };
 
   const isJobValid = () => {
@@ -268,7 +275,7 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
                     </label>
                     <div
                       className={`relative rounded-xl border ${
-                        attempted && !isHourlyValid() && !rateFrom
+                        attempted && !isHourlyValid()
                           ? 'border-red-500'
                           : 'border-gray-300'
                       } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
@@ -277,11 +284,17 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
                         ₱
                       </span>
                       <input
-                        type="number"
+                        type="text"
                         inputMode="numeric"
                         pattern="\d*"
                         value={rateFrom}
                         onChange={handleRateFromChange}
+                        onKeyDown={blockNonNumeric}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '');
+                          setRateFrom(t);
+                        }}
                         className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
                         required
                       />
@@ -293,7 +306,7 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
                     </label>
                     <div
                       className={`relative rounded-xl border ${
-                        attempted && !isHourlyValid() && !rateTo
+                        attempted && !isHourlyValid()
                           ? 'border-red-500'
                           : 'border-gray-300'
                       } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
@@ -302,11 +315,17 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
                         ₱
                       </span>
                       <input
-                        type="number"
+                        type="text"
                         inputMode="numeric"
                         pattern="\d*"
                         value={rateTo}
                         onChange={handleRateToChange}
+                        onKeyDown={blockNonNumeric}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '');
+                          setRateTo(t);
+                        }}
                         className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
                         required
                       />
@@ -315,7 +334,7 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
                 </div>
                 {attempted && rateFrom && rateTo && !isHourlyValid() && (
                   <p className="text-xs text-red-600 mt-1">
-                    Enter valid amounts, and make sure “To” is greater than or equal to “From”.
+                    Enter valid amounts. “To” must be strictly greater than “From”, and both must be positive.
                   </p>
                 )}
                 <p className="text-base text-gray-600 mt-2">
@@ -342,11 +361,17 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
                     ₱
                   </span>
                   <input
-                    type="number"
+                    type="text"
                     inputMode="numeric"
                     pattern="\d*"
                     value={rateValue}
                     onChange={handleRateValueChange}
+                    onKeyDown={blockNonNumeric}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '');
+                      setRateValue(t);
+                    }}
                     className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
                     required
                   />

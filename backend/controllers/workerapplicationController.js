@@ -51,16 +51,35 @@ function pick(obj, keys, alt = null) {
   }
   return alt;
 }
+function toArray(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'object') {
+    const out = [];
+    Object.entries(v).forEach(([k, val]) => {
+      if (!val) return;
+      if (Array.isArray(val)) {
+        val.forEach(x => out.push({ kind: k, ...(x || {}) }));
+      } else if (typeof val === 'object') {
+        out.push({ kind: k, ...(val || {}) });
+      } else if (typeof val === 'string') {
+        out.push({ kind: k, url: val });
+      }
+    });
+    return out;
+  }
+  if (typeof v === 'string') return [{ url: v }];
+  return [];
+}
 function normalizeDocs(arr) {
-  if (!Array.isArray(arr)) return [];
-  return arr.map(x => {
-    if (typeof x === 'string') return { data_url: x, kind: '' };
+  const base = toArray(arr);
+  return base.map(x => {
     const o = x || {};
-    return {
-      kind: o.kind || o.type || o.label || o.name || '',
-      url: o.url || '',
-      data_url: o.data_url || o.dataUrl || o.dataURL || o.base64 || ''
-    };
+    const kind = o.kind || o.type || o.label || o.name || o.field || '';
+    const url = o.url || o.link || o.href || '';
+    const data_url = o.data_url || o.dataUrl || o.dataURL || o.base64 || o.blobUrl || '';
+    const filename = o.filename || o.fileName || o.name || '';
+    return { kind, url, data_url, filename };
   });
 }
 
@@ -71,7 +90,7 @@ exports.submitFullApplication = async (req, res) => {
     const details = src.details || src.detail || src.work || {};
     const rate = src.rate || src.pricing || {};
     const metadata = src.metadata || {};
-    const docsIn = normalizeDocs(src.documents || src.docs || src.attachments || []);
+    const docsIn = normalizeDocs(src.documents || src.docs || src.attachments || src.required_documents || src.worker_documents || {});
 
     const worker_id_in = pick(src, ['worker_id', 'workerId', 'info.worker_id', 'info.workerId']);
     const first_name = pick(src, ['first_name', 'firstName', 'info.first_name', 'info.firstName', 'metadata.first_name', 'metadata.firstName']);
@@ -83,7 +102,23 @@ exports.submitFullApplication = async (req, res) => {
     const date_of_birth = pick(src, ['date_of_birth', 'birthDate', 'info.date_of_birth', 'info.birthDate', 'metadata.date_of_birth']);
     const age = pick(src, ['age', 'info.age', 'metadata.age']);
     const auth_uid = pick(src, ['auth_uid', 'authUid', 'info.auth_uid', 'metadata.auth_uid']);
-    const profile_picture = pick(src, ['profile_picture', 'profilePicture', 'info.profile_picture', 'info.profilePicture', 'metadata.profile_picture']);
+    const profile_picture_any = pick(src, [
+      'profile_picture',
+      'profilePicture',
+      'info.profile_picture',
+      'info.profilePicture',
+      'metadata.profile_picture',
+      'profile_picture_url',
+      'profilePictureUrl',
+      'info.profile_picture_url',
+      'info.profilePictureUrl',
+      'metadata.profile_picture_url',
+      'profile_picture_data_url',
+      'profilePictureDataUrl',
+      'info.profile_picture_data_url',
+      'info.profilePictureDataUrl',
+      'metadata.profile_picture_data_url'
+    ]);
     const profile_picture_name = pick(src, ['profile_picture_name', 'profilePictureName', 'info.profile_picture_name', 'info.profilePictureName', 'metadata.profile_picture_name']);
 
     const service_types = pick(src, ['service_types', 'details.service_types', 'details.serviceTypes', 'work.service_types', 'work.serviceTypes'], []);
@@ -148,14 +183,33 @@ exports.submitFullApplication = async (req, res) => {
     const request_group_id = newGroupId();
 
     let profileUpload = null;
-    if (profile_picture) {
-      try {
-        const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', profile_picture, `${request_group_id}-profile`);
-        profileUpload = up?.url ? up : null;
-      } catch {
-        profileUpload = null;
+    let profileDirect = null;
+    const rawProfile = profile_picture_any;
+    if (rawProfile) {
+      const s = String(rawProfile);
+      if (/^data:/i.test(s)) {
+        try {
+          const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', s, `${request_group_id}-profile`);
+          profileUpload = up?.url ? up : null;
+        } catch {
+          profileUpload = null;
+        }
+      } else if (/^https?:\/\//i.test(s)) {
+        profileDirect = s;
       }
     }
+
+    let fallbackProfile = null;
+    try {
+      const { data: prevInfo } = await supabaseAdmin
+        .from('worker_information')
+        .select('profile_picture_url, profile_picture_name')
+        .ilike('email_address', canonicalEmail)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (prevInfo) fallbackProfile = prevInfo;
+    } catch {}
 
     const infoRow = {
       request_group_id,
@@ -169,9 +223,14 @@ exports.submitFullApplication = async (req, res) => {
       barangay: (barangay ?? metadata.barangay ?? '').toString(),
       date_of_birth: date_of_birth || null,
       age: age || null,
-      profile_picture_url: profileUpload?.url || metadata.profile_picture || null,
-      profile_picture_name: profileUpload?.name || profile_picture_name || metadata.profile_picture_name || null
+      profile_picture_url: profileUpload?.url || profileDirect || null,
+      profile_picture_name: profileUpload?.name || profile_picture_name || null
     };
+
+    if (!infoRow.profile_picture_url) {
+      infoRow.profile_picture_url = metadata.profile_picture || metadata.profile_picture_url || fallbackProfile?.profile_picture_url || null;
+      if (!infoRow.profile_picture_name) infoRow.profile_picture_name = fallbackProfile?.profile_picture_name || null;
+    }
 
     const missingInfo = [];
     if (!infoRow.email_address) missingInfo.push('email_address');
@@ -310,26 +369,47 @@ exports.submitFullApplication = async (req, res) => {
       medical_certificate: '',
       certificates: ''
     };
+
+    let fallbackDocs = null;
+    try {
+      const { data: prevDocs } = await supabaseAdmin
+        .from('worker_required_documents')
+        .select('primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates')
+        .ilike('email_address', infoRow.email_address)
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (prevDocs) fallbackDocs = prevDocs;
+    } catch {}
+
+    const aliasToKey = (raw, f) => {
+      const r = String(raw || '').toLowerCase();
+      const ff = String(f || '').toLowerCase();
+      if ((/primary/.test(r) && /(front|face)/.test(r)) || (/prim/.test(ff) && /(front|face)/.test(ff))) return 'primary_id_front';
+      if ((/primary/.test(r) && /(back|rear|reverse)/.test(r)) || (/prim/.test(ff) && /(back|rear|reverse)/.test(ff))) return 'primary_id_back';
+      if ((/secondary|alternate|alt/.test(r)) || (/second|alt/.test(ff))) return 'secondary_id';
+      if ((/(nbi|police)/.test(r)) || (/(nbi|police)/.test(ff))) return 'nbi_police_clearance';
+      if ((/proof.*address|address.*proof|billing|bill/.test(r)) || (/address|billing|bill/.test(ff))) return 'proof_of_address';
+      if ((/medical|med\s*cert|health/.test(r)) || (/medical|medcert|health/.test(ff))) return 'medical_certificate';
+      if ((/certificate|certs?\b|tesda|ncii|nc2/.test(r)) || (/certificate|certs?\b|tesda|ncii|nc2/.test(ff))) return 'certificates';
+      if (/(^primary_id_front$|^primary\-id\-front$)/.test(r)) return 'primary_id_front';
+      if (/(^primary_id_back$|^primary\-id\-back$)/.test(r)) return 'primary_id_back';
+      if (/(^nbi_police_clearance$|^nbi\-police\-clearance$)/.test(r)) return 'nbi_police_clearance';
+      if (/(^proof_of_address$|^proof\-of\-address$)/.test(r)) return 'proof_of_address';
+      if (/(^medical_certificate$|^medical_certificates$|^medical\-certificate$)/.test(r)) return 'medical_certificate';
+      if (/^certificates?$/.test(r)) return 'certificates';
+      return null;
+    };
+
     for (let i = 0; i < docsIn.length; i++) {
       const d = docsIn[i] || {};
-      const raw = String(d.kind || d.type || d.label || d.name || d.field || d.slot || d.filename || d.fileName || '').toLowerCase();
-      const f = String(d.filename || d.fileName || '').toLowerCase();
-
-      const key =
-        (/primary/.test(raw) && /(front|face)/.test(raw)) || (/prim/.test(f) && /(front|face)/.test(f)) ? 'primary_id_front' :
-        (/primary/.test(raw) && /(back|rear|reverse)/.test(raw)) || (/prim/.test(f) && /(back|rear|reverse)/.test(f)) ? 'primary_id_back' :
-        (/secondary|alternate|alt/.test(raw)) || (/second|alt/.test(f)) ? 'secondary_id' :
-        (/(nbi|police)/.test(raw)) || (/(nbi|police)/.test(f)) ? 'nbi_police_clearance' :
-        (/proof.*address|address.*proof|billing|bill/.test(raw)) || (/address|billing|bill/.test(f)) ? 'proof_of_address' :
-        (/medical|med\s*cert|health/.test(raw)) || (/medical|medcert|health/.test(f)) ? 'medical_certificate' :
-        (/certificate|certs?\b|tesda|ncii|nc2/.test(raw)) || (/certificate|certs?\b|tesda|ncii|nc2/.test(f)) ? 'certificates' :
-        null;
+      const key = aliasToKey(d.kind, d.filename) || aliasToKey(d.filename, d.kind);
       if (!key) continue;
       if (typeof d.url === 'string' && /^https?:\/\//i.test(d.url)) {
-        docCols[key] = d.url || '';
+        docCols[key] = d.url;
         continue;
       }
-      if (d.data_url) {
+      if (d.data_url && /^data:/i.test(String(d.data_url))) {
         try {
           const up = await uploadDataUrlToBucket(bucket, d.data_url, `${request_group_id}-${key}`);
           docCols[key] = up?.url || '';
@@ -337,6 +417,28 @@ exports.submitFullApplication = async (req, res) => {
           docCols[key] = docCols[key] || '';
         }
       }
+    }
+
+    if (typeof metadata === 'object') {
+      const m = metadata || {};
+      const trySet = (k, v) => {
+        if (!v) return;
+        if (typeof v === 'string' && /^https?:\/\//i.test(v)) docCols[k] = v;
+      };
+      trySet('primary_id_front', m.primary_id_front || m.primaryIdFront);
+      trySet('primary_id_back', m.primary_id_back || m.primaryIdBack);
+      trySet('secondary_id', m.secondary_id || m.secondaryId);
+      trySet('nbi_police_clearance', m.nbi_police_clearance || m.nbiPoliceClearance);
+      trySet('proof_of_address', m.proof_of_address || m.proofOfAddress);
+      trySet('medical_certificate', m.medical_certificate || m.medical_certificates || m.medicalCertificate);
+      trySet('certificates', m.certificates);
+    }
+
+    if (fallbackDocs) {
+      Object.keys(docCols).forEach(k => {
+        if (k === 'request_group_id' || k === 'worker_id' || k === 'auth_uid' || k === 'email_address') return;
+        if (!docCols[k]) docCols[k] = fallbackDocs[k] || '';
+      });
     }
 
     try {
@@ -368,7 +470,8 @@ exports.submitFullApplication = async (req, res) => {
       email_address: infoRow.email_address,
       contact_number: infoRow.contact_number,
       street: infoRow.street || null,
-      barangay: infoRow.barangay || null
+      barangay: infoRow.barangay || null,
+      profile_picture_url: infoRow.profile_picture_url || null
     };
 
     const pendingDetails = {

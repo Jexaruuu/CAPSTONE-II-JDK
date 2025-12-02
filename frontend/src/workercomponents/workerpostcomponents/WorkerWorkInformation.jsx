@@ -78,35 +78,50 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     };
   }, [openTaskKey]);
 
-  const PopList = ({ items, value, onSelect, title = 'Select', fullWidth = false, emptyLabel = 'No options', disabledLabel }) => (
-    <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
-      <div className="text-sm font-semibold text-gray-800 px-2 pb-2">{title}</div>
-      <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
-        {items && items.length ? (
-          items.map((it) => {
-            const isSel = value === it;
-            const isDisabled = disabledLabel && disabledLabel(it);
-            return (
-              <button
-                key={it}
-                type="button"
-                disabled={isDisabled}
-                onClick={() => !isDisabled && onSelect(it)}
-                className={['text-left py-2 px-3 rounded-lg text-sm', isDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50', isSel && !isDisabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''].join(' ')}
-              >
-                {it}
-              </button>
-            );
-          })
-        ) : (
-          <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
-        )}
+  const PopList = ({ items, value, onSelect, title = 'Select', fullWidth = false, emptyLabel = 'No options', disabledLabel }) => {
+    const [q, setQ] = useState('');
+    const filtered = (items || []).filter((it) => it.toLowerCase().includes(q.toLowerCase()));
+    return (
+      <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
+        <div className="px-2 pb-2">
+          <div className="text-sm font-semibold text-gray-800">{title}</div>
+          <div className="mt-2">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search…"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+        <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
+          {filtered && filtered.length ? (
+            filtered.map((it) => {
+              const isSel = value === it;
+              const isDisabled = disabledLabel && disabledLabel(it);
+              return (
+                <button
+                  key={it}
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => !isDisabled && onSelect(it)}
+                  className={['text-left py-2 px-3 rounded-lg text-sm', isDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50', isSel && !isDisabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''].join(' ')}
+                >
+                  {it}
+                </button>
+              );
+            })
+          ) : (
+            <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-3 px-2">
+          <div className="text-xs text-gray-400">{filtered.length} result{filtered.length === 1 ? '' : 's'}</div>
+          <button type="button" onClick={() => onSelect('')} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+        </div>
       </div>
-      <div className="flex items-center justify-end mt-3 px-2">
-        <button type="button" onClick={() => onSelect('')} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -154,6 +169,19 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     setServiceTask((prev) => {
       const updatedTasks = prev[jobType].filter((_, i) => i !== index);
       return { ...prev, [jobType]: updatedTasks.length > 0 ? updatedTasks : [''] };
+    });
+  };
+
+  const addOrFillTask = (jobType, value) => {
+    setServiceTask((prev) => {
+      const arr = [...(prev[jobType] || [])];
+      const emptyIdx = arr.findIndex((v) => !String(v || '').trim());
+      if (emptyIdx > -1) {
+        arr[emptyIdx] = value;
+      } else {
+        arr.push(value);
+      }
+      return { ...prev, [jobType]: arr };
     });
   };
 
@@ -335,35 +363,38 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                   <div className="mb-4">
                     <h4 className="text-base font-semibold mb-2">Service Task</h4>
                     {serviceTypesSelected.map((jobType) => {
-                      const hasDetail = (serviceTask[jobType] || []).some((v) => String(v || '').trim() !== '');
+                      const options = jobTasks[jobType] || [];
+                      const selectedNonEmpty = (serviceTask[jobType] || []).filter((v) => String(v || '').trim() !== '');
+                      const hasDetail = selectedNonEmpty.length > 0;
                       return (
-                        <div key={jobType} className="mb-5 border p-3 rounded-md bg-gray-50">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">{jobType} Services</label>
+                        <div key={jobType} className="mb-6 rounded-xl border border-gray-200 bg-white shadow-xs">
+                          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-gray-100">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-[#008cfc]" />
+                              <div className="text-sm font-medium text-gray-900">{jobType} Services</div>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedNonEmpty.length === 0 ? (
+                                <span className="text-xs text-gray-400">No tasks selected</span>
+                              ) : (
+                                selectedNonEmpty.map((t) => (
+                                  <span key={t} className="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs">{t}</span>
+                                ))
+                              )}
+                            </div>
+                          </div>
 
-                          {serviceTask[jobType]?.map((task, index) => {
-                            const key = `${jobType}-${index}`;
-                            const options = jobTasks[jobType] || [];
-
-                            return (
-                              <div key={index} className="mb-2" ref={(node) => setTaskRowRef(key, node)}>
-                                <select value={task} onChange={(e) => handleJobDetailChange(jobType, index, e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
-                                  <option value="">Select a service</option>
-                                  {options.map((taskOption, i) => {
-                                    const isSelectedElsewhere = serviceTask[jobType]?.includes(taskOption) && taskOption !== task;
-                                    return (
-                                      <option key={i} value={taskOption} disabled={isSelectedElsewhere}>
-                                        {taskOption}
-                                      </option>
-                                    );
-                                  })}
-                                </select>
-
-                                <div className="relative">
-                                  <div className={`flex items-center rounded-xl border ${attempted && !task ? 'border-red-500' : 'border-gray-300'}`}>
-                                    <button type="button" onClick={() => setOpenTaskKey((k) => (k === key ? null : key))} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base">
+                          <div className="px-4 py-4">
+                            {(serviceTask[jobType] || []).map((task, index) => {
+                              const key = `${jobType}-${index}`;
+                              return (
+                                <div key={index} className="mb-3" ref={(node) => setTaskRowRef(key, node)}>
+                                  <div className={`flex items-stretch rounded-xl border ${attempted && !task ? 'border-red-500' : 'border-gray-300'} bg-white overflow-hidden`}>
+                                    <div className="px-3 py-3 text-xs text-gray-500 bg-gray-50 border-r border-gray-200 min-w-[62px] grid place-items-center">Task {index + 1}</div>
+                                    <button type="button" onClick={() => setOpenTaskKey((k) => (k === key ? null : key))} className="flex-1 px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                                       {task || 'Select a service'}
                                     </button>
-                                    <button type="button" onClick={() => setOpenTaskKey((k) => (k === key ? null : key))} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label={`Open ${jobType} service options`}>
+                                    <button type="button" onClick={() => setOpenTaskKey((k) => (k === key ? null : key))} className="px-3 pr-4 text-gray-600 hover:text-gray-800">
                                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
                                       </svg>
@@ -371,34 +402,60 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                                   </div>
 
                                   {openTaskKey === key && (
-                                    <PopList
-                                      items={options}
-                                      value={task}
-                                      fullWidth
-                                      title={`Select ${jobType} Service`}
-                                      disabledLabel={(opt) => serviceTask[jobType]?.includes(opt) && opt !== task}
-                                      onSelect={(val) => {
-                                        handleJobDetailChange(jobType, index, val);
-                                        setOpenTaskKey(null);
-                                      }}
-                                    />
+                                    <div className="relative">
+                                      <PopList
+                                        items={options}
+                                        value={task}
+                                        fullWidth
+                                        title={`Select ${jobType} Service`}
+                                        disabledLabel={(opt) => (serviceTask[jobType] || []).includes(opt) && opt !== task}
+                                        onSelect={(val) => {
+                                          handleJobDetailChange(jobType, index, val);
+                                          setOpenTaskKey(null);
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+
+                                  {serviceTask[jobType].length > 1 && (
+                                    <div className="flex justify-end">
+                                      <button type="button" onClick={() => removeTaskField(jobType, index)} className="mt-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 text-xs">
+                                        Remove
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
+                              );
+                            })}
 
-                                {serviceTask[jobType].length > 1 && (
-                                  <button type="button" onClick={() => removeTaskField(jobType, index)} className="mt-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm">
-                                    Remove
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
+                            {!hasDetail && attempted && <p className="text-xs text-red-600 mt-1">Choose at least one {jobType} service.</p>}
 
-                          {!((serviceTask[jobType] || []).some((v) => String(v || '').trim() !== '')) && attempted && <p className="text-xs text-red-600 mt-1">Choose at least one {jobType} service.</p>}
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {(options.filter((o) => !(serviceTask[jobType] || []).includes(o))).slice(0, 10).map((suggest) => (
+                                <button
+                                  key={suggest}
+                                  type="button"
+                                  onClick={() => addOrFillTask(jobType, suggest)}
+                                  className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 text-xs hover:bg-gray-50"
+                                >
+                                  {suggest}
+                                </button>
+                              ))}
+                            </div>
 
-                          <button type="button" onClick={() => addTaskField(jobType)} className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 mt-2.5 text-sm">
-                            + Add Another Task
-                          </button>
+                            <div className="mt-3 flex items-center justify-between">
+                              <button type="button" onClick={() => addTaskField(jobType)} className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 text-sm">
+                                + Add Another Task
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setServiceTask((prev) => ({ ...prev, [jobType]: [''] }))}
+                                className="px-3 py-2 text-xs text-gray-600 hover:text-gray-900"
+                              >
+                                Clear {jobType}
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
