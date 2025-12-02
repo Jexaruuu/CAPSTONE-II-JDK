@@ -15,6 +15,14 @@ const REASONS_ADMIN = [
   "Pricing too high"
 ];
 
+const parseMaybe = (v) => {
+  if (!v) return {};
+  if (typeof v === "string") {
+    try { return JSON.parse(v); } catch { return {}; }
+  }
+  return v;
+};
+
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
@@ -42,6 +50,28 @@ function StatusPill({ value }) {
     </span>
   );
 }
+
+const normalizeServiceTask = (raw) => {
+  if (Array.isArray(raw)) {
+    return raw
+      .map(x => ({
+        category: String(x?.category || 'General'),
+        tasks: (Array.isArray(x?.tasks) ? x.tasks : [])
+          .map(t => String(t || '').trim())
+          .filter(Boolean)
+      }))
+      .filter(g => g.tasks.length);
+  }
+  if (raw && typeof raw === 'object') {
+    return Object.entries(raw).map(([k, v]) => ({
+      category: String(k || 'General'),
+      tasks: (Array.isArray(v) ? v : [v])
+        .map(t => String(t || '').trim())
+        .filter(Boolean)
+    })).filter(g => g.tasks.length);
+  }
+  return [];
+};
 
 const isYes = (v) => String(v ?? "").toLowerCase() === "yes";
 const rate_toNumber = (x) => (x === null || x === undefined || x === "" ? null : Number(x));
@@ -189,7 +219,13 @@ const SectionCard = ({ title, children, badge }) => (
 
 function parseDateTime(val) {
   if (!val) return null;
-  const d = new Date(val);
+  const raw = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [y, m, d] = raw.split("-").map((x) => parseInt(x, 10));
+    const dt = new Date(y, m - 1, d);
+    return isNaN(dt) ? null : dt;
+  }
+  const d = new Date(raw);
   return isNaN(d) ? null : d;
 }
 function fmtDateTime(val) {
@@ -207,6 +243,15 @@ function fmtDateTime(val) {
 function fmtDateOnly(val) {
   const d = parseDateTime(val);
   return d ? d.toLocaleDateString() : "";
+}
+function computeAgeFrom(val) {
+  const d = parseDateTime(val);
+  if (!d) return null;
+  const t = new Date();
+  let a = t.getFullYear() - d.getFullYear();
+  const m = t.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
+  return a >= 0 && a <= 120 ? a : null;
 }
 
 function resolveDoc(docs, keys, fuzzy) {
@@ -539,7 +584,7 @@ export default function WorkerApplicationMenu() {
   const [selected, setSelected] = useState(() => new Set());
   const headerCheckboxRef = useRef(null);
   const [viewRow, setViewRow] = useState(null);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0, total: 0 });
   const [showDocs, setShowDocs] = useState(false);
@@ -592,11 +637,16 @@ export default function WorkerApplicationMenu() {
       const rawItems = Array.isArray(res?.data?.items) ? res.data.items : [];
       const items = rawItems.filter((r) => String(r.status || "").toLowerCase() !== "cancelled");
       const mapped = items.map((r) => {
-        const i = r.info || {};
-        const w = r.work || {};
-        const rate = r.rate || {};
-        const st = Array.isArray(w.service_types) ? w.service_types : [];
-        const createdRaw = r.created_at || r.createdAt || i.created_at || i.createdAt || null;
+  const i = parseMaybe(r.info || r.information || r.profile || {});
+const w = parseMaybe(r.work || r.details || r.work_details || {});
+const rate = parseMaybe(r.rate || {});
+const st = Array.isArray(w.service_types)
+  ? w.service_types
+  : Array.isArray(r.service_types)
+  ? r.service_types
+  : [];
+        const createdRaw =
+          r.created_at || r.createdAt || i.created_at || i.createdAt || null;
         const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
         const s = String(r.status ?? "").trim().toLowerCase();
         const primaryService = st[0] || "";
@@ -633,52 +683,85 @@ export default function WorkerApplicationMenu() {
             .filter(Boolean)
             .forEach(addTask);
         }
-        return {
-          id: r.id,
-          request_group_id: r.request_group_id,
-          status: s || "pending",
-          name_first: i.first_name || "",
-          name_last: i.last_name || "",
-          full_name: [i.first_name, i.last_name].filter(Boolean).join(" ") || "",
-          email: r.email_address || i.email_address || "",
-          barangay: i.barangay || "",
-          additional_address: i.additional_address || i.street || "",
-          date_of_birth_raw: i.date_of_birth || null,
-          date_of_birth_display: i.date_of_birth ? fmtDateOnly(i.date_of_birth) : "",
-          age: i.age ?? null,
-          contact_number:
-            i.contact_number ||
-            i.contactNumber ||
-            r.contact_number ||
-            r.phone_number ||
-            i.phone_number ||
-            "",
-          years_experience: w.years_experience ?? "",
-          tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
-          service_types: st,
-          primary_service: primaryService,
-          service_types_lex: st.join(", "),
-          task_or_role: taskOrRole || "",
-          service_tasks: tasksList,
-          service_description: w.work_description || "",
-          rate_type: rate.rate_type || "",
-          rate_from: rate.rate_from,
-          rate_to: rate_toNumber(rate.rate_to),
-          rate_value: rate_toNumber(rate.rate_value),
-          info: i,
-          work: w,
-          rate,
-          docs: r.docs || {},
-          created_at_raw: createdRaw,
-          created_at_ts: createdTs,
-          created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
-          profile_picture_url: i.profile_picture_url || null,
-          reason_choice: r.reason_choice || r.decline_reason_choice || null,
-          reason_other: r.reason_other || r.decline_reason_other || null,
-          decision_reason: r.decision_reason || r.reason || null,
-          decided_at_raw: r.decided_at || null,
-          decided_at_display: r.decided_at ? fmtDateTime(r.decided_at) : r.decided_at_display || ""
-        };
+        const groupsFromServiceTask = normalizeServiceTask(w.service_task);
+        groupsFromServiceTask.forEach(g => g.tasks.forEach(addTask));
+
+       const dobRaw = firstNonEmpty(
+  i.date_of_birth,
+  i.birth_date,
+  i.birthdate,
+  i.birthDate,
+  i.dateOfBirth,
+  i.dob,
+  r.date_of_birth,
+  r.dob,
+  r.dateOfBirth,
+  r.birth_date,
+  r.birthDate,
+  r.date_of_birth_raw,
+  i.date_of_birth_raw
+) || null;
+
+const dobDisplay = firstNonEmpty(
+  i.date_of_birth_display,
+  r.date_of_birth_display,
+  i.birth_date_display,
+  r.birth_date_display,
+  fmtDateOnly(dobRaw)
+);
+
+const ageValue = (() => {
+  const a = i.age ?? r.age;
+  if (a !== undefined && a !== null && String(a).trim() !== "") return a;
+  return computeAgeFrom(dobRaw);
+})();
+
+    return {
+  id: r.id,
+  request_group_id: r.request_group_id,
+  status: s || "pending",
+  name_first: i.first_name || "",
+  name_last: i.last_name || "",
+  full_name: [i.first_name, i.last_name].filter(Boolean).join(" ") || "",
+  email: r.email_address || i.email_address || "",
+  barangay: i.barangay || "",
+  additional_address: i.additional_address || i.street || "",
+ date_of_birth_raw: dobRaw,
+date_of_birth_display: dobDisplay || "-",
+age: ageValue ?? "-",
+  contact_number:
+    i.contact_number ||
+    i.contactNumber ||
+    r.contact_number ||
+    r.phone_number ||
+    i.phone_number ||
+    "",
+  years_experience: w.years_experience ?? "",
+  tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
+  service_types: st,
+  primary_service: primaryService,
+  service_types_lex: st.join(", "),
+  task_or_role: taskOrRole || "",
+  service_tasks: tasksList,
+  service_description: w.work_description || "",
+  rate_type: rate.rate_type || "",
+  rate_from: rate.rate_from,
+  rate_to: rate_toNumber(rate.rate_to),
+  rate_value: rate_toNumber(rate.rate_value),
+  info: i,
+  work: w,
+  rate,
+  docs: r.docs || {},
+  created_at_raw: createdRaw,
+  created_at_ts: createdTs,
+  created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
+  profile_picture_url: i.profile_picture_url || null,
+  reason_choice: r.reason_choice || r.decline_reason_choice || null,
+  reason_other: r.reason_other || r.decline_reason_other || null,
+  decision_reason: r.decision_reason || r.reason || null,
+  decided_at_raw: r.decided_at || null,
+  decided_at_display: r.decided_at ? fmtDateTime(r.decided_at) : r.decided_at_display || ""
+};
       });
 
       setRows(mapped);
@@ -1014,7 +1097,7 @@ export default function WorkerApplicationMenu() {
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="inline-flex items.center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
                 Pricing
               </span>
@@ -1059,7 +1142,7 @@ export default function WorkerApplicationMenu() {
             <Field label="Age" value={viewRow?.age ?? "-"} />
             <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
             <Field label="Barangay" value={viewRow?.barangay || "-"} />
-            <Field label="Additional Address" value={viewRow?.additional_address || "-"} />
+            <Field label="Street" value={viewRow?.additional_address || "-"} />
           </div>
         </SectionCard>
       );
@@ -1230,11 +1313,11 @@ export default function WorkerApplicationMenu() {
 
         <section className="mt-6">
           <div className="-mx-6">
-            <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-3">
+            <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium text-gray-700">Filter</span>
                 <div className="flex items-center gap-2">
-                  {tabs.map((t) => {
+                  {[{ key:"all",label:"All",count:counts.total },{ key:"pending",label:"Pending",count:counts.pending },{ key:"approved",label:"Approved",count:counts.approved },{ key:"declined",label:"Declined",count:counts.declined }].map((t) => {
                     const active = filter === t.key;
                     return (
                       <button
@@ -1295,7 +1378,7 @@ export default function WorkerApplicationMenu() {
               </div>
             </div>
 
-            <div className="px-6">
+            <div className="px-6 mt-3">
               <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
                 {loading && (
                   <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">
@@ -1603,7 +1686,7 @@ export default function WorkerApplicationMenu() {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDocs(false)} />
             <div className="relative w-full max-w-[900px] max-h-[80vh] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
               <div className="px-6 py-4 border-b border-gray-200 bg-white">
-                <div className="text-base font-semibold text-gray-900">Documents</div>
+                <div className="text.base font-semibold text-gray-900">Documents</div>
               </div>
               <div className="p-6 overflow-y-auto max-h-[65vh] [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
                 {viewRow && viewRow.docs && Object.keys(viewRow.docs).length > 0 ? (
@@ -1625,9 +1708,9 @@ export default function WorkerApplicationMenu() {
                         <div key={cfg.label} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                           <div className="p-4">
                             {isImg && url ? (
-                              <img src={url} alt={cfg.label} className="w-full h-44 object-contain" />
+                              <img src={url} alt={cfg.label} className="w.full h-44 object-contain" />
                             ) : (
-                              <div className="text-sm text-gray-500 h-44 grid place-items-center"> {url ? "Preview not available" : "No document"} </div>
+                              <div className="text-sm text-gray-500 h-44.grid place-items-center"> {url ? "Preview not available" : "No document"} </div>
                             )}
                           </div>
                           <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
@@ -1807,10 +1890,10 @@ export default function WorkerApplicationMenu() {
             autoFocus
             onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            className="fixed inset-0 z-[2147483647] flex.items-center justify-center cursor-wait"
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
+            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg.white shadow-2xl p-8">
               <div className="relative mx-auto w-40 h-40">
                 <div
                   className="absolute inset-0 animate-spin rounded-full"
@@ -1954,7 +2037,7 @@ export default function WorkerApplicationMenu() {
             autoFocus
             onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+            className="fixed inset-0 z-[2147483647] flex.items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">

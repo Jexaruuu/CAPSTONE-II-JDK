@@ -31,7 +31,7 @@ exports.approve = async (req,res)=>{
   try{
     const id=s(req.params.id||"");
     if(!id) return res.status(400).json({message:"Missing id"});
-    const row=await markStatus(id,"approved",null);
+    const row=await markStatus(id,"approved",null,null,null);
     return res.status(200).json({id:row.id,status:row.status,decided_at:row.decided_at});
   }catch(err){
     return res.status(400).json({message:err?.message||"Failed to approve"});
@@ -41,10 +41,12 @@ exports.approve = async (req,res)=>{
 exports.decline = async (req,res)=>{
   try{
     const id=s(req.params.id||"");
-    const reason=s(req.body?.reason||"")||null;
+    const rc=s(req.body?.reason_choice||"")||null;
+    const ro=s(req.body?.reason_other||"")||null;
+    const dr=s(req.body?.reason||"")||null;
     if(!id) return res.status(400).json({message:"Missing id"});
-    const row=await markStatus(id,"declined",reason);
-    return res.status(200).json({id:row.id,status:row.status,decided_at:row.decided_at,decision_reason:row.decision_reason});
+    const row=await markStatus(id,"declined",dr,rc,ro);
+    return res.status(200).json({id:row.id,status:row.status,decided_at:row.decided_at,decision_reason:row.decision_reason,reason_choice:row.reason_choice,reason_other:row.reason_other});
   }catch(err){
     return res.status(400).json({message:err?.message||"Failed to decline"});
   }
