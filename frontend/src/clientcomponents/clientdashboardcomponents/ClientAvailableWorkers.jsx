@@ -1,7 +1,7 @@
 // ClientAvailableWorkers.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Star } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -37,6 +37,115 @@ function titleFromServiceTypes(arr) {
   return s ? `${s} | Professional Services` : 'Home Service Professional';
 }
 
+function computeAge(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const t = new Date();
+  let a = t.getFullYear() - d.getFullYear();
+  const m = t.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
+  return a >= 0 && a <= 120 ? a : null;
+}
+
+function coerceYears(v) {
+  const n = Number(String(v ?? '').replace(/[^\d.]/g, ''));
+  if (!Number.isFinite(n)) return null;
+  if (n < 0) return 0;
+  if (n > 50) return 50;
+  return Math.floor(n);
+}
+
+function normalizeGender(v) {
+  const s = String(v ?? '').trim();
+  if (!s) return null;
+  const l = s.toLowerCase();
+  if (['m','male','man','masculine'].includes(l)) return 'Male';
+  if (['f','female','woman','feminine'].includes(l)) return 'Female';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function toText(v) {
+  if (v == null) return '';
+  if (Array.isArray(v)) return v.filter(Boolean).map(String).join(', ');
+  if (typeof v === 'object') {
+    const hasTasks = Object.prototype.hasOwnProperty.call(v, 'tasks');
+    const hasCat = Object.prototype.hasOwnProperty.call(v, 'category');
+    if (hasTasks || hasCat) {
+      const parts = [];
+      if (v.category) parts.push(String(v.category));
+      if (Array.isArray(v.tasks) && v.tasks.length) parts.push(v.tasks.map(String).join(', '));
+      return parts.join(': ');
+    }
+    return Object.values(v).map(String).join(', ');
+  }
+  return String(v);
+}
+
+function uniqJoin(list) {
+  const s = [...new Set(list.filter(Boolean).map((x) => String(x).trim()))];
+  return s.join(', ');
+}
+
+function flattenTasks(v) {
+  const out = [];
+  if (!v && v !== 0) return out;
+  if (Array.isArray(v)) {
+    v.forEach((x) => {
+      if (typeof x === 'string') out.push(x);
+      else if (x && typeof x === 'object') {
+        if (Array.isArray(x.tasks)) out.push(...x.tasks);
+        else out.push(...Object.values(x));
+      }
+    });
+  } else if (typeof v === 'object') {
+    if (Array.isArray(v.tasks)) out.push(...v.tasks);
+    else out.push(...Object.values(v));
+  } else {
+    out.push(v);
+  }
+  return out;
+}
+
+function toolsText(v) {
+  if (v == null) return '—';
+  if (Array.isArray(v)) return v.filter(Boolean).map(String).join(', ');
+  if (typeof v === 'object') return toText(v);
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+  return String(v);
+}
+
+function normalizeRateType(v) {
+  const s = String(v ?? '').trim();
+  if (!s) return '';
+  const l = s.toLowerCase();
+  if (l.includes('hour')) return 'Hourly Rate';
+  if (l.includes('job')) return 'By the Job Rate';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function deriveRatingPercent(src) {
+  const cands = [
+    src?.rating_percent, src?.ratingPercent, src?.rating_percentage, src?.job_success_percent,
+    src?.jobSuccessPercent, src?.success_percent, src?.successPercent
+  ];
+  for (const v of cands) {
+    const n = Number(String(v ?? '').replace(/[^\d.]/g, ''));
+    if (Number.isFinite(n) && n >= 0 && n <= 100) return Math.round(n);
+  }
+  return null;
+}
+
+function deriveRatingFive(src) {
+  const direct = [
+    src?.rating, src?.rating_out_of_5, src?.ratingOutOf5, src?.stars, src?.star_average, src?.starAverage
+  ].map((v) => Number(v)).find((n) => Number.isFinite(n) && n >= 0 && n <= 5);
+  if (Number.isFinite(direct)) return direct;
+  const pct = deriveRatingPercent(src);
+  if (pct != null) return Math.max(0, Math.min(5, pct / 20));
+  return null;
+}
+
 const ClientAvailableWorkers = () => {
   const [items, setItems] = useState([]);
 
@@ -44,22 +153,48 @@ const ClientAvailableWorkers = () => {
     let alive = true;
     const load = async () => {
       try {
-        const url = `${API_BASE}/api/admin/workerapplications?status=approved`;
+        const url = `${API_BASE}/api/workerapplications/public/approved?limit=60`;
         const { data } = await axios.get(url);
         const rows = Array.isArray(data?.items) ? data.items : [];
-        const mapped = rows.map((r, i) => {
+
+        const base = rows.map((r, i) => {
           const info = r.info || {};
           const work = r.work || {};
           const rate = r.rate || {};
           const name = [info.first_name, info.last_name].filter(Boolean).join(' ') || 'Worker';
           const img = info.profile_picture_url || '';
-          const st = Array.isArray(work.service_types) ? work.service_types : [];
-          const skill = st[0] || 'General';
+          const stArr = Array.isArray(work.service_types) ? work.service_types : [];
+          const st0 = stArr[0];
+          const st0Cat = st0 && typeof st0 === 'object' && st0.category ? String(st0.category) : null;
+          const st0Tasks = st0 && typeof st0 === 'object' ? flattenTasks(st0.tasks) : [];
+          const serviceTypeRaw = st0Cat || (Array.isArray(stArr) && typeof st0 === 'string' ? st0 : (work.service_type ?? work.primary_service_type ?? ''));
+          const serviceType = toText(serviceTypeRaw);
+          const serviceTaskRaw = [
+            ...flattenTasks(work.service_task),
+            ...flattenTasks(work.task),
+            ...flattenTasks(work.serviceTask),
+            ...flattenTasks(work.service_task_name),
+            ...st0Tasks
+          ];
+          const serviceTask = uniqJoin(serviceTaskRaw);
+          const toolsProvided = toolsText(
+            work.tools_provided ?? work.toolsProvided ?? work.tools ?? work.provides_tools ?? work.has_tools ?? work.hasTools
+          );
+          const barangay = info.barangay ?? info.brgy ?? '';
+          const street = info.street ?? info.street_name ?? info.street_address ?? info.address_line1 ?? '';
+          const addressLine = [barangay, street].filter(Boolean).join(', ');
+          const skill = st0Cat || (Array.isArray(stArr) && stArr.length ? String(stArr[0]) : 'General');
           const rateText = primaryRate(rate) || 'Rate upon request';
+          const rateType = normalizeRateType(rate?.rate_type ?? rate?.type ?? '');
+          const ratingFive = deriveRatingFive(r) ?? deriveRatingFive(work);
           const bio = work.work_description || 'Experienced home service professional focused on reliable, high-quality work and great communication.';
           const country = 'Philippines';
           const success = '—';
           const jobs = 0;
+          const years = coerceYears(work.years_experience ?? work.years_of_experience ?? work.yearsExperience ?? work.experience_years ?? work.years ?? work.experience);
+          const dob = info.date_of_birth || info.birth_date || info.birthdate || info.dob || '';
+          const age = computeAge(dob);
+          const gender = normalizeGender(info.gender ?? info.sex ?? r.gender);
           const consultText = rateText ? `${rateText} consultation` : 'Consultation available';
           return {
             id: r.id || `${r.request_group_id || i}`,
@@ -69,13 +204,45 @@ const ClientAvailableWorkers = () => {
             country,
             success,
             jobs,
+            years,
+            age,
+            gender,
             rate: rateText,
-            title: titleFromServiceTypes(st),
+            rateType,
+            title: titleFromServiceTypes(stArr),
             bio,
-            consultText
+            consultText,
+            serviceType,
+            serviceTask,
+            toolsProvided,
+            addressLine,
+            ratingFive,
+            __meta: { email: info.email_address || r.email_address || '', auth_uid: r.auth_uid || info.auth_uid || '' }
           };
         });
-        if (alive) setItems(mapped);
+
+        const enriched = await Promise.all(
+          base.map(async (w) => {
+            if (w.gender) {
+              const o = { ...w }; delete o.__meta; return o;
+            }
+            let sex = null;
+            const e = w.__meta?.email ? String(w.__meta.email).trim() : '';
+            const au = w.__meta?.auth_uid ? String(w.__meta.auth_uid).trim() : '';
+            const params = e ? { email: e } : au ? { auth_uid: au } : null;
+            if (params) {
+              try {
+                const r = await axios.get(`${API_BASE}/api/workers/public/sex`, { params });
+                sex = r.data?.sex || null;
+              } catch {}
+            }
+            const o = { ...w, gender: normalizeGender(sex) || w.gender || '—' };
+            delete o.__meta;
+            return o;
+          })
+        );
+
+        if (alive) setItems(enriched);
       } catch {
         if (alive) setItems([]);
       }
@@ -100,7 +267,7 @@ const ClientAvailableWorkers = () => {
 
   const GAP = 24;
 
-  const [cardW, setCardW]   = useState(420);
+  const [cardW, setCardW]   = useState(430);
   const [endPad, setEndPad] = useState(0);
 
   const totalSlides = Math.max(1, Math.ceil(displayItems.length / PER_PAGE));
@@ -152,7 +319,7 @@ const ClientAvailableWorkers = () => {
     if (!wrap || !track) return;
     const visible = wrap.clientWidth - getHPad(wrap) - getHPad(track);
     const exact   = Math.floor((visible - GAP * (PER_PAGE - 1)) / PER_PAGE);
-    const clamped = Math.max(420, Math.min(600, exact));
+    const clamped = Math.max(430, Math.min(610, exact));
     setCardW(clamped);
     setEndPad(0);
   };
@@ -263,7 +430,7 @@ const ClientAvailableWorkers = () => {
     <div className="max-w-[1525px] mx-auto px-6 -py-5 relative">
       <div className="flex justify-between items-center mb-1">
         <h2 className="text-2xl font-semibold text-gray-800">Available Workers</h2>
-        <a href="/browse-workers" className="text-[#008cfc] flex items-center gap-1 font-medium hover:underline">
+        <a href="/browse-workers" className="text-[#008cfc] flex items-center gap-1 font-medium hover:underline text-base">
           Browse available workers <ArrowRight size={16} />
         </a>
       </div>
@@ -280,7 +447,7 @@ const ClientAvailableWorkers = () => {
         </div>
       ) : (
         <>
-          <div className="relative w-full flex justify-center items-center">
+          <div className="relative w-full flex justify.center items-center">
             <button
               onClick={() => handleScroll('left')}
               className="absolute -left-2 md:left-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
@@ -301,65 +468,119 @@ const ClientAvailableWorkers = () => {
                 className="flex space-x-6 overflow-x-scroll scroll-smooth no-scrollbar pl-4 pr-4 select-none no-hand"
                 style={{ touchAction: 'auto' }}
               >
-                {displayItems.map((w, i) => (
-                  <div
-                    key={w.id}
-                    ref={(el) => (cardRefs.current[i] = el)}
-                    className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-300 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:border-[#008cfc] hover:shadow-xl"
-                    style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
-                  >
-                    <button className="absolute top-4 right-4 h-8 w-8 rounded-full grid place-items-center hover:bg-gray-100">
-                      <img src="/verifiedicon.png" alt="" className="h-7 w-7 object-contain" />
-                    </button>
+                {displayItems.map((w, i) => {
+                  const rating = w.ratingFive != null ? Math.round(w.ratingFive * 10) / 10 : null;
+                  const filledStars = Math.round(rating ?? 0);
+                  return (
+                    <div
+                      key={w.id}
+                      ref={(el) => (cardRefs.current[i] = el)}
+                      className="relative overflow-hidden flex-shrink-0 bg.white border border-gray-300 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:border-[#008cfc] hover:shadow-xl"
+                      style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
+                    >
+                      <button className="absolute top-4 right-4 h-8 w-8 rounded-full grid place-items-center hover:bg-gray-100">
+                        <img src="/verifiedicon.png" alt="" className="h-7 w-7 object-contain" />
+                      </button>
 
-                    <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-full overflow-hidden">
-                        <img
-                          src={w.image || avatarFromName(w.name)}
-                          alt={w.name}
-                          className="h-full w-full object-cover"
-                          onLoad={() => requestAnimationFrame(recomputePositions)}
-                          onError={({ currentTarget }) => {
-                            currentTarget.style.display = 'none';
-                            const parent = currentTarget.parentElement;
-                            if (parent) {
-                              parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-base font-semibold">${(w.name || '?').trim().charAt(0).toUpperCase()}</div>`;
-                            }
-                            requestAnimationFrame(recomputePositions);
-                          }}
-                        />
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-full overflow-hidden">
+                          <img
+                            src={w.image || avatarFromName(w.name)}
+                            alt={w.name}
+                            className="h-full w-full object-cover"
+                            onLoad={() => requestAnimationFrame(recomputePositions)}
+                            onError={({ currentTarget }) => {
+                              currentTarget.style.display = 'none';
+                              const parent = currentTarget.parentElement;
+                              if (parent) {
+                                parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-base font-semibold">${(w.name || '?').trim().charAt(0).toUpperCase()}</div>`;
+                              }
+                              requestAnimationFrame(recomputePositions);
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-lg font-semibold text-gray-900 truncate">{w.name}</div>
+                          <div className="text-sm text-gray-600 truncate">
+                            {w.addressLine || w.country}
+                          </div>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <div className="text-lg font-semibold text-gray-900 truncate">{w.name}</div>
-                        <div className="text-sm text-gray-600">{w.country}</div>
+
+                      <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+                        <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
+                          <div className="font-semibold text-gray-900">{w.gender ?? '—'}</div>
+                          <div className="text-gray-500 text-xs whitespace-nowrap">Gender</div>
+                        </div>
+                        <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
+                          <div className="font-semibold text-gray-900">{w.age ?? '—'}</div>
+                          <div className="text-gray-500 text-xs">Age</div>
+                        </div>
+                        <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
+                          <div className="font-semibold text-gray-900">{w.toolsProvided ?? '—'}</div>
+                          <div className="text-gray-500 text-xs">Tools Provided</div>
+                        </div>
                       </div>
+
+                      <div className="mt-4">
+                        <div className="text-sm text-gray-600 leading-relaxed line-clamp-3">{w.bio}</div>
+                      </div>
+
+                      {(w.serviceType || w.serviceTask || w.rate || w.rateType) && (
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <div>
+                            {w.serviceType && (
+                              <>
+                                <div className="text-xs text-gray-500">Service Type:</div>
+                                <div className="text-sm font-medium text-gray-900 truncate">{w.serviceType}</div>
+                              </>
+                            )}
+                            {w.serviceTask && (
+                              <>
+                                <div className="mt-2 text-xs text-gray-500">Service Task:</div>
+                                <div className="text-sm text-gray-900 line-clamp-2">{w.serviceTask}</div>
+                              </>
+                            )}
+                            <div className="mt-2 text-xs text-gray-500">Ratings:</div>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1">
+                                {[0,1,2,3,4].map((idx) => (
+                                  <Star
+                                    key={idx}
+                                    size={14}
+                                    className={idx < filledStars ? 'text-yellow-400' : 'text-gray-300'}
+                                    fill="currentColor"
+                                  />
+                                ))}
+                              </div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {rating != null ? `${rating.toFixed(1)}/5` : '—'}
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            {w.rateType && (
+                              <>
+                                <div className="text-xs text-gray-500">Rate Type:</div>
+                                <div className="text-sm text-gray-900 truncate">{w.rateType}</div>
+                              </>
+                            )}
+                            {w.rate && (
+                              <>
+                                <div className="mt-2 text-xs text-gray-500">Service Rate:</div>
+                                <div className="text-sm font-medium text-gray-900">{w.rate}</div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <a href="#" className="mt-4 w-full h-11 rounded-lg bg-[#008cfc] text-white text-sm font-medium grid place-items-center hover:bg-blue-700 transition">
+                        View Worker
+                      </a>
                     </div>
-
-                    <div className="mt-5 grid grid-cols-3 gap-2 text-sm">
-                      <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                        <div className="font-semibold text-gray-900">{w.success}</div>
-                        <div className="text-gray-500 text-xs">Job Success</div>
-                      </div>
-                      <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                        <div className="font-semibold text-gray-900">{w.jobs}</div>
-                        <div className="text-gray-500 text-xs">Jobs</div>
-                      </div>
-                      <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                        <div className="font-semibold text-gray-900">{w.rate}</div>
-                        <div className="text-gray-500 text-xs">Rate</div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <div className="font-semibold text-gray-900 leading-snug line-clamp-2">{w.title}</div>
-                      <div className="mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3">{w.bio}</div>
-                    </div>
-
-                    <a href="#" className="mt-4 w-full h-11 rounded-lg bg-[#008cfc] text-white font-medium grid place-items-center hover:bg-blue-700 transition">
-                      View Worker
-                    </a>
-                  </div>
-                ))}
+                  );
+                })}
                 <div aria-hidden className="flex-shrink-0" style={{ width: `${endPad}px` }} />
               </div>
             </div>
@@ -414,7 +635,7 @@ const ClientAvailableWorkers = () => {
                       {pg}
                     </button>
                   ) : (
-                    <span key={`dots-${idx}`} className="px-1 text-gray-500 select-none">…</span>
+                    <span key={`dots-${idx}`} className="px-1 text-gray-500 select-none text-sm">…</span>
                   )
                 );
               })()}

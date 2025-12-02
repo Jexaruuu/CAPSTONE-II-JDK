@@ -266,4 +266,26 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { registerWorker, me, password, updateProfile };
+const publicSex = async (req, res) => {
+  try {
+    const email = String(req.query.email || "").trim().toLowerCase();
+    const auth_uid = String(req.query.auth_uid || "").trim();
+    if (!email && !auth_uid) return res.status(400).json({ message: "Missing identifier" });
+
+    let row = null;
+    if (auth_uid) {
+      const { data } = await supabaseAdmin.from("user_worker").select("sex, auth_uid, email_address").eq("auth_uid", auth_uid).limit(1);
+      row = data && data[0] ? data[0] : null;
+    }
+    if (!row && email) {
+      const { data } = await supabaseAdmin.from("user_worker").select("sex, auth_uid, email_address").ilike("email_address", email).order("created_at", { ascending: false }).limit(1);
+      row = data && data[0] ? data[0] : null;
+    }
+
+    return res.status(200).json({ sex: row?.sex || null });
+  } catch {
+    return res.status(400).json({ sex: null });
+  }
+};
+
+module.exports = { registerWorker, me, password, updateProfile, publicSex };

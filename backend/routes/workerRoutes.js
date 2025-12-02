@@ -6,5 +6,6 @@ router.post("/register", workerController.registerWorker);
 router.get("/me", workerController.me);
 router.post("/password", workerController.password);
 router.post("/profile", workerController.updateProfile);
+router.get("/public/sex", workerController.publicSex);
 
 module.exports = router;
