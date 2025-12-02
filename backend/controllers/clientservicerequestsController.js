@@ -15,14 +15,14 @@ const {
   getCancelledReasonsByGroupIds
 } = require('../models/clientservicerequestsModel');
 
-const { insertPendingRequest } = require('../models/pendingservicerequestsModel');
+const { insertPendingRequest } = require('../models/clientservicerequeststatusModel');
 const { supabaseAdmin } = require('../supabaseClient');
 
 function friendlyError(err) {
   const raw = err?.message || String(err);
   if (/csr-attachments/i.test(raw) && /not.*found|bucket/i.test(raw)) return 'Storage bucket "csr-attachments" is missing. Create it in Supabase or remove attachments.';
   if (/column .*attachments.* does not exist/i.test(raw)) return 'Your table does not have an "attachments" column. We will retry without attachments.';
-  if (/user_client|client_information|client_service_request_details|client_service_rate|csr_pending/i.test(raw)) return `Database error: ${raw}`;
+  if (/user_client|client_information|client_service_request_details|client_service_rate|client_service_request_status/i.test(raw)) return `Database error: ${raw}`;
   return raw;
 }
 
@@ -145,7 +145,7 @@ exports.submitFullRequest = async (req, res) => {
 
     try {
       const { data: existing } = await supabaseAdmin
-        .from('csr_pending')
+        .from('client_service_request_status')
         .select('request_group_id,status,details')
         .eq('email_address', canonicalEmail)
         .in('status', ['pending', 'approved'])
@@ -344,7 +344,7 @@ exports.listApproved = async (req, res) => {
     if (!email) return res.status(400).json({ message: 'Email is required' });
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
     const { data, error } = await supabaseAdmin
-      .from('csr_pending')
+      .from('client_service_request_status')
       .select('id, request_group_id, status, created_at, email_address, info, details, rate')
       .eq('status', 'approved')
       .eq('email_address', email)
@@ -403,7 +403,7 @@ exports.listCurrent = async (req, res) => {
     let statusMap = {};
     if (targetGroups.length) {
       const { data: pend } = await supabaseAdmin
-        .from('csr_pending')
+        .from('client_service_request_status')
         .select('request_group_id,status,created_at,details')
         .in('request_group_id', targetGroups);
       (Array.isArray(pend) ? pend : []).forEach(r => {
@@ -510,7 +510,7 @@ exports.deleteRequest = async (req, res) => {
     }
 
     await supabaseAdmin.from('client_cancel_request').delete().eq('request_group_id', gid);
-    await supabaseAdmin.from('csr_pending').delete().eq('request_group_id', gid);
+    await supabaseAdmin.from('client_service_request_status').delete().eq('request_group_id', gid);
     await supabaseAdmin.from('client_service_rate').delete().eq('request_group_id', gid);
     await supabaseAdmin.from('client_service_request_details').delete().eq('request_group_id', gid);
     await supabaseAdmin.from('client_information').delete().eq('request_group_id', gid);

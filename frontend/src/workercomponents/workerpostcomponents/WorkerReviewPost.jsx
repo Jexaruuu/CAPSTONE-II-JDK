@@ -608,6 +608,10 @@ const WorkerReviewPost = ({ handleBack }) => {
       setApplicationGroupId(res?.data?.application?.request_group_id || res?.data?.request_group_id || null);
       setShowSuccess(true);
       localStorage.setItem(CONFIRM_FLAG, '1');
+      setApplicationGroupId(res?.data?.application?.request_group_id || res?.data?.request_group_id || null);
+setShowSuccess(true);
+localStorage.setItem(CONFIRM_FLAG, '1');
+try { window.dispatchEvent(new Event('worker-application-submitted')); } catch {}
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Submission failed';
       setSubmitError(msg);

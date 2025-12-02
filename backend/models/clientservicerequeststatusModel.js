@@ -2,7 +2,7 @@ const { supabaseAdmin } = require('../supabaseClient');
 
 async function insertPendingRequest(row) {
   const { data, error } = await supabaseAdmin
-    .from('csr_pending')
+    .from('client_service_request_status')
     .insert([row])
     .select('id, request_group_id, status, created_at')
     .single();
@@ -11,7 +11,7 @@ async function insertPendingRequest(row) {
 }
 
 async function listPending(status = 'pending', limit = 200) {
-  const q = supabaseAdmin.from('csr_pending')
+  const q = supabaseAdmin.from('client_service_request_status')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -22,7 +22,7 @@ async function listPending(status = 'pending', limit = 200) {
 
 async function listByEmail(email, status = null, limit = 200) {
   if (!email) return [];
-  let q = supabaseAdmin.from('csr_pending')
+  let q = supabaseAdmin.from('client_service_request_status')
     .select('*')
     .eq('email_address', email)
     .order('created_at', { ascending: false })
@@ -35,7 +35,7 @@ async function listByEmail(email, status = null, limit = 200) {
 
 async function countPending() {
   const { count, error } = await supabaseAdmin
-    .from('csr_pending')
+    .from('client_service_request_status')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'pending');
   if (error) throw error;
@@ -44,7 +44,7 @@ async function countPending() {
 
 async function getPendingById(id) {
   const { data, error } = await supabaseAdmin
-    .from('csr_pending')
+    .from('client_service_request_status')
     .select('*')
     .eq('id', id)
     .single();
@@ -54,7 +54,7 @@ async function getPendingById(id) {
 
 async function markStatus(id, status, reason = null) {
   const { data, error } = await supabaseAdmin
-    .from('csr_pending')
+    .from('client_service_request_status')
     .update({ status, decision_reason: reason, decided_at: new Date().toISOString() })
     .eq('id', id)
     .select('id, status, request_group_id')
@@ -65,7 +65,7 @@ async function markStatus(id, status, reason = null) {
 
 async function countByStatus(status) {
   const { count, error } = await supabaseAdmin
-    .from('csr_pending')
+    .from('client_service_request_status')
     .select('*', { count: 'exact', head: true })
     .eq('status', status);
   if (error) throw error;

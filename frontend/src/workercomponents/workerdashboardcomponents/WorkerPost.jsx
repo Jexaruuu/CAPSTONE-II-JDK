@@ -38,6 +38,20 @@ function getWorkerProfile() {
   return { firstName, gender };
 }
 
+function getWorkerEmail() {
+  try {
+    const auth = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+    if (auth && auth.email) return auth.email;
+  } catch {}
+  return (
+    localStorage.getItem('workerEmail') ||
+    localStorage.getItem('worker_email') ||
+    localStorage.getItem('email_address') ||
+    localStorage.getItem('email') ||
+    ''
+  );
+}
+
 function honorificFromGender(g) {
   const s = String(g || '').trim().toLowerCase();
   if (s === 'male' || s === 'm' || s === 'man' || s === 'mr') return 'Mr.';
@@ -504,20 +518,67 @@ function WorkerPost() {
     setShowDeleteConfirm(false);
     setShowDeleteBusy(true);
     setDeleting(true);
-    setTimeout(() => {
-      if (deleteTarget.label === 'current') {
-        setCurrentApp(null);
-      } else {
-        setApproved((prev) =>
-          prev.filter((it) => String(it?.id || it?.request_group_id || '') !== deleteTarget.id)
-        );
+    const doDelete = async () => {
+      try {
+        await axios.delete(`${API_BASE}/api/workerapplications/${encodeURIComponent(deleteTarget.id)}`, {
+          withCredentials: true,
+          headers: headersWithU
+        });
+        if (deleteTarget.label === 'current') {
+          setCurrentApp(null);
+        } else {
+          setApproved((prev) =>
+            prev.filter((it) => String(it?.id || it?.request_group_id || '') !== deleteTarget.id)
+          );
+        }
+        setShowDeleteBusy(false);
+        setShowDeleteDone(true);
+      } catch {
+        setShowDeleteBusy(false);
+      } finally {
+        setDeleting(false);
+        setDeleteTarget(null);
       }
-      setShowDeleteBusy(false);
-      setShowDeleteDone(true);
-      setDeleting(false);
-      setDeleteTarget(null);
-    }, 800);
+    };
+    doDelete();
   };
+
+  const loadCurrentApplication = async () => {
+    try {
+      const email = getWorkerEmail();
+      const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
+        withCredentials: true,
+        headers: headersWithU,
+        params: { scope: 'current', email }
+      });
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const pick =
+        items.find((r) => String(r.status || '').toLowerCase() === 'pending') ||
+        items.find((r) => String(r.status || '').toLowerCase() === 'approved') ||
+        items[0] ||
+        null;
+      setCurrentApp(pick);
+    } catch {
+      setCurrentApp(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCurrentApplication();
+  }, [appU]);
+
+  useEffect(() => {
+    const onSubmitted = () => loadCurrentApplication();
+    const onFocus = () => loadCurrentApplication();
+    window.addEventListener('worker-application-submitted', onSubmitted);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('worker-application-submitted', onSubmitted);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
 
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
@@ -724,7 +785,7 @@ function WorkerPost() {
         <div className="mb-8">
           <div className="relative w-full flex justify-center items-center">
             <button
-              onClick={() => handleScroll('left')}
+              onClick={() => scrollToIndex('left')}
               className="absolute -left-2 md:left-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
             >
               <ArrowLeft size={22} />

@@ -41,7 +41,7 @@ function localSearchFilter(rows, term) {
 
 async function listPending(status = null, limit = 500, search = null) {
   let q = supabaseAdmin
-    .from('csr_pending')
+    .from('client_service_request_status')
     .select('id, request_group_id, status, created_at, email_address, info, details, rate, decision_reason, decided_at, reason_choice, reason_other')
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -82,7 +82,7 @@ async function markStatus(id, newStatus, payload = {}) {
   }
 
   const { data, error } = await supabaseAdmin
-    .from('csr_pending')
+    .from('client_service_request_status')
     .update(patch)
     .eq('id', id)
     .select('id, request_group_id, status, created_at, decision_reason, decided_at, reason_choice, reason_other')
@@ -93,7 +93,7 @@ async function markStatus(id, newStatus, payload = {}) {
 
 async function countByStatus(status) {
   const { count, error } = await supabaseAdmin
-    .from('csr_pending')
+    .from('client_service_request_status')
     .select('*', { count: 'exact', head: true })
     .eq('status', status);
   if (error) throw error;

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ctrl = require('../controllers/pendingservicerequestsController');
+const ctrl = require('../controllers/clientservicerequeststatusController');
 
 router.get('/', ctrl.list);
 router.get('/count', ctrl.count);

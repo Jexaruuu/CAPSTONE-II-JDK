@@ -6,7 +6,7 @@ const {
   countByStatus,
   insertPendingRequest,
   listByEmail,
-} = require('../models/pendingservicerequestsModel');
+} = require('../models/clientservicerequeststatusModel');
 
 exports.list = async (req, res) => {
   try {

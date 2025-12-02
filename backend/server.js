@@ -36,7 +36,7 @@ const clientservicerequestsRoutes = require("./routes/clientservicerequestsRoute
 const adminservicerequestsRoutes = require("./routes/adminservicerequestsRoutes");
 const workerapplicationRoutes = require("./routes/workerapplicationRoutes");
 const adminworkerapplicationRoutes = require("./routes/adminworkerapplicationRoutes");
-const pendingservicerequestsRoutes = require("./routes/pendingservicerequestsRoutes");
+const clientservicerequeststatusRoutes = require("./routes/clientservicerequeststatusRoutes");
 const workerapplicationstatusRoutes = require("./routes/workerapplicationstatusRoutes");
 const notificationsRoutes = require("./routes/notificationsRoutes");
 const adminServiceRequestsRoutes = require("./routes/adminservicerequestsRoutes");
@@ -321,7 +321,7 @@ app.use("/api/client/service-requests", clientservicerequestsRoutes);
 app.use("/api/admin/servicerequests", adminservicerequestsRoutes);
 app.use("/api/workerapplication", workerapplicationRoutes);
 app.use("/api/workerapplications", workerapplicationRoutes);
-app.use("/api/pendingservicerequests", pendingservicerequestsRoutes);
+app.use("/api/client/servicerequeststatus", clientservicerequeststatusRoutes);
 app.use("/api/workerapplicationstatus", workerapplicationstatusRoutes);
 app.use("/api/admin/servicerequests", adminServiceRequestsRoutes);
 app.use("/api/admin/workerapplications", adminworkerapplicationRoutes);

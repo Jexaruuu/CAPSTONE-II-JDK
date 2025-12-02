@@ -121,7 +121,7 @@ async function getCancelledMapByGroupIds(groupIds) {
 }
 async function listPendingByEmail(email) {
   const { data, error } = await supabaseAdmin
-    .from('csr_pending')
+    .from('client_service_request_status')
     .select('id, request_group_id, status, created_at, details')
     .eq('email_address', email)
     .eq('status', 'pending')

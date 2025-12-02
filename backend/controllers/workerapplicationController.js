@@ -445,63 +445,52 @@ exports.listMine = async (req, res) => {
 
     const { data: statusRows } = await supabaseAdmin
       .from('worker_application_status')
-      .select('id, request_group_id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason, auth_uid, worker_id')
+      .select('id, request_group_id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason, auth_uid, worker_id, info, details, rate')
       .ilike('email_address', email)
       .order('created_at', { ascending: false })
       .limit(200);
 
-    const groups = (Array.isArray(statusRows) ? statusRows : []).map(r => r.request_group_id).filter(Boolean);
-    let targetGroups = groups;
-    if (scope === 'cancelled') targetGroups = (statusRows || []).filter(r => String(r.status || '').toLowerCase() === 'cancelled').map(r => r.request_group_id);
-    else targetGroups = (statusRows || []).filter(r => ['pending','approved','declined'].includes(String(r.status || '').toLowerCase())).map(r => r.request_group_id);
+    const rows = Array.isArray(statusRows) ? statusRows : [];
+    let base = rows;
+    if (scope === 'cancelled') base = rows.filter(r => String(r.status || '').toLowerCase() === 'cancelled');
+    else base = rows.filter(r => ['pending','approved','declined'].includes(String(r.status || '').toLowerCase()));
+    let targetGroups = base.map(r => r.request_group_id).filter(Boolean);
     if (groupIdFilter) targetGroups = targetGroups.includes(groupIdFilter) ? [groupIdFilter] : [];
 
-    let infoRow = null;
-    try {
-      const r = await supabaseAdmin
-        .from('worker_information')
-        .select('id, worker_id, auth_uid, email_address, first_name, last_name, contact_number, street, barangay, date_of_birth, age, profile_picture_url')
-        .ilike('email_address', email)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      infoRow = r?.data || null;
-    } catch {}
-
-    let detailsRow = null;
-    if (infoRow?.worker_id || infoRow?.id) {
-      const wid = infoRow.worker_id || infoRow.id;
-      const r1 = await supabaseAdmin
-        .from('worker_work_information')
-        .select('request_group_id, auth_uid, service_types, service_task, years_experience, tools_provided, work_description, barangay, street, worker_id')
-        .eq('worker_id', wid)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      detailsRow = r1?.data || null;
+    let infoMap = {}, detailsMap = {}, rateMap = {};
+    if (targetGroups.length) {
+      try {
+        const { data: infos } = await supabaseAdmin
+          .from('worker_information')
+          .select('request_group_id, worker_id, auth_uid, email_address, first_name, last_name, contact_number, street, barangay, date_of_birth, age, profile_picture_url')
+          .in('request_group_id', targetGroups);
+        (infos || []).forEach(r => { if (r?.request_group_id) infoMap[r.request_group_id] = r; });
+      } catch {}
+      try {
+        const { data: details } = await supabaseAdmin
+          .from('worker_work_information')
+          .select('request_group_id, auth_uid, service_types, service_task, years_experience, tools_provided, work_description, barangay, street, worker_id')
+          .in('request_group_id', targetGroups);
+        (details || []).forEach(r => { if (r?.request_group_id) detailsMap[r.request_group_id] = r; });
+      } catch {}
+      try {
+        const { data: rates } = await supabaseAdmin
+          .from('worker_service_rate')
+          .select('request_group_id, auth_uid, rate_type, rate_from, rate_to, rate_value, worker_id')
+          .in('request_group_id', targetGroups);
+        (rates || []).forEach(r => { if (r?.request_group_id) rateMap[r.request_group_id] = r; });
+      } catch {}
     }
 
-    let rateRow = null;
-    if (infoRow?.worker_id || infoRow?.id) {
-      const wid = infoRow.worker_id || infoRow.id;
-      const r2 = await supabaseAdmin
-        .from('worker_service_rate')
-        .select('request_group_id, auth_uid, rate_type, rate_from, rate_to, rate_value, worker_id')
-        .eq('worker_id', wid)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      rateRow = r2?.data || null;
-    }
-
-    const items = (statusRows || [])
+    const items = (rows || [])
       .filter(r => targetGroups.includes(r.request_group_id))
-      .map(r => ({
-        ...r,
-        info: infoRow || {},
-        details: detailsRow || {},
-        rate: rateRow || {}
-      }));
+      .map(r => {
+        const gid = r.request_group_id;
+        const mergedInfo = infoMap[gid] || r.info || {};
+        const mergedDetails = detailsMap[gid] || r.details || {};
+        const mergedRate = rateMap[gid] || r.rate || {};
+        return { ...r, info: mergedInfo, details: mergedDetails, rate: mergedRate };
+      });
 
     return res.status(200).json({ items });
   } catch (err) {
