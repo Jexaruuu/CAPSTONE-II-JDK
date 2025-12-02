@@ -492,11 +492,12 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
         )}
       </div>
-      {clearable && (
-        <div className="flex items-center justify-end mt-3 px-2">
+      <div className="flex items-center justify-between mt-3 px-2">
+        <span className="text-xs text-gray-400">{(items && items.length ? items.length : 0)} result{(items && items.length === 1) ? '' : 's'}</span>
+        {clearable ? (
           <button type="button" onClick={onClear} className="text-xs text-gray-500 hover:text-gray-700">{clearText}</button>
-        </div>
-      )}
+        ) : <span />}
+      </div>
     </div>
   );
 
@@ -828,29 +829,32 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                           })}
                         </div>
                         <div className="flex items-center justify-between mt-3 px-2">
-                          <button type="button" onClick={() => { setPreferredTime(''); setPtOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const n = new Date();
-                              const mins = n.getMinutes();
-                              let up = mins % 30 === 0 ? mins : mins + (30 - (mins % 30));
-                              let h = n.getHours();
-                              if (up === 60) { h = h + 1; up = 0; }
-                              const cand = `${String(h).padStart(2,'0')}:${String(up).padStart(2,'0')}`;
-                              if (preferredDate === todayStr) {
-                                const next = timeSlots.find(tt => tt >= cand);
-                                if (next) setPreferredTime(next);
-                                else setPreferredTime('');
-                              } else {
-                                setPreferredTime(cand);
-                              }
-                              setPtOpen(false);
-                            }}
-                            className="text-xs text-blue-600 hover:text-blue-700"
-                          >
-                            Now (rounded)
-                          </button>
+                          <span className="text-xs text-gray-400">{timeSlots.length} results</span>
+                          <div className="flex items-center gap-3">
+                            <button type="button" onClick={() => { setPreferredTime(''); setPtOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const n = new Date();
+                                const mins = n.getMinutes();
+                                let up = mins % 30 === 0 ? mins : mins + (30 - (mins % 30));
+                                let h = n.getHours();
+                                if (up === 60) { h = h + 1; up = 0; }
+                                const cand = `${String(h).padStart(2,'0')}:${String(up).padStart(2,'0')}`;
+                                if (preferredDate === todayStr) {
+                                  const next = timeSlots.find(tt => tt >= cand);
+                                  if (next) setPreferredTime(next);
+                                  else setPreferredTime('');
+                                } else {
+                                  setPreferredTime(cand);
+                                }
+                                setPtOpen(false);
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              Now (rounded)
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -978,7 +982,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="rounded-xl bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-[#0077d6] transition w-full shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                      className="rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-[#0077d6] transition w-full shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                     >
                       Choose Photo
                     </button>

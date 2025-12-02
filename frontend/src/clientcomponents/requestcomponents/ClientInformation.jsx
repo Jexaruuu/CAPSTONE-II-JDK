@@ -29,6 +29,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   const [logoBroken, setLogoBroken] = useState(false);
   const fileRef = useRef(null);
   const navigate = useNavigate();
+  const [barangayQuery, setBarangayQuery] = useState('');
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -48,6 +49,11 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
   ];
 
   const sortedBarangays = useMemo(() => [...barangays].sort(), []);
+  const filteredBarangays = useMemo(() => {
+    const q = String(barangayQuery || '').trim().toLowerCase();
+    if (!q) return sortedBarangays;
+    return sortedBarangays.filter(b => b.toLowerCase().includes(q));
+  }, [sortedBarangays, barangayQuery]);
 
   const validateEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 
@@ -110,7 +116,10 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
     }
   };
 
-  const toggleDropdown = () => setShowDropdown(!showDropdown);
+  const toggleDropdown = () => {
+    setBarangayQuery('');
+    setShowDropdown(!showDropdown);
+  };
 
   const handleClickOutside = (event) => {
     if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -484,28 +493,40 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                         className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-3"
                         role="listbox"
                       >
-                        <div className="text-sm font-semibold text-gray-800 px-2 pb-2">Select Barangay</div>
-                        <div className="grid grid-cols-3 gap-1 max-h-56 overflow-y-auto px-2">
-                          {sortedBarangays.map((barangayName, index) => {
-                            const isSelected = barangayName === barangay;
-                            return (
-                              <button
-                                key={index}
-                                type="button"
-                                onClick={() => { setBarangay(barangayName); setShowDropdown(false); }}
-                                className={['text-left px-3 py-2 rounded-lg text-sm', isSelected ? 'bg-blue-600 text-white hover:bg-blue-600' : 'text-gray-700 hover:bg-blue-50'].join(' ')}
-                                role="option"
-                                aria-selected={isSelected}
-                              >
-                                {barangayName}
-                              </button>
-                            );
-                          })}
+                        <div className="px-2 pb-2">
+                          <input
+                            value={barangayQuery}
+                            onChange={(e) => setBarangayQuery(e.target.value)}
+                            placeholder="Search…"
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
                         </div>
-                        <div className="flex items-center justify-end mt-3 px-2">
+                        <div className="grid grid-cols-3 gap-1 max-h-56 overflow-y-auto px-2">
+                          {filteredBarangays.length ? (
+                            filteredBarangays.map((barangayName, index) => {
+                              const isSelected = barangayName === barangay;
+                              return (
+                                <button
+                                  key={index}
+                                  type="button"
+                                  onClick={() => { setBarangay(barangayName); setShowDropdown(false); }}
+                                  className={['text-left px-3 py-2 rounded-lg text-sm', isSelected ? 'bg-blue-600 text-white hover:bg-blue-600' : 'text-gray-700 hover:bg-blue-50'].join(' ')}
+                                  role="option"
+                                  aria-selected={isSelected}
+                                >
+                                  {barangayName}
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="col-span-3 text-center text-xs text-gray-400 py-3">No options</div>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between mt-3 px-2">
+                          <span className="text-xs text-gray-400">{filteredBarangays.length} result{filteredBarangays.length === 1 ? '' : 's'}</span>
                           <button
                             type="button"
-                            onClick={() => { setBarangay(''); setShowDropdown(false); }}
+                            onClick={() => { setBarangay(''); setBarangayQuery(''); setShowDropdown(false); }}
                             className="text-xs text-gray-500 hover:text-gray-700"
                           >
                             Clear
@@ -568,7 +589,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="rounded-xl bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-[#0077d6] transition w-full shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                      className="rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-[#0077d6] transition w-full shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                     >
                       Choose Photo
                     </button>

@@ -69,8 +69,20 @@ async function insertServiceRequestStatus(row) {
   return data;
 }
 async function insertClientCancelRequest(row) {
-  const payload = { ...row, canceled_at: row.canceled_at || new Date().toISOString() };
-  const { data, error } = await supabaseAdmin.from('client_cancel_request').insert([payload]).select('id').single();
+  const payload = {
+    request_group_id: row.request_group_id,
+    client_id: row.client_id ?? null,
+    auth_uid: row.auth_uid ?? null,
+    email_address: row.email_address ?? null,
+    reason_choice: row.reason_choice ?? null,
+    reason_other: row.reason_other ?? null,
+    canceled_at: row.canceled_at || new Date().toISOString()
+  };
+  const { data, error } = await supabaseAdmin
+    .from('client_cancel_request')
+    .insert([payload])
+    .select('id')
+    .single();
   if (error) throw error;
   return data;
 }

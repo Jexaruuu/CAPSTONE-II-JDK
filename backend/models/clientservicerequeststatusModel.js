@@ -1,10 +1,20 @@
 const { supabaseAdmin } = require('../supabaseClient');
 
 async function insertPendingRequest(row) {
+  const payload = {
+    request_group_id: row.request_group_id,
+    client_id: row.client_id ?? null,
+    auth_uid: row.auth_uid ?? null,
+    email_address: row.email_address,
+    info: row.info,
+    details: row.details,
+    rate: row.rate,
+    status: row.status || 'pending'
+  };
   const { data, error } = await supabaseAdmin
     .from('client_service_request_status')
-    .insert([row])
-    .select('id, request_group_id, status, created_at')
+    .insert([payload])
+    .select('id,created_at')
     .single();
   if (error) throw error;
   return data;
