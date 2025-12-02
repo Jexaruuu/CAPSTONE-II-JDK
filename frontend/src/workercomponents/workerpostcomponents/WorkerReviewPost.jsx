@@ -1,3 +1,4 @@
+// WorkerReviewPost.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -26,8 +27,8 @@ const coerceYears = (v) => {
 const normalizeToolsProvided = (v) => {
   if (typeof v === 'boolean') return v ? 'Yes' : 'No';
   const s = String(Array.isArray(v) ? v[0] : v).trim().toLowerCase();
-  if (['yes','y','true','1'].includes(s)) return 'Yes';
-  if (['no','n','false','0'].includes(s)) return 'No';
+  if (['yes', 'y', 'true', '1'].includes(s)) return 'Yes';
+  if (['no', 'n', 'false', '0'].includes(s)) return 'No';
   return 'No';
 };
 
@@ -188,6 +189,77 @@ const WorkerReviewPost = ({ handleBack }) => {
     return '';
   };
 
+ const normalizeDocsForSubmit = (arr) => {
+  const toKind = (s = "") => {
+    const t = String(s).toLowerCase().replace(/\s+/g, " ").trim();
+    if ((/primary/.test(t) || /main/.test(t)) && (/(front|face)/.test(t) || /id\s*front/.test(t))) return "primary_id_front";
+    if ((/primary/.test(t) || /main/.test(t)) && (/(back|rear|reverse)/.test(t) || /id\s*back/.test(t))) return "primary_id_back";
+    if (/secondary|alternate|alt/.test(t)) return "secondary_id";
+    if (/(nbi|police)/.test(t)) return "nbi_police_clearance";
+    if (/proof.*address|address.*proof|billing|bill/.test(t)) return "proof_of_address";
+    if (/medical|med\s*cert|health/.test(t)) return "medical_certificate";
+    if (/certificate|certs?\b|tesda|ncii|nc2/.test(t)) return "certificates";
+    return "";
+  };
+
+  const pull = (v) => {
+    const s = typeof v === "string" ? v : "";
+    return { url: /^https?:\/\//i.test(s) ? s : "", data_url: s.startsWith("data:") ? s : "" };
+  };
+
+  const pushIf = (out, kind, v) => {
+    const { url, data_url } = pull(v);
+    if (kind && (url || data_url)) out.push({ kind, url, data_url });
+  };
+
+  const out = [];
+
+  if (arr && !Array.isArray(arr) && typeof arr === "object") {
+    pushIf(out, "primary_id_front", arr.primary_id_front || arr.primary_front);
+    pushIf(out, "primary_id_back", arr.primary_id_back || arr.primary_back);
+    pushIf(out, "secondary_id", arr.secondary_id);
+    pushIf(out, "nbi_police_clearance", arr.nbi_police_clearance || arr.nbi);
+    pushIf(out, "proof_of_address", arr.proof_of_address || arr.address);
+    pushIf(out, "medical_certificate", arr.medical_certificate || arr.medical);
+    pushIf(out, "certificates", arr.certificates || arr.certs);
+    return out;
+  }
+
+  (Array.isArray(arr) ? arr : []).forEach((d) => {
+    const guess =
+      d?.kind || d?.type || d?.label || d?.name || d?.field || d?.slot || d?.filename || d?.fileName || d?.title || d?.meta?.kind || d?.meta?.label || d?.meta?.name;
+    let kind = toKind(guess);
+
+    if (!kind) {
+      for (const k of Object.keys(d || {})) {
+        const mk = toKind(k);
+        if (mk) pushIf(out, mk, d[k]);
+      }
+    }
+
+    const rawUrl = d?.url || d?.link || d?.href;
+    const rawData = d?.data_url || d?.dataUrl || d?.dataURL || d?.base64 || d?.imageData || d?.blobData;
+    const url = typeof rawUrl === "string" && /^https?:\/\//i.test(rawUrl) ? rawUrl : "";
+    const data_url = typeof rawData === "string" && rawData.startsWith("data:") ? rawData : "";
+
+    if (!kind && (url || data_url)) {
+      const f = String(d?.filename || d?.fileName || "").toLowerCase();
+      kind =
+        (/(front|face)/.test(f) && /prim/.test(f)) ? "primary_id_front" :
+        (/(back|rear|reverse)/.test(f) && /prim/.test(f)) ? "primary_id_back" :
+        (/second/.test(f) || /alt/.test(f)) ? "secondary_id" :
+        (/(nbi|police)/.test(f)) ? "nbi_police_clearance" :
+        (/address|billing|bill/.test(f)) ? "proof_of_address" :
+        (/medical|medcert|health/.test(f)) ? "medical_certificate" :
+        (/certificate|certs?|tesda|ncii|nc2/.test(f)) ? "certificates" : "";
+    }
+
+    if (kind && (url || data_url)) out.push({ kind, url, data_url });
+  });
+
+  return out;
+};
+
   const contactLocal10 = normalizeLocalPH10(contact_number);
 
   const contactDisplay = (
@@ -247,19 +319,24 @@ const WorkerReviewPost = ({ handleBack }) => {
 
   const buildServiceTaskObject = (serviceTaskRaw, serviceTypesRaw) => {
     const out = {};
-    if (serviceTaskRaw && typeof serviceTaskRaw === 'object' && !Array.isArray(serviceTaskRaw)) {
-      Object.entries(serviceTaskRaw).forEach(([category, tasks]) => {
-        const norm = Array.isArray(tasks)
-          ? tasks.map(String).map((x) => x.trim()).filter(Boolean)
-          : (String(tasks || '').trim() ? [String(tasks).trim()] : []);
-        if (norm.length) out[category] = Array.from(new Set(norm));
+    if (Array.isArray(serviceTypesRaw)) serviceTypesRaw.forEach((t) => { out[String(t).trim()] = out[String(t).trim()] || []; });
+    if (Array.isArray(serviceTaskRaw)) {
+      serviceTaskRaw.forEach((it) => {
+        const cat = String(it?.category || '').trim();
+        const arr = Array.isArray(it?.tasks) ? it.tasks : [];
+        if (!cat) return;
+        const vals = arr.map((x) => String(x || '').trim()).filter(Boolean);
+        out[cat] = Array.from(new Set([...(out[cat] || []), ...vals]));
+      });
+    } else if (serviceTaskRaw && typeof serviceTaskRaw === 'object') {
+      Object.entries(serviceTaskRaw).forEach(([k, v]) => {
+        const vals = Array.isArray(v) ? v : [v];
+        const norm = vals.map((x) => String(x || '').trim()).filter(Boolean);
+        if (!norm.length) return;
+        const key = String(k || '').trim() || 'General';
+        out[key] = Array.from(new Set([...(out[key] || []), ...norm]));
       });
     }
-    const types = asStringArray(serviceTypesRaw);
-    types.forEach((cat) => {
-      if (!out[cat] || !out[cat].length) out[cat] = ['general'];
-    });
-    if (!Object.keys(out).length) out.General = ['general'];
     return out;
   };
 
@@ -324,7 +401,7 @@ const WorkerReviewPost = ({ handleBack }) => {
           toolsProvided: workDraft.tools_provided || workDraft.toolsProvided || '',
           serviceDescription: workDraft.service_description || workDraft.serviceDescription || ''
         },
-        documents: Array.isArray(docsDraft) ? docsDraft : [],
+        documents: normalizeDocsForSubmit(docsDraft),
         rate: {
           rateType: rateDraft.rateType || rateDraft.rate_type || '',
           rateFrom: rateDraft.rateFrom || rateDraft.rate_from || '',
@@ -512,16 +589,16 @@ const WorkerReviewPost = ({ handleBack }) => {
         rate: ratePayload
       };
 
-      const submitBody = {
-        info: infoPayload,
-        details: workPayload,
-        rate: ratePayload,
-        documents: normalized.documents,
-        agreements: normalized.agreements,
-        email_address: normalized.email_address,
-        worker_id: normalized.worker_id,
-        metadata: normalized.metadata
-      };
+   const submitBody = {
+  info: infoPayload,
+  details: workPayload,
+  rate: ratePayload,
+  documents: normalizeDocsForSubmit(normalized.documents),
+  agreements: normalized.agreements,
+  email_address: normalized.email_address,
+  worker_id: normalized.worker_id,
+  metadata: normalized.metadata
+};
 
       const res = await axios.post(`${API_BASE}/api/workerapplications/submit`, submitBody, {
         withCredentials: true,
@@ -708,11 +785,15 @@ const WorkerReviewPost = ({ handleBack }) => {
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Worker:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc]">
+                      {first_name || '-'} {last_name || ''}
+                    </span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Services:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{formatList(service_types)}</span>
+                    <span className="text-base md:text-lg font-medium text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">
+                      {formatList(service_types)}
+                    </span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-semibold text-gray-700">Experience:</span>
@@ -727,11 +808,13 @@ const WorkerReviewPost = ({ handleBack }) => {
                     <span className="text-sm font-semibold text-gray-700">Rate:</span>
                     {rate_type === 'Hourly Rate' ? (
                       <div className="text-lg font-semibold text-[#008cfc]">
-                        ₱{rate_from || 0}–₱{rate_to || 0} <span className="text-sm font-normal text-[#008cfc] opacity-80">per hour</span>
+                        ₱{rate_from || 0}–₱{rate_to || 0}{' '}
+                        <span className="text-sm font-normal text-[#008cfc] opacity-80">per hour</span>
                       </div>
                     ) : rate_type === 'By the Job Rate' ? (
                       <div className="text-lg font-semibold text-[#008cfc]">
-                        ₱{rate_value || 0} <span className="text-sm font-normal text-[#008cfc] opacity-80">per job</span>
+                        ₱{rate_value || 0}{' '}
+                        <span className="text-sm font-normal text-[#008cfc] opacity-80">per job</span>
                       </div>
                     ) : (
                       <div className="text-gray-500 text-sm">No rate provided</div>

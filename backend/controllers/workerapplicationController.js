@@ -1,18 +1,27 @@
-// controllers/workerapplicationController.js
+// workerapplicationController.js
 const {
   uploadDataUrlToBucket,
   insertWorkerInformation,
   insertWorkerWorkInformation,
   insertWorkerRate,
   insertWorkerRequiredDocuments,
+  insertWorkerTermsAndAgreements,
   insertPendingApplication,
   newGroupId,
   findWorkerByEmail,
   findWorkerById,
-  insertWorkerTermsAndAgreements,
+  findWorkerByAuthUid,
   updateWorkerInformationWorkerId
 } = require('../models/workerapplicationModel');
-const { ensureStorageBucket, getSupabaseAdmin } = require('../supabaseClient');
+
+const { supabaseAdmin } = require('../supabaseClient');
+
+function friendlyError(err) {
+  const raw = err?.message || String(err);
+  if (/wa-attachments/i.test(raw) && /not.*found|bucket/i.test(raw)) return 'Storage bucket "wa-attachments" is missing.';
+  if (/worker_information|worker_work_information|worker_service_rate|worker_required_documents|worker_agreements|worker_application_status/i.test(raw)) return `Database error: ${raw}`;
+  return raw;
+}
 
 function dateOnlyFrom(input) {
   if (!input) return null;
@@ -24,22 +33,17 @@ function dateOnlyFrom(input) {
   const d = new Date(raw);
   return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
-function friendlyError(err) {
-  const raw = err?.message || String(err);
-  if (/row-level security/i.test(raw)) return 'Service role key missing on server';
-  if (/bucket/i.test(raw) && /not.*found/i.test(raw)) return 'Storage bucket missing.';
-  if (/worker_information|worker_work_information|worker_service_rate|worker_required_documents|worker_agreements|worker_application_status/i.test(raw)) return `Database error: ${raw}`;
-  return raw;
+function toBoolStrict(v) {
+  if (typeof v === 'boolean') return v;
+  if (v === 1 || v === '1') return true;
+  if (v === 0 || v === '0') return false;
+  const s = String(v ?? '').trim().toLowerCase();
+  if (['yes', 'y', 'true', 't'].includes(s)) return true;
+  if (['no', 'n', 'false', 'f'].includes(s)) return false;
+  return false;
 }
-function ageFromBirthDate(date_of_birth) {
-  const d = dateOnlyFrom(date_of_birth);
-  if (!d) return null;
-  const t = new Date();
-  let a = t.getFullYear() - d.getFullYear();
-  const m = t.getMonth() - d.getMonth();
-  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
-  return a >= 0 && a <= 120 ? a : null;
-}
+const yesNo = (b) => (b ? 'Yes' : 'No');
+
 function pick(obj, keys, alt = null) {
   for (const k of keys) {
     const v = k.split('.').reduce((a, p) => (a && a[p] !== undefined ? a[p] : undefined), obj);
@@ -50,7 +54,7 @@ function pick(obj, keys, alt = null) {
 function normalizeDocs(arr) {
   if (!Array.isArray(arr)) return [];
   return arr.map(x => {
-    if (typeof x === 'string') return { data_url: x };
+    if (typeof x === 'string') return { data_url: x, kind: '' };
     const o = x || {};
     return {
       kind: o.kind || o.type || o.label || o.name || '',
@@ -62,80 +66,111 @@ function normalizeDocs(arr) {
 
 exports.submitFullApplication = async (req, res) => {
   try {
-    try { getSupabaseAdmin(); } catch (e) { return res.status(500).json({ message: e.message || 'Service role key missing on server' }); }
-    await ensureStorageBucket('wa-attachments', true);
-
     const src = req.body || {};
     const info = src.info || src.information || src.profile || {};
-    const work = src.work || {};
-    const details = src.details || src.detail || work || {};
-    const rateObj = src.rate || src.pricing || {};
+    const details = src.details || src.detail || src.work || {};
+    const rate = src.rate || src.pricing || {};
     const metadata = src.metadata || {};
-    const docsIn = normalizeDocs(src.docs || src.attachments || src.documents || []);
+    const docsIn = normalizeDocs(src.documents || src.docs || src.attachments || []);
 
-    let worker_id = pick(src, ['worker_id', 'info.worker_id', 'info.workerId']) || null;
-    let email_address =
-      pick(src, ['email_address', 'email', 'info.email_address', 'info.email', 'metadata.email']) || null;
-    let auth_uid =
-      pick(src, ['auth_uid', 'authUid', 'info.auth_uid', 'info.authUid', 'metadata.auth_uid']) || null;
+    const worker_id_in = pick(src, ['worker_id', 'workerId', 'info.worker_id', 'info.workerId']);
+    const first_name = pick(src, ['first_name', 'firstName', 'info.first_name', 'info.firstName', 'metadata.first_name', 'metadata.firstName']);
+    const last_name = pick(src, ['last_name', 'lastName', 'info.last_name', 'info.lastName', 'metadata.last_name', 'metadata.lastName']);
+    const email_address = pick(src, ['email_address', 'email', 'info.email_address', 'info.email', 'metadata.email']);
+    const contact_number = pick(src, ['contact_number', 'phone', 'mobile', 'info.contact_number', 'info.phone', 'info.mobile', 'metadata.contact_number', 'metadata.phone']);
+    const street = pick(src, ['street', 'info.street', 'metadata.street']);
+    const barangay = pick(src, ['barangay', 'info.barangay', 'metadata.barangay']);
+    const date_of_birth = pick(src, ['date_of_birth', 'birthDate', 'info.date_of_birth', 'info.birthDate', 'metadata.date_of_birth']);
+    const age = pick(src, ['age', 'info.age', 'metadata.age']);
+    const auth_uid = pick(src, ['auth_uid', 'authUid', 'info.auth_uid', 'metadata.auth_uid']);
+    const profile_picture = pick(src, ['profile_picture', 'profilePicture', 'info.profile_picture', 'info.profilePicture', 'metadata.profile_picture']);
+    const profile_picture_name = pick(src, ['profile_picture_name', 'profilePictureName', 'info.profile_picture_name', 'info.profilePictureName', 'metadata.profile_picture_name']);
 
-    if (worker_id) {
+    const service_types = pick(src, ['service_types', 'details.service_types', 'details.serviceTypes', 'work.service_types', 'work.serviceTypes'], []);
+    const service_task_raw = pick(src, ['service_task', 'details.service_task', 'details.serviceTask', 'work.service_task', 'work.serviceTask'], {});
+    const years_experience = pick(src, ['years_experience', 'details.years_experience', 'details.yearsExperience', 'work.years_experience', 'work.yearsExperience']);
+    const tools_provided = pick(src, ['tools_provided', 'details.tools_provided', 'details.toolsProvided', 'work.tools_provided', 'work.toolsProvided', 'metadata.tools_provided', 'metadata.toolsProvided']);
+    const work_description = pick(src, ['work_description', 'service_description', 'details.work_description', 'details.service_description', 'work.service_description', 'work.serviceDescription']);
+
+    const rate_type_raw = pick(src, ['rate_type', 'rateType', 'rate.rate_type', 'rate.rateType', 'pricing.rate_type', 'pricing.rateType']);
+    const rate_from = pick(src, ['rate_from', 'rateFrom', 'rate.rate_from', 'rate.rateFrom', 'pricing.rate_from', 'pricing.rateFrom']);
+    const rate_to = pick(src, ['rate_to', 'rateTo', 'rate.rate_to', 'rate.rateTo', 'pricing.rate_to', 'pricing.rateTo']);
+    const rate_value = pick(src, ['rate_value', 'rateValue', 'rate.rate_value', 'rate.rateValue', 'pricing.rate_value', 'pricing.rateValue']);
+
+    let effectiveWorkerId = worker_id_in != null && String(worker_id_in).trim() !== '' ? Number(worker_id_in) : null;
+    let effectiveAuthUid = null;
+    let canonicalEmail = String(email_address || '').trim() || null;
+
+    if (effectiveWorkerId) {
       try {
-        const foundById = await findWorkerById(worker_id);
-        if (foundById?.email_address) email_address = email_address || foundById.email_address;
-        if (foundById?.auth_uid) auth_uid = auth_uid || foundById.auth_uid;
-      } catch {}
-    }
-    if (!worker_id && email_address) {
-      try {
-        const found = await findWorkerByEmail(email_address);
-        if (found?.id) {
-          worker_id = found.id;
-          email_address = found.email_address || email_address;
-          auth_uid = auth_uid || found.auth_uid || null;
+        const foundById = await findWorkerById(effectiveWorkerId);
+        if (foundById) {
+          effectiveAuthUid = foundById.auth_uid || null;
+          if (!canonicalEmail && foundById.email_address) canonicalEmail = foundById.email_address;
         }
       } catch {}
     }
-    if (!email_address) return res.status(400).json({ message: 'Missing email_address for worker.' });
+    if (!effectiveWorkerId && (auth_uid || metadata.auth_uid)) {
+      try {
+        const foundByAu = await findWorkerByAuthUid(auth_uid || metadata.auth_uid);
+        if (foundByAu && foundByAu.id) {
+          effectiveWorkerId = foundByAu.id;
+          effectiveAuthUid = foundByAu.auth_uid || null;
+          if (!canonicalEmail && foundByAu.email_address) canonicalEmail = foundByAu.email_address;
+        }
+      } catch {}
+    }
+    if (!effectiveWorkerId && canonicalEmail) {
+      try {
+        const found = await findWorkerByEmail(canonicalEmail);
+        if (found && found.id) {
+          effectiveWorkerId = found.id;
+          effectiveAuthUid = found.auth_uid || null;
+          if (found.email_address) canonicalEmail = found.email_address;
+        }
+      } catch {}
+    }
+    if (!canonicalEmail) return res.status(400).json({ message: 'Missing email_address for worker.' });
+
+    try {
+      const { data: existing } = await supabaseAdmin
+        .from('worker_application_status')
+        .select('request_group_id,status')
+        .ilike('email_address', canonicalEmail)
+        .in('status', ['pending', 'approved'])
+        .order('created_at', { ascending: false })
+        .limit(50);
+      const rows = Array.isArray(existing) ? existing : [];
+      const active = rows.filter(r => ['pending', 'approved'].includes(String(r.status || '').toLowerCase()));
+      if (active.length > 0) return res.status(409).json({ message: 'You already have an active worker application.' });
+    } catch {}
 
     const request_group_id = newGroupId();
 
-    let profileUp = { url: null, name: null };
-    const profile_picture = pick(src, ['profile_picture', 'info.profile_picture', 'info.profilePicture', 'metadata.profile_picture']);
-    const profile_picture_name = pick(src, ['profile_picture_name', 'info.profile_picture_name', 'info.profilePictureName', 'metadata.profile_picture_name']);
+    let profileUpload = null;
     if (profile_picture) {
       try {
-        profileUp = await uploadDataUrlToBucket('wa-attachments', profile_picture, `${request_group_id}-profile`);
+        const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', profile_picture, `${request_group_id}-profile`);
+        profileUpload = up?.url ? up : null;
       } catch {
-        profileUp = { url: null, name: null };
+        profileUpload = null;
       }
     }
 
-    const date_of_birth = pick(src, ['date_of_birth', 'info.date_of_birth', 'info.birthDate', 'metadata.date_of_birth']);
-    const age = pick(src, ['age', 'info.age']);
-    const ageVal = age !== undefined && age !== null && String(age).trim() !== '' ? (Number.isFinite(parseInt(age, 10)) ? parseInt(age, 10) : null) : ageFromBirthDate(date_of_birth || null);
-
-    const street = pick(src, ['street', 'info.street', 'metadata.street', 'address', 'info.address', 'metadata.address']);
-    const barangay = pick(src, ['barangay', 'info.barangay', 'metadata.barangay']);
-    const contact_number = pick(src, ['contact_number', 'info.contact_number', 'info.contactNumber', 'metadata.contact_number']);
-
-    const first_name = pick(src, ['first_name', 'info.first_name', 'info.firstName', 'metadata.first_name', 'metadata.firstName']);
-    const last_name = pick(src, ['last_name', 'info.last_name', 'info.lastName', 'metadata.last_name', 'metadata.lastName']);
-
     const infoRow = {
       request_group_id,
-      worker_id,
-      auth_uid,
-      email_address,
-      first_name,
-      last_name,
-      contact_number: (contact_number ?? '').toString(),
-      street: (street ?? '').toString(),
-      barangay: (barangay ?? '').toString(),
+      worker_id: effectiveWorkerId,
+      auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
+      email_address: canonicalEmail || metadata.email || null,
+      first_name: first_name || metadata.first_name || null,
+      last_name: last_name || metadata.last_name || null,
+      contact_number: (contact_number ?? metadata.contact_number ?? '').toString(),
+      street: (street ?? metadata.street ?? '').toString(),
+      barangay: (barangay ?? metadata.barangay ?? '').toString(),
       date_of_birth: date_of_birth || null,
-      age: ageVal,
-      profile_picture_url: profileUp.url || null,
-      profile_picture_name: profileUp.name || profile_picture_name || null
+      age: age || null,
+      profile_picture_url: profileUpload?.url || metadata.profile_picture || null,
+      profile_picture_name: profileUpload?.name || profile_picture_name || metadata.profile_picture_name || null
     };
 
     const missingInfo = [];
@@ -146,155 +181,235 @@ exports.submitFullApplication = async (req, res) => {
     if (infoRow.barangay === '') missingInfo.push('barangay');
     if (missingInfo.length) return res.status(400).json({ message: `Missing required worker_information fields: ${missingInfo.join(', ')}` });
 
-    const infoIns = await insertWorkerInformation(infoRow);
-    if (!worker_id) {
-      worker_id = infoIns.id;
-      try { await updateWorkerInformationWorkerId(infoIns.id, worker_id); } catch {}
+    let infoIns;
+    try {
+      infoIns = await insertWorkerInformation(infoRow);
+    } catch (e) {
+      return res.status(400).json({ message: friendlyError(e) });
+    }
+    if (infoIns?.id && effectiveWorkerId && !infoRow.worker_id) {
+      try { await updateWorkerInformationWorkerId(infoIns.id, effectiveWorkerId); } catch {}
     }
 
-    const service_types =
-      Array.isArray(details.service_types || details.serviceTypes || src.service_types) ? (details.service_types || details.serviceTypes || src.service_types) : [];
-    const service_task_raw = details.service_task || details.serviceTask || src.service_task || {};
-    const years_experience = pick(src, ['years_experience', 'details.years_experience', 'work.years_experience', 'work.yearsExperience']);
-    const tools_provided = pick(src, ['tools_provided', 'details.tools_provided', 'work.tools_provided', 'work.toolsProvided', 'metadata.tools_provided']);
-    const work_description =
-      pick(src, ['work_description', 'service_description', 'details.work_description', 'details.service_description', 'work.service_description', 'work.serviceDescription']) || '';
-
     const normalizeTasks = (raw, types) => {
-      const out = {};
+      const map = {};
       const keys = Array.isArray(types) ? types : [];
-      for (const t of keys) {
-        const arr = Array.isArray(raw?.[t]) ? raw[t] : [];
-        const vals = arr.map(v => String(v || '').trim()).filter(Boolean);
-        out[t] = Array.from(new Set(vals));
+      keys.forEach((t) => {
+        const k = String(t || '').trim();
+        if (k && !map[k]) map[k] = [];
+      });
+      if (Array.isArray(raw)) {
+        raw.forEach((it) => {
+          const cat = String(it?.category || '').trim();
+          const vals = Array.isArray(it?.tasks) ? it.tasks : [];
+          if (!cat) return;
+          const clean = vals.map(v => String(v || '').trim()).filter(Boolean);
+          map[cat] = Array.from(new Set([...(map[cat] || []), ...clean]));
+        });
+      } else if (raw && typeof raw === 'object') {
+        Object.entries(raw).forEach(([k, v]) => {
+          const vals = Array.isArray(v) ? v : [v];
+          const clean = vals.map(x => String(x || '').trim()).filter(Boolean);
+          if (!clean.length) return;
+          const cat = String(k || '').trim() || 'General';
+          map[cat] = Array.from(new Set([...(map[cat] || []), ...clean]));
+        });
       }
-      return out;
+      return Object.entries(map).map(([category, tasks]) => ({ category, tasks }));
     };
-    const service_task = normalizeTasks(service_task_raw, service_types);
+
+    const tasksArr = normalizeTasks(service_task_raw || {}, Array.isArray(service_types) ? service_types : []);
 
     const detailsRow = {
       request_group_id,
-      worker_id,
-      auth_uid,
-      service_types,
-      service_task,
+      worker_id: effectiveWorkerId,
+      auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
+      email_address: infoRow.email_address,
+      service_types: Array.isArray(service_types) ? service_types : [],
+      service_task: tasksArr,
       years_experience: years_experience ?? null,
-      tools_provided: typeof tools_provided === 'string' ? tools_provided : (tools_provided ? 'Yes' : 'No'),
+      tools_provided: yesNo(toBoolStrict(tools_provided)),
       work_description: work_description || null
     };
 
-    const missingWork = [];
-    if (!detailsRow.service_types || !detailsRow.service_types.length) missingWork.push('service_types');
-    if (detailsRow.years_experience === null || detailsRow.years_experience === undefined || String(detailsRow.years_experience) === '') missingWork.push('years_experience');
-    if (!detailsRow.tools_provided) missingWork.push('tools_provided');
-    if (!detailsRow.work_description) missingWork.push('work_description');
-    const emptyTaskTypes = (detailsRow.service_types || []).filter(t => !(detailsRow.service_task?.[t] || []).length);
-    if (emptyTaskTypes.length) missingWork.push('service_task');
-    if (missingWork.length) return res.status(400).json({ message: `Missing required worker_work_information fields: ${missingWork.join(', ')}` });
+    const hasTasks =
+      Array.isArray(detailsRow.service_task)
+        ? detailsRow.service_task.length > 0
+        : Object.values(detailsRow.service_task || {}).some(arr => Array.isArray(arr) && arr.length > 0);
+
+    const missingDetails = [];
+    if (!detailsRow.service_types || !detailsRow.service_types.length) missingDetails.push('service_types');
+    if (detailsRow.years_experience === null || detailsRow.years_experience === undefined || String(detailsRow.years_experience) === '') missingDetails.push('years_experience');
+    if (!detailsRow.tools_provided) missingDetails.push('tools_provided');
+    if (!detailsRow.work_description) missingDetails.push('work_description');
+    if (!hasTasks) missingDetails.push('service_task');
+    if (missingDetails.length) return res.status(400).json({ message: `Missing required worker_work_information fields: ${missingDetails.join(', ')}` });
 
     await insertWorkerWorkInformation(detailsRow);
 
-    const rate_type = pick(src, ['rate_type', 'rateType', 'rate.rate_type', 'rate.rateType', 'pricing.rate_type', 'pricing.rateType']) || null;
-    const rate_from = (() => {
-      const v = pick(src, ['rate_from', 'rateFrom', 'rate.rate_from', 'rate.rateFrom', 'pricing.rate_from', 'pricing.rateFrom']);
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
-    })();
-    const rate_to = (() => {
-      const v = pick(src, ['rate_to', 'rateTo', 'rate.rate_to', 'rate.rateTo', 'pricing.rate_to', 'pricing.rateTo']);
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
-    })();
-    const rate_value = (() => {
-      const v = pick(src, ['rate_value', 'rateValue', 'rate.rate_value', 'rate.rateValue', 'pricing.rate_value', 'pricing.rateValue']);
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
-    })();
+    let inferredRateType = rate_type_raw || null;
+    if (!inferredRateType) {
+      if (rate_value) inferredRateType = 'By the Job Rate';
+      else if (rate_from || rate_to) inferredRateType = 'Hourly Rate';
+    }
+
+    const mapType = (t) => {
+      const s = String(t || '').toLowerCase();
+      if (s.includes('hour')) return 'hourly';
+      if (s.includes('job') || s.includes('fixed') || s.includes('flat')) return 'job';
+      return '';
+    };
+
+    let rateTypeDb = mapType(inferredRateType);
 
     const rateRow = {
       request_group_id,
-      worker_id,
-      auth_uid,
-      rate_type,
-      rate_from,
-      rate_to,
-      rate_value
+      worker_id: effectiveWorkerId,
+      auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
+      email_address: infoRow.email_address,
+      rate_type: rateTypeDb || null,
+      rate_from: rate_from ? Number(rate_from) : null,
+      rate_to: rate_to ? Number(rate_to) : null,
+      rate_value: rate_value ? Number(rate_value) : null
     };
 
     const missingRate = [];
     if (!rateRow.rate_type) missingRate.push('rate_type');
-    if (rateRow.rate_type === 'Hourly Rate' && (!rateRow.rate_from || !rateRow.rate_to)) missingRate.push('rate_from/rate_to');
-    if (rateRow.rate_type === 'By the Job Rate' && !rateRow.rate_value) missingRate.push('rate_value');
-    if (missingRate.length) return res.status(400).json({ message: `Missing required worker_rate fields: ${missingRate.join(', ')}` });
+    if (rateRow.rate_type === 'hourly' && (!rateRow.rate_from || !rateRow.rate_to)) missingRate.push('rate_from/rate_to');
+    if (rateRow.rate_type === 'job' && !rateRow.rate_value) missingRate.push('rate_value');
+    if (missingRate.length) return res.status(400).json({ message: `Missing required worker_service_rate fields: ${missingRate.join(', ')}` });
 
-    await insertWorkerRate(rateRow);
+    try {
+      await insertWorkerRate(rateRow);
+    } catch (e) {
+      const raw = String(e?.message || '');
+      if (/rate_type.*check|rate_type_check/i.test(raw)) {
+        const alt = rateRow.rate_type === 'hourly' ? 'hourly_rate' : rateRow.rate_type === 'job' ? 'by_job_rate' : '';
+        if (alt) {
+          rateRow.rate_type = alt;
+          await insertWorkerRate(rateRow);
+        } else {
+          throw e;
+        }
+      } else {
+        throw e;
+      }
+    }
 
+    const bucket = process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments';
     const docCols = {
       request_group_id,
-      worker_id,
-      auth_uid,
-      primary_id_front: null,
-      primary_id_back: null,
-      secondary_id: null,
-      nbi_police_clearance: null,
-      proof_of_address: null,
-      medical_certificate: null,
-      certificates: null
+      worker_id: effectiveWorkerId,
+      auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
+      email_address: infoRow.email_address,
+      primary_id_front: '',
+      primary_id_back: '',
+      secondary_id: '',
+      nbi_police_clearance: '',
+      proof_of_address: '',
+      medical_certificate: '',
+      certificates: ''
     };
     for (let i = 0; i < docsIn.length; i++) {
       const d = docsIn[i] || {};
-      const raw = String(d.kind || '').toLowerCase();
+      const raw = String(d.kind || d.type || d.label || d.name || d.field || d.slot || d.filename || d.fileName || '').toLowerCase();
+      const f = String(d.filename || d.fileName || '').toLowerCase();
+
       const key =
-        /primary.*front/.test(raw) ? 'primary_id_front' :
-        /primary.*back/.test(raw) ? 'primary_id_back' :
-        /secondary/.test(raw) ? 'secondary_id' :
-        /(nbi|police)/.test(raw) ? 'nbi_police_clearance' :
-        /address/.test(raw) ? 'proof_of_address' :
-        /medical/.test(raw) ? 'medical_certificate' :
-        /(certificate|certs?)/.test(raw) ? 'certificates' : null;
+        (/primary/.test(raw) && /(front|face)/.test(raw)) || (/prim/.test(f) && /(front|face)/.test(f)) ? 'primary_id_front' :
+        (/primary/.test(raw) && /(back|rear|reverse)/.test(raw)) || (/prim/.test(f) && /(back|rear|reverse)/.test(f)) ? 'primary_id_back' :
+        (/secondary|alternate|alt/.test(raw)) || (/second|alt/.test(f)) ? 'secondary_id' :
+        (/(nbi|police)/.test(raw)) || (/(nbi|police)/.test(f)) ? 'nbi_police_clearance' :
+        (/proof.*address|address.*proof|billing|bill/.test(raw)) || (/address|billing|bill/.test(f)) ? 'proof_of_address' :
+        (/medical|med\s*cert|health/.test(raw)) || (/medical|medcert|health/.test(f)) ? 'medical_certificate' :
+        (/certificate|certs?\b|tesda|ncii|nc2/.test(raw)) || (/certificate|certs?\b|tesda|ncii|nc2/.test(f)) ? 'certificates' :
+        null;
       if (!key) continue;
-      if (typeof d.url === 'string' && /^https?:\/\//i.test(d.url) && !docCols[key]) {
-        docCols[key] = d.url;
+      if (typeof d.url === 'string' && /^https?:\/\//i.test(d.url)) {
+        docCols[key] = d.url || '';
         continue;
       }
-      if (d.data_url && !docCols[key]) {
-        const up = await uploadDataUrlToBucket('wa-attachments', d.data_url, `${request_group_id}-${key}`);
-        docCols[key] = up?.url || null;
+      if (d.data_url) {
+        try {
+          const up = await uploadDataUrlToBucket(bucket, d.data_url, `${request_group_id}-${key}`);
+          docCols[key] = up?.url || '';
+        } catch {
+          docCols[key] = docCols[key] || '';
+        }
       }
     }
-    await insertWorkerRequiredDocuments(docCols);
+
+    try {
+      await insertWorkerRequiredDocuments(docCols);
+    } catch (e) {
+      return res.status(400).json({ message: friendlyError(e) });
+    }
 
     const termsRow = {
       request_group_id,
-      worker_id,
-      auth_uid,
-      email_address,
-      agree_verify: !!(metadata.agree_verify || src.agree_verify || src.agreements?.consent_background_checks),
-      agree_tos: !!(metadata.agree_tos || src.agree_tos || src.agreements?.consent_terms_privacy),
-      agree_privacy: !!(metadata.agree_privacy || src.agree_privacy || src.agreements?.consent_data_privacy),
-      agreed_at: new Date().toISOString()
+      worker_id: effectiveWorkerId,
+      auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
+      email_address: infoRow.email_address,
+      consent_background_checks: !!(metadata.agree_verify || src.agree_verify || src.agreements?.consent_background_checks),
+      consent_terms_privacy: !!(metadata.agree_tos || src.agree_tos || src.agreements?.consent_terms_privacy),
+      consent_data_privacy: !!(metadata.agree_privacy || src.agree_privacy || src.agreements?.consent_data_privacy),
+      created_at: new Date().toISOString()
     };
-    try { await insertWorkerTermsAndAgreements(termsRow); } catch (e) { return res.status(400).json({ message: friendlyError(e) }); }
 
-    const pendingIns = await insertPendingApplication({
-      request_group_id,
-      worker_id,
-      auth_uid,
-      email_address,
-      status: 'pending'
-    });
+    try {
+      await insertWorkerTermsAndAgreements(termsRow);
+    } catch (e) {
+      return res.status(400).json({ message: friendlyError(e) });
+    }
+
+    const pendingInfo = {
+      first_name: infoRow.first_name,
+      last_name: infoRow.last_name,
+      email_address: infoRow.email_address,
+      contact_number: infoRow.contact_number,
+      street: infoRow.street || null,
+      barangay: infoRow.barangay || null
+    };
+
+    const pendingDetails = {
+      service_types: detailsRow.service_types,
+      service_task: detailsRow.service_task,
+      years_experience: detailsRow.years_experience,
+      tools_provided: detailsRow.tools_provided,
+      work_description: detailsRow.work_description
+    };
+
+    const pendingRate = {
+      rate_type: rateRow.rate_type,
+      rate_from: rateRow.rate_from,
+      rate_to: rateRow.rate_to,
+      rate_value: rateRow.rate_value
+    };
+
+    let pendingRow;
+    try {
+      pendingRow = await insertPendingApplication({
+        request_group_id,
+        worker_id: effectiveWorkerId,
+        auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
+        email_address: infoRow.email_address,
+        info: pendingInfo,
+        details: pendingDetails,
+        rate: pendingRate,
+        status: 'pending'
+      });
+    } catch (e) {
+      return res.status(400).json({ message: friendlyError(e) });
+    }
 
     return res.status(201).json({
       message: 'Application submitted',
       application: {
-        id: pendingIns.id,
+        id: pendingRow.id,
         request_group_id,
         status: 'pending',
-        created_at: pendingIns.created_at,
-        worker_id,
-        auth_uid
-      },
-      request_group_id
+        created_at: pendingRow.created_at
+      }
     });
   } catch (err) {
     return res.status(500).json({ message: friendlyError(err) });
@@ -303,18 +418,10 @@ exports.submitFullApplication = async (req, res) => {
 
 exports.listApproved = async (req, res) => {
   try {
-    let email = String(req.query.email || '').trim();
-    const workerId = String(req.query.worker_id || '').trim();
-    if (!email && workerId) {
-      try {
-        const foundById = await findWorkerById(workerId);
-        if (foundById?.email_address) email = String(foundById.email_address).trim();
-      } catch {}
-    }
+    const email = String(req.query.email || '').trim();
     if (!email) return res.status(400).json({ message: 'Email is required' });
-
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
-    const { data, error } = await getSupabaseAdmin()
+    const { data, error } = await supabaseAdmin
       .from('worker_application_status')
       .select('id, request_group_id, status, created_at, email_address')
       .eq('status', 'approved')
@@ -322,8 +429,81 @@ exports.listApproved = async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw error;
-
     return res.status(200).json({ items: Array.isArray(data) ? data : [] });
+  } catch {
+    return res.status(500).json({ message: 'Failed to load approved applications' });
+  }
+};
+
+exports.listMine = async (req, res) => {
+  try {
+    const scope = String(req.query.scope || 'current').toLowerCase();
+    const email = String(req.query.email || req.session?.user?.email_address || '').trim();
+    if (!email) return res.status(401).json({ message: 'Unauthorized' });
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
+    const groupIdFilter = String(req.query.groupId || '').trim();
+
+    const { data: statusRows } = await supabaseAdmin
+      .from('worker_application_status')
+      .select('id, request_group_id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason, auth_uid, worker_id')
+      .ilike('email_address', email)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    const groups = (Array.isArray(statusRows) ? statusRows : []).map(r => r.request_group_id).filter(Boolean);
+    let targetGroups = groups;
+    if (scope === 'cancelled') targetGroups = (statusRows || []).filter(r => String(r.status || '').toLowerCase() === 'cancelled').map(r => r.request_group_id);
+    else targetGroups = (statusRows || []).filter(r => ['pending','approved','declined'].includes(String(r.status || '').toLowerCase())).map(r => r.request_group_id);
+    if (groupIdFilter) targetGroups = targetGroups.includes(groupIdFilter) ? [groupIdFilter] : [];
+
+    let infoRow = null;
+    try {
+      const r = await supabaseAdmin
+        .from('worker_information')
+        .select('id, worker_id, auth_uid, email_address, first_name, last_name, contact_number, street, barangay, date_of_birth, age, profile_picture_url')
+        .ilike('email_address', email)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      infoRow = r?.data || null;
+    } catch {}
+
+    let detailsRow = null;
+    if (infoRow?.worker_id || infoRow?.id) {
+      const wid = infoRow.worker_id || infoRow.id;
+      const r1 = await supabaseAdmin
+        .from('worker_work_information')
+        .select('request_group_id, auth_uid, service_types, service_task, years_experience, tools_provided, work_description, barangay, street, worker_id')
+        .eq('worker_id', wid)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      detailsRow = r1?.data || null;
+    }
+
+    let rateRow = null;
+    if (infoRow?.worker_id || infoRow?.id) {
+      const wid = infoRow.worker_id || infoRow.id;
+      const r2 = await supabaseAdmin
+        .from('worker_service_rate')
+        .select('request_group_id, auth_uid, rate_type, rate_from, rate_to, rate_value, worker_id')
+        .eq('worker_id', wid)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      rateRow = r2?.data || null;
+    }
+
+    const items = (statusRows || [])
+      .filter(r => targetGroups.includes(r.request_group_id))
+      .map(r => ({
+        ...r,
+        info: infoRow || {},
+        details: detailsRow || {},
+        rate: rateRow || {}
+      }));
+
+    return res.status(200).json({ items });
   } catch (err) {
     return res.status(500).json({ message: friendlyError(err) });
   }
@@ -333,7 +513,7 @@ exports.getByGroup = async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ message: 'Missing id' });
-    const { data, error } = await getSupabaseAdmin()
+    const { data, error } = await supabaseAdmin
       .from('worker_application_status')
       .select('id, request_group_id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason, auth_uid, worker_id')
       .eq('id', id)
@@ -347,6 +527,24 @@ exports.getByGroup = async (req, res) => {
   }
 };
 
+exports.deleteApplication = async (req, res) => {
+  try {
+    const raw = String(req.params.id || '').trim();
+    if (!raw) return res.status(400).json({ message: 'id is required' });
+    const { data: row, error } = await supabaseAdmin
+      .from('worker_application_status')
+      .select('id, status, request_group_id')
+      .eq('id', raw)
+      .maybeSingle();
+    if (error) throw error;
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    await supabaseAdmin.from('worker_application_status').delete().eq('id', raw);
+    return res.status(200).json({ message: 'Application deleted', id: raw });
+  } catch {
+    return res.status(500).json({ message: 'Failed to delete application' });
+  }
+};
+
 exports.cancel = async (req, res) => {
   try {
     const body = req.body || {};
@@ -357,7 +555,7 @@ exports.cancel = async (req, res) => {
     const email_address = String(body.email_address || '').trim() || null;
     if (!id) return res.status(400).json({ message: 'Missing application_id' });
 
-    const { data: existing, error: getErr } = await getSupabaseAdmin()
+    const { data: existing, error: getErr } = await supabaseAdmin
       .from('worker_application_status')
       .select('id, status, email_address, request_group_id, auth_uid, worker_id')
       .eq('id', id)
@@ -366,7 +564,7 @@ exports.cancel = async (req, res) => {
     if (!existing) return res.status(404).json({ message: 'Application not found' });
 
     const upd = { status: 'cancelled', reason_choice, reason_other };
-    const { data: updated, error: upErr } = await getSupabaseAdmin()
+    const { data: updated, error: upErr } = await supabaseAdmin
       .from('worker_application_status')
       .update(upd)
       .eq('id', existing.id)
@@ -375,7 +573,7 @@ exports.cancel = async (req, res) => {
     if (upErr) throw upErr;
 
     const canceled_at = new Date().toISOString();
-    const { error: insErr } = await getSupabaseAdmin()
+    const { error: insErr } = await supabaseAdmin
       .from('worker_cancel_application')
       .insert([{
         request_group_id: existing.request_group_id || null,
@@ -388,138 +586,8 @@ exports.cancel = async (req, res) => {
       }]);
     if (insErr) throw insErr;
 
-    return res.status(200).json({
-      id: updated?.id || existing.id,
-      status: 'cancelled',
-      canceled_at,
-      reason_choice,
-      reason_other
-    });
-  } catch (err) {
-    return res.status(500).json({ message: friendlyError(err) });
-  }
-};
-
-exports.listMine = async (req, res) => {
-  try {
-    let email = String(req.query.email || '').trim();
-    let workerId = req.query.worker_id ? parseInt(req.query.worker_id, 10) : null;
-
-    if (!email && workerId) {
-      try {
-        const foundById = await findWorkerById(workerId);
-        if (foundById?.email_address) email = String(foundById.email_address).trim();
-      } catch {}
-    }
-    if (!email && req.session?.user?.email_address) email = String(req.session.user.email_address).trim();
-    if (!email) return res.status(200).json({ items: [] });
-
-    const statusRaw = String(req.query.status || 'all').toLowerCase();
-    const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10), 1), 50);
-
-    let base = getSupabaseAdmin()
-      .from('worker_application_status')
-      .select('id, request_group_id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason, auth_uid, worker_id')
-      .ilike('email_address', email)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (statusRaw !== 'all') base = base.eq('status', statusRaw);
-
-    const { data: statusRows, error } = await base;
-    if (error) throw error;
-
-    const { data: infoRow } = await getSupabaseAdmin()
-      .from('worker_information')
-      .select('id, request_group_id, worker_id, auth_uid, email_address, first_name, last_name, contact_number, street, barangay, date_of_birth, age, profile_picture_url')
-      .ilike('email_address', email)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const wid = workerId || infoRow?.worker_id || infoRow?.id || null;
-
-    let detailsRow = null;
-    if (wid) {
-      const r1 = await getSupabaseAdmin()
-        .from('worker_work_information')
-        .select('request_group_id, auth_uid, service_types, service_task, years_experience, tools_provided, work_description, barangay, street, worker_id')
-        .eq('worker_id', wid)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      detailsRow = r1?.data || null;
-    }
-
-    const normDetails = (() => {
-      const d = detailsRow || {};
-      const parseArr = (v) => {
-        if (Array.isArray(v)) return v;
-        const s = String(v ?? '').trim();
-        if (!s) return [];
-        try { const x = JSON.parse(s); return Array.isArray(x) ? x : []; } catch { return []; }
-      };
-      const tools = (() => {
-        const raw = d.tools_provided ?? '';
-        if (typeof raw === 'boolean') return raw ? 'Yes' : 'No';
-        const s = String(raw).trim().toLowerCase();
-        if (['yes','y','true','1'].includes(s)) return 'Yes';
-        if (['no','n','false','0'].includes(s)) return 'No';
-        return String(raw || '');
-      })();
-      return {
-        ...d,
-        service_types: parseArr(d.service_types),
-        work_description: d.work_description ?? '',
-        years_experience: d.years_experience ?? '',
-        tools_provided: tools
-      };
-    })();
-
-    let rateRow = null;
-    if (wid) {
-      const r2 = await getSupabaseAdmin()
-        .from('worker_service_rate')
-        .select('request_group_id, auth_uid, rate_type, rate_from, rate_to, rate_value, worker_id')
-        .eq('worker_id', wid)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      rateRow = r2?.data || null;
-    }
-
-    const items = (statusRows || []).map(r => ({
-      ...r,
-      info: infoRow || {},
-      details: normDetails,
-      rate: rateRow || {}
-    }));
-
-    return res.status(200).json({ items });
-  } catch (err) {
-    return res.status(500).json({ message: friendlyError(err) });
-  }
-};
-
-exports.deleteApplication = async (req, res) => {
-  try {
-    const raw = String(req.params.id || '').trim();
-    if (!raw) return res.status(400).json({ message: 'id is required' });
-
-    const { data: row, error } = await getSupabaseAdmin()
-      .from('worker_application_status')
-      .select('id, status, email_address')
-      .eq('id', raw)
-      .maybeSingle();
-    if (error) throw error;
-    if (!row) return res.status(404).json({ message: 'Not found' });
-
-    const status = String(row.status || '').toLowerCase();
-    const allowed = new Set(['pending', 'approved', 'declined', 'cancelled', 'canceled']);
-    if (!allowed.has(status)) return res.status(409).json({ message: 'Cannot delete this application status' });
-
-    await getSupabaseAdmin().from('worker_application_status').delete().eq('id', raw);
-    return res.status(200).json({ message: 'Application deleted', id: raw });
-  } catch (err) {
-    return res.status(500).json({ message: friendlyError(err) });
+    return res.status(201).json({ message: 'Cancellation recorded', canceled_at, id: updated?.id || existing.id });
+  } catch (e) {
+    return res.status(500).json({ message: friendlyError(e) });
   }
 };

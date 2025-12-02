@@ -69,7 +69,7 @@ async function insertPendingApplication(row) {
 }
 async function findWorkerByEmail(email) {
   const { data, error } = await supabaseAdmin
-    .from('worker_information')
+    .from('user_worker')
     .select('id, auth_uid, email_address')
     .ilike('email_address', String(email || '').trim())
     .order('created_at', { ascending: false })
@@ -78,11 +78,23 @@ async function findWorkerByEmail(email) {
   if (error) throw error;
   return data;
 }
+
 async function findWorkerById(id) {
   const { data, error } = await supabaseAdmin
-    .from('worker_information')
+    .from('user_worker')
     .select('id, auth_uid, email_address')
     .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function findWorkerByAuthUid(auth_uid) {
+  const { data, error } = await supabaseAdmin
+    .from('user_worker')
+    .select('id, auth_uid, email_address')
+    .eq('auth_uid', String(auth_uid || '').trim())
+    .limit(1)
     .maybeSingle();
   if (error) throw error;
   return data;
@@ -99,5 +111,6 @@ module.exports = {
   insertPendingApplication,
   newGroupId,
   findWorkerByEmail,
-  findWorkerById
+  findWorkerById,
+  findWorkerByAuthUid
 };
