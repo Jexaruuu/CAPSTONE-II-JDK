@@ -1,7 +1,7 @@
 // ClientAvailableWorkers.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
-import { ArrowRight, ArrowLeft, Star } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Star, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -18,11 +18,11 @@ function primaryRate(rate) {
   const t = String(rate?.rate_type || '').toLowerCase();
   if (t === 'hourly rate') {
     const f = rate?.rate_from, to = rate?.rate_to;
-    if (f && to) return `${peso(f)}–${peso(to)}/hr`;
+    if (f && to) return `${peso(f)}–${peso(to)}`;
     if (f) return `${peso(f)}/hr`;
     if (to) return `${peso(to)}/hr`;
   }
-  if (t === 'by the job rate' && rate?.rate_value) return `${peso(rate.rate_value)}/job`;
+  if (t === 'by the job rate' && rate?.rate_value) return `${peso(rate.rate_value)}`;
   return '';
 }
 
@@ -146,6 +146,16 @@ function deriveRatingFive(src) {
   return null;
 }
 
+const iconFor = (s) => {
+  const k = String(s || '').toLowerCase();
+  if (k.includes('elect')) return Zap;
+  if (k.includes('plumb')) return Wrench;
+  if (k.includes('car wash') || k.includes('carwash') || k.includes('auto')) return Car;
+  if (k.includes('laund') || k.includes('clean')) return Shirt;
+  if (k.includes('carpent') || k.includes('wood')) return Hammer;
+  return Hammer;
+};
+
 const ClientAvailableWorkers = () => {
   const [items, setItems] = useState([]);
 
@@ -196,6 +206,38 @@ const ClientAvailableWorkers = () => {
           const age = computeAge(dob);
           const gender = normalizeGender(info.gender ?? info.sex ?? r.gender);
           const consultText = rateText ? `${rateText} consultation` : 'Consultation available';
+
+          const iconLabels = [];
+          if (Array.isArray(stArr) && stArr.length) {
+            stArr.forEach((x) => {
+              const label = typeof x === 'object' ? (x.category || x.name || '') : x;
+              if (label) iconLabels.push(String(label));
+              if (x && typeof x === 'object' && Array.isArray(x.tasks)) {
+                x.tasks.forEach((t) => { if (t) iconLabels.push(String(t)); });
+              }
+            });
+          }
+          if (work.service_type) iconLabels.push(String(work.service_type));
+          if (work.primary_service_type) iconLabels.push(String(work.primary_service_type));
+          if (serviceType) iconLabels.push(String(serviceType));
+          if (serviceTask) {
+            String(serviceTask).split(/[,|/]+/).forEach((seg) => {
+              const s = seg.trim();
+              if (s) iconLabels.push(s);
+            });
+          }
+          const seen = new Set();
+          const icons = [];
+          iconLabels.forEach((lbl) => {
+            const Icon = iconFor(lbl);
+            const key = Icon.displayName || Icon.name || 'Icon';
+            if (!seen.has(key)) {
+              seen.add(key);
+              icons.push(Icon);
+            }
+          });
+          const serviceIcons = icons.slice(0, 3);
+
           return {
             id: r.id || `${r.request_group_id || i}`,
             name,
@@ -217,6 +259,7 @@ const ClientAvailableWorkers = () => {
             toolsProvided,
             addressLine,
             ratingFive,
+            serviceIcons,
             __meta: { email: info.email_address || r.email_address || '', auth_uid: r.auth_uid || info.auth_uid || '' }
           };
         });
@@ -267,7 +310,7 @@ const ClientAvailableWorkers = () => {
 
   const GAP = 24;
 
-  const [cardW, setCardW]   = useState(430);
+  const [cardW, setCardW]   = useState(420);
   const [endPad, setEndPad] = useState(0);
 
   const totalSlides = Math.max(1, Math.ceil(displayItems.length / PER_PAGE));
@@ -319,7 +362,7 @@ const ClientAvailableWorkers = () => {
     if (!wrap || !track) return;
     const visible = wrap.clientWidth - getHPad(wrap) - getHPad(track);
     const exact   = Math.floor((visible - GAP * (PER_PAGE - 1)) / PER_PAGE);
-    const clamped = Math.max(430, Math.min(610, exact));
+    const clamped = Math.max(420, Math.min(600, exact));
     setCardW(clamped);
     setEndPad(0);
   };
@@ -447,7 +490,7 @@ const ClientAvailableWorkers = () => {
         </div>
       ) : (
         <>
-          <div className="relative w-full flex justify.center items-center">
+          <div className="relative w-full flex justify-center items-center">
             <button
               onClick={() => handleScroll('left')}
               className="absolute -left-2 md:left-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
@@ -475,75 +518,32 @@ const ClientAvailableWorkers = () => {
                     <div
                       key={w.id}
                       ref={(el) => (cardRefs.current[i] = el)}
-                      className="relative overflow-hidden flex-shrink-0 bg.white border border-gray-300 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:border-[#008cfc] hover:shadow-xl"
+                      className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl cursor-pointer"
                       style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
                     >
-                      <button className="absolute top-4 right-4 h-8 w-8 rounded-full grid place-items-center hover:bg-gray-100">
-                        <img src="/verifiedicon.png" alt="" className="h-7 w-7 object-contain" />
-                      </button>
-
-                      <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-full overflow-hidden">
-                          <img
-                            src={w.image || avatarFromName(w.name)}
-                            alt={w.name}
-                            className="h-full w-full object-cover"
-                            onLoad={() => requestAnimationFrame(recomputePositions)}
-                            onError={({ currentTarget }) => {
-                              currentTarget.style.display = 'none';
-                              const parent = currentTarget.parentElement;
-                              if (parent) {
-                                parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-base font-semibold">${(w.name || '?').trim().charAt(0).toUpperCase()}</div>`;
-                              }
-                              requestAnimationFrame(recomputePositions);
-                            }}
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-lg font-semibold text-gray-900 truncate">{w.name}</div>
-                          <div className="text-sm text-gray-600 truncate">
-                            {w.addressLine || w.country}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-                        <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                          <div className="font-semibold text-gray-900">{w.gender ?? '—'}</div>
-                          <div className="text-gray-500 text-xs whitespace-nowrap">Gender</div>
-                        </div>
-                        <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                          <div className="font-semibold text-gray-900">{w.age ?? '—'}</div>
-                          <div className="text-gray-500 text-xs">Age</div>
-                        </div>
-                        <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                          <div className="font-semibold text-gray-900">{w.toolsProvided ?? '—'}</div>
-                          <div className="text-gray-500 text-xs">Tools Provided</div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4">
-                        <div className="text-sm text-gray-600 leading-relaxed line-clamp-3">{w.bio}</div>
-                      </div>
-
-                      {(w.serviceType || w.serviceTask || w.rate || w.rateType) && (
-                        <div className="mt-4 grid grid-cols-2 gap-4">
-                          <div>
-                            {w.serviceType && (
-                              <>
-                                <div className="text-xs text-gray-500">Service Type:</div>
-                                <div className="text-sm font-medium text-gray-900 truncate">{w.serviceType}</div>
-                              </>
-                            )}
-                            {w.serviceTask && (
-                              <>
-                                <div className="mt-2 text-xs text-gray-500">Service Task:</div>
-                                <div className="text-sm text-gray-900 line-clamp-2">{w.serviceTask}</div>
-                              </>
-                            )}
-                            <div className="mt-2 text-xs text-gray-500">Ratings:</div>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1">
+                      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:160px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+                      <div className="relative z-10">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-12 w-12 rounded-full overflow-hidden border border-gray-200 bg-gray-50 shrink-0">
+                              <img
+                                src={w.image || avatarFromName(w.name)}
+                                alt={w.name}
+                                className="h-full w-full object-cover"
+                                onLoad={() => requestAnimationFrame(recomputePositions)}
+                                onError={({ currentTarget }) => {
+                                  currentTarget.style.display = 'none';
+                                  const parent = currentTarget.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-gray-100 text-gray-700 text-base font-semibold">${(w.name || '?').trim().charAt(0).toUpperCase()}</div>`;
+                                  }
+                                  requestAnimationFrame(recomputePositions);
+                                }}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight truncate">{w.name}</div>
+                              <div className="mt-1 flex items-center gap-1">
                                 {[0,1,2,3,4].map((idx) => (
                                   <Star
                                     key={idx}
@@ -552,32 +552,54 @@ const ClientAvailableWorkers = () => {
                                     fill="currentColor"
                                   />
                                 ))}
-                              </div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {rating != null ? `${rating.toFixed(1)}/5` : '—'}
+                                <span className="text-xs font-medium text-gray-700">{rating != null ? `${rating.toFixed(1)}/5` : '0/5'}</span>
                               </div>
                             </div>
                           </div>
-                          <div>
-                            {w.rateType && (
-                              <>
-                                <div className="text-xs text-gray-500">Rate Type:</div>
-                                <div className="text-sm text-gray-900 truncate">{w.rateType}</div>
-                              </>
-                            )}
-                            {w.rate && (
-                              <>
-                                <div className="mt-2 text-xs text-gray-500">Service Rate:</div>
-                                <div className="text-sm font-medium text-gray-900">{w.rate}</div>
-                              </>
-                            )}
+                          <div className="flex items-center gap-1">
+                            {(w.serviceIcons || []).map((Icon, idx) => (
+                              <span key={idx} className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200">
+                                <Icon size={16} className="text-[#008cfc]" />
+                              </span>
+                            ))}
                           </div>
                         </div>
-                      )}
 
-                      <a href="#" className="mt-4 w-full h-11 rounded-lg bg-[#008cfc] text-white text-sm font-medium grid place-items-center hover:bg-blue-700 transition">
-                        View Worker
-                      </a>
+                        <div className="mt-4 h-px bg-gray-200" />
+
+                        <div className="mt-4">
+                          <div className="text-sm font-semibold text-gray-700">Service Type</div>
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                              {w.serviceType || '—'}
+                            </span>
+                          </div>
+                          <div className="mt-3 text-sm font-semibold text-gray-700">Service Task</div>
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-violet-50 text-violet-700 border-violet-200">
+                              {w.serviceTask || '—'}
+                            </span>
+                          </div>
+                          <div className="mt-3 text-sm font-semibold text-gray-700">Work Description</div>
+                          <div className="text-base text-gray-900 font-medium line-clamp-3">{w.bio || '—'}</div>
+                        </div>
+
+                        <div className="mt-4 h-px bg-gray-200" />
+
+                        <div className="mt-4 flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">{w.addressLine || w.country}</div>
+                            <div className="flex items-center gap-2">
+                              {w.rateType && <div className="text-sm font-semibold text-gray-900">{w.rateType}</div>}
+                              {w.rateType ? <span className="text-gray-400">•</span> : null}
+                              <div className="text-sm font-semibold text-gray-900">{w.rate || 'Rate upon request'}</div>
+                            </div>
+                          </div>
+                          <a href="#" className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition">
+                            View worker
+                          </a>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -600,7 +622,7 @@ const ClientAvailableWorkers = () => {
             </div>
             <nav className="flex items-center gap-2">
               <button
-                className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 hidden"
+                className="h-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white hover:bg-[#0078d6] disabled:opacity-50 hidden"
                 disabled
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 aria-label="Previous page"
@@ -627,9 +649,7 @@ const ClientAvailableWorkers = () => {
                     <button
                       key={`${pg}-${idx}`}
                       onClick={() => setPage(pg)}
-                      className={`h-9 min-w-9 px-3 rounded-md border text-sm ${
-                        pg === page ? 'border-[#008cfc] bg-[#008cfc] text-white' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
+                      className="h-9 min-w-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white text-sm hover:bg-[#0078d6]"
                       aria-current={pg === page ? 'page' : undefined}
                     >
                       {pg}
@@ -640,7 +660,7 @@ const ClientAvailableWorkers = () => {
                 );
               })()}
               <button
-                className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 hidden"
+                className="h-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white hover:bg-[#0078d6] disabled:opacity-50 hidden"
                 disabled
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 aria-label="Next page"

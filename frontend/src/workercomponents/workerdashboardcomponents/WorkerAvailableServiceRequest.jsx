@@ -1,7 +1,7 @@
 // WorkerAvailableServiceRequest.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
-import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt, Star } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -109,10 +109,38 @@ const WorkerAvailableServiceRequest = () => {
         const d = r.details || {};
         const rate = r.rate || {};
         const name = [i.first_name, i.last_name].filter(Boolean).join(' ').trim() || 'Client';
-        const addressLine = [i.barangay, i.street, i.additional_address].filter(Boolean).join(', ');
+        const addressPrimary = [i.barangay || '', i.street || ''].filter(Boolean).join(', ');
+        const addressAdditional = i.additional_address || '';
         const dt = buildDateTime(d.preferred_date || '', d.preferred_time || '');
         const statusLower = String(r.status || '').toLowerCase();
         const isExpired = statusLower === 'expired' || (dt && dt.getTime() < now);
+
+        const iconLabels = [];
+        const pushType = (val) => {
+          if (val == null) return;
+          if (Array.isArray(val)) { val.forEach(pushType); return; }
+          if (typeof val === 'object') {
+            if (val.category) iconLabels.push(String(val.category));
+            else if (val.name) iconLabels.push(String(val.name));
+            else if (val.type) iconLabels.push(String(val.type));
+            return;
+          }
+          String(val).split(/[,/|]+/).forEach((s) => { s = s.trim(); if (s) iconLabels.push(s); });
+        };
+        pushType(d.service_type);
+
+        const seen = new Set();
+        const icons = [];
+        iconLabels.forEach((lbl) => {
+          const Icon = getServiceIcon(lbl);
+          const key = Icon.displayName || Icon.name || 'Icon';
+          if (!seen.has(key)) {
+            seen.add(key);
+            icons.push(Icon);
+          }
+        });
+        const serviceIcons = icons.slice(0, 3);
+
         return {
           id: r.id || idx + 1,
           request_group_id: r.request_group_id || '',
@@ -120,7 +148,7 @@ const WorkerAvailableServiceRequest = () => {
           image: i.profile_picture_url || avatarFromName(name),
           barangay: i.barangay || '',
           street: i.street || '',
-          additional_address: i.additional_address || '',
+          additional_address: addressAdditional,
           preferred_date: d.preferred_date || '',
           preferred_time: d.preferred_time || '',
           urgency: (d.is_urgent || '').toString(),
@@ -129,8 +157,9 @@ const WorkerAvailableServiceRequest = () => {
           description: d.service_description || '',
           rate_type: rate.rate_type || '',
           price: fmtRate(rate),
-          addressLine,
-          isExpired
+          addressLine: addressPrimary,
+          isExpired,
+          serviceIcons
         };
       });
       const active = mapped.filter((x) => !x.isExpired);
@@ -251,7 +280,6 @@ const WorkerAvailableServiceRequest = () => {
     const fallback = idx * ((cardW + GAP) * PER_PAGE - GAP);
     const left = slideLefts.length ? slideLefts[idx] : fallback;
     el.scrollTo({ left, behavior: 'smooth' });
-    setCurrent(idx);
   };
 
   const isPointerDownRef = useRef(false);
@@ -376,71 +404,105 @@ const WorkerAvailableServiceRequest = () => {
                     <div
                       key={req.id}
                       ref={(el) => (cardRefs.current[i] = el)}
-                      className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-300 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:border-[#008cfc] hover:shadow-xl"
+                      className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl"
                       style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
                     >
-                      <button className="absolute top-4 right-4 h-8 w-8 rounded-full grid place-items-center hover:bg-gray-100">
-                        <img src="/verifiedicon.png" alt="" className="h-7 w-7 object-contain" />
-                      </button>
-
-                      <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-full overflow-hidden">
-                          <img
-                            src={req.image}
-                            alt={req.name}
-                            className="h-full w-full object-cover"
-                            onLoad={() => requestAnimationFrame(recomputePositions)}
-                            onError={({ currentTarget }) => {
-                              currentTarget.style.display = 'none';
-                              const parent = currentTarget.parentElement;
-                              if (parent) {
-                                parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-base font-semibold">${(req.name || '?').trim().charAt(0).toUpperCase()}</div>`;
-                              }
-                              requestAnimationFrame(recomputePositions);
-                            }}
-                          />
+                      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:160px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+                      <div className="relative z-10">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-12 w-12 rounded-full overflow-hidden border border-gray-200 bg-gray-50 shrink-0">
+                              <img
+                                src={req.image}
+                                alt={req.name}
+                                className="h-full w-full object-cover"
+                                onLoad={() => requestAnimationFrame(recomputePositions)}
+                                onError={({ currentTarget }) => {
+                                  currentTarget.style.display = 'none';
+                                  const parent = currentTarget.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-base font-semibold">${(req.name || '?').trim().charAt(0).toUpperCase()}</div>`;
+                                  }
+                                  requestAnimationFrame(recomputePositions);
+                                }}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight truncate">{req.name}</div>
+                              <div className="mt-1 flex items-center gap-1">
+                                {[0,1,2,3,4].map((idx) => (
+                                  <Star
+                                    key={idx}
+                                    size={14}
+                                    className="text-gray-300"
+                                    fill="currentColor"
+                                  />
+                                ))}
+                                <span className="text-xs font-medium text-gray-700">0.0/5</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {(req.serviceIcons || []).map((Ic, idx) => (
+                              <span key={idx} className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200">
+                                <Ic size={16} className="text-[#008cfc]" />
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <div className="text-lg font-semibold text-gray-900 truncate">{req.name}</div>
-                          <div className="text-sm text-gray-600 truncate">{req.addressLine}</div>
+
+                        <div className="mt-4 h-px bg-gray-200" />
+
+                        <div className="mt-4">
+                          <div className="text-sm font-semibold text-gray-700">Preferred Schedule</div>
+                          <div className="mt-1 flex items-center gap-2 text-sm text-gray-900 font-medium">
+                            <span>{fmtDate(req.preferred_date) || '—'}</span>
+                            <span className="text-gray-400">•</span>
+                            <span>{fmtTime(req.preferred_time) || '—'}</span>
+                            <span className="text-gray-400">•</span>
+                            <span className={`${toBool(req.urgency) ? 'text-green-600' : 'text-red-600'}`}>{toBool(req.urgency) ? 'Urgent' : 'Not urgent'}</span>
+                          </div>
+
+                          <div className="mt-3 text-sm font-semibold text-gray-700">Service Type</div>
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                              {req.service_type || '—'}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 text-sm font-semibold text-gray-700">Service Task</div>
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-violet-50 text-violet-700 border-violet-200">
+                              {req.service_task || '—'}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 text-sm font-semibold text-gray-700">Request Description</div>
+                          <div className="text-base text-gray-900 font-medium leading-relaxed line-clamp-3">{req.description || '—'}</div>
+                        </div>
+
+                        <div className="mt-4 h-px bg-gray-200" />
+
+                        <div className="mt-4 flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">{req.addressLine}</div>
+                            {req.additional_address ? (
+                              <div className="text-sm text-gray-700">{req.additional_address}</div>
+                            ) : null}
+                            <div className="flex items-center gap-2">
+                              {req.rate_type && <div className="text-sm font-semibold text-gray-900">{req.rate_type}</div>}
+                              {req.rate_type ? <span className="text-gray-400">•</span> : null}
+                              <div className="text-sm font-semibold text-gray-900">{req.price || 'Rate upon request'}</div>
+                            </div>
+                          </div>
+                          <a
+                            href={req.request_group_id ? `/worker/requests/${req.request_group_id}` : '#'}
+                            className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition"
+                          >
+                            View Request
+                          </a>
                         </div>
                       </div>
-
-                      <div className="mt-5 grid grid-cols-3 gap-2 text-sm">
-                        <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                          <div className="font-semibold text-gray-900">{fmtDate(req.preferred_date)}</div>
-                          <div className="text-gray-500 text-xs">Preferred Date</div>
-                        </div>
-                        <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                          <div className="font-semibold text-gray-900">{fmtTime(req.preferred_time)}</div>
-                          <div className="text-gray-500 text-xs">Preferred Time</div>
-                        </div>
-                        <div className="rounded-md border border-gray-200 px-3 py-2 text-center">
-                          <div className={`font-semibold ${toBool(req.urgency) ? 'text-green-600' : 'text-red-600'}`}>{toBool(req.urgency) ? 'Yes' : 'No'}</div>
-                          <div className="text-gray-500 text-xs">Urgency</div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">Service Type</div>
-                        <div className="font-semibold text-[#008cfc]">{req.service_type}</div>
-                        <div className="mt-3 text-xs uppercase tracking-wide text-gray-500">Service Task</div>
-                        <div className="font-semibold text-[#008cfc]">{req.service_task}</div>
-                        <div className="mt-3 text-xs uppercase tracking-wide text-gray-500">Request Description</div>
-                        <div className="text-sm font-semibold text-[#008cfc] leading-relaxed line-clamp-3">{req.description}</div>
-                        <div className="mt-3 text-xs uppercase tracking-wide text-gray-500">Rate</div>
-                        <div className="text-sm font-semibold text-[#008cfc]">
-                          <span className="font-semibold">{req.rate_type ? req.rate_type.toUpperCase() : ''}</span>
-                          {req.price ? ` · ${req.price}` : ''}
-                        </div>
-                      </div>
-
-                      <a
-                        href={req.request_group_id ? `/worker/requests/${req.request_group_id}` : '#'}
-                        className="mt-4 w-full h-11 rounded-lg bg-[#008cfc] text-white font-medium grid place-items-center hover:bg-blue-700 transition"
-                      >
-                        View Service Request
-                      </a>
                     </div>
                   );
                 })}

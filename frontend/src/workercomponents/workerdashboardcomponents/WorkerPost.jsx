@@ -717,16 +717,16 @@ function WorkerPost() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {isApproved && (
-                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                  <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <span className="h-3 w-3 rounded-md bg-current opacity-30" />
                     Approved Application
                   </span>
                 )}
                 {isPending && (
-                  <span className="relative inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+                  <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
                     <span className="relative inline-flex">
-                      <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
-                      <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
+                      <span className="absolute inline-flex h-3 w-3 rounded-md bg-current opacity-30 animate-ping" />
+                      <span className="relative inline-flex h-3 w-3 rounded-md bg-current" />
                     </span>
                     Pending Application
                   </span>
