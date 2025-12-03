@@ -487,12 +487,7 @@ function WorkerPost() {
       ? 'Yes'
       : 'No';
 
-  const toolsClassLocal =
-    toolsBoolLocal === null
-      ? 'font-medium'
-      : toolsBoolLocal
-      ? 'text-green-600 font-semibold'
-      : 'text-red-600 font-semibold';
+  const toolsClassLocal = 'text-gray-900 font-semibold';
 
   const getGroupId = (it) => {
     const g =
@@ -649,21 +644,22 @@ function WorkerPost() {
                 <div className="min-w-0">
                   <div className="text-xl md:text-2xl font-semibold truncate">
                     <span className="text-gray-700">Service Type:</span>{' '}
-                    <span className="text-[#008cfc]">{buildServiceTypesText(currentApp)}</span>
+                    <span className="text-gray-900">{buildServiceTypesText(currentApp)}</span>
                   </div>
                   <div className="mt-1 text-base md:text-lg truncate">
-                    <span className="font-semibold">Work Description:</span> {currentWorkDescription || '-'}
+                    <span className="font-semibold text-gray-700">Work Description:</span>{' '}
+                    <span className="text-gray-900">{currentWorkDescription || '-'}</span>
                   </div>
                   <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago` : ''}</div>
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Address:</span>
-                        <span className="text-[#008cfc] font-medium">{buildLocation(currentApp) || '-'}</span>
+                        <span className="text-gray-900 font-medium">{buildLocation(currentApp) || '-'}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Years of Experience:</span>
-                        <span className="text-[#008cfc] font-medium">
+                        <span className="text-gray-900 font-medium">
                           {currentYearsExperience !== '' &&
                           currentYearsExperience !== null &&
                           currentYearsExperience !== undefined
@@ -679,11 +675,11 @@ function WorkerPost() {
                     <div className="space-y-1.5 md:pl-10">
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Rate Type:</span>
-                        <span className="text-[#008cfc] font-medium">{getRateType(currentApp) || '-'}</span>
+                        <span className="text-gray-900 font-medium">{getRateType(currentApp) || '-'}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Service Rate:</span>
-                        <span className="text-[#008cfc] font-medium">
+                        <span className="text-gray-900 font-medium">
                           {(() => {
                             const d = currentApp?.rate || currentApp?.details || {};
                             const t = String(d?.rate_type || '').toLowerCase();

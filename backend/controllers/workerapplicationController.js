@@ -589,25 +589,42 @@ exports.listApproved = async (req, res) => {
   }
 };
 
+function readAppUHeader(req){
+  const h=req.headers["x-app-u"];
+  if(!h) return {};
+  try{return JSON.parse(decodeURIComponent(h));}catch{return {};}
+}
+
 exports.listMine = async (req, res) => {
   try {
     const scope = String(req.query.scope || 'current').toLowerCase();
-    const email = String(req.query.email || req.session?.user?.email_address || '').trim();
-    if (!email) return res.status(401).json({ message: 'Unauthorized' });
+    const hdr = readAppUHeader(req);
+    const email = String(req.query.email || hdr.email || hdr.email_address || req.session?.user?.email_address || '').trim();
+    const authUid = String(req.query.auth_uid || hdr.auth_uid || '').trim();
+    if (!email && !authUid) return res.status(401).json({ message: 'Unauthorized' });
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
     const groupIdFilter = String(req.query.groupId || '').trim();
 
-    const { data: statusRows } = await supabaseAdmin
+    let q = supabaseAdmin
       .from('worker_application_status')
       .select('id, request_group_id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason, auth_uid, worker_id, info, details, rate')
-      .ilike('email_address', email)
       .order('created_at', { ascending: false })
       .limit(200);
+    if (email) q = q.ilike('email_address', email);
+    if (!email && authUid) q = q.eq('auth_uid', authUid);
+
+    const { data: statusRows } = await q;
 
     const rows = Array.isArray(statusRows) ? statusRows : [];
     let base = rows;
-    if (scope === 'cancelled') base = rows.filter(r => String(r.status || '').toLowerCase() === 'cancelled');
-    else base = rows.filter(r => ['pending','approved','declined'].includes(String(r.status || '').toLowerCase()));
+    const isCancelled = (r) => ['cancelled','canceled'].includes(String(r.status||'').toLowerCase());
+    const isExpired = (r) => String(r.status||'').toLowerCase() === 'expired';
+    const isCurrent = (r) => ['pending','approved','declined'].includes(String(r.status||'').toLowerCase());
+
+    if (scope === 'cancelled') base = rows.filter(isCancelled);
+    else if (scope === 'expired') base = rows.filter(isExpired);
+    else base = rows.filter(isCurrent);
+
     let targetGroups = base.map(r => r.request_group_id).filter(Boolean);
     if (groupIdFilter) targetGroups = targetGroups.includes(groupIdFilter) ? [groupIdFilter] : [];
 

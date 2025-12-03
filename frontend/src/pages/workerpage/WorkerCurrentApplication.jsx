@@ -3,6 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import WorkerNavigation from "../../workercomponents/WorkerNavigation";
 import WorkerFooter from "../../workercomponents/WorkerFooter";
 import { Hammer, Zap, Wrench, Car, Shirt, Trash2 } from "lucide-react";
+import axios from "axios";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const timeAgo = (iso) => {
   try {
@@ -116,7 +119,7 @@ const buildLocation = (info, work) => {
   return parts.join(", ");
 };
 
-const Card = ({ item, onView, onReason, onDelete }) => {
+const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
   const info = item.info || {};
   const work = item.work || {};
   const rate = item.rate || {};
@@ -137,7 +140,6 @@ const Card = ({ item, onView, onReason, onDelete }) => {
   const isApproved = statusLower === "approved";
   const isDeclined = statusLower === "declined";
   const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
-  const isMuted = false;
   const cardBase =
     "bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300";
   const cardState = isCancelled
@@ -181,12 +183,12 @@ const Card = ({ item, onView, onReason, onDelete }) => {
           <div className="min-w-0">
             <div className="text-xl md:text-2xl font-semibold truncate">
               <span className="text-gray-700">Service Type:</span>{" "}
-              <span className="text-[#008cfc]">
+              <span className="text-black">
                 {serviceTypesText}
               </span>
             </div>
             <div className="mt-1 text-base md:text-lg truncate text-black">
-              <span className="font-semibold">Work Description:</span>{" "}
+              <span className="font-semibold text-gray-700">Work Description:</span>{" "}
               {work?.work_description || "-"}
             </div>
             <div className="mt-1 text-base text-gray-500">
@@ -196,7 +198,7 @@ const Card = ({ item, onView, onReason, onDelete }) => {
               <div className="space-y-1.5">
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Address:</span>
-                  <span className="text-[#008cfc] font-medium">
+                  <span className="text-black font-medium">
                     {address || "-"}
                   </span>
                 </div>
@@ -204,7 +206,7 @@ const Card = ({ item, onView, onReason, onDelete }) => {
                   <span className="text-gray-700 font-semibold">
                     Years of Experience:
                   </span>
-                  <span className="text-[#008cfc] font-medium">
+                  <span className="text-black font-medium">
                     {yearsExp ? yearsExp : "-"}
                   </span>
                 </div>
@@ -212,7 +214,7 @@ const Card = ({ item, onView, onReason, onDelete }) => {
                   <span className="text-gray-700 font-semibold">
                     Tools Provided:
                   </span>
-                  <span className="text-[#008cfc] font-medium">
+                  <span className="text-black font-medium">
                     {typeof tools === "boolean"
                       ? tools
                         ? "Yes"
@@ -226,7 +228,7 @@ const Card = ({ item, onView, onReason, onDelete }) => {
                   <span className="text-gray-700 font-semibold">
                     Rate Type:
                   </span>
-                  <span className="text-[#008cfc] font-medium">
+                  <span className="text-black font-medium">
                     {rateTypeText || "-"}
                   </span>
                 </div>
@@ -234,7 +236,7 @@ const Card = ({ item, onView, onReason, onDelete }) => {
                   <span className="text-gray-700 font-semibold">
                     Service Rate:
                   </span>
-                  <span className="text-[#008cfc] font-medium">
+                  <span className="text-black font-medium">
                     <RateText rate={rate} />
                   </span>
                 </div>
@@ -245,25 +247,25 @@ const Card = ({ item, onView, onReason, onDelete }) => {
 
         <div className="flex items-center gap-2 shrink-0">
           {isCancelled && (
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
+            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Canceled Application
             </span>
           )}
           {!isCancelled && isDeclined && (
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Declined Application
             </span>
           )}
           {!isCancelled && !isDeclined && isApproved && (
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Approved Application
             </span>
           )}
           {!isCancelled && !isDeclined && isPending && (
-            <span className="relative inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+            <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
               <span className="relative inline-flex">
                 <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
@@ -288,43 +290,54 @@ const Card = ({ item, onView, onReason, onDelete }) => {
       </div>
 
       <div className="-mt-9 flex justify-end gap-2">
-        {isDeclined || isCancelled ? (
-          <Link
-            to={`/workerpostapplication?id=${encodeURIComponent(item.id)}`}
-            onClick={(e) => {
-              e.preventDefault();
-              onReason(item);
-            }}
-            className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium ${
-              isCancelled
-                ? "border-orange-300 text-orange-600 hover:bg-orange-50"
-                : "border-red-300 text-red-600 hover:bg-red-50"
-            }`}
-          >
-            View Reason
-          </Link>
-        ) : (
-          <Link
-            to={`/workerpostapplication?id=${encodeURIComponent(item.id)}`}
-            onClick={(e) => {
-              e.preventDefault();
-              onView(item);
-            }}
-            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-          >
-            View
-          </Link>
-        )}
-        <button
-          type="button"
-          onClick={() => onDelete(item)}
-          className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
-          aria-label="Delete Application"
-          title="Delete Application"
-        >
-          <Trash2 className="h-5 w-5" />
-        </button>
-      </div>
+  {isDeclined || isCancelled ? (
+    <Link
+      to={`/workerpostapplication?id=${encodeURIComponent(item.id)}`}
+      onClick={(e) => {
+        e.preventDefault();
+        onReason(item);
+      }}
+      className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium ${
+        isCancelled
+          ? "border-orange-300 text-orange-600 hover:bg-orange-50"
+          : "border-red-300 text-red-600 hover:bg-red-50"
+      }`}
+    >
+      View Reason
+    </Link>
+  ) : (
+    <Link
+      to={`/workerpostapplication?id=${encodeURIComponent(item.id)}`}
+      onClick={(e) => {
+        e.preventDefault();
+        onView(item);
+      }}
+      className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+    >
+      View
+    </Link>
+  )}
+
+  {isApproved && !isCancelled && !isDeclined && (
+    <button
+      type="button"
+      onClick={() => onEdit(item)}
+      className="h-10 px-4 rounded-md transition bg-[#008cfc] text-white hover:bg-blue-700"
+    >
+      Edit Application
+    </button>
+  )}
+
+  <button
+    type="button"
+    onClick={() => onDelete(item)}
+    className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
+    aria-label="Delete Application"
+    title="Delete Application"
+  >
+    <Trash2 className="h-5 w-5" />
+  </button>
+</div>
     </div>
   );
 };
@@ -364,8 +377,114 @@ export default function WorkerCurrentApplication() {
     }
   }, [showReason]);
 
-  const fetchByStatus = (statusKey) => {
-    setLoading(true);
+  const buildAppU = () => {
+  let email = "";
+  let auth_uid = "";
+
+  try {
+    const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
+    email = a.email || a.email_address || email;
+    auth_uid = a.auth_uid || a.authUid || auth_uid;
+  } catch {}
+
+  try {
+    const p = JSON.parse(
+      localStorage.getItem("workerProfile") ||
+        localStorage.getItem("worker_profile") ||
+        "{}"
+    );
+    email = email || p.email || p.email_address || "";
+    auth_uid = auth_uid || p.auth_uid || p.authUid || "";
+  } catch {}
+
+  try {
+    const raw = localStorage.getItem("app_u") || "";
+    if (raw) {
+      const j = JSON.parse(decodeURIComponent(raw));
+      email = email || j.e || j.email || j.email_address || "";
+      auth_uid = auth_uid || j.au || j.auth_uid || "";
+    }
+  } catch {}
+
+  try {
+    const m = /(?:^|;\s*)app_u=([^;]+)/.exec(document.cookie || "");
+    if (m) {
+      const j = JSON.parse(decodeURIComponent(m[1]));
+      email = email || j.e || j.email || j.email_address || "";
+      auth_uid = auth_uid || j.au || j.auth_uid || "";
+    }
+  } catch {}
+
+  return {
+    r: "worker",
+    e: email || null,
+    au: auth_uid || null,
+    email: email || null,
+    email_address: email || null,
+    auth_uid: auth_uid || null
+  };
+};
+
+  const normalizeApiItems = (apiItems) => {
+    const base = Array.isArray(apiItems) ? apiItems : [];
+    return base.map((r, i) => {
+      const work = r.work || r.details || {};
+      return {
+        id: r.id ?? r.request_group_id ?? `${i}`,
+        status: String(r.status || "pending").toLowerCase(),
+        created_at: r.created_at || new Date().toISOString(),
+        updated_at: r.decided_at || r.created_at || new Date().toISOString(),
+        info: r.info || {},
+        work,
+        rate: r.rate || {},
+        decision_reason: r.decision_reason || null,
+        reason_choice: r.reason_choice || null,
+        reason_other: r.reason_other || null,
+        decided_at: r.decided_at || null,
+        email_address: r.email_address || null
+      };
+    });
+  };
+
+  const fetchFromApi = async (scopeKey) => {
+  const scope = scopeKey === "cancelled" ? "cancelled" : "current";
+  const appU = buildAppU();
+  const headers = { "x-app-u": encodeURIComponent(JSON.stringify(appU)) };
+  const url = `${API_BASE}/api/workerapplications`;
+  const params = { scope, limit: 200 };
+  if (appU.email_address) params.email = appU.email_address;
+  if (appU.auth_uid) params.auth_uid = appU.auth_uid;
+
+  const { data } = await axios.get(url, {
+    params,
+    headers,
+    withCredentials: true
+  });
+
+  const normalized = normalizeApiItems(data?.items || []);
+  return normalized.sort(
+    (a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  );
+};
+
+  const fetchByStatus = async (statusKey) => {
+  setLoading(true);
+  try {
+    let rows = [];
+    if (statusKey === "cancelled") {
+      rows = await fetchFromApi("cancelled");
+    } else if (statusKey === "pending" || statusKey === "approved" || statusKey === "declined") {
+      rows = await fetchFromApi("current");
+    } else {
+      const [cur, can] = await Promise.all([fetchFromApi("current"), fetchFromApi("cancelled")]);
+      rows = [...cur, ...can];
+    }
+    setItems(rows);
+    try {
+      localStorage.setItem("workerApplications", JSON.stringify(rows));
+    } catch {}
+  } catch {
     try {
       const stored = JSON.parse(localStorage.getItem("workerApplications") || "[]");
       const base = Array.isArray(stored) ? stored : [];
@@ -375,7 +494,7 @@ export default function WorkerCurrentApplication() {
         created_at: r.created_at || new Date().toISOString(),
         updated_at: r.updated_at || r.decided_at || r.created_at || new Date().toISOString(),
         info: r.info || {},
-        work: r.work || {},
+        work: r.work || r.details || {},
         rate: r.rate || {},
         decision_reason: r.decision_reason || null,
         reason_choice: r.reason_choice || null,
@@ -383,19 +502,14 @@ export default function WorkerCurrentApplication() {
         decided_at: r.decided_at || null,
         email_address: r.email_address || null
       }));
-      setItems(
-        normalized.sort(
-          (a, b) =>
-            new Date(b.updated_at).getTime() -
-            new Date(a.updated_at).getTime()
-        )
-      );
+      setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
     } catch {
       setItems([]);
-    } finally {
-      setLoading(false);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchByStatus(statusFilter);
@@ -415,7 +529,7 @@ export default function WorkerCurrentApplication() {
     if (!q) return list;
     return list.filter((i) => {
       const s1 = (i.work?.work_description || "").toLowerCase();
-      const s2 = (Array.isArray(i.work?.service_types) ? i.work.service_types.join(" ") : typeof i.work?.service_types === "string" ? i.work.service_types : "").toLowerCase();
+      const s2 = (Array.isArray(i.work?.service_types) ? i.work.service_types.join(" ") : typeof i.work?.service_types === "string" ? i.work?.service_types : "").toLowerCase();
       return s1.includes(q) || s2.includes(q);
     });
   }, [items, query, statusFilter]);
@@ -459,6 +573,10 @@ export default function WorkerCurrentApplication() {
     } catch {}
     navigate(`/workerpostapplication?id=${encodeURIComponent(item.id)}`);
   };
+  const onEdit = (item) => {
+  navigate(`/workerreviewpost?id=${encodeURIComponent(item.id)}`);
+};
+
 
   const getReasonText = (row) => {
     const rc = row?.reason_choice;
@@ -482,15 +600,15 @@ export default function WorkerCurrentApplication() {
     setShowDeleteConfirm(true);
   };
 
-  const confirmDeleteNow = () => {
+  const confirmDeleteNow = async () => {
     if (!deleteTarget?.id || deleting) return;
     setShowDeleteConfirm(false);
     setShowDeleteBusy(true);
     setDeleting(true);
     try {
-      const id = deleteTarget.id;
+      await axios.delete(`${API_BASE}/api/workerapplications/${encodeURIComponent(deleteTarget.id)}`);
       setItems((prev) => {
-        const next = prev.filter((it) => String(it.id) !== String(id));
+        const next = prev.filter((it) => String(it.id) !== String(deleteTarget.id));
         try {
           localStorage.setItem("workerApplications", JSON.stringify(next));
         } catch {}
@@ -516,7 +634,7 @@ export default function WorkerCurrentApplication() {
   };
 
   const buildServiceTasks = (work) => {
-    const jd = work?.job_details;
+    const jd = work?.job_details || work?.service_task;
     const set = new Set();
     if (Array.isArray(jd)) {
       jd.forEach((v) => {
@@ -527,6 +645,8 @@ export default function WorkerCurrentApplication() {
         if (Array.isArray(v)) v.forEach((x) => { if (x) set.add(String(x)); });
         else if (v) set.add(String(v));
       });
+    } else if (typeof jd === "string") {
+      set.add(jd);
     }
     const out = Array.from(set);
     return out.length ? out.join(", ") : "-";
@@ -632,13 +752,14 @@ export default function WorkerCurrentApplication() {
             </div>
           ) : (
             paginated.map((item) => (
-              <Card
-                key={item.id}
-                item={item}
-                onView={onView}
-                onReason={onReason}
-                onDelete={onDelete}
-              />
+             <Card
+  key={item.id}
+  item={item}
+  onView={onView}
+  onReason={onReason}
+  onDelete={onDelete}
+  onEdit={onEdit}
+/>
             ))
           )}
 
@@ -729,14 +850,14 @@ export default function WorkerCurrentApplication() {
                   className={`relative w-full max-w-[720px] rounded-2xl border ${borderCol} bg-white shadow-2xl overflow-hidden`}
                 >
                   <div
-                    className={`px-6 py-4 bg-gradient-to-r ${headGrad} to-white border-b ${
+                    className={`px-6 py-4 bg-gradient-to-r ${headGrad} to-white border ${
                       isCancel ? "border-orange-200" : "border-red-200"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <h3 className={`text-lg font-semibold ${titleCol}`}>{title}</h3>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${badgeBg} ${badgeText} ${badgeBorder}`}
+                        className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${badgeBg} ${badgeText} ${badgeBorder}`}
                       >
                         <span className="h-3 w-3 rounded-full bg-current opacity-30" />
                         {(Array.isArray(work?.service_types) &&

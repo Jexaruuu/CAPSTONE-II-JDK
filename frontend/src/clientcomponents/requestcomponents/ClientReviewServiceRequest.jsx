@@ -210,11 +210,11 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
       <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-        <span className="font-semibold text-gray-700">{labelText}</span>
+        <span className="font-medium text-gray-600">{labelText}</span>
         {isElement ? (
-          <div className="text-base md:text-lg">{display}</div>
+          <div className="text-[15px] md:text-base">{display}</div>
         ) : (
-          <span className="text-base md:text-lg font-medium text-[#008cfc]">{display}</span>
+          <span className="text-[15px] md:text-base font-semibold text-[#0a83eb]">{display}</span>
         )}
       </div>
     );
@@ -541,7 +541,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
             <div className="h-9 w-9 grid place-items-center rounded-xl border border-blue-100 bg-white shadow-sm">
               <img src="/jdklogo.png" alt="" className="h-6 w-6 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
             </div>
-            <div className="text-2xl md:text-3xl font-semibold text-gray-900">Review Service Request</div>
+            <div className="text-2xl md:text-[28px] font-semibold tracking-tight text-gray-900">Review Service Request</div>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden sm:block text-sm text-gray-500 tracking-wide">Step 4 of 4</div>
@@ -571,8 +571,8 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
             </div>
             <div className="border-t border-gray-100" />
             <div className="px-6 py-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 text-base">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-6">
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
                   <LabelValue label="First Name" value={first_name} />
                   <LabelValue label="Last Name" value={last_name} />
                   <LabelValue label="Contact Number" value={contactDisplay} />
@@ -583,7 +583,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                 </div>
 
                 <div className="md:col-span-1 flex flex-col items-center">
-                  <div className="text-sm font-semibold text-black mb-3">Profile Picture</div>
+                  <div className="text-sm font-medium text-gray-700 mb-3">Profile Picture</div>
                   {profile_picture ? (
                     <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
                       <img
@@ -611,7 +611,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                 </div>
                 <div className="border-t border-gray-100" />
                 <div className="px-6 py-6">
-                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
                     <LabelValue label="Service Type" value={service_type} />
                     <LabelValue label="Service Task" value={service_task} />
                     <LabelValue label="Preferred Date" value={preferred_date_display} />
@@ -619,7 +619,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     <LabelValue
                       label="Urgent"
                       value={
-                        <span className={`text-base md:text-lg font-semibold ${toBoolStrict(is_urgent) ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className={`text-[15px] md:text-base font-semibold ${toBoolStrict(is_urgent) ? 'text-green-600' : 'text-red-600'}`}>
                           {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
                         </span>
                       }
@@ -627,7 +627,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     <LabelValue
                       label="Tools Provided"
                       value={
-                        <span className={`text-base md:text-lg font-semibold ${toBoolStrict(tools_provided) ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className={`text-[15px] md:text-base font-semibold ${toBoolStrict(tools_provided) ? 'text-green-600' : 'text-red-600'}`}>
                           {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
                         </span>
                       }
@@ -638,7 +638,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     {review_image ? (
                       <div className="md:col-span-2">
                         <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-                          <span className="font-semibold text-gray-700">Request Image:</span>
+                          <span className="font-medium text-gray-600">Request Image:</span>
                           <div className="w-full">
                             <div className="w-full h-64 rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50">
                               <img src={review_image} alt="" className="w-full h-full object-cover" />
@@ -658,7 +658,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                 </div>
                 <div className="border-t border-gray-100" />
                 <div className="px-6 py-6">
-                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
                     <LabelValue label="Rate Type" value={rate_type} />
                     {rate_type === 'Hourly Rate' ? (
                       <LabelValue
@@ -682,27 +682,24 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                 <div className="border-t border-gray-100" />
                 <div className="px-6 py-5 space-y-4 flex-1">
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                    <span className="text-sm font-semibold text-white/80 sr-only">.</span>
-                  </div>
-                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-medium text-gray-700">Client:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
+                    <span className="text-base font-semibold text-[#0a83eb]">{first_name || '-'} {last_name || ''}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-medium text-gray-700">Service:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{service_type || '-'}</span>
+                    <span className="text-base font-semibold text-[#0a83eb] truncate max-w-[60%] text-right sm:text-left">{service_type || '-'}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-medium text-gray-700">Task:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{service_task || '-'}</span>
+                    <span className="text-base font-semibold text-[#0a83eb] truncate max-w-[60%] text-right sm:text-left">{service_task || '-'}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-medium text-gray-700">Schedule:</span>
-                    <span className="text-base md:text-lg font-medium text-[#008cfc]">{preferred_date_display || '-'} • {preferred_time_display || '-'}</span>
+                    <span className="text-base font-semibold text-[#0a83eb]">{preferred_date_display || '-'} • {preferred_time_display || '-'}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-medium text-gray-700">Urgent:</span>
-                    <span className={`text-base md:text-lg font-semibold ${toBoolStrict(is_urgent) ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`text-base font-semibold ${toBoolStrict(is_urgent) ? 'text-green-600' : 'text-red-600'}`}>
                       {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
                     </span>
                   </div>
@@ -729,14 +726,14 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                   <button
                     type="button"
                     onClick={handleBackClick}
-                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                    className="w-full sm:w-1/2 h-[48px] px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                   >
                     Back
                   </button>
                   <button
                     type="button"
                     onClick={handleConfirm}
-                    className="w-full sm:w-1/2 h-[50px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                    className="w-full sm:w-1/2 h-[48px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                   >
                     Confirm
                   </button>

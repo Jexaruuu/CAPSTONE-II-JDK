@@ -598,8 +598,7 @@ const ClientPost = () => {
 
   const urgentBoolLocal = toBoolStrictClient(currentItem?.details?.is_urgent);
   const urgentTextLocal = urgentBoolLocal === null ? '-' : urgentBoolLocal ? 'Yes' : 'No';
-  const urgentClassLocal =
-    urgentBoolLocal === null ? 'font-medium' : urgentBoolLocal ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
+  const urgentClassLocal = 'text-gray-900 font-semibold';
 
   const profileUrl = useMemo(() => {
     const u = currentItem?.info?.profile_picture_url || '';
@@ -681,21 +680,22 @@ const ClientPost = () => {
                 <div className="min-w-0">
                   <div className="text-xl md:text-2xl font-semibold truncate">
                     <span className="text-gray-700">Service Type:</span>{' '}
-                    <span className="text-[#008cfc]">{currentItem?.details?.service_type || 'Service'}</span>
+                    <span className="text-gray-900">{currentItem?.details?.service_type || 'Service'}</span>
                   </div>
                   <div className="mt-1 text-base md:text-lg truncate">
-                    <span className="font-semibold">Service Task:</span> {currentItem?.details?.service_task || 'Task'}
+                    <span className="font-semibold text-gray-700">Service Task:</span>{' '}
+                    <span className="text-gray-900">{currentItem?.details?.service_task || 'Task'}</span>
                   </div>
                   <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago ` : ''}</div>
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                        <span className="text-[#008cfc] font-medium">{currentItem?.details?.preferred_date ? formatDateMMDDYYYY(currentItem.details.preferred_date) : '-'}</span>
+                        <span className="text-gray-900 font-medium">{currentItem?.details?.preferred_date ? formatDateMMDDYYYY(currentItem.details.preferred_date) : '-'}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                        <span className="text-[#008cfc] font-medium">{currentItem?.details?.preferred_time ? formatTime12h(currentItem.details.preferred_time) : '-'}</span>
+                        <span className="text-gray-900 font-medium">{currentItem?.details?.preferred_time ? formatTime12h(currentItem.details.preferred_time) : '-'}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Urgency:</span>
@@ -705,11 +705,11 @@ const ClientPost = () => {
                     <div className="space-y-1.5 md:pl-10">
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Rate Type:</span>
-                        <span className="text-[#008cfc] font-medium">{currentItem?.rate?.rate_type ? String(currentItem.rate.rate_type).replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase()) : '-'}</span>
+                        <span className="text-gray-900 font-medium">{currentItem?.rate?.rate_type ? String(currentItem.rate.rate_type).replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase()) : '-'}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Service Rate:</span>
-                        <span className="text-[#008cfc] font-medium">
+                        <span className="text-gray-900 font-medium">
                           {(() => {
                             const t = String(currentItem?.rate?.rate_type || '').toLowerCase();
                             const from = currentItem?.rate?.rate_from;
@@ -1080,7 +1080,12 @@ const ClientPost = () => {
               <div className="absolute inset-4 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img src="/jdklogo.png" alt="Logo" className="w-14 h-14 object-contain" onError={() => setLogoBroken(true)} />
+                  <img
+                    src="/jdklogo.png"
+                    alt="Logo"
+                    className="w-14 h-14 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
                 ) : (
                   <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>

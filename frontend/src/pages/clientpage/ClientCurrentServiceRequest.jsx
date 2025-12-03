@@ -196,28 +196,28 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
           </div>
           <div className="min-w-0">
             <Link to={`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`} className="block pointer-events-none select-text">
-              <h3 className={`text-xl md:text-2xl font-semibold truncate ${isExpiredReq ? "text-gray-700" : ""}`}>
+              <h3 className="text-xl md:text-2xl font-semibold truncate">
                 <span className="text-gray-700">Service Type:</span>{" "}
-                <span className={isExpiredReq ? "text-gray-500" : "text-[#008cfc]"}>{d.service_type || "Service"}</span>
+                <span className="text-black">{d.service_type || "Service"}</span>
               </h3>
-              <div className={`mt-0.5 text-base md:text-lg truncate ${isExpiredReq ? "text-gray-600" : "text-black"}`}>
-                <span className="font-semibold">Service Task:</span> {d.service_task || "Task"}
+              <div className="mt-0.5 text-base md:text-lg truncate text-black">
+                <span className="font-semibold text-gray-700">Service Task:</span> {d.service_task || "Task"}
               </div>
             </Link>
             <p className="mt-1 text-base text-gray-500">Created {timeAgo(item.created_at)}</p>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12 md:gap-x-16 text-base text-gray-700">
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12 md:gap-x-16 text-base">
               <div className="space-y-1.5">
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                  <span className={isExpiredReq ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+                  <span className="text-black font-medium">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                  <span className={isExpiredReq ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
+                  <span className="text-black font-medium">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Urgency:</span>
-                  <span className={`font-medium ${hasUrgency ? (urgentBool ? (isExpiredReq ? "text-gray-600" : "text-green-600") : (isExpiredReq ? "text-gray-600" : "text-red-600")) : (isExpiredReq ? "text-gray-500" : "text-[#008cfc]")}`}>
+                  <span className="font-medium text-black">
                     {hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}
                   </span>
                 </div>
@@ -225,11 +225,11 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
               <div className="space-y-1.5 md:pl-10">
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Rate Type:</span>
-                  <span className={isExpiredReq ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}>{formatRateType(rate.rate_type)}</span>
+                  <span className="text-black font-medium">{formatRateType(rate.rate_type)}</span>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
                   <span className="text-gray-700 font-semibold">Service Rate:</span>
-                  <span className={isExpiredReq ? "text-gray-500 font-medium" : "text-[#008cfc] font-medium"}><RateText rate={rate} /></span>
+                  <span className="text-black font-medium"><RateText rate={rate} /></span>
                 </div>
               </div>
             </div>
@@ -238,12 +238,12 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
         <div className="flex items-center gap-2 shrink-0 flex-nowrap whitespace-nowrap">
           {(isCancelled) && (
             <>
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
+              <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
                 <span className="h-3 w-3 rounded-full bg-current opacity-30" />
                 Canceled Request
               </span>
               {isExpiredReq && (
-                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
+                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
                   <span className="h-3 w-3 rounded-full bg-current opacity-30" />
                   Expired Request
                 </span>
@@ -251,19 +251,19 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
             </>
           )}
           {(!isCancelled && isDeclined) && (
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Declined Request
             </span>
           )}
           {(!isCancelled && !isDeclined && isApproved) && (
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Approved Request
             </span>
           )}
           {(!isCancelled && !isDeclined && !isExpiredReq && isPending) && (
-            <span className="relative inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+            <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
               <span className="relative inline-flex">
                 <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
@@ -272,7 +272,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
             </span>
           )}
           {(isExpiredReq && !isCancelled) && (
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
+            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Expired Request
             </span>
@@ -420,7 +420,7 @@ export default function ClientCurrentServiceRequest() {
   const getCancelledIds = async () => {
     try {
       const { data } = await axios.get(`${API_BASE}/api/clientservicerequests`, {
-        params: { scope: "cancelled" },
+        params: { scope: "cancelled", email: getClientEmail() },
         withCredentials: true,
       });
       const arr = Array.isArray(data?.items) ? data.items : [];
@@ -435,76 +435,78 @@ export default function ClientCurrentServiceRequest() {
     return arr.map(r => cancelledSet.has(String(r.id)) ? { ...r, status: "cancelled" } : r);
   };
 
+  const getClientEmail = () => {
+    try {
+      const a = JSON.parse(localStorage.getItem("clientAuth") || "{}");
+      if (a?.email_address) return String(a.email_address).trim();
+      if (a?.email) return String(a.email).trim();
+    } catch {}
+    try {
+      const p = JSON.parse(localStorage.getItem("clientProfile") || localStorage.getItem("client_profile") || "{}");
+      if (p?.email_address) return String(p.email_address).trim();
+      if (p?.email) return String(p.email).trim();
+    } catch {}
+    try {
+      const i = JSON.parse(localStorage.getItem("clientInformation") || "{}");
+      if (i?.email_address) return String(i.email_address).trim();
+      if (i?.email) return String(i.email).trim();
+    } catch {}
+    return "";
+  };
+
   const fetchByStatus = async (statusKey) => {
     setLoading(true);
     try {
-      const cancelledIds = await getCancelledIds();
+      const email = getClientEmail();
       if (statusKey === "cancelled") {
         const { data } = await axios.get(`${API_BASE}/api/clientservicerequests`, {
-          params: { scope: "cancelled" },
+          params: { scope: "cancelled", email },
           withCredentials: true,
         });
-        const arr = Array.isArray(data) ? data : data?.items || [];
-        const normalized = arr.map((r, i) => ({
-          id: r.request_group_id ?? r.id ?? `${i}`,
-          status: "cancelled",
-          created_at: r.created_at || new Date().toISOString(),
-          updated_at: r.canceled_at || r.updated_at || r.created_at || new Date().toISOString(),
-          details: r.details || {},
-          rate: r.rate || {},
-          info: r.info || {},
-          decision_reason: r.decision_reason || r.reason || null,
-          reason_choice: r.reason_choice || null,
-          reason_other: r.reason_other || null,
-          decided_at: r.decided_at || null,
-          canceled_at: r.canceled_at || r.cancelled_at || null
-        }));
+        const arr = Array.isArray(data?.items) ? data.items : [];
+        const normalized = arr.map((r, i) => {
+          const gid = r.request_group_id || r.details?.request_group_id || r.info?.request_group_id || r.rate?.request_group_id || r.id || `${i}`;
+          return {
+            id: gid,
+            status: "cancelled",
+            created_at: r.created_at || new Date().toISOString(),
+            updated_at: r.canceled_at || r.cancelled_at || r.decided_at || r.created_at || new Date().toISOString(),
+            details: r.details || {},
+            rate: r.rate || {},
+            info: r.info || {},
+            decision_reason: r.decision_reason || null,
+            reason_choice: r.reason_choice || null,
+            reason_other: r.reason_other || null,
+            decided_at: r.decided_at || null,
+            canceled_at: r.canceled_at || r.cancelled_at || null
+          };
+        });
         const withAvatars = await enrichProfiles(normalized);
         const hiddenExcluded = excludeHidden(markUserCancelled(withAvatars));
         setItems(hiddenExcluded.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
-      } else if (statusKey === "expired") {
-        const { data } = await axios.get(`${API_BASE}/api/pendingservicerequests/mine`, {
-          params: { status: "all" },
-          withCredentials: true,
-        });
-        const arr = Array.isArray(data?.items) ? data.items : [];
-        const normalized = arr.map((r, i) => ({
-          id: r.request_group_id ?? r.details?.request_group_id ?? r.id ?? `${i}`,
-          status: String(r.status || "pending").toLowerCase(),
-          created_at: r.created_at || new Date().toISOString(),
-          updated_at: r.decided_at || r.created_at || new Date().toISOString(),
-          details: r.details || {},
-          rate: r.rate || {},
-          info: r.info || {},
-          decision_reason: r.decision_reason || r.reason || null,
-          reason_choice: r.reason_choice || null,
-          reason_other: r.reason_other || null,
-          decided_at: r.decided_at || null
-        }));
-        const overridden = applyCancelledOverride(normalized, cancelledIds);
-        const withAvatars = await enrichProfiles(overridden);
-        const hiddenExcluded = excludeHidden(markUserCancelled(withAvatars));
-        setItems(hiddenExcluded.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       } else {
-        const statusParam = statusKey === "all" ? "all" : statusKey;
-        const { data } = await axios.get(`${API_BASE}/api/pendingservicerequests/mine`, {
-          params: { status: statusParam },
+        const { data } = await axios.get(`${API_BASE}/api/clientservicerequests`, {
+          params: { scope: "current", email },
           withCredentials: true,
         });
         const arr = Array.isArray(data?.items) ? data.items : [];
-        const normalized = arr.map((r, i) => ({
-          id: r.request_group_id ?? r.details?.request_group_id ?? r.id ?? `${i}`,
-          status: String(r.status || "pending").toLowerCase(),
-          created_at: r.created_at || new Date().toISOString(),
-          updated_at: r.decided_at || r.created_at || new Date().toISOString(),
-          details: r.details || {},
-          rate: r.rate || {},
-          info: r.info || {},
-          decision_reason: r.decision_reason || r.reason || null,
-          reason_choice: r.reason_choice || null,
-          reason_other: r.reason_other || null,
-          decided_at: r.decided_at || null
-        }));
+        const normalized = arr.map((r, i) => {
+          const gid = r.id || r.request_group_id || r.details?.request_group_id || r.info?.request_group_id || r.rate?.request_group_id || `${i}`;
+          return {
+            id: gid,
+            status: String(r.status || "pending").toLowerCase(),
+            created_at: r.created_at || new Date().toISOString(),
+            updated_at: r.decided_at || r.created_at || new Date().toISOString(),
+            details: r.details || {},
+            rate: r.rate || {},
+            info: r.info || {},
+            decision_reason: r.decision_reason || null,
+            reason_choice: r.reason_choice || null,
+            reason_other: r.reason_other || null,
+            decided_at: r.decided_at || null
+          };
+        });
+        const cancelledIds = await getCancelledIds();
         const overridden = applyCancelledOverride(normalized, cancelledIds);
         const withAvatars = await enrichProfiles(overridden);
         const hiddenExcluded = excludeHidden(markUserCancelled(withAvatars));
@@ -639,7 +641,7 @@ export default function ClientCurrentServiceRequest() {
     if (isCancel && !item?.canceled_at) {
       try {
         const { data } = await axios.get(`${API_BASE}/api/clientservicerequests`, {
-          params: { scope: "cancelled", groupId: item.id },
+          params: { scope: "cancelled", groupId: item.id, email: getClientEmail() },
           withCredentials: true,
         });
         const arr = Array.isArray(data?.items) ? data.items : [];
@@ -683,45 +685,45 @@ export default function ClientCurrentServiceRequest() {
     setItems((prev) => prev.filter((x) => String(x.id) !== String(id)));
   };
 
-const confirmDelete = async () => {
-  if (!deleteTarget) return;
-  setDeleting(true);
-  const id = deleteTarget.id;
-  try {
-    await axios.delete(`${API_BASE}/api/clientservicerequests/${encodeURIComponent(id)}`, { withCredentials: true });
-  } catch {}
-  pushHiddenId(id);
-  removeFromList(id);
-  try { window.dispatchEvent(new CustomEvent('client-request-deleted', { detail: { id: String(id) } })); } catch {}
-  setShowDelete(false);
-  setDeleteTarget(null);
-  setDeleting(false);
-};
-
-const confirmDeleteNow = async () => {
-  if (!deleteTarget?.id) return;
-  setShowDeleteConfirm(false);
-  setShowDeleteBusy(true);
-  setDeleting(true);
-  const id = deleteTarget.id;
-  try {
-    await axios.delete(`${API_BASE}/api/clientservicerequests/${encodeURIComponent(id)}`, { withCredentials: true });
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const id = deleteTarget.id;
+    try {
+      await axios.delete(`${API_BASE}/api/clientservicerequests/${encodeURIComponent(id)}`, { withCredentials: true });
+    } catch {}
     pushHiddenId(id);
     removeFromList(id);
-    setShowDeleteBusy(false);
-    setShowDeleteDone(true);
-    setDeleteTarget(null);
-  } catch {
-    pushHiddenId(id);
-    removeFromList(id);
-    setShowDeleteBusy(false);
-    setShowDeleteDone(true);
-    setDeleteTarget(null);
-  } finally {
     try { window.dispatchEvent(new CustomEvent('client-request-deleted', { detail: { id: String(id) } })); } catch {}
+    setShowDelete(false);
+    setDeleteTarget(null);
     setDeleting(false);
-  }
-};
+  };
+
+  const confirmDeleteNow = async () => {
+    if (!deleteTarget?.id) return;
+    setShowDeleteConfirm(false);
+    setShowDeleteBusy(true);
+    setDeleting(true);
+    const id = deleteTarget.id;
+    try {
+      await axios.delete(`${API_BASE}/api/clientservicerequests/${encodeURIComponent(id)}`, { withCredentials: true });
+      pushHiddenId(id);
+      removeFromList(id);
+      setShowDeleteBusy(false);
+      setShowDeleteDone(true);
+      setDeleteTarget(null);
+    } catch {
+      pushHiddenId(id);
+      removeFromList(id);
+      setShowDeleteBusy(false);
+      setShowDeleteDone(true);
+      setDeleteTarget(null);
+    } finally {
+      try { window.dispatchEvent(new CustomEvent('client-request-deleted', { detail: { id: String(id) } })); } catch {}
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white via-[#F7FBFF] to-white">
@@ -784,7 +786,7 @@ const confirmDeleteNow = async () => {
               </div>
             </div>
             <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
-              <div className="mt-6 flex items中心 h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
+              <div className="mt-6 flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
                 <span className="text-gray-500 text-lg">🔍︎</span>
                 <input
                   value={query}
