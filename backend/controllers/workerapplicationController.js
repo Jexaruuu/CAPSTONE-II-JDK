@@ -658,12 +658,12 @@ exports.listMine = async (req, res) => {
     let targetGroups = base.map(r => r.request_group_id).filter(Boolean);
     if (groupIdFilter) targetGroups = targetGroups.includes(groupIdFilter) ? [groupIdFilter] : [];
 
-    let infoMap = {}, detailsMap = {}, rateMap = {};
+    let infoMap = {}, detailsMap = {}, rateMap = {}, docsMap = {};
     if (targetGroups.length) {
       try {
         const { data: infos } = await supabaseAdmin
           .from('worker_information')
-          .select('request_group_id, worker_id, auth_uid, email_address, first_name, last_name, contact_number, street, barangay, date_of_birth, age, profile_picture_url')
+          .select('request_group_id, worker_id, auth_uid, email_address, first_name, last_name, contact_number, street, barangay, date_of_birth, age, profile_picture_url, profile_picture_name')
           .in('request_group_id', targetGroups);
         (infos || []).forEach(r => { if (r?.request_group_id) infoMap[r.request_group_id] = r; });
       } catch {}
@@ -681,6 +681,13 @@ exports.listMine = async (req, res) => {
           .in('request_group_id', targetGroups);
         (rates || []).forEach(r => { if (r?.request_group_id) rateMap[r.request_group_id] = r; });
       } catch {}
+      try {
+        const { data: docs } = await supabaseAdmin
+          .from('worker_required_documents')
+          .select('request_group_id, primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates')
+          .in('request_group_id', targetGroups);
+        (docs || []).forEach(r => { if (r?.request_group_id) docsMap[r.request_group_id] = r; });
+      } catch {}
     }
 
     const items = (rows || [])
@@ -690,7 +697,8 @@ exports.listMine = async (req, res) => {
         const mergedInfo = infoMap[gid] || r.info || {};
         const mergedDetails = detailsMap[gid] || r.details || {};
         const mergedRate = rateMap[gid] || r.rate || {};
-        return { ...r, info: mergedInfo, details: mergedDetails, rate: mergedRate };
+        const mergedDocs = docsMap[gid] || null;
+        return { ...r, info: mergedInfo, details: mergedDetails, rate: mergedRate, required_documents: mergedDocs };
       });
 
     return res.status(200).json({ items });

@@ -599,16 +599,17 @@ normalized.metadata = {
         rate: ratePayload
       };
 
-      const submitBody = {
-        info: infoPayload,
-        details: workPayload,
-        rate: ratePayload,
-        documents: normalizeDocsForSubmit(normalized.documents),
-        agreements: normalized.agreements,
-        email_address: normalized.email_address,
-        worker_id: normalized.worker_id,
-        metadata: normalized.metadata
-      };
+  const submitBody = {
+  info: infoPayload,
+  details: workPayload,
+  rate: ratePayload,
+  documents: normalizeDocsForSubmit(normalized.documents),
+  required_documents: normalizeDocsForSubmit(normalized.documents),
+  agreements: normalized.agreements,
+  email_address: normalized.email_address,
+  worker_id: normalized.worker_id,
+  metadata: normalized.metadata
+};
 
       const res = await axios.post(`${API_BASE}/api/workerapplications/submit`, submitBody, {
         withCredentials: true,

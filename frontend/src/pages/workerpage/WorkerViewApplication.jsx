@@ -2,9 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import WorkerNavigation from '../../workercomponents/WorkerNavigation';
 import WorkerFooter from '../../workercomponents/WorkerFooter';
+import axios from 'axios';
 
 const CONFIRM_FLAG = 'workerApplicationJustViewed';
 const GLOBAL_DESC_KEY = 'workerApplicationDescription';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const REASONS = [
   'Change of plans',
@@ -46,9 +48,32 @@ const WorkerViewApplication = () => {
     setWorkerIdState(widLS ? Number(widLS) : null);
   }, []);
 
+  const headersWithU = useMemo(() => {
+    try {
+      const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+      const au =
+        a.auth_uid ||
+        a.authUid ||
+        a.uid ||
+        a.id ||
+        localStorage.getItem('auth_uid') ||
+        '';
+      const e =
+        a.email ||
+        localStorage.getItem('worker_email') ||
+        localStorage.getItem('email_address') ||
+        localStorage.getItem('email') ||
+        '';
+      const x = encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
+      return { 'x-app-u': x };
+    } catch {
+      return {};
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    const run = () => {
+    const run = async () => {
       if (!id) {
         setLoading(false);
         return;
@@ -70,6 +95,24 @@ const WorkerViewApplication = () => {
           location.state &&
           (location.state.row || location.state.item || location.state.data);
         const data = fromSession || fromState || null;
+        if (!data) {
+          try {
+            const { data: resp } = await axios.get(`${API_BASE}/api/workerapplications`, {
+              withCredentials: true,
+              headers: headersWithU,
+              params: { scope: 'current', groupId: id }
+            });
+            const items = Array.isArray(resp?.items) ? resp.items : [];
+            const pick = items.find(r => String(r.request_group_id) === String(id)) || items[0] || null;
+            if (!cancelled) setRow(pick);
+            try { if (pick) sessionStorage.setItem('wa_view_payload', JSON.stringify(pick)); } catch {}
+          } catch {
+            if (!cancelled) setRow(null);
+          } finally {
+            if (!cancelled) setLoading(false);
+          }
+          return;
+        }
         if (!cancelled) setRow(data);
       } catch {
         if (!cancelled) setRow(null);
@@ -81,7 +124,7 @@ const WorkerViewApplication = () => {
     return () => {
       cancelled = true;
     };
-  }, [id, location.state]);
+  }, [id, location.state, headersWithU]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -205,13 +248,23 @@ const WorkerViewApplication = () => {
     savedWork.service_task
   );
 
-  const years_experience = workR.years_experience ?? s.years_experience ?? savedWork.yearsExperience;
-  const tools_provided = workR.tools_provided ?? s.tools_provided ?? savedWork.toolsProvided;
+  const years_experience =
+    workR.years_experience ??
+    detailsR.years_experience ??
+    s.years_experience ??
+    savedWork.yearsExperience;
+
+  const tools_provided =
+    workR.tools_provided ??
+    detailsR.tools_provided ??
+    s.tools_provided ??
+    savedWork.toolsProvided;
 
   const application_description =
     workR.description ??
     workR.work_description ??
     workR.job_details?.description ??
+    detailsR.work_description ??
     s.description ??
     savedWork.description;
 
@@ -288,7 +341,7 @@ const WorkerViewApplication = () => {
     <div className="inline-flex items-center gap-2">
       <img src="/philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
       <span className="text-gray-700 text-sm">+63</span>
-      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
+      <span className="text-base md:text-lg leading-6 text-gray-900 font-medium">
         {contactLocal10 || '9XXXXXXXXX'}
       </span>
     </div>
@@ -409,8 +462,8 @@ const WorkerViewApplication = () => {
     navigate('/current-application', { replace: true, state: { cancelled: id } });
   };
 
-  const schedule_date = workR.preferred_date ?? s.preferred_date ?? workR.date ?? '';
-  const schedule_time = workR.preferred_time ?? s.preferred_time ?? workR.time ?? '';
+  const schedule_date = (fx?.details?.preferred_date || fx?.work?.preferred_date || '');
+  const schedule_time = (fx?.details?.preferred_time || fx?.work?.preferred_time || '');
 
   return (
     <>

@@ -511,18 +511,23 @@ const WorkerAvailableServiceRequest = () => {
                             <span className="text-gray-900">{toBool(req.urgency) ? 'Urgent' : 'Not urgent'}</span>
                           </div>
 
-                          <div className="mt-3 text-sm font-semibold text-gray-700">Service Type</div>
-                          <div className="mt-1">
-                            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
-                              {req.service_type || '—'}
-                            </span>
-                          </div>
-
-                          <div className="mt-3 text-sm font-semibold text-gray-700">Service Task</div>
-                          <div className="mt-1">
-                            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-violet-50 text-violet-700 border-violet-200">
-                              {req.service_task || '—'}
-                            </span>
+                          <div className="mt-3 flex items-start gap-3 flex-wrap">
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-gray-700">Service Type</div>
+                              <div className="mt-1">
+                                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                                  {req.service_type || '—'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-gray-700">Service Task</div>
+                              <div className="mt-1">
+                                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-violet-50 text-violet-700 border-violet-200">
+                                  {req.service_task || '—'}
+                                </span>
+                              </div>
+                            </div>
                           </div>
 
                           <div className="mt-3 text-sm font-semibold text-gray-700">Request Description</div>

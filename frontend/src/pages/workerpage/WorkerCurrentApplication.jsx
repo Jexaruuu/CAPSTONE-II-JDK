@@ -290,54 +290,51 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
       </div>
 
       <div className="-mt-9 flex justify-end gap-2">
-  {isDeclined || isCancelled ? (
-    <Link
-      to={`/workerpostapplication?id=${encodeURIComponent(item.id)}`}
-      onClick={(e) => {
-        e.preventDefault();
-        onReason(item);
-      }}
-      className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium ${
-        isCancelled
-          ? "border-orange-300 text-orange-600 hover:bg-orange-50"
-          : "border-red-300 text-red-600 hover:bg-red-50"
-      }`}
-    >
-      View Reason
-    </Link>
-  ) : (
-    <Link
-      to={`/workerpostapplication?id=${encodeURIComponent(item.id)}`}
-      onClick={(e) => {
-        e.preventDefault();
-        onView(item);
-      }}
-      className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-    >
-      View
-    </Link>
-  )}
+        {isDeclined || isCancelled ? (
+          <Link
+            to={`/workerviewapplication?id=${encodeURIComponent(item.id)}`}
+            onClick={(e) => {
+              e.preventDefault();
+              onReason(item);
+            }}
+            className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium ${
+              isCancelled
+                ? "border-orange-300 text-orange-600 hover:bg-orange-50"
+                : "border-red-300 text-red-600 hover:bg-red-50"
+            }`}
+          >
+            View Reason
+          </Link>
+        ) : (
+  <Link
+  to={`/current-work-post/${encodeURIComponent(item.id)}`}
+  onClick={(e) => { e.preventDefault(); onView(item); }}
+  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+>
+  View
+</Link>
+        )}
 
-  {isApproved && !isCancelled && !isDeclined && (
-    <button
-      type="button"
-      onClick={() => onEdit(item)}
-      className="h-10 px-4 rounded-md transition bg-[#008cfc] text-white hover:bg-blue-700"
-    >
-      Edit Application
-    </button>
-  )}
+        {isApproved && !isCancelled && !isDeclined && (
+          <button
+            type="button"
+            onClick={() => onEdit(item)}
+            className="h-10 px-4 rounded-md transition bg-[#008cfc] text-white hover:bg-blue-700"
+          >
+            Edit Application
+          </button>
+        )}
 
-  <button
-    type="button"
-    onClick={() => onDelete(item)}
-    className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
-    aria-label="Delete Application"
-    title="Delete Application"
-  >
-    <Trash2 className="h-5 w-5" />
-  </button>
-</div>
+        <button
+          type="button"
+          onClick={() => onDelete(item)}
+          className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
+          aria-label="Delete Application"
+          title="Delete Application"
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
+      </div>
     </div>
   );
 };
@@ -367,63 +364,65 @@ export default function WorkerCurrentApplication() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [showOpenBusy, setShowOpenBusy] = useState(false);
+
   useEffect(() => {
-    if (showReason) {
+    if (showReason || showOpenBusy) {
       const original = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       return () => {
         document.body.style.overflow = original;
       };
     }
-  }, [showReason]);
+  }, [showReason, showOpenBusy]);
 
   const buildAppU = () => {
-  let email = "";
-  let auth_uid = "";
+    let email = "";
+    let auth_uid = "";
 
-  try {
-    const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
-    email = a.email || a.email_address || email;
-    auth_uid = a.auth_uid || a.authUid || auth_uid;
-  } catch {}
+    try {
+      const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
+      email = a.email || a.email_address || email;
+      auth_uid = a.auth_uid || a.authUid || auth_uid;
+    } catch {}
 
-  try {
-    const p = JSON.parse(
-      localStorage.getItem("workerProfile") ||
-        localStorage.getItem("worker_profile") ||
-        "{}"
-    );
-    email = email || p.email || p.email_address || "";
-    auth_uid = auth_uid || p.auth_uid || p.authUid || "";
-  } catch {}
+    try {
+      const p = JSON.parse(
+        localStorage.getItem("workerProfile") ||
+          localStorage.getItem("worker_profile") ||
+          "{}"
+      );
+      email = email || p.email || p.email_address || "";
+      auth_uid = auth_uid || p.auth_uid || p.authUid || "";
+    } catch {}
 
-  try {
-    const raw = localStorage.getItem("app_u") || "";
-    if (raw) {
-      const j = JSON.parse(decodeURIComponent(raw));
-      email = email || j.e || j.email || j.email_address || "";
-      auth_uid = auth_uid || j.au || j.auth_uid || "";
-    }
-  } catch {}
+    try {
+      const raw = localStorage.getItem("app_u") || "";
+      if (raw) {
+        const j = JSON.parse(decodeURIComponent(raw));
+        email = email || j.e || j.email || j.email_address || "";
+        auth_uid = auth_uid || j.au || j.auth_uid || "";
+      }
+    } catch {}
 
-  try {
-    const m = /(?:^|;\s*)app_u=([^;]+)/.exec(document.cookie || "");
-    if (m) {
-      const j = JSON.parse(decodeURIComponent(m[1]));
-      email = email || j.e || j.email || j.email_address || "";
-      auth_uid = auth_uid || j.au || j.auth_uid || "";
-    }
-  } catch {}
+    try {
+      const m = /(?:^|;\s*)app_u=([^;]+)/.exec(document.cookie || "");
+      if (m) {
+        const j = JSON.parse(decodeURIComponent(m[1]));
+        email = email || j.e || j.email || j.email_address || "";
+        auth_uid = auth_uid || j.au || j.auth_uid || "";
+      }
+    } catch {}
 
-  return {
-    r: "worker",
-    e: email || null,
-    au: auth_uid || null,
-    email: email || null,
-    email_address: email || null,
-    auth_uid: auth_uid || null
+    return {
+      r: "worker",
+      e: email || null,
+      au: auth_uid || null,
+      email: email || null,
+      email_address: email || null,
+      auth_uid: auth_uid || null
+    };
   };
-};
 
   const normalizeApiItems = (apiItems) => {
     const base = Array.isArray(apiItems) ? apiItems : [];
@@ -447,69 +446,69 @@ export default function WorkerCurrentApplication() {
   };
 
   const fetchFromApi = async (scopeKey) => {
-  const scope = scopeKey === "cancelled" ? "cancelled" : "current";
-  const appU = buildAppU();
-  const headers = { "x-app-u": encodeURIComponent(JSON.stringify(appU)) };
-  const url = `${API_BASE}/api/workerapplications`;
-  const params = { scope, limit: 200 };
-  if (appU.email_address) params.email = appU.email_address;
-  if (appU.auth_uid) params.auth_uid = appU.auth_uid;
+    const scope = scopeKey === "cancelled" ? "cancelled" : "current";
+    const appU = buildAppU();
+    const headers = { "x-app-u": encodeURIComponent(JSON.stringify(appU)) };
+    const url = `${API_BASE}/api/workerapplications`;
+    const params = { scope, limit: 200 };
+    if (appU.email_address) params.email = appU.email_address;
+    if (appU.auth_uid) params.auth_uid = appU.auth_uid;
 
-  const { data } = await axios.get(url, {
-    params,
-    headers,
-    withCredentials: true
-  });
+    const { data } = await axios.get(url, {
+      params,
+      headers,
+      withCredentials: true
+    });
 
-  const normalized = normalizeApiItems(data?.items || []);
-  return normalized.sort(
-    (a, b) =>
-      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
-};
+    const normalized = normalizeApiItems(data?.items || []);
+    return normalized.sort(
+      (a, b) =>
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
+  };
 
   const fetchByStatus = async (statusKey) => {
-  setLoading(true);
-  try {
-    let rows = [];
-    if (statusKey === "cancelled") {
-      rows = await fetchFromApi("cancelled");
-    } else if (statusKey === "pending" || statusKey === "approved" || statusKey === "declined") {
-      rows = await fetchFromApi("current");
-    } else {
-      const [cur, can] = await Promise.all([fetchFromApi("current"), fetchFromApi("cancelled")]);
-      rows = [...cur, ...can];
-    }
-    setItems(rows);
+    setLoading(true);
     try {
-      localStorage.setItem("workerApplications", JSON.stringify(rows));
-    } catch {}
-  } catch {
-    try {
-      const stored = JSON.parse(localStorage.getItem("workerApplications") || "[]");
-      const base = Array.isArray(stored) ? stored : [];
-      const normalized = base.map((r, i) => ({
-        id: r.id ?? r.request_group_id ?? `${i}`,
-        status: String(r.status || "pending").toLowerCase(),
-        created_at: r.created_at || new Date().toISOString(),
-        updated_at: r.updated_at || r.decided_at || r.created_at || new Date().toISOString(),
-        info: r.info || {},
-        work: r.work || r.details || {},
-        rate: r.rate || {},
-        decision_reason: r.decision_reason || null,
-        reason_choice: r.reason_choice || null,
-        reason_other: r.reason_other || null,
-        decided_at: r.decided_at || null,
-        email_address: r.email_address || null
-      }));
-      setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+      let rows = [];
+      if (statusKey === "cancelled") {
+        rows = await fetchFromApi("cancelled");
+      } else if (statusKey === "pending" || statusKey === "approved" || statusKey === "declined") {
+        rows = await fetchFromApi("current");
+      } else {
+        const [cur, can] = await Promise.all([fetchFromApi("current"), fetchFromApi("cancelled")]);
+        rows = [...cur, ...can];
+      }
+      setItems(rows);
+      try {
+        localStorage.setItem("workerApplications", JSON.stringify(rows));
+      } catch {}
     } catch {
-      setItems([]);
+      try {
+        const stored = JSON.parse(localStorage.getItem("workerApplications") || "[]");
+        const base = Array.isArray(stored) ? stored : [];
+        const normalized = base.map((r, i) => ({
+          id: r.id ?? r.request_group_id ?? `${i}`,
+          status: String(r.status || "pending").toLowerCase(),
+          created_at: r.created_at || new Date().toISOString(),
+          updated_at: r.updated_at || r.decided_at || r.created_at || new Date().toISOString(),
+          info: r.info || {},
+          work: r.work || r.details || {},
+          rate: r.rate || {},
+          decision_reason: r.decision_reason || null,
+          reason_choice: r.reason_choice || null,
+          reason_other: r.reason_other || null,
+          decided_at: r.decided_at || null,
+          email_address: r.email_address || null
+        }));
+        setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+      } catch {
+        setItems([]);
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchByStatus(statusFilter);
@@ -567,16 +566,50 @@ export default function WorkerCurrentApplication() {
     return out;
   }, [totalPages, page]);
 
-  const onView = async (item) => {
-    try {
-      sessionStorage.setItem("wa_view_payload", JSON.stringify(item));
-    } catch {}
-    navigate(`/workerpostapplication?id=${encodeURIComponent(item.id)}`);
-  };
-  const onEdit = (item) => {
-  navigate(`/workerreviewpost?id=${encodeURIComponent(item.id)}`);
+  const getGroupId = (it) => {
+  const g =
+    it?.application_group_id ??
+    it?.group_id ??
+    it?.groupId ??
+    it?.group ??
+    it?.request_group_id ??
+    it?.id;
+  return g ? String(g) : "";
 };
 
+ const onView = async (item) => {
+  setShowOpenBusy(true);
+  try {
+    const appU = buildAppU();
+    const headers = { "x-app-u": encodeURIComponent(JSON.stringify(appU)) };
+    const gid = getGroupId(item);
+    const url = `${API_BASE}/api/workerapplications`;
+    const params = { scope: "current", limit: 1, groupId: gid || String(item.id) };
+    if (appU.email_address) params.email = appU.email_address;
+    if (appU.auth_uid) params.auth_uid = appU.auth_uid;
+
+    let payload = item;
+    try {
+      const { data } = await axios.get(url, { params, headers, withCredentials: true });
+      const rows = Array.isArray(data?.items) ? data.items : [];
+      if (rows.length) {
+        payload =
+          rows.find(r => String(r.request_group_id || r.id) === String(gid)) ||
+          rows[0];
+      }
+    } catch {}
+    try { sessionStorage.setItem("wa_view_payload", JSON.stringify(payload)); } catch {}
+    try { localStorage.removeItem("workerApplicationJustSubmitted"); } catch {}
+    navigate(`/current-work-post/${encodeURIComponent(gid || item.id)}`, { state: { row: payload } });
+  } finally {
+    setShowOpenBusy(false);
+  }
+};
+
+
+  const onEdit = (item) => {
+    navigate(`/workerreviewpost?id=${encodeURIComponent(item.id)}`);
+  };
 
   const getReasonText = (row) => {
     const rc = row?.reason_choice;
@@ -752,14 +785,14 @@ export default function WorkerCurrentApplication() {
             </div>
           ) : (
             paginated.map((item) => (
-             <Card
-  key={item.id}
-  item={item}
-  onView={onView}
-  onReason={onReason}
-  onDelete={onDelete}
-  onEdit={onEdit}
-/>
+              <Card
+                key={item.id}
+                item={item}
+                onView={onView}
+                onReason={onReason}
+                onDelete={onDelete}
+                onEdit={onEdit}
+              />
             ))
           )}
 
@@ -924,13 +957,13 @@ export default function WorkerCurrentApplication() {
         </>
       )}
 
-      {false && (
+      {showOpenBusy && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Opening application"
+          aria-label="Loading Request"
           tabIndex={-1}
-          className="fixed inset-0 z-[2147483647] flex itemscenter justify-center cursor-wait"
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
@@ -956,7 +989,7 @@ export default function WorkerCurrentApplication() {
               </div>
             </div>
             <div className="mt-6 text-center space-y-1">
-              <div className="text-lg font-semibold text-gray-900">Opening Application</div>
+              <div className="text-lg font-semibold text-gray-900">Loading Request</div>
               <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
             </div>
           </div>

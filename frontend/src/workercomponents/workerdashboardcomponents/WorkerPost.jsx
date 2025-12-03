@@ -120,6 +120,8 @@ function WorkerPost() {
   const [showDeleteBusy, setShowDeleteBusy] = useState(false);
   const [showDeleteDone, setShowDeleteDone] = useState(false);
 
+  const [showViewLoading, setShowViewLoading] = useState(false);
+
   const allowedPHPrefixes = useMemo(
     () =>
       new Set([
@@ -250,7 +252,7 @@ function WorkerPost() {
   };
 
   useEffect(() => {
-    if (!navLoading) return;
+    if (!navLoading && !showViewLoading) return;
     const onPopState = () => {
       window.history.pushState(null, '', window.location.href);
     };
@@ -269,7 +271,7 @@ function WorkerPost() {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener('keydown', blockKeys, true);
     };
-  }, [navLoading]);
+  }, [navLoading, showViewLoading]);
 
   useEffect(() => {
     const { firstName, gender } = getWorkerProfile();
@@ -500,10 +502,30 @@ function WorkerPost() {
     return g ? String(g) : '';
   };
 
+  const preloadViewPayload = async (gid) => {
+    try {
+      const email = getWorkerEmail();
+      const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
+        withCredentials: true,
+        headers: headersWithU,
+        params: { scope: 'current', email, groupId: gid }
+      });
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const row = items.find(r => String(r.request_group_id) === String(gid)) || items[0] || null;
+      if (row) {
+        try { sessionStorage.setItem('wa_view_payload', JSON.stringify(row)); } catch {}
+        navigate(`/current-work-post/${encodeURIComponent(gid)}`, { state: { row } });
+        return;
+      }
+    } catch {}
+    navigate(`/current-work-post/${encodeURIComponent(gid)}`);
+  };
+
   const handleView = (item) => {
+    setShowViewLoading(true);
     const gid = getGroupId(item);
     if (gid) {
-      navigate(`/current-work-post/${encodeURIComponent(gid)}`);
+      preloadViewPayload(gid);
     } else {
       navigate('/workerpostapplication');
     }
@@ -1129,6 +1151,51 @@ function WorkerPost() {
               >
                 Done
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showViewLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading request"
+            tabIndex={-1}
+            className="relative w-[340px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 rounded-full animate-spin"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderRightColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc1f]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-lg font-semibold text-gray-900">Loading Request</div>
+              <div className="text-sm text-gray-500">Please wait a moment</div>
             </div>
           </div>
         </div>
