@@ -789,3 +789,227 @@ exports.cancel = async (req, res) => {
     return res.status(500).json({ message: friendlyError(e) });
   }
 };
+
+exports.getByGroupFull = async (req, res) => {
+  try {
+    const gid = String(req.params.id || '').trim();
+    if (!gid) return res.status(400).json({ message: 'Missing id' });
+
+    const [{ data: info }, { data: details }, { data: rate }, { data: docs }, { data: statusRow }] = await Promise.all([
+      supabaseAdmin.from('worker_information').select('*').eq('request_group_id', gid).order('id', { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin.from('worker_work_information').select('*').eq('request_group_id', gid).order('id', { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin.from('worker_service_rate').select('*').eq('request_group_id', gid).order('id', { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin.from('worker_required_documents').select('request_group_id, primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates').eq('request_group_id', gid).order('id', { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin.from('worker_application_status').select('id, request_group_id, status, email_address, created_at, auth_uid').eq('request_group_id', gid).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    ]);
+
+    if (!statusRow && !info && !details && !rate) return res.status(404).json({ message: 'Application not found' });
+
+    return res.status(200).json({
+      request_group_id: gid,
+      status: statusRow || null,
+      info: info || null,
+      details: details || null,
+      rate: rate || null,
+      required_documents: docs || null
+    });
+  } catch (e) {
+    return res.status(500).json({ message: friendlyError(e) });
+  }
+};
+
+exports.updateByGroup = async (req, res) => {
+  try {
+    const gid = String(req.params.id || '').trim();
+    if (!gid) return res.status(400).json({ message: 'Missing id' });
+
+    const payload = req.body || {};
+
+    const { data: statusRow } = await supabaseAdmin
+      .from('worker_application_status')
+      .select('id, request_group_id, email_address, auth_uid, worker_id, status')
+      .eq('request_group_id', gid)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const email = payload.email_address || statusRow?.email_address || null;
+    const auth_uid = payload.auth_uid || statusRow?.auth_uid || null;
+    const worker_id = payload.worker_id || statusRow?.worker_id || null;
+
+    const upsertInfo = async () => {
+      const info = payload.info || {};
+      const profileAny = payload.profile_picture || payload.profile_picture_url || payload.profile_picture_data_url || info.profile_picture || info.profile_picture_url || info.profile_picture_data_url || '';
+      let profile_picture_url = info.profile_picture_url || null;
+      let profile_picture_name = info.profile_picture_name || null;
+      if (profileAny) {
+        const s = String(profileAny);
+        if (/^data:/i.test(s)) {
+          const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', s, `${gid}-profile`);
+          profile_picture_url = up?.url || profile_picture_url || null;
+          profile_picture_name = up?.name || profile_picture_name || null;
+        } else if (/^https?:\/\//i.test(s)) {
+          profile_picture_url = s;
+        }
+      }
+      const base = {
+        request_group_id: gid,
+        worker_id: worker_id || null,
+        auth_uid: auth_uid || null,
+        email_address: email || null,
+        first_name: info.first_name ?? null,
+        last_name: info.last_name ?? null,
+        contact_number: info.contact_number ?? null,
+        street: info.street ?? null,
+        barangay: info.barangay ?? null,
+        date_of_birth: info.date_of_birth ?? null,
+        age: info.age ?? null,
+        profile_picture_url,
+        profile_picture_name
+      };
+      const { data: existing } = await supabaseAdmin.from('worker_information').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
+      if (existing?.id) {
+        await supabaseAdmin.from('worker_information').update(base).eq('id', existing.id);
+      } else {
+        await insertWorkerInformation(base);
+      }
+      return { profile_picture_url, profile_picture_name };
+    };
+
+    const upsertDetails = async () => {
+      const d = payload.details || payload.work || {};
+      const service_types = Array.isArray(d.service_types) ? d.service_types : (d.service_type ? [d.service_type] : []);
+      let service_task = d.service_task;
+      if (Array.isArray(service_task)) {
+        service_task = service_task;
+      } else if (service_types.length && typeof service_task === 'string') {
+        service_task = [{ category: service_types[0], tasks: [service_task] }];
+      } else if (service_types.length && !service_task) {
+        service_task = [{ category: service_types[0], tasks: [] }];
+      }
+      const row = {
+        request_group_id: gid,
+        worker_id: worker_id || null,
+        auth_uid: auth_uid || null,
+        email_address: email || null,
+        service_types,
+        service_task: service_task || [],
+        years_experience: d.years_experience ?? null,
+        tools_provided: d.tools_provided ?? null,
+        work_description: d.work_description ?? d.service_description ?? null,
+        barangay: d.barangay ?? null,
+        street: d.street ?? null
+      };
+      const { data: existing } = await supabaseAdmin.from('worker_work_information').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
+      if (existing?.id) {
+        await supabaseAdmin.from('worker_work_information').update(row).eq('id', existing.id);
+      } else {
+        await insertWorkerWorkInformation(row);
+      }
+      return row;
+    };
+
+    const upsertRate = async () => {
+      const r = payload.rate || {};
+      const s = String(r.rate_type || '').toLowerCase();
+      let rate_type = '';
+      if (s.includes('hour')) rate_type = 'Hourly Rate';
+      else if (s.includes('job') || s.includes('fixed') || s.includes('flat')) rate_type = 'By the Job Rate';
+      else rate_type = r.rate_type || '';
+      const row = {
+        request_group_id: gid,
+        worker_id: worker_id || null,
+        auth_uid: auth_uid || null,
+        email_address: email || null,
+        rate_type: rate_type || null,
+        rate_from: r.rate_from != null ? Number(r.rate_from) : null,
+        rate_to: r.rate_to != null ? Number(r.rate_to) : null,
+        rate_value: r.rate_value != null ? Number(r.rate_value) : null
+      };
+      const { data: existing } = await supabaseAdmin.from('worker_service_rate').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
+      if (existing?.id) {
+        await supabaseAdmin.from('worker_service_rate').update(row).eq('id', existing.id);
+      } else {
+        await insertWorkerRate(row);
+      }
+      return row;
+    };
+
+    const upsertDocs = async () => {
+      const docs = payload.required_documents || payload.documents || null;
+      if (!docs) return null;
+      const bucket = process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments';
+      const shape = {
+        request_group_id: gid,
+        worker_id: worker_id || null,
+        auth_uid: auth_uid || null,
+        email_address: email || null,
+        primary_id_front: '',
+        primary_id_back: '',
+        secondary_id: '',
+        nbi_police_clearance: '',
+        proof_of_address: '',
+        medical_certificate: '',
+        certificates: ''
+      };
+      const setUrl = async (k, v) => {
+        if (!v) return;
+        if (typeof v === 'string' && /^https?:\/\//i.test(v)) {
+          shape[k] = v;
+        } else if (typeof v === 'string' && /^data:/i.test(v)) {
+          const up = await uploadDataUrlToBucket(bucket, v, `${gid}-${k}`);
+          shape[k] = up?.url || '';
+        }
+      };
+      await setUrl('primary_id_front', docs.primary_id_front || docs.front || docs.primaryFront);
+      await setUrl('primary_id_back', docs.primary_id_back || docs.back || docs.primaryBack);
+      await setUrl('secondary_id', docs.secondary_id || docs.secondary || docs.alt);
+      await setUrl('nbi_police_clearance', docs.nbi_police_clearance || docs.nbi || docs.police);
+      await setUrl('proof_of_address', docs.proof_of_address || docs.address || docs.billing);
+      await setUrl('medical_certificate', docs.medical_certificate || docs.medical);
+      await setUrl('certificates', docs.certificates);
+
+      const { data: existing } = await supabaseAdmin.from('worker_required_documents').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
+      if (existing?.id) {
+        await supabaseAdmin.from('worker_required_documents').update(shape).eq('id', existing.id);
+      } else {
+        await insertWorkerRequiredDocuments(shape);
+      }
+      return shape;
+    };
+
+    const [infoRes, detailsRes, rateRes, docsRes] = await Promise.all([upsertInfo(), upsertDetails(), upsertRate(), upsertDocs()]);
+
+    if (statusRow?.id) {
+      await supabaseAdmin.from('worker_application_status').update({
+        info: {
+          first_name: infoRes?.first_name || null,
+          last_name: infoRes?.last_name || null,
+          email_address: email || null,
+          contact_number: null,
+          street: null,
+          barangay: null,
+          profile_picture_url: infoRes?.profile_picture_url || null
+        },
+        details: {
+          service_types: detailsRes?.service_types || [],
+          service_task: detailsRes?.service_task || [],
+          years_experience: detailsRes?.years_experience ?? null,
+          tools_provided: detailsRes?.tools_provided ?? null,
+          work_description: detailsRes?.work_description || null
+        },
+        rate: {
+          rate_type: rateRes?.rate_type || null,
+          rate_from: rateRes?.rate_from ?? null,
+          rate_to: rateRes?.rate_to ?? null,
+          rate_value: rateRes?.rate_value ?? null
+        }
+      }).eq('id', statusRow.id);
+    }
+
+    return res.status(200).json({ message: 'Updated', request_group_id: gid });
+  } catch (e) {
+    return res.status(500).json({ message: friendlyError(e) });
+  }
+};
+

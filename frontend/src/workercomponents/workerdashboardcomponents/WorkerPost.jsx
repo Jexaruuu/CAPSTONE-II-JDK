@@ -624,7 +624,7 @@ function WorkerPost() {
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">
-        <div className="relative h-36 sm=h-44 md:h-52 lg:h-72">
+        <div className="relative h-36 sm:h-44 md:h-52 lg:h-72">
           {['/Banner1.png', '/Banner2.png'].map((src, i) => (
             <img
               key={i}
@@ -778,7 +778,7 @@ function WorkerPost() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/workerpostapplication')}
+                onClick={() => navigate(`/edit-work-application/${encodeURIComponent(getGroupId(currentApp))}`)}
                 className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
               >
                 Edit Application
@@ -825,7 +825,7 @@ function WorkerPost() {
         <div className="mb-8">
           <div className="relative w-full flex justify-center items-center">
             <button
-              onClick={() => scrollToIndex('left')}
+              onClick={() => handleScroll('left')}
               className="absolute -left-2 md:left-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
             >
               <ArrowLeft size={22} />
@@ -913,7 +913,7 @@ function WorkerPost() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => navigate('/workerpostapplication')}
+                            onClick={() => navigate(`/edit-work-application/${encodeURIComponent(getGroupId(item))}`)}
                             className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
                           >
                             Edit Application
@@ -941,7 +941,7 @@ function WorkerPost() {
             </div>
 
             <button
-              onClick={() => scrollToIndex(Math.min(totalSlides - 1, current + 1))}
+              onClick={() => handleScroll('right')}
               className="absolute -right-2 md:right-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
             >
               <ArrowRight size={22} />

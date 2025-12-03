@@ -705,7 +705,9 @@ const ClientPost = () => {
                     <div className="space-y-1.5 md:pl-10">
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Rate Type:</span>
-                        <span className="text-gray-900 font-medium">{currentItem?.rate?.rate_type ? String(currentItem.rate.rate_type).replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase()) : '-'}</span>
+                        <span className="text-gray-900 font-medium">
+  {getRateType(currentItem) || '-'}
+</span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Service Rate:</span>

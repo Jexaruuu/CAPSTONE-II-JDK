@@ -497,7 +497,7 @@ const WorkerViewApplication = () => {
                     <LabelValue label="Contact Number" value={contactDisplay} />
                     <LabelValue label="Email" value={email} />
                     <LabelValue label="Address" value={barangay || '-'} />
-                    <LabelValue label="Additional Address" value={additional_address || street || '-'} />
+                    <LabelValue label="Street" value={additional_address || street || '-'} />
                     <div className="hidden md:block" />
                   </div>
 

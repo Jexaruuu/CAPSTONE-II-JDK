@@ -33,6 +33,8 @@ import WorkerCurrentApplication from './pages/workerpage/WorkerCurrentApplicatio
 import WorkerCompletedWorks from './pages/workerpage/WorkerCompletedWorks';
 import WorkerFindAvailableClient from './pages/workerpage/WorkerFindAvailableClient';
 import WorkerViewApplication from './pages/workerpage/WorkerViewApplication';
+import WorkerEditApplication from './pages/workerpage/WorkerEditApplication';
+
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
 import AdminSignup from './pages/signuppage/AdminSignup';
@@ -313,6 +315,18 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route
+  path="/edit-work-application/:id"
+  element={
+    <ProtectedRoute>
+      <WorkerOnlyRoute>
+        <WorkerEditApplication />
+      </WorkerOnlyRoute>
+    </ProtectedRoute>
+  }
+/>
+
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
