@@ -19,6 +19,7 @@ import ClientCurrentServiceRequest from './pages/clientpage/ClientCurrentService
 import ClientCompletedRequest from './pages/clientpage/ClientCompletedRequest';
 import ClientFindAvailableWorker from './pages/clientpage/ClientFindAvailableWorker';
 import ClientViewServiceRequest from './pages/clientpage/ClientViewServiceRequest';
+import ClientEditServiceRequest from './pages/clientpage/ClientEditServiceRequest';
 
 import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from './pages/successpage/WorkerSuccess';
@@ -291,9 +292,32 @@ const App = () => {
           }
         />
 
+          <Route
+          path="/current-service-request/:id"
+          element={
+            <ProtectedRoute>
+              <ClientOnlyRoute>
+                <ClientViewServiceRequest />
+              </ClientOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/edit-service-request/:id"
+          element={
+            <ProtectedRoute>
+              <ClientOnlyRoute>
+                <ClientEditServiceRequest />
+              </ClientOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
+    
   );
 };
 

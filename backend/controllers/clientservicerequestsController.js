@@ -12,7 +12,10 @@ const {
   insertClientCancelRequest,
   getCancelledByGroupIds,
   getCancelledMapByGroupIds,
-  getCancelledReasonsByGroupIds
+  getCancelledReasonsByGroupIds,
+  updateClientInformation,
+  updateServiceRequestDetails,
+  updateServiceRate
 } = require('../models/clientservicerequestsModel');
 
 const { insertPendingRequest } = require('../models/clientservicerequeststatusModel');
@@ -559,5 +562,117 @@ exports.cancelRequest = async (req, res) => {
     return res.status(201).json({ message: 'Cancellation recorded', canceled_at });
   } catch (e) {
     return res.status(500).json({ message: friendlyError(e) });
+  }
+};
+
+exports.updateByGroup = async (req, res) => {
+  try {
+    const gid = String(req.params.groupId || '').trim();
+    if (!gid) return res.status(400).json({ message: 'groupId is required' });
+
+    const src = req.body || {};
+    const info = src.info || src.information || {};
+    const details = src.details || src.detail || {};
+    const rate = src.rate || src.pricing || {};
+    const metadata = src.metadata || {};
+
+    const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
+
+    let uploaded = [];
+    const attachments = normalizeAttachments(src.attachments || details.attachments || []);
+    if (attachments && attachments.length) {
+      try {
+        const first = attachments[0];
+        const up = await uploadDataUrlToBucket(bucket, first, `${gid}-updated-${Date.now()}`);
+        if (up?.url) uploaded = [up];
+      } catch {}
+    }
+
+    const current = await getCombinedByGroupId(gid);
+    if (!current) return res.status(404).json({ message: 'Not found' });
+
+    const infoRow = {
+      first_name: info.first_name ?? current.info?.first_name ?? null,
+      last_name: info.last_name ?? current.info?.last_name ?? null,
+      contact_number: info.contact_number ?? current.info?.contact_number ?? null,
+      street: info.street ?? current.info?.street ?? '',
+      barangay: info.barangay ?? current.info?.barangay ?? '',
+      additional_address: info.additional_address ?? current.info?.additional_address ?? '',
+      profile_picture_url: info.profile_picture_url ?? current.info?.profile_picture_url ?? null,
+      profile_picture_name: info.profile_picture_name ?? current.info?.profile_picture_name ?? null
+    };
+
+    await updateClientInformation(gid, infoRow);
+
+    const newDetails = {
+      service_type: details.service_type ?? current.details?.service_type ?? '',
+      service_task: details.service_task ?? current.details?.service_task ?? '',
+      preferred_date: details.preferred_date ?? current.details?.preferred_date ?? null,
+      preferred_time: details.preferred_time ?? current.details?.preferred_time ?? null,
+      is_urgent: details.is_urgent ?? current.details?.is_urgent ?? null,
+      tools_provided: details.tools_provided ?? current.details?.tools_provided ?? null,
+      service_description: details.service_description ?? current.details?.service_description ?? '',
+      request_image_url: uploaded[0]?.url ?? details.request_image_url ?? current.details?.request_image_url ?? null,
+      image_name: uploaded[0]?.name ?? current.details?.image_name ?? null
+    };
+
+    await updateServiceRequestDetails(gid, newDetails);
+
+    let inferredRateType = rate.rate_type || current.rate?.rate_type || null;
+    if (!inferredRateType) {
+      if (rate.rate_value) inferredRateType = 'fixed';
+      else if (rate.rate_from || rate.rate_to) inferredRateType = 'range';
+    }
+
+    const newRate = {
+      rate_type: inferredRateType,
+      rate_from: rate.rate_from ?? current.rate?.rate_from ?? null,
+      rate_to: rate.rate_to ?? current.rate?.rate_to ?? null,
+      rate_value: rate.rate_value ?? current.rate?.rate_value ?? null
+    };
+
+    await updateServiceRate(gid, newRate);
+
+    await supabaseAdmin
+      .from('client_service_request_status')
+      .update({
+        info: {
+          first_name: infoRow.first_name,
+          last_name: infoRow.last_name,
+          email_address: current.info?.email_address || null,
+          contact_number: infoRow.contact_number,
+          street: infoRow.street,
+          barangay: infoRow.barangay,
+          additional_address: infoRow.additional_address
+        },
+        details: {
+          service_type: newDetails.service_type,
+          service_task: newDetails.service_task,
+          preferred_date: newDetails.preferred_date,
+          preferred_time: newDetails.preferred_time,
+          is_urgent: newDetails.is_urgent,
+          tools_provided: newDetails.tools_provided,
+          service_description: newDetails.service_description,
+          request_image_url: newDetails.request_image_url,
+          image_name: newDetails.image_name
+        },
+        rate: {
+          rate_type: newRate.rate_type,
+          rate_from: newRate.rate_from,
+          rate_to: newRate.rate_to,
+          rate_value: newRate.rate_value
+        }
+      })
+      .eq('request_group_id', gid);
+
+    const updated = await getCombinedByGroupId(gid);
+    const d = updated.details || {};
+    if (!d.request_image_url && d.image_name) {
+      updated.details = { ...d, request_image_url: await publicOrSignedUrl(bucket, d.image_name) };
+    }
+
+    return res.status(200).json(updated);
+  } catch (err) {
+    return res.status(500).json({ message: friendlyError(err) });
   }
 };

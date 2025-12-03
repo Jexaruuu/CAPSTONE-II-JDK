@@ -776,13 +776,13 @@ const ClientPost = () => {
               </Link>
               {(isPending || isApproved) && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/clientreviewservicerequest?id=${encodeURIComponent(currentItem?.id || '')}`)}
-                    className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
-                  >
-                    Edit Request
-                  </button>
+            <button
+  type="button"
+  onClick={() => navigate(`/edit-service-request/${encodeURIComponent(currentItem?.id || '')}`)}
+  className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+>
+  Edit Request
+</button>
                   <button
                     type="button"
                     onClick={handleDelete}

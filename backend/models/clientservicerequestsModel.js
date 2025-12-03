@@ -162,6 +162,46 @@ async function getCancelledReasonsByGroupIds(groupIds) {
   return m;
 }
 
+async function updateClientInformation(request_group_id, fields) {
+  const payload = {};
+  Object.keys(fields || {}).forEach(k => { const v = fields[k]; if (v !== undefined) payload[k] = v; });
+  if (!Object.keys(payload).length) return null;
+  const { data, error } = await supabaseAdmin
+    .from('client_information')
+    .update(payload)
+    .eq('request_group_id', request_group_id)
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+async function updateServiceRequestDetails(request_group_id, fields) {
+  const payload = {};
+  Object.keys(fields || {}).forEach(k => { const v = fields[k]; if (v !== undefined) payload[k] = v; });
+  if (!Object.keys(payload).length) return null;
+  const { data, error } = await supabaseAdmin
+    .from('client_service_request_details')
+    .update(payload)
+    .eq('request_group_id', request_group_id)
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+async function updateServiceRate(request_group_id, fields) {
+  const payload = {};
+  Object.keys(fields || {}).forEach(k => { const v = fields[k]; if (v !== undefined) payload[k] = v; });
+  if (!Object.keys(payload).length) return null;
+  const { data, error } = await supabaseAdmin
+    .from('client_service_rate')
+    .update(payload)
+    .eq('request_group_id', request_group_id)
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 module.exports = {
   uploadDataUrlToBucket,
   findClientByEmail,
@@ -177,5 +217,8 @@ module.exports = {
   getCancelledByGroupIds,
   getCancelledMapByGroupIds,
   listPendingByEmail,
-  getCancelledReasonsByGroupIds
+  getCancelledReasonsByGroupIds,
+  updateClientInformation,
+  updateServiceRequestDetails,
+  updateServiceRate
 };
