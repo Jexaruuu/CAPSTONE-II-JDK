@@ -192,7 +192,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     <div className="inline-flex items-center gap-2">
       <img src="/philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
       <span className="text-gray-700 text-sm">+63</span>
-      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-[#008cfc] font-medium' : 'text-gray-400'}`}>
+      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
         {contactLocal10 || '9XXXXXXXXX'}
       </span>
     </div>
@@ -212,9 +212,9 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
         <span className="font-medium text-gray-600">{labelText}</span>
         {isElement ? (
-          <div className="text-[15px] md:text-base">{display}</div>
+          <div className="text-[15px] md:text-base text-gray-900">{display}</div>
         ) : (
-          <span className="text-[15px] md:text-base font-semibold text-[#0a83eb]">{display}</span>
+          <span className="text-[15px] md:text-base font-semibold text-gray-900">{display}</span>
         )}
       </div>
     );
@@ -564,10 +564,6 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4">
               <h3 className="text-lg md:text-xl font-semibold text-gray-900">Personal Information</h3>
-              <span className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                <span className="h-2 w-2 rounded-full bg-current opacity-60" />
-                Client
-              </span>
             </div>
             <div className="border-t border-gray-100" />
             <div className="px-6 py-6">
@@ -607,7 +603,6 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-4">
                   <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Request Details</h3>
-                  <span className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">Request</span>
                 </div>
                 <div className="border-t border-gray-100" />
                 <div className="px-6 py-6">
@@ -619,7 +614,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     <LabelValue
                       label="Urgent"
                       value={
-                        <span className={`text-[15px] md:text-base font-semibold ${toBoolStrict(is_urgent) ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className="text-[15px] md:text-base font-semibold text-gray-900">
                           {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
                         </span>
                       }
@@ -627,7 +622,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     <LabelValue
                       label="Tools Provided"
                       value={
-                        <span className={`text-[15px] md:text-base font-semibold ${toBoolStrict(tools_provided) ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className="text-[15px] md:text-base font-semibold text-gray-900">
                           {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
                         </span>
                       }
@@ -654,7 +649,6 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-4">
                   <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Rate</h3>
-                  <span className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">Pricing</span>
                 </div>
                 <div className="border-t border-gray-100" />
                 <div className="px-6 py-6">
@@ -677,29 +671,28 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden flex flex-col">
                 <div className="px-6 py-4 flex items-center justify-between">
                   <div className="text-base font-semibold text-gray-900">Summary</div>
-                  <span className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">Review</span>
                 </div>
                 <div className="border-t border-gray-100" />
                 <div className="px-6 py-5 space-y-4 flex-1">
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-medium text-gray-700">Client:</span>
-                    <span className="text-base font-semibold text-[#0a83eb]">{first_name || '-'} {last_name || ''}</span>
+                    <span className="text-base font-semibold text-gray-900">{first_name || '-'} {last_name || ''}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-medium text-gray-700">Service:</span>
-                    <span className="text-base font-semibold text-[#0a83eb] truncate max-w-[60%] text-right sm:text-left">{service_type || '-'}</span>
+                    <span className="text-base font-semibold text-gray-900 truncate max-w-[60%] text-right sm:text-left">{service_type || '-'}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-medium text-gray-700">Task:</span>
-                    <span className="text-base font-semibold text-[#0a83eb] truncate max-w-[60%] text-right sm:text-left">{service_task || '-'}</span>
+                    <span className="text-base font-semibold text-gray-900 truncate max-w-[60%] text-right sm:text-left">{service_task || '-'}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-medium text-gray-700">Schedule:</span>
-                    <span className="text-base font-semibold text-[#0a83eb]">{preferred_date_display || '-'} • {preferred_time_display || '-'}</span>
+                    <span className="text-base font-semibold text-gray-900">{preferred_date_display || '-'} • {preferred_time_display || '-'}</span>
                   </div>
                   <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
                     <span className="text-sm font-medium text-gray-700">Urgent:</span>
-                    <span className={`text-base font-semibold ${toBoolStrict(is_urgent) ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className="text-base font-semibold text-gray-900">
                       {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
                     </span>
                   </div>
@@ -707,12 +700,12 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                   <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">
                     <span className="text-sm font-medium text-gray-700">Rate:</span>
                     {rate_type === 'Hourly Rate' ? (
-                      <div className="text-lg font-bold text-[#0a83eb]">
-                        ₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-medium text-[#0a83eb] opacity-80">per hour</span>
+                      <div className="text-lg font-bold text-gray-900">
+                        ₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-medium text-gray-900 opacity-80">per hour</span>
                       </div>
                     ) : rate_type === 'By the Job Rate' ? (
-                      <div className="text-lg font-bold text-[#0a83eb]">
-                        ₱{rate_value ?? 0} <span className="text-sm font-medium text-[#0a83eb] opacity-80">per job</span>
+                      <div className="text-lg font-bold text-gray-900">
+                        ₱{rate_value ?? 0} <span className="text-sm font-medium text-gray-900 opacity-80">per job</span>
                       </div>
                     ) : (
                       <div className="text-gray-500 text-sm">No rate provided</div>

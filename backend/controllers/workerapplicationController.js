@@ -71,17 +71,28 @@ function toArray(v) {
   if (typeof v === 'string') return [{ url: v }];
   return [];
 }
+function coerceDataUrl(v, mime) {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  if (/^data:/i.test(s)) return s;
+  if (/^[A-Za-z0-9+/]+={0,2}$/i.test(s)) return `data:${mime || 'image/jpeg'};base64,${s}`;
+  return '';
+}
+
 function normalizeDocs(arr) {
   const base = toArray(arr);
   return base.map(x => {
     const o = x || {};
     const kind = o.kind || o.type || o.label || o.name || o.field || '';
     const url = o.url || o.link || o.href || '';
-    const data_url = o.data_url || o.dataUrl || o.dataURL || o.base64 || o.blobUrl || '';
+    const rawData =
+      o.data_url || o.dataUrl || o.dataURL || o.base64 || o.imageData || o.blobData || '';
+    const data_url = coerceDataUrl(rawData, (o.mime || o.mimetype || '').toString()) || (String(rawData || '').startsWith('data:') ? rawData : '');
     const filename = o.filename || o.fileName || o.name || '';
     return { kind, url, data_url, filename };
   });
 }
+
 
 exports.submitFullApplication = async (req, res) => {
   try {
@@ -120,6 +131,14 @@ exports.submitFullApplication = async (req, res) => {
       'metadata.profile_picture_data_url'
     ]);
     const profile_picture_name = pick(src, ['profile_picture_name', 'profilePictureName', 'info.profile_picture_name', 'info.profilePictureName', 'metadata.profile_picture_name']);
+    const profile_picture_data_any = pick(src, [
+  'profile_picture_data_url',
+  'profilePictureDataUrl',
+  'info.profile_picture_data_url',
+  'info.profilePictureDataUrl',
+  'metadata.profile_picture_data_url',
+  'metadata.profilePictureDataUrl'
+]);
 
     const service_types = pick(src, ['service_types', 'details.service_types', 'details.serviceTypes', 'work.service_types', 'work.serviceTypes'], []);
     const service_task_raw = pick(src, ['service_task', 'details.service_task', 'details.serviceTask', 'work.service_task', 'work.serviceTask'], {});
@@ -182,22 +201,32 @@ exports.submitFullApplication = async (req, res) => {
 
     const request_group_id = newGroupId();
 
-    let profileUpload = null;
-    let profileDirect = null;
-    const rawProfile = profile_picture_any;
-    if (rawProfile) {
-      const s = String(rawProfile);
-      if (/^data:/i.test(s)) {
-        try {
-          const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', s, `${request_group_id}-profile`);
-          profileUpload = up?.url ? up : null;
-        } catch {
-          profileUpload = null;
-        }
-      } else if (/^https?:\/\//i.test(s)) {
-        profileDirect = s;
+   let profileUpload = null;
+let profileDirect = null;
+const rawProfile = profile_picture_any || profile_picture_data_any || '';
+if (rawProfile) {
+  const s = String(rawProfile);
+  if (/^data:/i.test(s)) {
+    try {
+      const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', s, `${request_group_id}-profile`);
+      profileUpload = up?.url ? up : null;
+    } catch {
+      profileUpload = null;
+    }
+  } else if (/^https?:\/\//i.test(s)) {
+    profileDirect = s;
+  } else {
+    const coerced = coerceDataUrl(s, 'image/jpeg');
+    if (coerced) {
+      try {
+        const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', coerced, `${request_group_id}-profile`);
+        profileUpload = up?.url ? up : null;
+      } catch {
+        profileUpload = null;
       }
     }
+  }
+}
 
     let fallbackProfile = null;
     try {
@@ -410,14 +439,15 @@ exports.submitFullApplication = async (req, res) => {
         docCols[key] = d.url;
         continue;
       }
-      if (d.data_url && /^data:/i.test(String(d.data_url))) {
-        try {
-          const up = await uploadDataUrlToBucket(bucket, d.data_url, `${request_group_id}-${key}`);
-          docCols[key] = up?.url || '';
-        } catch {
-          docCols[key] = docCols[key] || '';
-        }
-      }
+      const maybeData = coerceDataUrl(d.data_url, 'image/jpeg');
+if (maybeData) {
+  try {
+    const up = await uploadDataUrlToBucket(bucket, maybeData, `${request_group_id}-${key}`);
+    docCols[key] = up?.url || '';
+  } catch {
+    docCols[key] = docCols[key] || '';
+  }
+}
     }
 
     if (typeof metadata === 'object') {

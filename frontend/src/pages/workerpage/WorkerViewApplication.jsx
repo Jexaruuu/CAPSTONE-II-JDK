@@ -135,6 +135,7 @@ const WorkerViewApplication = () => {
   const fx = row || {};
   const infoR = fx.info || {};
   const workR = fx.work || {};
+  const detailsR = fx.details || {};
   const rateR = fx.rate || {};
   const docsR = Array.isArray(fx.documents) ? fx.documents : fx.docs || [];
 
@@ -163,14 +164,46 @@ const WorkerViewApplication = () => {
     return undefined;
   })();
 
-  const service_types = workR.service_types ?? s.service_types ?? savedWork.serviceTypes;
-  const service_tasks =
+  const service_types =
+    workR.service_types ?? detailsR.service_types ?? s.service_types ?? savedWork.serviceTypes;
+
+  const normalizeTasks = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) {
+      if (raw.length && typeof raw[0] === 'object' && raw[0] !== null && ('category' in raw[0] || 'tasks' in raw[0])) {
+        const out = [];
+        raw.forEach((it) => {
+          const arr = Array.isArray(it?.tasks) ? it.tasks : [];
+          out.push(...arr.map((x) => String(x || '').trim()).filter(Boolean));
+        });
+        return Array.from(new Set(out));
+      }
+      return raw.map((x) => String(x || '').trim()).filter(Boolean);
+    }
+    if (typeof raw === 'string') return raw.split(',').map((x) => x.trim()).filter(Boolean);
+    if (typeof raw === 'object') {
+      const out = [];
+      Object.values(raw).forEach((v) => {
+        if (Array.isArray(v)) out.push(...v.map((x) => String(x || '').trim()).filter(Boolean));
+        else if (typeof v === 'string') out.push(String(v).trim());
+      });
+      return Array.from(new Set(out));
+    }
+    return [];
+  };
+
+  const service_tasks_list = normalizeTasks(
+    workR.service_task ??
     workR.service_tasks ??
+    detailsR.service_task ??
+    detailsR.service_tasks ??
     workR.selected_tasks ??
     workR.selected_task ??
     selectedTasksFromJobDetails ??
     s.service_tasks ??
-    savedWork.serviceTasks;
+    savedWork.serviceTasks ??
+    savedWork.service_task
+  );
 
   const years_experience = workR.years_experience ?? s.years_experience ?? savedWork.yearsExperience;
   const tools_provided = workR.tools_provided ?? s.tools_provided ?? savedWork.toolsProvided;
@@ -452,7 +485,7 @@ const WorkerViewApplication = () => {
                         value={years_experience ? `${years_experience}` : '-'}
                       />
                       <LabelValue label="Selected Task" value={
-                        Array.isArray(service_tasks) ? service_tasks.join(', ') : (service_tasks || '-')
+                        service_tasks_list.length ? service_tasks_list.join(', ') : '-'
                       } />
                       <LabelValue
                         label="Tools Provided"

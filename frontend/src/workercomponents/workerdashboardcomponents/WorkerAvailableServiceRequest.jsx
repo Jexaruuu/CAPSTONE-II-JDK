@@ -1,4 +1,3 @@
-// WorkerAvailableServiceRequest.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
 import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt, Star } from 'lucide-react';
@@ -509,7 +508,7 @@ const WorkerAvailableServiceRequest = () => {
                             <span className="text-gray-400">•</span>
                             <span>{fmtTime(req.preferred_time) || '—'}</span>
                             <span className="text-gray-400">•</span>
-                            <span className={`${toBool(req.urgency) ? 'text-green-600' : 'text-red-600'}`}>{toBool(req.urgency) ? 'Urgent' : 'Not urgent'}</span>
+                            <span className="text-gray-900">{toBool(req.urgency) ? 'Urgent' : 'Not urgent'}</span>
                           </div>
 
                           <div className="mt-3 text-sm font-semibold text-gray-700">Service Type</div>
