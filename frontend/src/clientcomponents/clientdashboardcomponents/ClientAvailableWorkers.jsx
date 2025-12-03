@@ -207,28 +207,31 @@ const ClientAvailableWorkers = () => {
           const gender = normalizeGender(info.gender ?? info.sex ?? r.gender);
           const consultText = rateText ? `${rateText} consultation` : 'Consultation available';
 
-          const iconLabels = [];
+          const typeLabels = [];
           if (Array.isArray(stArr) && stArr.length) {
             stArr.forEach((x) => {
               const label = typeof x === 'object' ? (x.category || x.name || '') : x;
-              if (label) iconLabels.push(String(label));
-              if (x && typeof x === 'object' && Array.isArray(x.tasks)) {
-                x.tasks.forEach((t) => { if (t) iconLabels.push(String(t)); });
-              }
+              if (label) typeLabels.push(String(label));
             });
           }
-          if (work.service_type) iconLabels.push(String(work.service_type));
-          if (work.primary_service_type) iconLabels.push(String(work.primary_service_type));
-          if (serviceType) iconLabels.push(String(serviceType));
-          if (serviceTask) {
-            String(serviceTask).split(/[,|/]+/).forEach((seg) => {
-              const s = seg.trim();
-              if (s) iconLabels.push(s);
-            });
-          }
+          if (work.service_type) typeLabels.push(String(work.service_type));
+          if (work.primary_service_type) typeLabels.push(String(work.primary_service_type));
+          if (serviceType) typeLabels.push(String(serviceType));
+          const serviceTypeList = [...new Set(typeLabels.map((s) => s.trim()).filter(Boolean))];
+
+          const taskPieces = [];
+          serviceTaskRaw.forEach((t) => {
+            String(t ?? '')
+              .split(/[,/|]+/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .forEach((s) => taskPieces.push(s));
+          });
+          const serviceTaskList = [...new Set(taskPieces)];
+
           const seen = new Set();
           const icons = [];
-          iconLabels.forEach((lbl) => {
+          serviceTypeList.forEach((lbl) => {
             const Icon = iconFor(lbl);
             const key = Icon.displayName || Icon.name || 'Icon';
             if (!seen.has(key)) {
@@ -236,7 +239,9 @@ const ClientAvailableWorkers = () => {
               icons.push(Icon);
             }
           });
-          const serviceIcons = icons.slice(0, 3);
+          const serviceIcons = icons.slice(0, 5);
+
+          const emailAddress = info.email_address || r.email_address || r.email || '';
 
           return {
             id: r.id || `${r.request_group_id || i}`,
@@ -260,6 +265,9 @@ const ClientAvailableWorkers = () => {
             addressLine,
             ratingFive,
             serviceIcons,
+            serviceTypeList,
+            serviceTaskList,
+            emailAddress,
             __meta: { email: info.email_address || r.email_address || '', auth_uid: r.auth_uid || info.auth_uid || '' }
           };
         });
@@ -543,6 +551,9 @@ const ClientAvailableWorkers = () => {
                             </div>
                             <div className="min-w-0">
                               <div className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight truncate">{w.name}</div>
+                              {w.emailAddress ? (
+                                <div className="text-xs text-gray-600 truncate">{w.emailAddress}</div>
+                              ) : null}
                               <div className="mt-1 flex items-center gap-1">
                                 {[0,1,2,3,4].map((idx) => (
                                   <Star
@@ -556,12 +567,26 @@ const ClientAvailableWorkers = () => {
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            {(w.serviceIcons || []).map((Icon, idx) => (
-                              <span key={idx} className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200">
-                                <Icon size={16} className="text-[#008cfc]" />
-                              </span>
-                            ))}
+
+                          <div className="relative w-18 h-18 grid grid-cols-2 auto-rows-[minmax(0,1fr)] gap-2">
+                            {(w.serviceIcons || []).slice(0,5).map((Icon, idx) => {
+                              const pos = [
+                                { gridColumn: '1', gridRow: '1' },
+                                { gridColumn: '2', gridRow: '1' },
+                                { gridColumn: '2', gridRow: '2' },
+                                { gridColumn: '1', gridRow: '2' },
+                                { gridColumn: '2', gridRow: '3' }
+                              ][idx] || { gridColumn: '1', gridRow: '3' };
+                              return (
+                                <span
+                                  key={idx}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200"
+                                  style={{ gridColumn: pos.gridColumn, gridRow: pos.gridRow }}
+                                >
+                                  <Icon size={16} className="text-[#008cfc]" />
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -569,19 +594,25 @@ const ClientAvailableWorkers = () => {
 
                         <div className="mt-4">
                           <div className="text-sm font-semibold text-gray-700">Service Type</div>
-                          <div className="mt-1">
-                            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
-                              {w.serviceType || '—'}
-                            </span>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {(w.serviceTypeList && w.serviceTypeList.length ? w.serviceTypeList : [w.serviceType || '—']).map((lbl, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                                {lbl}
+                              </span>
+                            ))}
                           </div>
+
                           <div className="mt-3 text-sm font-semibold text-gray-700">Service Task</div>
-                          <div className="mt-1">
-                            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-violet-50 text-violet-700 border-violet-200">
-                              {w.serviceTask || '—'}
-                            </span>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {(w.serviceTaskList && w.serviceTaskList.length ? w.serviceTaskList : (w.serviceTask ? String(w.serviceTask).split(/[,/|]+/).map(s=>s.trim()).filter(Boolean) : ['—'])).map((lbl, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-violet-50 text-violet-700 border-violet-200">
+                                {lbl}
+                              </span>
+                            ))}
                           </div>
+
                           <div className="mt-3 text-sm font-semibold text-gray-700">Work Description</div>
-                          <div className="text-base text-gray-900 font-medium line-clamp-3">{w.bio || '—'}</div>
+                          <div className="text-sm text-gray-800 line-clamp-3">{w.bio || '—'}</div>
                         </div>
 
                         <div className="mt-4 h-px bg-gray-200" />
