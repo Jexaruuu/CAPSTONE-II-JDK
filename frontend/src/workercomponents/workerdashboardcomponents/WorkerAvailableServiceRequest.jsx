@@ -27,6 +27,13 @@ function fmtTime(v) {
 function fmtRate(rate) {
   const t = String(rate?.rate_type || '').toLowerCase();
   const peso = (n) => `₱${Number(n).toLocaleString()}`;
+  if (t.includes('hour')) {
+    const f = rate?.rate_from, to = rate?.rate_to;
+    if (f && to) return `${peso(f)} - ${peso(to)}`;
+    if (f) return `${peso(f)}`;
+    if (to) return `${peso(to)}`;
+  }
+  if (t.includes('job') && rate?.rate_value) return peso(rate.rate_value);
   if (t === 'fixed' && rate?.rate_value) return peso(rate.rate_value);
   if (t === 'range' && (rate?.rate_from || rate?.rate_to)) {
     const a = rate?.rate_from ? peso(rate.rate_from) : '';
@@ -67,6 +74,20 @@ function buildDateTime(dateStr, timeStr) {
   return d;
 }
 
+const pick = (obj, keys) => {
+  for (const k of keys) {
+    if (obj && obj[k] != null && String(obj[k]).trim() !== '') return obj[k];
+  }
+  return '';
+};
+const toObj = (v) => {
+  if (!v) return {};
+  if (typeof v === 'string') {
+    try { return JSON.parse(v); } catch { return {}; }
+  }
+  return v && typeof v === 'object' ? v : {};
+};
+
 const WorkerAvailableServiceRequest = () => {
   const [items, setItems] = useState([]);
 
@@ -95,22 +116,45 @@ const WorkerAvailableServiceRequest = () => {
               : Array.isArray(data?.rows)
               ? data.rows
               : null;
-            if (arr) {
-              dataArr = arr;
-              break;
-            }
+            if (arr) { dataArr = arr; break; }
           }
         } catch {}
       }
       if (!ok) return;
       const now = Date.now();
       const mapped = (dataArr || []).map((r, idx) => {
-        const i = r.info || {};
-        const d = r.details || {};
-        const rate = r.rate || {};
+        const infoRaw = r.info ?? r.client_info ?? r.client_information ?? r.client ?? r.profile ?? {};
+        const detailsRaw = r.details ?? {};
+        const rateRaw = r.rate ?? {};
+        const i = toObj(infoRaw);
+        const d = toObj(detailsRaw);
+        const rate = toObj(rateRaw);
+
         const name = [i.first_name, i.last_name].filter(Boolean).join(' ').trim() || 'Client';
-        const addressPrimary = [i.barangay || '', i.street || ''].filter(Boolean).join(', ');
-        const addressAdditional = i.additional_address || '';
+
+        const ia = toObj(i.address);
+        const da = toObj(d.address);
+
+        const barangay =
+          pick(i, ['barangay','brgy']) ||
+          pick(ia, ['barangay','brgy']) ||
+          pick(d, ['barangay']) ||
+          pick(da, ['barangay']);
+
+        const street =
+          pick(i, ['street','street_name','street_address','address_line1']) ||
+          pick(ia, ['street','street_name','street_address','address_line1']) ||
+          pick(d, ['street','street_name','street_address']) ||
+          pick(da, ['street','street_name','street_address']);
+
+        const addl =
+          pick(i, ['additional_address','additional_street','address_line2']) ||
+          pick(ia, ['additional_address','additional_street','address_line2']) ||
+          pick(d, ['additional_address','additional_street','address_line2']) ||
+          pick(da, ['additional_address','additional_street','address_line2']);
+
+        const addressLine = [barangay, street, addl].map((s)=>String(s||'').trim()).filter(Boolean).join(', ');
+
         const dt = buildDateTime(d.preferred_date || '', d.preferred_time || '');
         const statusLower = String(r.status || '').toLowerCase();
         const isExpired = statusLower === 'expired' || (dt && dt.getTime() < now);
@@ -134,30 +178,32 @@ const WorkerAvailableServiceRequest = () => {
         iconLabels.forEach((lbl) => {
           const Icon = getServiceIcon(lbl);
           const key = Icon.displayName || Icon.name || 'Icon';
-          if (!seen.has(key)) {
-            seen.add(key);
-            icons.push(Icon);
-          }
+          if (!seen.has(key)) { seen.add(key); icons.push(Icon); }
         });
         const serviceIcons = icons.slice(0, 3);
+
+        const mergedRate = rate.rate_type
+          ? rate
+          : { ...rate, rate_type: d.rate_type, rate_from: d.rate_from, rate_to: d.rate_to, rate_value: d.rate_value };
 
         return {
           id: r.id || idx + 1,
           request_group_id: r.request_group_id || '',
           name,
+          email: i.email_address || r.email_address || '',
           image: i.profile_picture_url || avatarFromName(name),
-          barangay: i.barangay || '',
-          street: i.street || '',
-          additional_address: addressAdditional,
+          barangay,
+          street,
+          additional_address: addl,
           preferred_date: d.preferred_date || '',
           preferred_time: d.preferred_time || '',
           urgency: (d.is_urgent || '').toString(),
           service_type: d.service_type || '',
           service_task: d.service_task || '',
           description: d.service_description || '',
-          rate_type: rate.rate_type || '',
-          price: fmtRate(rate),
-          addressLine: addressPrimary,
+          rate_type: mergedRate.rate_type || '',
+          price: fmtRate(mergedRate),
+          addressLine,
           isExpired,
           serviceIcons
         };
@@ -277,7 +323,7 @@ const WorkerAvailableServiceRequest = () => {
     if (!el) return;
     const idx = Math.max(0, Math.min(totalSlides - 1, i));
     const slideLefts = getViewSlideLefts();
-    const fallback = idx * ((cardW + GAP) * PER_PAGE - GAP);
+    const fallback = idx * (({width:cardW}+GAP)*PER_PAGE - GAP);
     const left = slideLefts.length ? slideLefts[idx] : fallback;
     el.scrollTo({ left, behavior: 'smooth' });
   };
@@ -429,6 +475,9 @@ const WorkerAvailableServiceRequest = () => {
                             </div>
                             <div className="min-w-0">
                               <div className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight truncate">{req.name}</div>
+                              {req.email ? (
+                                <div className="text-xs text-gray-600 truncate">{req.email}</div>
+                              ) : null}
                               <div className="mt-1 flex items-center gap-1">
                                 {[0,1,2,3,4].map((idx) => (
                                   <Star
@@ -478,29 +527,32 @@ const WorkerAvailableServiceRequest = () => {
                           </div>
 
                           <div className="mt-3 text-sm font-semibold text-gray-700">Request Description</div>
-                          <div className="text-base text-gray-900 font-medium leading-relaxed line-clamp-3">{req.description || '—'}</div>
+                          <div className="text-sm text-gray-900 font-medium leading-relaxed line-clamp-3">{req.description || '—'}</div>
                         </div>
 
                         <div className="mt-4 h-px bg-gray-200" />
 
-                        <div className="mt-4 flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">{req.addressLine}</div>
-                            {req.additional_address ? (
-                              <div className="text-sm text-gray-700">{req.additional_address}</div>
-                            ) : null}
+                        <div className="mt-4">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {[req.barangay, req.street].filter(Boolean).join(', ') || req.addressLine}
+                          </div>
+                          {req.additional_address ? (
+                            <div className="text-sm text-gray-700">{req.additional_address}</div>
+                          ) : null}
+
+                          <div className="mt-1 flex items-end justify-between">
                             <div className="flex items-center gap-2">
                               {req.rate_type && <div className="text-sm font-semibold text-gray-900">{req.rate_type}</div>}
                               {req.rate_type ? <span className="text-gray-400">•</span> : null}
                               <div className="text-sm font-semibold text-gray-900">{req.price || 'Rate upon request'}</div>
                             </div>
+                            <a
+                              href={req.request_group_id ? `/worker/requests/${req.request_group_id}` : '#'}
+                              className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition self-end"
+                            >
+                              View Request
+                            </a>
                           </div>
-                          <a
-                            href={req.request_group_id ? `/worker/requests/${req.request_group_id}` : '#'}
-                            className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition"
-                          >
-                            View Request
-                          </a>
                         </div>
                       </div>
                     </div>

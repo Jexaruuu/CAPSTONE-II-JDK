@@ -75,7 +75,7 @@ async function hydrate(baseRows) {
   const [infos, details, rates] = await Promise.all([
     supabaseAdmin
       .from('client_information')
-      .select('request_group_id, first_name, last_name, email_address, barangay, profile_picture_url, profile_picture_name')
+      .select('request_group_id, first_name, last_name, email_address, barangay, street, additional_address, profile_picture_url, profile_picture_name')
       .in('request_group_id', gids),
     supabaseAdmin
       .from('client_service_request_details')
