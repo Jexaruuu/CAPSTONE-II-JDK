@@ -90,9 +90,19 @@ export default function ClientEditServiceRequest() {
   const [rateFrom, setRateFrom] = useState('');
   const [rateTo, setRateTo] = useState('');
   const [rateValue, setRateValue] = useState('');
+
+  const [barangay, setBarangay] = useState('');
+  const [street, setStreet] = useState('');
+  const [additionalAddress, setAdditionalAddress] = useState('');
+
   const [imageUrl, setImageUrl] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [imageDataUrl, setImageDataUrl] = useState(null);
+
+  const [clientImageUrl, setClientImageUrl] = useState('');
+  const [clientImageFile, setClientImageFile] = useState(null);
+  const [clientImageDataUrl, setClientImageDataUrl] = useState(null);
+
   const [logoBroken, setLogoBroken] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
 
@@ -101,6 +111,7 @@ export default function ClientEditServiceRequest() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   const fileRef = useRef(null);
+  const clientFileRef = useRef(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -117,6 +128,7 @@ export default function ClientEditServiceRequest() {
         });
         const d = data?.details || {};
         const r = data?.rate || {};
+        const info = data?.info || {};
         setServiceType(d.service_type || '');
         setServiceTask(d.service_task || '');
         setPreferredDate(d.preferred_date || '');
@@ -129,7 +141,11 @@ export default function ClientEditServiceRequest() {
         setRateTo(r.rate_to || '');
         setRateValue(r.rate_value || '');
         setImageUrl(d.request_image_url || '');
-      } catch (e) {
+        setBarangay(info.barangay || '');
+        setStreet(info.street || '');
+        setAdditionalAddress(info.additional_address || info.additionalAddress || '');
+        setClientImageUrl(info.profile_picture_url || '');
+      } catch {
         setError('Failed to load request');
       } finally {
         setLoading(false);
@@ -147,6 +163,15 @@ export default function ClientEditServiceRequest() {
     if (du) setImageUrl('');
   };
 
+  const onPickClientImage = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setClientImageFile(f);
+    const du = await readAsDataUrl(f);
+    setClientImageDataUrl(du);
+    if (du) setClientImageUrl('');
+  };
+
   const toNumOrNull = (v) => {
     const n = Number(String(v ?? '').replace(/[^\d.]/g, ''));
     return Number.isFinite(n) ? n : null;
@@ -160,6 +185,12 @@ export default function ClientEditServiceRequest() {
     setError('');
     try {
       const payload = {
+        info: {
+          barangay,
+          street,
+          additional_address: additionalAddress,
+          ...(clientImageDataUrl ? { profile_picture_data_url: clientImageDataUrl } : {})
+        },
         details: {
           service_type: serviceType,
           service_task: serviceTask,
@@ -304,7 +335,7 @@ export default function ClientEditServiceRequest() {
     const ampm = h >= 12 ? 'PM' : 'AM';
     const hr = h % 12 === 0 ? 12 : h % 12;
     return `${String(hr).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
-  };
+    };
   const timeSlots = (() => {
     const slots = [];
     for (let h = 0; h < 24; h++) {
@@ -406,22 +437,24 @@ export default function ClientEditServiceRequest() {
               </div>
               <div className="text-2xl md:text-3xl font-semibold text-gray-900">Edit Service Request</div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={()=>setConfirmOpen(true)}
-                disabled={saving}
-                className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
-              >
-                {saving ? 'Saving…' : 'Save Changes'}
-              </button>
+            <div className="hidden">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={()=>setConfirmOpen(true)}
+                  disabled={saving}
+                  className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
+                >
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -436,474 +469,524 @@ export default function ClientEditServiceRequest() {
               <div className="px-6 py-6">
                 {error && <div className="mb-4 text-sm text-red-600">{error}</div>}
                 {ok && <div className="mb-4 text-sm text-emerald-700">{ok}</div>}
-                <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                  <div className="relative" ref={stRef}>
-                    <span className="block text-sm font-medium text-gray-700 mb-2">Service Type</span>
-                    <select value={serviceType} onChange={e=>setServiceType(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
-                      <option value=""></option>
-                      {sortedServiceTypes.map((t)=> <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                      <button type="button" onClick={()=>setStOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
-                        {serviceType || 'Select Service Type'}
-                      </button>
-                      <button type="button" onClick={()=>setStOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open service type options">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
-                      </button>
-                    </div>
-                    {stOpen && (
-                      <PopList
-                        items={sortedServiceTypes}
-                        value={serviceType}
-                        onSelect={(v)=>{ setServiceType(v); setServiceTask(''); setStOpen(false); }}
-                        fullWidth
-                        title="Select Service Type"
-                        clearable
-                        onClear={()=>{ setServiceType(''); setServiceTask(''); setStOpen(false); }}
-                      />
-                    )}
-                  </div>
 
-                  <div className="relative" ref={taskRef}>
-                    <span className="block text-sm font-medium text-gray-700 mb-2">Service Task</span>
-                    <select value={serviceTask} onChange={e=>setServiceTask(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1} disabled={!serviceType}>
-                      <option value=""></option>
-                      {serviceType && (serviceTasks[serviceType] || []).map((t)=> <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <div className={`flex items-center rounded-xl border ${!serviceType ? 'opacity-60 cursor-not-allowed border-gray-300' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
-                      <button type="button" onClick={()=>serviceType && setTaskOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none" disabled={!serviceType}>
-                        {serviceTask || 'Select Service Task'}
-                      </button>
-                      <button type="button" onClick={()=>serviceType && setTaskOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open service task options" disabled={!serviceType}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
-                      </button>
-                    </div>
-                    {taskOpen && (
-                      <PopList
-                        items={serviceTasks[serviceType] || []}
-                        value={serviceTask}
-                        onSelect={(v)=>{ setServiceTask(v); setTaskOpen(false); }}
-                        emptyLabel="Select a service type first"
-                        fullWidth
-                        title="Select Service Task"
-                        clearable
-                        onClear={()=>{ setServiceTask(''); setTaskOpen(false); }}
-                      />
-                    )}
-                  </div>
-
-                  <div className="relative" ref={pdRef}>
-                    <span className="block text-sm font-medium text-gray-700 mb-2">Preferred Date</span>
-                    <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                      <input
-                        type="text"
-                        value={preferredDate ? toMDY(fromYMDLocal(preferredDate)) : ''}
-                        onFocus={openPD}
-                        readOnly
-                        placeholder="mm/dd/yyyy"
-                        className="w-full px-4 py-3 rounded-l-xl focus:outline-none"
-                      />
-                      <button type="button" onClick={openPD} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open calendar">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" /><path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" /></svg>
-                      </button>
-                    </div>
-                    {pdOpen && (
-                      <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
-                        <div className="flex items-center justify-between px-2 pb-2">
-                          <button
-                            type="button"
-                            onClick={() => canPrevPD() && setPdView(addMonths(pdView, -1))}
-                            className={`p-2 rounded-lg hover:bg-gray-100 ${canPrevPD() ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
-                            aria-label="Previous month"
-                          >‹</button>
-                          <div className="relative flex items-center gap-2">
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={() => { setPdMonthOpen(v=>!v); setPdYearOpen(false); }}
-                                className="min-w-[120px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
-                              >
-                                {monthsList[pdView.getMonth()]}
-                                <span className="ml-2">▾</span>
-                              </button>
-                              {pdMonthOpen ? (
-                                <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                  {monthsList.map((m,i)=>(
-                                    <button
-                                      key={m}
-                                      type="button"
-                                      onClick={()=>{ setPDMonthYear(i,pdView.getFullYear()); setPdMonthOpen(false); }}
-                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${i===pdView.getMonth()?"bg-blue-100":""}`}
-                                    >{m}</button>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </div>
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={() => { setPdYearOpen(v=>!v); setPdMonthOpen(false); }}
-                                className="min-w-[90px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
-                              >
-                                {pdView.getFullYear()}
-                                <span className="ml-2">▾</span>
-                              </button>
-                              {pdYearOpen ? (
-                                <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                  {yearsList.map((y)=>(
-                                    <button
-                                      key={y}
-                                      type="button"
-                                      onClick={()=>{ setPDMonthYear(pdView.getMonth(),y); setPdYearOpen(false); }}
-                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${y===pdView.getFullYear()?"bg-blue-100":""}`}
-                                    >{y}</button>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => canNextPD() && setPdView(addMonths(pdView, 1))}
-                            className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
-                            aria-label="Next month"
-                          >›</button>
-                        </div>
-
-                        <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
-                          {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d) => <div key={d} className="py-1">{d}</div>)}
-                        </div>
-
-                        {(() => {
-                          const first = startOfMonth(pdView);
-                          const last = endOfMonth(pdView);
-                          const offset = first.getDay();
-                          const total = offset + last.getDate();
-                          const rows = Math.ceil(total / 7);
-                          const selected = preferredDate ? fromYMDLocal(preferredDate) : null;
-                          const cells = [];
-                          for (let r = 0; r < rows; r++) {
-                            const row = [];
-                            for (let c = 0; c < 7; c++) {
-                              const idx = r * 7 + c;
-                              const dayNum = idx - offset + 1;
-                              if (dayNum < 1 || dayNum > last.getDate()) {
-                                row.push(<div key={`x-${r}-${c}`} className="py-2" />);
-                              } else {
-                                const d = new Date(pdView.getFullYear(), pdView.getMonth(), dayNum);
-                                const disabled = !inRangePD(d);
-                                const isSelected = selected && isSameDay(selected, d);
-                                row.push(
-                                  <button
-                                    key={`d-${dayNum}`}
-                                    type="button"
-                                    disabled={disabled}
-                                    onClick={() => { setPreferredDate(toYMD(d)); setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }}
-                                    className={[
-                                      'py-2 rounded-lg transition text-sm w-9 h-9 mx-auto',
-                                      disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700',
-                                      isSelected && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
-                                    ].join(' ')}
-                                  >
-                                    {dayNum}
-                                  </button>
-                                );
-                              }
-                            }
-                            cells.push(<div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">{row}</div>);
-                          }
-                          return <div className="mt-1">{cells}</div>;
-                        })()}
-
-                        <div className="flex items-center justify-between mt-3 px-2">
-                          <button type="button" onClick={() => { setPreferredDate(''); setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
-                          <button type="button" onClick={() => { setPdView(fromYMDLocal(todayStr)); }} className="text-xs text-blue-600 hover:text-blue-700">Jump to today</button>
-                        </div>
+                <div className="grid grid-cols-1 lg:grid-cols-[340px,1fr] gap-6 items-start">
+                  <div className="space-y-5">
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+                      <div className="text-base font-semibold text-gray-900 mb-3">Client Profile</div>
+                      <div className="w-full aspect-square rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50 grid place-items-center">
+                        {clientImageDataUrl ? (
+                          <img src={clientImageDataUrl} alt="" className="w-full h-full object-cover object-center" />
+                        ) : clientImageUrl ? (
+                          <img src={clientImageUrl} alt="" className="w-full h-full object-cover object-center" />
+                        ) : (
+                          <span className="text-sm text-gray-500">No profile</span>
+                        )}
                       </div>
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">Earliest: <span className="font-medium">{toMDY(fromYMDLocal(todayStr))}</span></p>
-                  </div>
-
-                  <div className="relative" ref={ptRef}>
-                    <span className="block text-sm font-medium text-gray-700 mb-2">Preferred Time</span>
-                    <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                      <input
-                        type="text"
-                        value={preferredTime ? to12h(preferredTime) : ''}
-                        onFocus={openPT}
-                        readOnly
-                        placeholder="hh:mm AM/PM"
-                        className="w-full px-4 py-3 rounded-l-xl focus:outline-none"
-                      />
-                      <button type="button" onClick={openPT} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open time options">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-12.5a.75.75 0 00-1.5 0V10c0 .199.079.39.22.53l2.75 2.75a.75.75 0 101.06-1.06l-2.53-2.53V5.5z" clipRule="evenodd" /></svg>
-                      </button>
-                    </div>
-                    {ptOpen && (
-                      <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
-                        <div className="text-sm font-semibold text-gray-800 px-2 pb-2">Select Time</div>
-                        <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto px-2">
-                          {timeSlots.map((t) => {
-                            const nowHHMM = getNowHHMM();
-                            const isToday = preferredDate === todayStr;
-                            const disabled = isToday && t < nowHHMM;
-                            return (
-                              <button
-                                key={t}
-                                type="button"
-                                disabled={disabled}
-                                onClick={() => {
-                                  if (disabled) return;
-                                  setPreferredTime(t);
-                                  setPtOpen(false);
-                                }}
-                                className={`py-2 rounded-lg text-sm ${disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700'} ${preferredTime === t && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''}`}
-                              >
-                                {to12h(t)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <div className="flex items-center justify-between mt-3 px-2">
-                          <span className="text-xs text-gray-400">{timeSlots.length} results</span>
-                          <div className="flex items-center gap-3">
-                            <button type="button" onClick={() => { setPreferredTime(''); setPtOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const n = new Date();
-                                const mins = n.getMinutes();
-                                let up = mins % 30 === 0 ? mins : mins + (30 - (mins % 30));
-                                let h = n.getHours();
-                                if (up === 60) { h = h + 1; up = 0; }
-                                const cand = `${String(h).padStart(2,'0')}:${String(up).padStart(2,'0')}`;
-                                if (preferredDate === todayStr) {
-                                  const next = timeSlots.find(tt => tt >= cand);
-                                  if (next) setPreferredTime(next);
-                                  else setPreferredTime('');
-                                } else {
-                                  setPreferredTime(cand);
-                                }
-                                setPtOpen(false);
-                              }}
-                              className="text-xs text-blue-600 hover:text-blue-700"
-                            >
-                              Now (rounded)
-                            </button>
-                          </div>
-                        </div>
+                      <div className="mt-3">
+                        <input ref={clientFileRef} type="file" accept="image/*" className="hidden" onChange={onPickClientImage} />
+                        <button
+                          type="button"
+                          onClick={() => clientFileRef.current?.click()}
+                          className="w-full h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          Choose Image
+                        </button>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="relative" ref={toolsRef}>
-                    <span className="block text-sm font-medium text-gray-700 mb-2">Tools Provided?</span>
-                    <select value={toolsProvided} onChange={(e)=>setToolsProvided(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
-                      <option value=""></option>
-                      <option value="Yes">Yes</option>
-                      <option value="No">No</option>
-                    </select>
-                    <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                      <button type="button" onClick={()=>setToolsOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
-                        {toolsProvided || 'Select Yes or No'}
-                      </button>
-                      <button type="button" onClick={()=>setToolsOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open tools provided options">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
-                      </button>
                     </div>
-                    {toolsOpen && (
-                      <PopList
-                        items={['Yes','No']}
-                        value={toolsProvided}
-                        onSelect={(v)=>{ setToolsProvided(v); setToolsOpen(false); }}
-                        fullWidth
-                        title="Select Tools Provided"
-                        clearable
-                        onClear={()=>{ setToolsProvided(''); setToolsOpen(false); }}
-                      />
-                    )}
-                  </div>
 
-                  <div className="relative" ref={urgentRef}>
-                    <span className="block text-sm font-medium text-gray-700 mb-2">Is The Request Urgent?</span>
-                    <select value={isUrgent} onChange={(e)=>setIsUrgent(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
-                      <option value=""></option>
-                      <option value="Yes">Yes</option>
-                      <option value="No">No</option>
-                    </select>
-                    <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                      <button type="button" onClick={()=>setUrgentOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
-                        {isUrgent || 'Select Yes or No'}
-                      </button>
-                      <button type="button" onClick={()=>setUrgentOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open urgent options">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
-                      </button>
-                    </div>
-                    {urgentOpen && (
-                      <PopList
-                        items={['Yes','No']}
-                        value={isUrgent}
-                        onSelect={(v)=>{ setIsUrgent(v); setUrgentOpen(false); }}
-                        fullWidth
-                        title="Select Urgency"
-                        clearable
-                        onClear={()=>{ setIsUrgent(''); setUrgentOpen(false); }}
-                      />
-                    )}
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <span className="block text-sm font-medium text-gray-700 mb-2">Service Description</span>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Describe the service you need"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-                      <span className="font-medium text-gray-600">Request Image:</span>
-                      <div className="w-full space-y-3">
-                        <div className="w-full h-64 rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50 grid place-items-center">
-                          {imageDataUrl ? (
-                            <img src={imageDataUrl} alt="" className="w-full h-full object-cover object-center" />
-                          ) : imageUrl ? (
-                            <img src={imageUrl} alt="" className="w-full h-full object-cover object-center" />
-                          ) : (
-                            <span className="text-sm text-gray-500">No image</span>
-                          )}
-                        </div>
-                        <div>
-                          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
-                          <button
-                            type="button"
-                            onClick={() => fileRef.current?.click()}
-                            className="h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-                          >
-                            Choose Image
-                          </button>
-                        </div>
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+                      <div className="text-base font-semibold text-gray-900 mb-3">Request Image</div>
+                      <div className="w-full aspect-square rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50 grid place-items-center">
+                        {imageDataUrl ? (
+                          <img src={imageDataUrl} alt="" className="w-full h-full object-cover object-center" />
+                        ) : imageUrl ? (
+                          <img src={imageUrl} alt="" className="w-full h-full object-cover object-center" />
+                        ) : (
+                          <span className="text-sm text-gray-500">No image</span>
+                        )}
+                      </div>
+                      <div className="mt-3">
+                        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
+                        <button
+                          type="button"
+                          onClick={() => fileRef.current?.click()}
+                          className="w-full h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          Choose Image
+                        </button>
                       </div>
                     </div>
                   </div>
 
-                </div>
-              </div>
-            </div>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid gap-2">
+                        <span className="block text-sm font-medium text-gray-700">Barangay</span>
+                        <input
+                          value={barangay}
+                          onChange={(e)=>setBarangay(e.target.value)}
+                          placeholder="e.g., Brgy. 123"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <span className="block text-sm font-medium text-gray-700">Street</span>
+                        <input
+                          value={street}
+                          onChange={(e)=>setStreet(e.target.value)}
+                          placeholder="Street"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <span className="block text-sm font-medium text-gray-700">Additional Address</span>
+                        <input
+                          value={additionalAddress}
+                          onChange={(e)=>setAdditionalAddress(e.target.value)}
+                          placeholder="Unit/Building/Notes"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                        />
+                      </div>
+                    </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-visible">
-                  <div className="flex items-center justify-between px-6 py-4">
-                    <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Rate</h3>
-                  </div>
-                  <div className="border-t border-gray-100" />
-                  <div className="px-6 py-6">
-                    <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                      <div className="relative" ref={rateTypeRef}>
-                        <span className="block text-sm font-medium text-gray-700 mb-2">Rate Type</span>
-                        <select value={rateType} onChange={(e)=>setRateType(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                      <div className="relative" ref={stRef}>
+                        <span className="block text-sm font-medium text-gray-700 mb-2">Service Type</span>
+                        <select value={serviceType} onChange={e=>setServiceType(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
                           <option value=""></option>
-                          <option value="fixed">Fixed</option>
-                          <option value="range">Hourly / Range</option>
-                          <option value="by_job">By the Job</option>
+                          {sortedServiceTypes.map((t)=> <option key={t} value={t}>{t}</option>)}
                         </select>
                         <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                          <button
-                            type="button"
-                            onClick={()=>setRateTypeOpen(s=>!s)}
-                            className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
-                          >
-                            {rateType === 'range' ? 'Hourly Rate' : rateType === 'by_job' || rateType === 'fixed' ? 'By the Job Rate' : 'Select Rate Type'}
+                          <button type="button" onClick={()=>setStOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
+                            {serviceType || 'Select Service Type'}
                           </button>
-                          <button
-                            type="button"
-                            onClick={()=>setRateTypeOpen(s=>!s)}
-                            className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                            aria-label="Open rate type options"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
+                          <button type="button" onClick={()=>setStOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open service type options">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
                           </button>
                         </div>
-                        {rateTypeOpen && (
+                        {stOpen && (
                           <PopList
-                            items={['Hourly Rate','By the Job Rate']}
-                            value={rateType === 'range' ? 'Hourly Rate' : rateType === 'by_job' || rateType === 'fixed' ? 'By the Job Rate' : ''}
-                            onSelect={(v)=>{ setRateType(v === 'Hourly Rate' ? 'range' : 'by_job'); setRateTypeOpen(false); }}
+                            items={sortedServiceTypes}
+                            value={serviceType}
+                            onSelect={(v)=>{ setServiceType(v); setServiceTask(''); setStOpen(false); }}
                             fullWidth
-                            title="Select Rate Type"
+                            title="Select Service Type"
                             clearable
-                            onClear={()=>{ setRateType(''); setRateFrom(''); setRateTo(''); setRateValue(''); setRateTypeOpen(false); }}
+                            onClear={()=>{ setServiceType(''); setServiceTask(''); setStOpen(false); }}
                           />
                         )}
                       </div>
 
-                      {String(rateType || '').toLowerCase() === 'range' ? (
-                        <div className="grid grid-cols-1 gap-3">
-                          <span className="block text-sm font-medium text-gray-700">Rate (From – To)</span>
-                          <div className="grid grid-cols-2 gap-3">
-                            <input value={rateFrom} onChange={e=>setRateFrom(e.target.value)} placeholder="From" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40" />
-                            <input value={rateTo} onChange={e=>setRateTo(e.target.value)} placeholder="To" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40" />
+                      <div className="relative" ref={taskRef}>
+                        <span className="block text-sm font-medium text-gray-700 mb-2">Service Task</span>
+                        <select value={serviceTask} onChange={e=>setServiceTask(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1} disabled={!serviceType}>
+                          <option value=""></option>
+                          {serviceType && (serviceTasks[serviceType] || []).map((t)=> <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        <div className={`flex items-center rounded-xl border ${!serviceType ? 'opacity-60 cursor-not-allowed border-gray-300' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
+                          <button type="button" onClick={()=>serviceType && setTaskOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none" disabled={!serviceType}>
+                            {serviceTask || 'Select Service Task'}
+                          </button>
+                          <button type="button" onClick={()=>serviceType && setTaskOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open service task options" disabled={!serviceType}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
+                          </button>
+                        </div>
+                        {taskOpen && (
+                          <PopList
+                            items={serviceTasks[serviceType] || []}
+                            value={serviceTask}
+                            onSelect={(v)=>{ setServiceTask(v); setTaskOpen(false); }}
+                            emptyLabel="Select a service type first"
+                            fullWidth
+                            title="Select Service Task"
+                            clearable
+                            onClear={()=>{ setServiceTask(''); setTaskOpen(false); }}
+                          />
+                        )}
+                      </div>
+
+                      <div className="relative md:col-span-2" ref={pdRef}>
+                        <span className="block text-sm font-medium text-gray-700 mb-2">Preferred Date</span>
+                        <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                          <input
+                            type="text"
+                            value={preferredDate ? formatDateMDY(preferredDate) : ''}
+                            onFocus={()=>{
+                              if (preferredDate) setPdView(new Date(preferredDate));
+                              else setPdView(new Date(todayStr));
+                              setPdOpen(s=>!s); setPdMonthOpen(false); setPdYearOpen(false);
+                            }}
+                            readOnly
+                            placeholder="mm/dd/yyyy"
+                            className="w-full px-4 py-3 rounded-l-xl focus:outline-none"
+                          />
+                          <button type="button" onClick={()=>{
+                            if (preferredDate) setPdView(new Date(preferredDate));
+                            else setPdView(new Date(todayStr));
+                            setPdOpen(s=>!s); setPdMonthOpen(false); setPdYearOpen(false);
+                          }} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open calendar">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 01-1-1z" /><path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" /></svg>
+                          </button>
+                        </div>
+                        {pdOpen && (
+                          <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
+                            <div className="flex items-center justify-between px-2 pb-2">
+                              <button
+                                type="button"
+                                onClick={() => addMonths(startOfMonth(pdView), -1) >= startOfMonth(new Date(todayStr)) && setPdView(addMonths(pdView, -1))}
+                                className={`p-2 rounded-lg hover:bg-gray-100 ${addMonths(startOfMonth(pdView), -1) >= startOfMonth(new Date(todayStr)) ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
+                                aria-label="Previous month"
+                              >‹</button>
+                              <div className="relative flex items-center gap-2">
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => { setPdMonthOpen(v=>!v); setPdYearOpen(false); }}
+                                    className="min-w-[120px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
+                                  >
+                                    {['January','February','March','April','May','June','July','August','September','October','November','December'][pdView.getMonth()]}
+                                    <span className="ml-2">▾</span>
+                                  </button>
+                                  {pdMonthOpen ? (
+                                    <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                      {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m,i)=>(
+                                        <button
+                                          key={m}
+                                          type="button"
+                                          onClick={()=>{ const next = new Date(pdView.getFullYear(), i, 1); const minStart = startOfMonth(new Date(todayStr)); setPdView(next < minStart ? minStart : next); setPdMonthOpen(false); }}
+                                          className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${i===pdView.getMonth()?"bg-blue-100":""}`}
+                                        >{m}</button>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => { setPdYearOpen(v=>!v); setPdMonthOpen(false); }}
+                                    className="min-w-[90px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
+                                  >
+                                    {pdView.getFullYear()}
+                                    <span className="ml-2">▾</span>
+                                  </button>
+                                  {pdYearOpen ? (
+                                    <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                      {(() => {
+                                        const ys = []; const start = new Date(todayStr).getFullYear();
+                                        for (let y = start; y <= start + 5; y++) ys.push(y);
+                                        return ys.map((y)=>(
+                                          <button
+                                            key={y}
+                                            type="button"
+                                            onClick={()=>{ const next = new Date(y, pdView.getMonth(), 1); const minStart = startOfMonth(new Date(todayStr)); setPdView(next < minStart ? minStart : next); setPdYearOpen(false); }}
+                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${y===pdView.getFullYear()?"bg-blue-100":""}`}
+                                          >{y}</button>
+                                        ));
+                                      })()}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setPdView(addMonths(pdView, 1))}
+                                className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+                                aria-label="Next month"
+                              >›</button>
+                            </div>
+
+                            <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
+                              {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d) => <div key={d} className="py-1">{d}</div>)}
+                            </div>
+
+                            {(() => {
+                              const first = startOfMonth(pdView);
+                              const last = endOfMonth(pdView);
+                              const offset = first.getDay();
+                              const total = offset + last.getDate();
+                              const rows = Math.ceil(total / 7);
+                              const selected = preferredDate ? new Date(preferredDate) : null;
+                              const cells = [];
+                              for (let r = 0; r < rows; r++) {
+                                const row = [];
+                                for (let c = 0; c < 7; c++) {
+                                  const idx = r * 7 + c;
+                                  const dayNum = idx - offset + 1;
+                                  if (dayNum < 1 || dayNum > last.getDate()) {
+                                    row.push(<div key={`x-${r}-${c}`} className="py-2" />);
+                                  } else {
+                                    const d = new Date(pdView.getFullYear(), pdView.getMonth(), dayNum);
+                                    const disabled = d < new Date(todayStr);
+                                    const isSelected = selected && d.getFullYear()===selected.getFullYear() && d.getMonth()===selected.getMonth() && d.getDate()===selected.getDate();
+                                    row.push(
+                                      <button
+                                        key={`d-${dayNum}`}
+                                        type="button"
+                                        disabled={disabled}
+                                        onClick={() => { setPreferredDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`); setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }}
+                                        className={[
+                                          'py-2 rounded-lg transition text-sm w-9 h-9 mx-auto',
+                                          disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700',
+                                          isSelected && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
+                                        ].join(' ')}
+                                      >
+                                        {dayNum}
+                                      </button>
+                                    );
+                                  }
+                                }
+                                cells.push(<div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">{row}</div>);
+                              }
+                              return <div className="mt-1">{cells}</div>;
+                            })()}
+
+                            <div className="flex items-center justify-between mt-3 px-2">
+                              <button type="button" onClick={() => { setPreferredDate(''); setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+                              <button type="button" onClick={() => { setPdView(new Date(todayStr)); }} className="text-xs text-blue-600 hover:text-blue-700">Jump to today</button>
+                            </div>
                           </div>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">Earliest: <span className="font-medium">{toMDY(new Date(todayStr))}</span></p>
+                      </div>
+
+                      <div className="relative md:col-span-2" ref={ptRef}>
+                        <span className="block text-sm font-medium text-gray-700 mb-2">Preferred Time</span>
+                        <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                          <input
+                            type="text"
+                            value={preferredTime ? formatTime12h(preferredTime) : ''}
+                            onFocus={()=>setPtOpen(s=>!s)}
+                            readOnly
+                            placeholder="hh:mm AM/PM"
+                            className="w-full px-4 py-3 rounded-l-xl focus:outline-none"
+                          />
+                          <button type="button" onClick={()=>setPtOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open time options">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-12.5a.75.75 0 00-1.5 0V10c0 .199.079.39.22.53l2.75 2.75a.75.75 0 101.06-1.06l-2.53-2.53V5.5z" clipRule="evenodd" /></svg>
+                          </button>
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-3">
-                          <span className="block text-sm font-medium text-gray-700">Service Rate</span>
-                          <input value={rateValue} onChange={e=>setRateValue(e.target.value)} placeholder="Enter amount" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40" />
+                        {ptOpen && (
+                          <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
+                            <div className="text-sm font-semibold text-gray-800 px-2 pb-2">Select Time</div>
+                            <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto px-2">
+                              {(() => {
+                                const slots = [];
+                                for (let h = 0; h < 24; h++) {
+                                  for (let m = 0; m < 60; m += 30) slots.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+                                }
+                                const nowHHMM = (()=>{ const n=new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}` })();
+                                const isToday = preferredDate === todayStr;
+                                return slots.map((t) => {
+                                  const disabled = isToday && t < nowHHMM;
+                                  return (
+                                    <button
+                                      key={t}
+                                      type="button"
+                                      disabled={disabled}
+                                      onClick={() => { if (!disabled) { setPreferredTime(t); setPtOpen(false); } }}
+                                      className={`py-2 rounded-lg text-sm ${disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700'} ${preferredTime === t && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''}`}
+                                    >
+                                      {to12h(t)}
+                                    </button>
+                                  );
+                                });
+                              })()}
+                            </div>
+                            <div className="flex items-center justify-between mt-3 px-2">
+                              <span className="text-xs text-gray-400">48 results</span>
+                              <div className="flex items-center gap-3">
+                                <button type="button" onClick={() => { setPreferredTime(''); setPtOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const n = new Date();
+                                    const mins = n.getMinutes();
+                                    let up = mins % 30 === 0 ? mins : mins + (30 - (mins % 30));
+                                    let h = n.getHours();
+                                    if (up === 60) { h = h + 1; up = 0; }
+                                    const cand = `${String(h).padStart(2,'0')}:${String(up).padStart(2,'0')}`;
+                                    if (preferredDate === todayStr) {
+                                      const all = []; for (let hh=0; hh<24; hh++){ for(let mm=0; mm<60; mm+=30){ all.push(`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`)}}
+                                      const next = all.find(tt => tt >= cand);
+                                      if (next) setPreferredTime(next); else setPreferredTime('');
+                                    } else {
+                                      setPreferredTime(cand);
+                                    }
+                                    setPtOpen(false);
+                                  }}
+                                  className="text-xs text-blue-600 hover:text-blue-700"
+                                >
+                                  Now (rounded)
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="relative" ref={toolsRef}>
+                        <span className="block text-sm font-medium text-gray-700 mb-2">Tools Provided?</span>
+                        <select value={toolsProvided} onChange={(e)=>setToolsProvided(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
+                          <option value=""></option>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </select>
+                        <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                          <button type="button" onClick={()=>setToolsOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
+                            {toolsProvided || 'Select Yes or No'}
+                          </button>
+                          <button type="button" onClick={()=>setToolsOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open tools provided options">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
+                          </button>
                         </div>
-                      )}
+                        {toolsOpen && (
+                          <PopList
+                            items={['Yes','No']}
+                            value={toolsProvided}
+                            onSelect={(v)=>{ setToolsProvided(v); setToolsOpen(false); }}
+                            fullWidth
+                            title="Select Tools Provided"
+                            clearable
+                            onClear={()=>{ setToolsProvided(''); setToolsOpen(false); }}
+                          />
+                        )}
+                      </div>
+
+                      <div className="relative" ref={urgentRef}>
+                        <span className="block text-sm font-medium text-gray-700 mb-2">Is The Request Urgent?</span>
+                        <select value={isUrgent} onChange={(e)=>setIsUrgent(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
+                          <option value=""></option>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </select>
+                        <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                          <button type="button" onClick={()=>setUrgentOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
+                            {isUrgent || 'Select Yes or No'}
+                          </button>
+                          <button type="button" onClick={()=>setUrgentOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open urgent options">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
+                          </button>
+                        </div>
+                        {urgentOpen && (
+                          <PopList
+                            items={['Yes','No']}
+                            value={isUrgent}
+                            onSelect={(v)=>{ setIsUrgent(v); setUrgentOpen(false); }}
+                            fullWidth
+                            title="Select Urgency"
+                            clearable
+                            onClear={()=>{ setIsUrgent(''); setUrgentOpen(false); }}
+                          />
+                        )}
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <span className="block text-sm font-medium text-gray-700 mb-2">Service Description</span>
+                        <textarea
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          placeholder="Describe the service you need"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <div className="relative" ref={rateTypeRef}>
+                          <span className="block text-sm font-medium text-gray-700 mb-2">Rate Type</span>
+                          <select value={rateType} onChange={(e)=>setRateType(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
+                            <option value=""></option>
+                            <option value="fixed">Fixed</option>
+                            <option value="range">Hourly / Range</option>
+                            <option value="by_job">By the Job</option>
+                          </select>
+                          <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                            <button
+                              type="button"
+                              onClick={()=>setRateTypeOpen(s=>!s)}
+                              className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
+                            >
+                              {rateType === 'range' ? 'Hourly Rate' : rateType === 'by_job' || rateType === 'fixed' ? 'By the Job Rate' : 'Select Rate Type'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={()=>setRateTypeOpen(s=>!s)}
+                              className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                              aria-label="Open rate type options"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
+                            </button>
+                          </div>
+                          {rateTypeOpen && (
+                            <PopList
+                              items={['Hourly Rate','By the Job Rate']}
+                              value={rateType === 'range' ? 'Hourly Rate' : rateType === 'by_job' || rateType === 'fixed' ? 'By the Job Rate' : ''}
+                              onSelect={(v)=>{ setRateType(v === 'Hourly Rate' ? 'range' : 'by_job'); setRateTypeOpen(false); }}
+                              fullWidth
+                              title="Select Rate Type"
+                              clearable
+                              onClear={()=>{ setRateType(''); setRateFrom(''); setRateTo(''); setRateValue(''); setRateTypeOpen(false); }}
+                            />
+                          )}
+                        </div>
+
+                        {String(rateType || '').toLowerCase() === 'range' ? (
+                          <div className="grid grid-cols-2 gap-3 md:col-span-1">
+                            <div className="grid gap-2">
+                              <span className="block text sm font-medium text-gray-700">From</span>
+                              <input value={rateFrom} onChange={e=>setRateFrom(e.target.value)} placeholder="0" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40" />
+                            </div>
+                            <div className="grid gap-2">
+                              <span className="block text-sm font-medium text-gray-700">To</span>
+                              <input value={rateTo} onChange={e=>setRateTo(e.target.value)} placeholder="0" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40" />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid gap-2 md:col-span-1">
+                            <span className="block text-sm font-medium text-gray-700">Service Rate</span>
+                            <input value={rateValue} onChange={e=>setRateValue(e.target.value)} placeholder="Enter amount" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <aside className="lg:col-span-1 flex flex-col">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden flex flex-col">
-                  <div className="px-6 py-4 flex items-center justify-between">
-                    <div className="text-base font-semibold text-gray-900">Summary</div>
-                  </div>
-                  <div className="border-t border-gray-100" />
-                  <div className="px-6 py-5 space-y-4 flex-1">
-                    <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                      <span className="text-sm font-medium text-gray-600">Service:</span>
-                      <span className="text-base font-semibold text-gray-900 truncate max-w-[60%] text-right sm:text-left">{serviceType || '-'}</span>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="inline-flex items-center rounded-lg border px-4 py-2 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={()=>setConfirmOpen(true)}
+                disabled={saving}
+                className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+
+            {false && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-visible">
+                    <div className="flex items-center justify-between px-6 py-4">
+                      <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Rate</h3>
                     </div>
-                    <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                      <span className="text-sm font-medium text-gray-600">Task:</span>
-                      <span className="text-base font-semibold text-gray-900 truncate max-w-[60%] text-right sm:text-left">{serviceTask || '-'}</span>
-                    </div>
-                    <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                      <span className="text-sm font-medium text-gray-600">Schedule:</span>
-                      <span className="text-base font-semibold text-gray-900">{preferred_date_display || '-'} • {preferred_time_display || '-'}</span>
-                    </div>
-                    <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                      <span className="text-sm font-medium text-gray-600">Urgent:</span>
-                      <span className="text-base font-semibold text-gray-900">{isUrgent || '-'}</span>
-                    </div>
-                    <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                      <span className="text-sm font-medium text-gray-600">Tools:</span>
-                      <span className="text-base font-semibold text-gray-900">{toolsProvided || '-'}</span>
-                    </div>
-                    <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">
-                      <span className="text-sm font-medium text-gray-600">Rate:</span>
-                      {String(rateType || '').toLowerCase() === 'range' ? (
-                        <div className="text-lg font-bold text-gray-900">
-                          ₱{rateFrom || 0}–₱{rateTo || 0} <span className="text-sm font-medium text-gray-900 opacity-80">per hour</span>
-                        </div>
-                      ) : String(rateType || '').toLowerCase() === 'by_job' || String(rateType || '').toLowerCase() === 'fixed' ? (
-                        <div className="text-lg font-bold text-gray-900">
-                          ₱{rateValue || 0} <span className="text-sm font-medium text-gray-900 opacity-80">per job</span>
-                        </div>
-                      ) : (
-                        <div className="text-gray-500 text-sm">No rate provided</div>
-                      )}
-                    </div>
+                    <div className="border-t border-gray-100" />
+                    <div className="px-6 py-6" />
                   </div>
                 </div>
-              </aside>
-            </div>
+                <aside className="lg:col-span-1 flex flex-col" />
+              </div>
+            )}
           </div>
         </div>
 

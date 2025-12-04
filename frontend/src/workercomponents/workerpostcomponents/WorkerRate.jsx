@@ -208,10 +208,6 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
             <h3 className="text-xl md:text-2xl font-semibold text-gray-900">
               Service Price Rate
             </h3>
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Rate
-            </span>
           </div>
 
           <div className="px-6 py-6">

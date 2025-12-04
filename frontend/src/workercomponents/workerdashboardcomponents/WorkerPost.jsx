@@ -436,7 +436,7 @@ function WorkerPost() {
     const barangay = item?.info?.barangay ?? item?.details?.barangay ?? item?.details?.brgy ?? item?.barangay ?? '';
     const street = item?.info?.street ?? item?.details?.street ?? item?.details?.street_name ?? item?.street ?? '';
     const parts = [];
-    if (barangay) parts.push(`Barangay ${barangay}`);
+    if (barangay) parts.push(String(barangay));
     if (street) parts.push(street);
     return parts.join(', ');
   };
@@ -676,7 +676,7 @@ function WorkerPost() {
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Address:</span>
+                        <span className="text-gray-700 font-semibold">Barangay:</span>
                         <span className="text-gray-900 font-medium">{buildLocation(currentApp) || '-'}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">

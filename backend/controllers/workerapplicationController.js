@@ -1,4 +1,3 @@
-// controllers/workerapplicationController.js
 const {
   uploadDataUrlToBucket,
   insertWorkerInformation,
@@ -93,6 +92,20 @@ function normalizeDocs(arr) {
   });
 }
 
+async function safeUploadDataUrl(bucket, dataUrl, path) {
+  try {
+    const up = await uploadDataUrlToBucket(bucket, dataUrl, path);
+    if (up?.url) return up;
+  } catch {}
+  const m = /^data:(.+?);base64,(.*)$/.exec(String(dataUrl || ''));
+  if (!m) throw new Error('invalid data url');
+  const contentType = m[1];
+  const bytes = Buffer.from(m[2], 'base64');
+  const { error } = await supabaseAdmin.storage.from(bucket).upload(path, bytes, { upsert: true, contentType });
+  if (error) throw error;
+  const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
+  return { url: pub?.publicUrl || '', name: path.split('/').pop() || null };
+}
 
 exports.submitFullApplication = async (req, res) => {
   try {
@@ -208,7 +221,7 @@ if (rawProfile) {
   const s = String(rawProfile);
   if (/^data:/i.test(s)) {
     try {
-      const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', s, `${request_group_id}-profile`);
+      const up = await safeUploadDataUrl(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', s, `${request_group_id}-profile`);
       profileUpload = up?.url ? up : null;
     } catch {
       profileUpload = null;
@@ -219,7 +232,7 @@ if (rawProfile) {
     const coerced = coerceDataUrl(s, 'image/jpeg');
     if (coerced) {
       try {
-        const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', coerced, `${request_group_id}-profile`);
+        const up = await safeUploadDataUrl(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', coerced, `${request_group_id}-profile`);
         profileUpload = up?.url ? up : null;
       } catch {
         profileUpload = null;
@@ -442,7 +455,7 @@ if (rawProfile) {
       const maybeData = coerceDataUrl(d.data_url, 'image/jpeg');
 if (maybeData) {
   try {
-    const up = await uploadDataUrlToBucket(bucket, maybeData, `${request_group_id}-${key}`);
+    const up = await safeUploadDataUrl(bucket, maybeData, `${request_group_id}-${key}`);
     docCols[key] = up?.url || '';
   } catch {
     docCols[key] = docCols[key] || '';
@@ -837,70 +850,122 @@ exports.updateByGroup = async (req, res) => {
     const auth_uid = payload.auth_uid || statusRow?.auth_uid || null;
     const worker_id = payload.worker_id || statusRow?.worker_id || null;
 
-    const upsertInfo = async () => {
+     const upsertInfo = async () => {
       const info = payload.info || {};
-      const profileAny = payload.profile_picture || payload.profile_picture_url || payload.profile_picture_data_url || info.profile_picture || info.profile_picture_url || info.profile_picture_data_url || '';
-      let profile_picture_url = info.profile_picture_url || null;
-      let profile_picture_name = info.profile_picture_name || null;
+      const { data: existing } = await supabaseAdmin
+        .from('worker_information')
+        .select('id, first_name, last_name, contact_number, street, barangay, date_of_birth, age, profile_picture_url, profile_picture_name, email_address')
+        .eq('request_group_id', gid)
+        .limit(1)
+        .maybeSingle();
+
+      const profileAny =
+        payload.profile_picture ||
+        payload.profile_picture_url ||
+        payload.profile_picture_data_url ||
+        info.profile_picture ||
+        info.profile_picture_url ||
+        info.profile_picture_data_url ||
+        '';
+
+      let profile_picture_url = existing?.profile_picture_url || null;
+      let profile_picture_name = existing?.profile_picture_name || null;
+
       if (profileAny) {
         const s = String(profileAny);
         if (/^data:/i.test(s)) {
-          const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', s, `${gid}-profile`);
+          const up = await safeUploadDataUrl(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', s, `${gid}-profile`);
           profile_picture_url = up?.url || profile_picture_url || null;
           profile_picture_name = up?.name || profile_picture_name || null;
         } else if (/^https?:\/\//i.test(s)) {
           profile_picture_url = s;
         }
       }
+
       const base = {
         request_group_id: gid,
         worker_id: worker_id || null,
         auth_uid: auth_uid || null,
-        email_address: email || null,
-        first_name: info.first_name ?? null,
-        last_name: info.last_name ?? null,
-        contact_number: info.contact_number ?? null,
-        street: info.street ?? null,
-        barangay: info.barangay ?? null,
-        date_of_birth: info.date_of_birth ?? null,
-        age: info.age ?? null,
+        email_address: (email || info.email_address || existing?.email_address || null),
+        first_name: (info.first_name !== undefined ? info.first_name : existing?.first_name) ?? null,
+        last_name: (info.last_name !== undefined ? info.last_name : existing?.last_name) ?? null,
+        contact_number: (info.contact_number !== undefined ? info.contact_number : existing?.contact_number) ?? null,
+        street: (info.street !== undefined ? info.street : existing?.street) ?? null,
+        barangay: (info.barangay !== undefined ? info.barangay : existing?.barangay) ?? null,
+        date_of_birth: (info.date_of_birth !== undefined ? info.date_of_birth : existing?.date_of_birth) ?? null,
+        age: (info.age !== undefined ? info.age : existing?.age) ?? null,
         profile_picture_url,
         profile_picture_name
       };
-      const { data: existing } = await supabaseAdmin.from('worker_information').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
+
       if (existing?.id) {
         await supabaseAdmin.from('worker_information').update(base).eq('id', existing.id);
       } else {
         await insertWorkerInformation(base);
       }
-      return { profile_picture_url, profile_picture_name };
+
+      return {
+        profile_picture_url,
+        profile_picture_name,
+        first_name: base.first_name,
+        last_name: base.last_name,
+        email_address: base.email_address,
+        contact_number: base.contact_number,
+        street: base.street,
+        barangay: base.barangay
+      };
     };
 
-    const upsertDetails = async () => {
+       const upsertDetails = async () => {
       const d = payload.details || payload.work || {};
-      const service_types = Array.isArray(d.service_types) ? d.service_types : (d.service_type ? [d.service_type] : []);
-      let service_task = d.service_task;
-      if (Array.isArray(service_task)) {
-        service_task = service_task;
-      } else if (service_types.length && typeof service_task === 'string') {
-        service_task = [{ category: service_types[0], tasks: [service_task] }];
-      } else if (service_types.length && !service_task) {
-        service_task = [{ category: service_types[0], tasks: [] }];
+      const { data: existing } = await supabaseAdmin
+        .from('worker_work_information')
+        .select('id, service_types, service_task, years_experience, tools_provided, work_description, email_address')
+        .eq('request_group_id', gid)
+        .limit(1)
+        .maybeSingle();
+
+      let incomingTypes = Array.isArray(d.service_types) ? d.service_types : (d.service_type ? [d.service_type] : []);
+      let incomingTask = d.service_task;
+
+      if (Array.isArray(incomingTask)) {
+        incomingTask = incomingTask;
+      } else if (incomingTypes.length && typeof incomingTask === 'string') {
+        incomingTask = [{ category: incomingTypes[0], tasks: [incomingTask] }];
+      } else if (!incomingTask && incomingTypes.length) {
+        incomingTask = [{ category: incomingTypes[0], tasks: [] }];
       }
+
+      const service_types = incomingTypes && incomingTypes.length ? incomingTypes : (existing?.service_types || []);
+      const service_task = Array.isArray(incomingTask) && incomingTask.length ? incomingTask : (existing?.service_task || []);
+
+      const years_experience =
+        (d.years_experience !== undefined && d.years_experience !== null && String(d.years_experience) !== '')
+          ? d.years_experience
+          : (existing?.years_experience ?? null);
+
+      const tools_in = d.tools_provided;
+      const tools_provided = tools_in !== undefined && tools_in !== null && String(tools_in) !== ''
+        ? (['yes','y','true','t','1'].includes(String(tools_in).trim().toLowerCase()) ? 'Yes' : 'No')
+        : (existing?.tools_provided ?? null);
+
+      const work_description =
+        (d.work_description !== undefined && String(d.work_description).trim() !== '')
+          ? d.work_description
+          : (existing?.work_description ?? null);
+
       const row = {
         request_group_id: gid,
         worker_id: worker_id || null,
         auth_uid: auth_uid || null,
-        email_address: email || null,
+        email_address: email || existing?.email_address || null,
         service_types,
-        service_task: service_task || [],
-        years_experience: d.years_experience ?? null,
-        tools_provided: d.tools_provided ?? null,
-        work_description: d.work_description ?? d.service_description ?? null,
-        barangay: d.barangay ?? null,
-        street: d.street ?? null
+        service_task,
+        years_experience,
+        tools_provided,
+        work_description
       };
-      const { data: existing } = await supabaseAdmin.from('worker_work_information').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
+
       if (existing?.id) {
         await supabaseAdmin.from('worker_work_information').update(row).eq('id', existing.id);
       } else {
@@ -957,7 +1022,7 @@ exports.updateByGroup = async (req, res) => {
         if (typeof v === 'string' && /^https?:\/\//i.test(v)) {
           shape[k] = v;
         } else if (typeof v === 'string' && /^data:/i.test(v)) {
-          const up = await uploadDataUrlToBucket(bucket, v, `${gid}-${k}`);
+          const up = await safeUploadDataUrl(bucket, v, `${gid}-${k}`);
           shape[k] = up?.url || '';
         }
       };
@@ -982,29 +1047,29 @@ exports.updateByGroup = async (req, res) => {
 
     if (statusRow?.id) {
       await supabaseAdmin.from('worker_application_status').update({
-        info: {
-          first_name: infoRes?.first_name || null,
-          last_name: infoRes?.last_name || null,
-          email_address: email || null,
-          contact_number: null,
-          street: null,
-          barangay: null,
-          profile_picture_url: infoRes?.profile_picture_url || null
-        },
-        details: {
-          service_types: detailsRes?.service_types || [],
-          service_task: detailsRes?.service_task || [],
-          years_experience: detailsRes?.years_experience ?? null,
-          tools_provided: detailsRes?.tools_provided ?? null,
-          work_description: detailsRes?.work_description || null
-        },
-        rate: {
-          rate_type: rateRes?.rate_type || null,
-          rate_from: rateRes?.rate_from ?? null,
-          rate_to: rateRes?.rate_to ?? null,
-          rate_value: rateRes?.rate_value ?? null
-        }
-      }).eq('id', statusRow.id);
+      info: {
+        first_name: infoRes?.first_name || null,
+        last_name: infoRes?.last_name || null,
+        email_address: infoRes?.email_address || email || null,
+        contact_number: infoRes?.contact_number || null,
+        street: infoRes?.street || null,
+        barangay: infoRes?.barangay || null,
+        profile_picture_url: infoRes?.profile_picture_url || null
+      },
+      details: {
+        service_types: detailsRes?.service_types || [],
+        service_task: detailsRes?.service_task || [],
+        years_experience: detailsRes?.years_experience ?? null,
+        tools_provided: detailsRes?.tools_provided ?? null,
+        work_description: detailsRes?.work_description || null
+      },
+      rate: {
+        rate_type: rateRes?.rate_type || null,
+        rate_from: rateRes?.rate_from ?? null,
+        rate_to: rateRes?.rate_to ?? null,
+        rate_value: rateRes?.rate_value ?? null
+      }
+    }).eq('id', statusRow.id);
     }
 
     return res.status(200).json({ message: 'Updated', request_group_id: gid });
@@ -1012,4 +1077,3 @@ exports.updateByGroup = async (req, res) => {
     return res.status(500).json({ message: friendlyError(e) });
   }
 };
-

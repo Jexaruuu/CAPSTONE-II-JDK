@@ -772,7 +772,7 @@ normalized.metadata = {
                     <div className="space-y-5">
                       <LabelValue label="Years of Experience" value={years_experience} />
                       <LabelValue label="Tools Provided" value={tools_provided} />
-                      <LabelValue label="Description" value={service_description || '-'} />
+                      <LabelValue label="Work Description" value={service_description || '-'} />
                     </div>
                   </div>
                 </div>

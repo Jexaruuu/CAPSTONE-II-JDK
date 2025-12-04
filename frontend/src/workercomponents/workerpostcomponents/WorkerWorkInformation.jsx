@@ -78,21 +78,23 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     };
   }, [openTaskKey]);
 
-  const PopList = ({ items, value, onSelect, title = 'Select', fullWidth = false, emptyLabel = 'No options', disabledLabel }) => {
+  const PopList = ({ items, value, onSelect, title = 'Select', fullWidth = false, emptyLabel = 'No options', disabledLabel, hideSearch = false }) => {
     const [q, setQ] = useState('');
-    const filtered = (items || []).filter((it) => it.toLowerCase().includes(q.toLowerCase()));
+    const filtered = hideSearch ? items || [] : (items || []).filter((it) => it.toLowerCase().includes(q.toLowerCase()));
     return (
       <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
         <div className="px-2 pb-2">
           <div className="text-sm font-semibold text-gray-800">{title}</div>
-          <div className="mt-2">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search…"
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          {!hideSearch && (
+            <div className="mt-2">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search…"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
         </div>
         <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
           {filtered && filtered.length ? (
@@ -116,7 +118,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
           )}
         </div>
         <div className="flex items-center justify-between mt-3 px-2">
-          <div className="text-xs text-gray-400">{filtered.length} result{filtered.length === 1 ? '' : 's'}</div>
+          <div className="text-xs text-gray-400">{(filtered || []).length} result{(filtered || []).length === 1 ? '' : 's'}</div>
           <button type="button" onClick={() => onSelect('')} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
         </div>
       </div>
@@ -331,10 +333,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <h3 className="text-xl md:text-2xl font-semibold">Work Information</h3>
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Worker
-            </span>
           </div>
 
           <div className="px-6 py-6">
@@ -378,7 +376,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                                 <span className="text-xs text-gray-400">No tasks selected</span>
                               ) : (
                                 selectedNonEmpty.map((t) => (
-                                  <span key={t} className="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs">{t}</span>
+                                  <span key={t} className="inline-flex items-center px-2 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-xs">{t}</span>
                                 ))
                               )}
                             </div>
@@ -524,6 +522,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                       value={toolsProvided}
                       fullWidth
                       title="Select Tools Provided"
+                      hideSearch
                       onSelect={(v) => {
                         setToolsProvided(v);
                         setToolsOpen(false);

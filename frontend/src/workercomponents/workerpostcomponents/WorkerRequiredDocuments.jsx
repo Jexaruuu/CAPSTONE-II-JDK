@@ -104,7 +104,7 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
         <div className="flex items-center gap-2">
           <h4 className="text-[15px] font-semibold text-gray-900">{label} {required && <span className="text-red-500">*</span>}</h4>
         </div>
-        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium ${statusPill}`}>
+        <span className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium ${statusPill}`}>
           <span className={`h-2 w-2 rounded-full ${value ? 'bg-[#008cfc]' : 'bg-[#008cfc]/60'}`} />
           {value ? 'Uploaded' : 'Required'}
         </span>
@@ -330,10 +330,6 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-500">{uploadedCount}/7 uploaded</span>
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                Documents
-              </span>
             </div>
           </div>
 
