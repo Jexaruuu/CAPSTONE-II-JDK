@@ -340,7 +340,7 @@ const WorkerViewApplication = () => {
   const contactDisplay = (
     <div className="inline-flex items-center gap-2">
       <img src="/philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
-      <span className="text-gray-700 text-sm">+63</span>
+      <span className="text-base md:text-lg leading-6 text-gray-900 font-medium">+63</span>
       <span className="text-base md:text-lg leading-6 text-gray-900 font-medium">
         {contactLocal10 || '9XXXXXXXXX'}
       </span>
@@ -632,7 +632,7 @@ const WorkerViewApplication = () => {
                       <button
                         type="button"
                         onClick={handleCancel}
-                        className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-orange-300 text-orange-600 hover:bg-orange-50"
+                        className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
                       >
                         Cancel Application
                       </button>
@@ -697,14 +697,21 @@ const WorkerViewApplication = () => {
           >
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingCancel && setShowCancel(false)} />
             <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
-              <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-orange-600 to-orange-500 text-white">
-                <div className="text-xl font-semibold">Cancel Application</div>
-                <div className="text-xs opacity-90">Tell us why you want to cancel</div>
+              <div className="px-6 pt-6">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-100 grid place-items-center">
+                    <span className="text-blue-600 text-lg">ⓘ</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xl font-semibold text-gray-900">Cancel Application</div>
+                    <div className="text-sm text-gray-600">Let us know why you’re cancelling.</div>
+                  </div>
+                </div>
               </div>
               <div className="px-6 py-5 space-y-4">
                 <div className="grid grid-cols-1 gap-2">
                   {REASONS.map((r) => (
-                    <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${reason===r?'border-orange-500 ring-1 ring-orange-300 bg-orange-50':'border-gray-200 hover:bg-gray-50'}`}>
+                    <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${reason===r?'border-blue-400 ring-1 ring-blue-200 bg-blue-50':'border-gray-200 hover:bg-gray-50'}`}>
                       <input
                         type="radio"
                         name="cancel-reason"
@@ -725,11 +732,11 @@ const WorkerViewApplication = () => {
                     onChange={(e) => setOtherReason(e.target.value)}
                     disabled={submittingCancel}
                     placeholder="Type your reason here"
-                    className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
 
-                {cancelErr ? <div className="text-sm text-orange-700">{cancelErr}</div> : null}
+                {cancelErr ? <div className="text-sm text-blue-700">{cancelErr}</div> : null}
               </div>
               <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
                 <button
@@ -743,7 +750,7 @@ const WorkerViewApplication = () => {
                 <button
                   type="button"
                   onClick={submitCancel}
-                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-orange-300 text-orange-600 hover:bg-orange-50 disabled:opacity-60"
+                  className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition disabled:opacity-60"
                   disabled={submittingCancel}
                 >
                   {submittingCancel ? 'Submitting...' : 'Confirm Cancel'}

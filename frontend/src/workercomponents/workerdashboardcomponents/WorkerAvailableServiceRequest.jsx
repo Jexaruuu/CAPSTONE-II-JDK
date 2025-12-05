@@ -417,7 +417,7 @@ const WorkerAvailableServiceRequest = () => {
 
       {displayItems.length === 0 ? (
         <div className="w-full">
-          <div className="bg-white border border-gray-200 rounded-lg p-6 text-center shadow-sm">
+          <div className="bg-white border border-gray-200 rounded-md p-6 text-center shadow-sm">
             <div className="flex justify-center mb-4">
               <img src="/noavailable.png" alt="No available requests" className="w-20 h-20 object-contain" />
             </div>
