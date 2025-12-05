@@ -279,8 +279,20 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
       medical_size: medical?.size || 0,
       certs_size: certs?.size || 0
     };
-    try { localStorage.setItem('workerDocumentsData', JSON.stringify(docsData)); } catch {}
+     try { localStorage.setItem('workerDocumentsData', JSON.stringify(docsData)); } catch {}
     try { localStorage.setItem('workerDocuments', JSON.stringify(docsMeta)); } catch {}
+
+    const canon = {
+      primary_id_front: docsData.primary_front || '',
+      primary_id_back: docsData.primary_back || '',
+      secondary_id: docsData.secondary_id || '',
+      nbi_police_clearance: docsData.nbi || '',
+      proof_of_address: docsData.address || '',
+      medical_certificate: docsData.medical || '',
+      certificates: docsData.certs || ''
+    };
+    try { localStorage.setItem('worker_required_documents', JSON.stringify(canon)); } catch {}
+    try { localStorage.setItem('workerRequiredDocuments', JSON.stringify(canon)); } catch {}
     onCollect?.({ email_address: meEmail || '', ...docsMeta, ...docsData });
     handleNext?.();
   };

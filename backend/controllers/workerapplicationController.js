@@ -88,8 +88,22 @@ function normalizeDocs(arr) {
       o.data_url || o.dataUrl || o.dataURL || o.base64 || o.imageData || o.blobData || '';
     const data_url = coerceDataUrl(rawData, (o.mime || o.mimetype || '').toString()) || (String(rawData || '').startsWith('data:') ? rawData : '');
     const filename = o.filename || o.fileName || o.name || '';
-    return { kind, url, data_url, filename };
+     const preferData = String(url || '').startsWith('data:') && !data_url ? url : data_url;
+    const final_url = preferData && preferData.startsWith('data:') ? '' : url;
+    const final_data_url = preferData && preferData.startsWith('data:') ? preferData : data_url;
+    return { kind, url: final_url, data_url: final_data_url, filename };
   });
+}
+
+function extFromMime(m) {
+  const mime = String(m || '').toLowerCase();
+  if (mime === 'image/jpeg' || mime === 'image/jpg') return 'jpg';
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/gif') return 'gif';
+  if (mime === 'image/svg+xml') return 'svg';
+  if (mime === 'application/pdf') return 'pdf';
+  return 'bin';
 }
 
 async function safeUploadDataUrl(bucket, dataUrl, path) {
@@ -101,10 +115,12 @@ async function safeUploadDataUrl(bucket, dataUrl, path) {
   if (!m) throw new Error('invalid data url');
   const contentType = m[1];
   const bytes = Buffer.from(m[2], 'base64');
-  const { error } = await supabaseAdmin.storage.from(bucket).upload(path, bytes, { upsert: true, contentType });
+  const ext = extFromMime(contentType);
+  const finalPath = path.includes('.') ? path : `${path}.${ext}`;
+  const { error } = await supabaseAdmin.storage.from(bucket).upload(finalPath, bytes, { upsert: true, contentType });
   if (error) throw error;
-  const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
-  return { url: pub?.publicUrl || '', name: path.split('/').pop() || null };
+  const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(finalPath);
+  return { url: pub?.publicUrl || '', name: finalPath.split('/').pop() || null };
 }
 
 exports.submitFullApplication = async (req, res) => {
@@ -114,7 +130,21 @@ exports.submitFullApplication = async (req, res) => {
     const details = src.details || src.detail || src.work || {};
     const rate = src.rate || src.pricing || {};
     const metadata = src.metadata || {};
-    const docsIn = normalizeDocs(src.documents || src.docs || src.attachments || src.required_documents || src.worker_documents || {});
+    const docsIn = normalizeDocs(
+  src.documents ||
+  src.docs ||
+  src.attachments ||
+  src.required_documents ||
+  src.requiredDocuments ||
+  src.required_documents_object ||            // <— add
+  src.worker_documents ||
+  src.workerDocuments ||
+  src.documentsData ||
+  details.required_documents ||
+  details.requiredDocuments ||                // <— add
+  details.documents ||
+  {}
+);
 
     const worker_id_in = pick(src, ['worker_id', 'workerId', 'info.worker_id', 'info.workerId']);
     const first_name = pick(src, ['first_name', 'firstName', 'info.first_name', 'info.firstName', 'metadata.first_name', 'metadata.firstName']);
@@ -214,9 +244,9 @@ exports.submitFullApplication = async (req, res) => {
 
     const request_group_id = newGroupId();
 
-   let profileUpload = null;
+  let profileUpload = null;
 let profileDirect = null;
-const rawProfile = profile_picture_any || profile_picture_data_any || '';
+const rawProfile = profile_picture_data_any || profile_picture_any || '';
 if (rawProfile) {
   const s = String(rawProfile);
   if (/^data:/i.test(s)) {
@@ -448,11 +478,22 @@ if (rawProfile) {
       const d = docsIn[i] || {};
       const key = aliasToKey(d.kind, d.filename) || aliasToKey(d.filename, d.kind);
       if (!key) continue;
-      if (typeof d.url === 'string' && /^https?:\/\//i.test(d.url)) {
-        docCols[key] = d.url;
-        continue;
-      }
-      const maybeData = coerceDataUrl(d.data_url, 'image/jpeg');
+      if (typeof d.url === 'string') {
+  if (/^https?:\/\//i.test(d.url)) {
+    docCols[key] = d.url;
+    continue;
+  }
+  if (/^data:/i.test(d.url)) {
+    try {
+      const up = await safeUploadDataUrl(bucket, d.url, `${request_group_id}-${key}`);
+      docCols[key] = up?.url || '';
+    } catch {
+      docCols[key] = docCols[key] || '';
+    }
+    continue;
+  }
+}
+const maybeData = coerceDataUrl(d.data_url, 'image/jpeg');
 if (maybeData) {
   try {
     const up = await safeUploadDataUrl(bucket, maybeData, `${request_group_id}-${key}`);
@@ -635,7 +676,14 @@ exports.listApproved = async (req, res) => {
 function readAppUHeader(req){
   const h=req.headers["x-app-u"];
   if(!h) return {};
-  try{return JSON.parse(decodeURIComponent(h));}catch{return {};}
+  try{
+    const o=JSON.parse(decodeURIComponent(h));
+    const email=o.email||o.email_address||o.e||'';
+    const auth_uid=o.auth_uid||o.authUid||o.au||'';
+    return { email, email_address: email, auth_uid };
+  }catch{
+    return {};
+  }
 }
 
 exports.listMine = async (req, res) => {

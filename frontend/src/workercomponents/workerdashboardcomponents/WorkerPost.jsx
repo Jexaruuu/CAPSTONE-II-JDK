@@ -631,6 +631,29 @@ function WorkerPost() {
     }, 2000);
   };
 
+  useEffect(() => {
+    const lock = showDeleteConfirm || showDeleteBusy || showDeleteDone;
+    if (!lock) return;
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [showDeleteConfirm, showDeleteBusy, showDeleteDone]);
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">

@@ -1,4 +1,3 @@
-// WorkerReviewPost.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -137,6 +136,22 @@ const WorkerReviewPost = ({ handleBack }) => {
       return [];
     }
   })();
+  const savedDocsAlt = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('workerDocuments') || '[]');
+    } catch {
+      return [];
+    }
+  })();
+  const savedDocsObj = (() => {
+    try {
+      const a = localStorage.getItem('worker_required_documents') || localStorage.getItem('workerRequiredDocuments') || '{}';
+      const o = JSON.parse(a || '{}');
+      return o && typeof o === 'object' ? o : {};
+    } catch {
+      return {};
+    }
+  })();
   const savedRate = (() => {
     try {
       return JSON.parse(localStorage.getItem('workerRate') || '{}');
@@ -176,7 +191,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   const rate_value = s.rate_value ?? savedRate.rate_value ?? savedRate.rateValue ?? '';
 
   const docsFromState = Array.isArray(s.docs) ? s.docs : [];
-  const docs = docsFromState.length ? docsFromState : savedDocsData;
+  const docs = docsFromState.length ? docsFromState : [...(Array.isArray(savedDocsData) ? savedDocsData : []), ...(Array.isArray(savedDocsAlt) ? savedDocsAlt : [])];
 
   const formatList = (arr) => (Array.isArray(arr) && arr.length ? arr.join(', ') : '-');
 
@@ -189,75 +204,97 @@ const WorkerReviewPost = ({ handleBack }) => {
     return '';
   };
 
- const normalizeDocsForSubmit = (arr) => {
-  const kindMap = (s = "") => {
-    const t = String(s).toLowerCase().replace(/\s+/g, " ").trim();
-    if ((/primary|main/.test(t)) && (/(front|face|id\s*front)/.test(t))) return "primary_id_front";
-    if ((/primary|main/.test(t)) && (/(back|rear|reverse|id\s*back)/.test(t))) return "primary_id_back";
-    if (/secondary|alternate|alt/.test(t)) return "secondary_id";
-    if (/(nbi|police)/.test(t)) return "nbi_police_clearance";
-    if (/proof.*address|address.*proof|billing|bill/.test(t)) return "proof_of_address";
-    if (/medical|med\s*cert|health/.test(t)) return "medical_certificate";
-    if (/certificate|certs?\b|tesda|ncii|nc2/.test(t)) return "certificates";
-    return "";
-  };
-  const extFromData = (s = "") => {
-    const m = /^data:([^;]+);base64,/.exec(s);
-    if (!m) return "bin";
-    const mime = m[1].toLowerCase();
-    if (mime === "image/jpeg") return "jpg";
-    if (mime === "image/png") return "png";
-    if (mime === "image/webp") return "webp";
-    if (mime === "image/gif") return "gif";
-    if (mime === "image/svg+xml") return "svg";
-    if (mime === "application/pdf") return "pdf";
-    return "bin";
-  };
-  const pull = (v) => {
-    if (!v) return { url: "", data_url: "", guess: "" };
-    if (typeof v === "string") {
-      return { url: /^https?:\/\//i.test(v) ? v : "", data_url: v.startsWith("data:") ? v : "", guess: "" };
-    }
-    const url = typeof v.url === "string" && /^https?:\/\//i.test(v.url) ? v.url : "";
-    const data_url = typeof v.data_url === "string" && v.data_url.startsWith("data:") ? v.data_url : "";
-    const guess = v.kind || v.type || v.label || v.name || v.field || v.slot || v.filename || v.fileName || v.title || v.meta?.kind || v.meta?.label || v.meta?.name || "";
-    return { url, data_url, guess: String(guess || "") };
-  };
-  const pushDoc = (out, guessedKind, v) => {
-    const { url, data_url, guess } = pull(v);
-    const k = kindMap(guessedKind || guess);
-    if (!(url || data_url)) return;
-    const ext = data_url ? extFromData(data_url) : (url.split(".").pop() || "bin");
-    const filename = k ? `${k}.${ext}` : `document.${ext}`;
-    out.push({ kind: k, url, data_url, filename });
-  };
-
-  const out = [];
-  if (arr && !Array.isArray(arr) && typeof arr === "object") {
-    pushDoc(out, "primary_id_front", arr.primary_id_front || arr.primary_front);
-    pushDoc(out, "primary_id_back", arr.primary_id_back || arr.primary_back);
-    pushDoc(out, "secondary_id", arr.secondary_id);
-    pushDoc(out, "nbi_police_clearance", arr.nbi_police_clearance || arr.nbi);
-    pushDoc(out, "proof_of_address", arr.proof_of_address || arr.address);
-    pushDoc(out, "medical_certificate", arr.medical_certificate || arr.medical);
-    pushDoc(out, "certificates", arr.certificates || arr.certs);
-    return out;
-  }
-
-  (Array.isArray(arr) ? arr : []).forEach((d) => {
-    const guess =
-      d?.kind || d?.type || d?.label || d?.name || d?.field || d?.slot || d?.filename || d?.fileName || d?.title || d?.meta?.kind || d?.meta?.label || d?.meta?.name || "";
-    pushDoc(out, guess, d);
-    if (!guess) {
-      Object.keys(d || {}).forEach((k) => {
-        if (["url", "link", "href", "data_url", "dataUrl", "dataURL", "base64", "imageData", "blobData", "meta"].includes(k)) return;
-        pushDoc(out, k, d[k]);
+  const blobToDataUrl = async (u) => {
+    try {
+      const r = await fetch(u);
+      const b = await r.blob();
+      return await new Promise((resolve) => {
+        const fr = new FileReader();
+        fr.onloadend = () => resolve(fr.result);
+        fr.readAsDataURL(b);
       });
+    } catch {
+      return '';
     }
-  });
+  };
 
-  return out;
-};
+  const normalizeDocsForSubmit = (arr) => {
+    const kindMap = (s = "") => {
+      const t = String(s).toLowerCase().replace(/\s+/g, " ").trim();
+      if ((/primary|main/.test(t)) && (/(front|face|id\s*front)/.test(t))) return "primary_id_front";
+      if ((/primary|main/.test(t)) && (/(back|rear|reverse|id\s*back)/.test(t))) return "primary_id_back";
+      if (/secondary|alternate|alt/.test(t)) return "secondary_id";
+      if (/(nbi|police)/.test(t)) return "nbi_police_clearance";
+      if (/proof.*address|address.*proof|billing|bill/.test(t)) return "proof_of_address";
+      if (/medical|med\s*cert|health/.test(t)) return "medical_certificate";
+      if (/certificate|certs?\b|tesda|ncii|nc2/.test(t)) return "certificates";
+      return "";
+    };
+    const extFromData = (s = "") => {
+      const m = /^data:([^;]+);base64,/.exec(s);
+      if (!m) return "bin";
+      const mime = m[1].toLowerCase();
+      if (mime === "image/jpeg") return "jpg";
+      if (mime === "image/png") return "png";
+      if (mime === "image/webp") return "webp";
+      if (mime === "image/gif") return "gif";
+      if (mime === "image/svg+xml") return "svg";
+      if (mime === "application/pdf") return "pdf";
+      return "bin";
+    };
+    const pickDataUrl = (v) => {
+      const s1 = typeof v?.data_url === "string" ? v.data_url : "";
+      const s2 = typeof v?.dataUrl === "string" ? v.dataUrl : "";
+      const s3 = typeof v?.dataURL === "string" ? v.dataURL : "";
+      const s4 = typeof v?.imageData === "string" ? v.imageData : "";
+      const s5 = typeof v?.blobData === "string" ? v.blobData : "";
+      const b64 = typeof v?.base64 === "string" ? v.base64 : "";
+      if (s1.startsWith("data:")) return s1;
+      if (s2.startsWith("data:")) return s2;
+      if (s3.startsWith("data:")) return s3;
+      if (s4.startsWith("data:")) return s4;
+      if (s5.startsWith("data:")) return s5;
+      if (b64 && /^[A-Za-z0-9+/]+={0,2}$/.test(b64)) return `data:image/jpeg;base64,${b64}`;
+      return "";
+    };
+    const pull = (v) => {
+      if (!v) return { url: "", data_url: "", guess: "" };
+      if (typeof v === "string") {
+        return { url: /^https?:\/\//i.test(v) ? v : "", data_url: v.startsWith("data:") ? v : "", guess: "" };
+      }
+      const url = typeof v.url === "string" && /^https?:\/\//i.test(v.url) ? v.url : (typeof v.link === "string" && /^https?:\/\//i.test(v.link) ? v.link : (typeof v.href === "string" && /^https?:\/\//i.test(v.href) ? v.href : ""));
+      const data_url = pickDataUrl(v);
+      const guess = v.kind || v.type || v.label || v.name || v.field || v.filename || v.fileName || v.title || v.meta?.kind || v.meta?.label || v.meta?.name || "";
+      return { url, data_url, guess: String(guess || "") };
+    };
+    const pushDoc = (out, guessedKind, v) => {
+      const { url, data_url, guess } = pull(v);
+      if (!(url || data_url)) return;
+      const k = kindMap(guessedKind || guess);
+      const ext = data_url ? extFromData(data_url) : ((url.split(".").pop() || "bin").split("?")[0]);
+      const filename = k ? `${k}.${ext}` : `document.${ext}`;
+      out.push({ kind: k, url, data_url, filename });
+    };
+
+    const out = [];
+    if (arr && !Array.isArray(arr) && typeof arr === "object") {
+      pushDoc(out, "primary_id_front", arr.primary_id_front || arr.primary_front || arr.front);
+      pushDoc(out, "primary_id_back", arr.primary_id_back || arr.primary_back || arr.back);
+      pushDoc(out, "secondary_id", arr.secondary_id || arr.secondary || arr.alt);
+      pushDoc(out, "nbi_police_clearance", arr.nbi_police_clearance || arr.nbi || arr.police);
+      pushDoc(out, "proof_of_address", arr.proof_of_address || arr.address || arr.billing);
+      pushDoc(out, "medical_certificate", arr.medical_certificate || arr.medical);
+      pushDoc(out, "certificates", arr.certificates || arr.certs);
+      return out;
+    }
+
+    (Array.isArray(arr) ? arr : []).forEach((d) => {
+      const guess = d?.kind || d?.type || d?.label || d?.name || d?.field || d?.filename || d?.fileName || d?.title || d?.meta?.kind || d?.meta?.label || d?.meta?.name || "";
+      pushDoc(out, guess, d);
+    });
+
+    return out;
+  };
 
   const contactLocal10 = normalizeLocalPH10(contact_number);
 
@@ -322,7 +359,7 @@ const WorkerReviewPost = ({ handleBack }) => {
     if (Array.isArray(serviceTaskRaw)) {
       serviceTaskRaw.forEach((it) => {
         const cat = String(it?.category || '').trim();
-        const arr = Array.isArray(it?.tasks) ? it.tasks : [];
+        const arr = Array.isArray(it?.tasks) ? it?.tasks : [];
         if (!cat) return;
         const vals = arr.map((x) => String(x || '').trim()).filter(Boolean);
         out[cat] = Array.from(new Set([...(out[cat] || []), ...vals]));
@@ -358,11 +395,27 @@ const WorkerReviewPost = ({ handleBack }) => {
           return {};
         }
       })();
-      const docsDraft = (() => {
+      const docsDraftA = (() => {
         try {
           return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]');
         } catch {
           return [];
+        }
+      })();
+      const docsDraftB = (() => {
+        try {
+          return JSON.parse(localStorage.getItem('workerDocuments') || '[]');
+        } catch {
+          return [];
+        }
+      })();
+      const docsDraftObj = (() => {
+        try {
+          const a = localStorage.getItem('worker_required_documents') || localStorage.getItem('workerRequiredDocuments') || '{}';
+          const o = JSON.parse(a || '{}');
+          return o && typeof o === 'object' ? o : {};
+        } catch {
+          return {};
         }
       })();
       const rateDraft = (() => {
@@ -380,7 +433,15 @@ const WorkerReviewPost = ({ handleBack }) => {
         }
       })();
 
-      const payload = {
+      const workerAuth = (() => {
+        try {
+          return JSON.parse(localStorage.getItem('workerAuth') || '{}');
+        } catch {
+          return {};
+        }
+      })();
+
+      const initialPayload = {
         info: {
           firstName: infoDraft.firstName || '',
           lastName: infoDraft.lastName || '',
@@ -400,7 +461,7 @@ const WorkerReviewPost = ({ handleBack }) => {
           toolsProvided: workDraft.tools_provided || workDraft.toolsProvided || '',
           serviceDescription: workDraft.service_description || workDraft.serviceDescription || ''
         },
-        documents: normalizeDocsForSubmit(docsDraft),
+        documents: [],
         rate: {
           rateType: rateDraft.rateType || rateDraft.rate_type || '',
           rateFrom: rateDraft.rateFrom || rateDraft.rate_from || '',
@@ -414,15 +475,100 @@ const WorkerReviewPost = ({ handleBack }) => {
         }
       };
 
-      const workerAuth = (() => {
-        try {
-          return JSON.parse(localStorage.getItem('workerAuth') || '{}');
-        } catch {
-          return {};
+      let profilePicData = '';
+      const picRaw = String(initialPayload.info.profilePicture || '');
+      if (picRaw.startsWith('data:')) {
+        profilePicData = picRaw;
+      } else if (picRaw.startsWith('blob:')) {
+        profilePicData = await blobToDataUrl(picRaw);
+      } else {
+        profilePicData = '';
+      }
+      if (profilePicData) {
+        initialPayload.info.profilePicture = profilePicData;
+      }
+
+      const docsCandidatesMerged = []
+        .concat(Array.isArray(docsDraftA) ? docsDraftA : [])
+        .concat(Array.isArray(docsDraftB) ? docsDraftB : []);
+      const docsDraftProcessed = await Promise.all(
+        (docsCandidatesMerged || []).map(async (d) => {
+          if (!d) return d;
+          const u = typeof d === 'string' ? d : (d.url || d.link || d.href || '');
+          if (typeof u === 'string' && u.startsWith('blob:')) {
+            const du = await blobToDataUrl(u);
+            if (typeof d === 'string') return { data_url: du };
+            return { ...d, data_url: du, url: '' };
+          }
+          return d;
+        })
+      );
+
+       const docsObjPrepared = await (async () => {
+        const readJson = (k, d) => {
+          try { return JSON.parse(localStorage.getItem(k) || d); } catch { return JSON.parse(d); }
+        };
+        const objCanon = readJson('worker_required_documents', '{}');
+        const objCanonAlt = readJson('workerRequiredDocuments', '{}');
+        const objData = readJson('workerDocumentsData', '{}');
+        const objMeta = readJson('workerDocuments', '{}');
+
+        const mapAnyToCanon = (o) => {
+          if (!o || typeof o !== 'object') return {};
+          return {
+            primary_id_front: o.primary_id_front || o.primary_front || o.front || '',
+            primary_id_back: o.primary_id_back || o.primary_back || o.back || '',
+            secondary_id: o.secondary_id || o.secondary || o.alt || '',
+            nbi_police_clearance: o.nbi_police_clearance || o.nbi || o.police || '',
+            proof_of_address: o.proof_of_address || o.address || o.billing || '',
+            medical_certificate: o.medical_certificate || o.medical || '',
+            certificates: o.certificates || o.certs || ''
+          };
+        };
+
+        let base = Object.assign({}, mapAnyToCanon(objCanon), mapAnyToCanon(objCanonAlt));
+        if (!Object.values(base).some(Boolean)) {
+          base = mapAnyToCanon(objData);
         }
+        if (!Object.values(base).some(Boolean)) {
+          base = mapAnyToCanon(objMeta);
+        }
+
+        const keys = ['primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate','certificates'];
+        for (const k of keys) {
+          const v = base[k];
+          if (typeof v === 'string' && v.startsWith('blob:')) {
+            const du = await blobToDataUrl(v);
+            if (du) base[k] = du;
+          }
+        }
+        return base;
       })();
+
+            const documentsNormalized = Object.keys(docsObjPrepared || {}).some(k => (docsObjPrepared[k] || '').length)
+        ? normalizeDocsForSubmit(docsObjPrepared)
+        : normalizeDocsForSubmit(docsDraftProcessed);
+
+
+      const docsObject = (() => {
+  const out = {};
+  (documentsNormalized || []).forEach((d) => {
+    const k = d?.kind || '';
+    if (!k) return;
+    const val = d?.data_url || d?.url || '';
+    if (!val) return;
+    out[k] = val;
+  });
+  const srcObj = (docsDraftObj && typeof docsDraftObj === 'object') ? docsDraftObj : {};
+  ['primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate','certificates'].forEach((k) => {
+    const v = srcObj[k];
+    if (typeof v === 'string' && v && !out[k]) out[k] = v;
+  });
+  return out;
+})();
+
       const emailVal =
-        (payload.info.email ||
+        (initialPayload.info.email ||
           savedInfo.email ||
           workerAuth.email ||
           localStorage.getItem('worker_email') ||
@@ -439,49 +585,51 @@ const WorkerReviewPost = ({ handleBack }) => {
 
       const normalized = {
         worker_id: workerId || '',
-        first_name: (payload.info.firstName || '').trim(),
-        last_name: (payload.info.lastName || '').trim(),
+        first_name: (initialPayload.info.firstName || '').trim(),
+        last_name: (initialPayload.info.lastName || '').trim(),
         email_address: emailVal,
-        contact_number: (payload.info.contactNumber || '').trim(),
-        barangay: (payload.info.barangay || '').trim() || 'N/A',
-        street: (payload.info.street || '').trim() || 'N/A',
-        date_of_birth: (payload.info.birthDate || '').trim(),
-        age: payload.info.age || null,
-        profile_picture: payload.info.profilePicture || '',
-        profile_picture_name: payload.info.profilePictureName || '',
-        service_types: asStringArray(payload.work.serviceTypes),
-        service_task: buildServiceTaskObject(payload.work.serviceTask, payload.work.serviceTypes),
-        years_experience: coerceYears(payload.work.yearsExperience),
-        tools_provided: normalizeToolsProvided(payload.work.toolsProvided),
-        service_description: (payload.work.serviceDescription || '').trim(),
-        rate_type: (payload.rate.rateType || '').trim(),
+        contact_number: (initialPayload.info.contactNumber || '').trim(),
+        barangay: (initialPayload.info.barangay || '').trim() || 'N/A',
+        street: (initialPayload.info.street || '').trim() || 'N/A',
+        date_of_birth: (initialPayload.info.birthDate || '').trim(),
+        age: initialPayload.info.age || null,
+        profile_picture: initialPayload.info.profilePicture || '',
+        profile_picture_name: initialPayload.info.profilePictureName || '',
+        service_types: asStringArray(initialPayload.work.serviceTypes),
+        service_task: buildServiceTaskObject(initialPayload.work.serviceTask, initialPayload.work.serviceTypes),
+        years_experience: coerceYears(initialPayload.work.yearsExperience),
+        tools_provided: normalizeToolsProvided(initialPayload.work.toolsProvided),
+        service_description: (initialPayload.work.serviceDescription || '').trim(),
+        rate_type: (initialPayload.rate.rateType || '').trim(),
         rate_from: null,
         rate_to: null,
         rate_value: null,
-        documents: Array.isArray(payload.documents) ? payload.documents : [],
+        documents: documentsNormalized,
+        required_documents_object: docsObject,
         agreements: {
-          consent_background_checks: !!payload.agreements.consent_background_checks,
-          consent_terms_privacy: !!payload.agreements.consent_terms_privacy,
-          consent_data_privacy: !!payload.agreements.consent_data_privacy
+          consent_background_checks: !!initialPayload.agreements.consent_background_checks,
+          consent_terms_privacy: !!initialPayload.agreements.consent_terms_privacy,
+          consent_data_privacy: !!initialPayload.agreements.consent_data_privacy
         },
         metadata: {
-          profile_picture_name: payload.info.profilePictureName || '',
-          auth_uid: localStorage.getItem('auth_uid') || workerAuth.auth_uid || ''
+          profile_picture_name: initialPayload.info.profilePictureName || '',
+          auth_uid: localStorage.getItem('auth_uid') || workerAuth.auth_uid || '',
+          profile_picture_data_url: profilePicData
         }
       };
 
       if (normalized.rate_type === 'Hourly Rate') {
         normalized.rate_from = (() => {
-          const n = Number(payload.rate.rateFrom);
+          const n = Number(initialPayload.rate.rateFrom);
           return Number.isFinite(n) ? n : null;
         })();
         normalized.rate_to = (() => {
-          const n = Number(payload.rate.rateTo);
+          const n = Number(initialPayload.rate.rateTo);
           return Number.isFinite(n) ? n : null;
         })();
       } else if (normalized.rate_type === 'By the Job Rate') {
         normalized.rate_value = (() => {
-          const n = Number(payload.rate.rateValue);
+          const n = Number(initialPayload.rate.rateValue);
           return Number.isFinite(n) ? n : null;
         })();
       }
@@ -508,38 +656,29 @@ const WorkerReviewPost = ({ handleBack }) => {
         return;
       }
 
-     const profilePicRaw = (payload.info.profilePicture || '').toString();
-const profilePicData = profilePicRaw.startsWith('data:') ? profilePicRaw : '';
-
-const infoPayload = {
-  worker_id: normalized.worker_id,
-  workerId: normalized.worker_id,
-  auth_uid: normalized.metadata.auth_uid,
-  first_name: normalized.first_name,
-  firstName: normalized.first_name,
-  last_name: normalized.last_name,
-  lastName: normalized.last_name,
-  email_address: normalized.email_address,
-  email: normalized.email_address,
-  contact_number: normalized.contact_number,
-  contactNumber: normalized.contact_number,
-  street: normalized.street,
-  barangay: normalized.barangay,
-  profile_picture: normalized.profile_picture,
-  profilePicture: normalized.profile_picture,
-  profile_picture_name: normalized.profile_picture_name,
-  profilePictureName: normalized.profile_picture_name,
-  profile_picture_data_url: profilePicData,
-  profilePictureDataUrl: profilePicData,
-  date_of_birth: normalized.date_of_birth,
-  age: normalized.age
-};
-
-normalized.metadata = {
-  profile_picture_name: payload.info.profilePictureName || '',
-  auth_uid: localStorage.getItem('auth_uid') || workerAuth.auth_uid || '',
-  profile_picture_data_url: profilePicData
-};
+      const infoPayload = {
+        worker_id: normalized.worker_id,
+        workerId: normalized.worker_id,
+        auth_uid: normalized.metadata.auth_uid,
+        first_name: normalized.first_name,
+        firstName: normalized.first_name,
+        last_name: normalized.last_name,
+        lastName: normalized.last_name,
+        email_address: normalized.email_address,
+        email: normalized.email_address,
+        contact_number: normalized.contact_number,
+        contactNumber: normalized.contact_number,
+        street: normalized.street,
+        barangay: normalized.barangay,
+        profile_picture: normalized.profile_picture,
+        profilePicture: normalized.profile_picture,
+        profile_picture_name: normalized.profile_picture_name,
+        profilePictureName: normalized.profile_picture_name,
+        profile_picture_data_url: normalized.metadata.profile_picture_data_url,
+        profilePictureDataUrl: normalized.metadata.profile_picture_data_url,
+        date_of_birth: normalized.date_of_birth,
+        age: normalized.age
+      };
 
       const workPayload = {
         service_types: normalized.service_types,
@@ -565,51 +704,17 @@ normalized.metadata = {
         rateValue: normalized.rate_value
       };
 
-      const jsonBody = {
-        worker_id: normalized.worker_id,
-        first_name: normalized.first_name,
-        last_name: normalized.last_name,
-        email_address: normalized.email_address,
-        contact_number: normalized.contact_number,
-        street: normalized.street,
-        barangay: normalized.barangay,
-        date_of_birth: normalized.date_of_birth,
-        age: normalized.age,
-        service_types: normalized.service_types,
-        service_task: normalized.service_task,
-        years_experience: normalized.years_experience,
-        tools_provided: normalized.tools_provided,
-        service_description: normalized.service_description,
-        rate_type: normalized.rate_type,
-        rate_from: normalized.rate_from,
-        rate_to: normalized.rate_to,
-        rate_value: normalized.rate_value,
-        documents: normalized.documents,
-        agreements: normalized.agreements,
-        metadata: normalized.metadata,
+      const submitBody = {
         info: infoPayload,
-        details: {
-          service_types: normalized.service_types,
-          service_task: normalized.service_task,
-          years_experience: normalized.years_experience,
-          tools_provided: normalized.tools_provided,
-          service_description: normalized.service_description,
-          work_description: normalized.service_description
-        },
-        rate: ratePayload
+        details: workPayload,
+        rate: ratePayload,
+        documents: normalized.documents,
+        required_documents: normalized.required_documents_object,
+        agreements: normalized.agreements,
+        email_address: normalized.email_address,
+        worker_id: normalized.worker_id,
+        metadata: normalized.metadata
       };
-
-  const submitBody = {
-  info: infoPayload,
-  details: workPayload,
-  rate: ratePayload,
-  documents: normalizeDocsForSubmit(normalized.documents),
-  required_documents: normalizeDocsForSubmit(normalized.documents),
-  agreements: normalized.agreements,
-  email_address: normalized.email_address,
-  worker_id: normalized.worker_id,
-  metadata: normalized.metadata
-};
 
       const res = await axios.post(`${API_BASE}/api/workerapplications/submit`, submitBody, {
         withCredentials: true,
