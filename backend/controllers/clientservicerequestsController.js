@@ -1,4 +1,3 @@
-// clientservicerequestsController.js
 const {
   uploadDataUrlToBucket,
   insertClientInformation,
@@ -15,7 +14,8 @@ const {
   getCancelledReasonsByGroupIds,
   updateClientInformation,
   updateServiceRequestDetails,
-  updateServiceRate
+  updateServiceRate,
+  insertClientAgreements
 } = require('../models/clientservicerequestsModel');
 
 const { insertPendingRequest } = require('../models/clientservicerequeststatusModel');
@@ -283,6 +283,24 @@ exports.submitFullRequest = async (req, res) => {
     } catch (e) {
       return res.status(400).json({ message: friendlyError(e) });
     }
+
+    const agreementsSrc = src.agreements || src.terms || {};
+const agree_verify = toBoolStrict(pick(agreementsSrc, ['agree_verify', 'verify']));
+const agree_tos = toBoolStrict(pick(agreementsSrc, ['agree_tos', 'tos']));
+const agree_privacy = toBoolStrict(pick(agreementsSrc, ['agree_privacy', 'privacy']));
+if (agree_verify || agree_tos || agree_privacy) {
+  try {
+    await insertClientAgreements({
+      request_group_id,
+      client_id: effectiveClientId,
+      auth_uid: effectiveAuthUid || auth_uid || null,
+      email_address: infoRow.email_address,
+      agree_verify,
+      agree_tos,
+      agree_privacy
+    });
+  } catch (e) {}
+}
 
     const pendingInfo = {
       first_name: infoRow.first_name,

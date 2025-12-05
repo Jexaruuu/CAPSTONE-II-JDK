@@ -369,7 +369,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
             <h3 className="text-xl md:text-2xl font-semibold text-gray-900">Personal Information</h3>
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+            <span style={{ display: 'none' }} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Client
             </span>
@@ -418,7 +418,7 @@ const ClientInformation = ({ title, setTitle, handleNext }) => {
                         <img
                           src="philippines.png"
                           alt="Philippine Flag"
-                          className="w-full h-full object-contain rounded-md"
+                          className="w/full h/full object-contain rounded-md"
                         />
                       </div>
                       <span className="text-gray-700 text-sm mr-3">+63</span>

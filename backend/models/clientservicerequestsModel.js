@@ -202,6 +202,25 @@ async function updateServiceRate(request_group_id, fields) {
   return data;
 }
 
+async function insertClientAgreements(row) {
+  const payload = {
+    request_group_id: row.request_group_id,
+    client_id: row.client_id ?? null,
+    auth_uid: row.auth_uid ?? null,
+    email_address: row.email_address ?? null,
+    consent_background_checks: !!row.agree_verify,
+    consent_terms_privacy: !!row.agree_tos,
+    consent_data_privacy: !!row.agree_privacy
+  };
+  const { data, error } = await supabaseAdmin
+    .from('client_agreements')
+    .insert([payload])
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 module.exports = {
   uploadDataUrlToBucket,
   findClientByEmail,
@@ -220,5 +239,6 @@ module.exports = {
   getCancelledReasonsByGroupIds,
   updateClientInformation,
   updateServiceRequestDetails,
-  updateServiceRate
+  updateServiceRate,
+  insertClientAgreements
 };

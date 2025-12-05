@@ -191,8 +191,8 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   const contactDisplay = (
     <div className="inline-flex items-center gap-2">
       <img src="/philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
-      <span className="text-gray-700 text-sm">+63</span>
-      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
+      <span className={`leading-6 ${contactLocal10 ? 'text-gray-900 font-semibold' : 'text-gray-400'}`}>+63</span>
+      <span className={`leading-6 ${contactLocal10 ? 'text-gray-900 font-semibold' : 'text-gray-400'}`}>
         {contactLocal10 || '9XXXXXXXXX'}
       </span>
     </div>
@@ -259,6 +259,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       const infoDraft = (() => { try { return JSON.parse(localStorage.getItem('clientInformationForm') || '{}'); } catch { return {}; }})();
       const detailsDraft = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRequestDetails') || '{}'); } catch { return {}; }})();
       const rateDraft = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRate') || '{}'); } catch { return {}; }})();
+      const agreementsDraft = (() => { try { return JSON.parse(localStorage.getItem('clientAgreements') || '{}'); } catch { return {}; }})();
 
       const payload = {
         info: {
@@ -469,33 +470,39 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       };
 
       const jsonBody = {
-        client_id: normalized.client_id,
-        first_name: normalized.first_name,
-        last_name: normalized.last_name,
-        email_address: normalized.email_address,
-        contact_number: normalized.contact_number,
-        barangay: normalized.barangay,
-        address: normalized.address,
-        street: normalized.street,
-        additional_address: normalized.additional_address,
-        service_type: normalized.service_type,
-        category: normalized.category,
-        service_task: normalized.service_task,
-        description: normalized.description,
-        preferred_date: normalized.preferred_date,
-        preferred_time: normalized.preferred_time,
-        is_urgent: normalized.is_urgent,
-        tools_provided: normalized.tools_provided,
-        rate_type: normalized.rate_type,
-        rate_from: normalized.rate_from,
-        rate_to: normalized.rate_to,
-        rate_value: normalized.rate_value,
-        attachments: Array.isArray(normalized.attachments) && normalized.attachments.length ? normalized.attachments : (normalized.attachment ? [normalized.attachment] : []),
-        metadata: metadataPayload,
-        info: infoPayload,
-        details: detailsPayload,
-        rate: ratePayload
-      };
+  client_id: normalized.client_id,
+  first_name: normalized.first_name,
+  last_name: normalized.last_name,
+  email_address: normalized.email_address,
+  contact_number: normalized.contact_number,
+  barangay: normalized.barangay,
+  address: normalized.address,
+  street: normalized.street,
+  additional_address: normalized.additional_address,
+  service_type: normalized.service_type,
+  category: normalized.category,
+  service_task: normalized.service_task,
+  description: normalized.description,
+  preferred_date: normalized.preferred_date,
+  preferred_time: normalized.preferred_time,
+  is_urgent: normalized.is_urgent,
+  tools_provided: normalized.tools_provided,
+  rate_type: normalized.rate_type,
+  rate_from: normalized.rate_from,
+  rate_to: normalized.rate_to,
+  rate_value: normalized.rate_value,
+  attachments: Array.isArray(normalized.attachments) && normalized.attachments.length ? normalized.attachments : (normalized.attachment ? [normalized.attachment] : []),
+  metadata: metadataPayload,
+  info: infoPayload,
+  details: detailsPayload,
+  rate: ratePayload,
+agreements: {
+  email_address: (agreementsDraft.email_address || normalized.email_address || '').toString().trim(),
+  agree_verify: !!agreementsDraft.agree_verify,
+  agree_tos: !!agreementsDraft.agree_tos,
+  agree_privacy: !!agreementsDraft.agree_privacy
+}
+};
 
       const jsonRes = await axios.post(
         `${API_BASE}/api/clientservicerequests/submit`,

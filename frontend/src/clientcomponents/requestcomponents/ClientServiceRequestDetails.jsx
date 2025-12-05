@@ -522,7 +522,10 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
             <h3 className="text-xl md:text-2xl font-semibold text-gray-900">Service Request Details</h3>
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
+            <span
+              style={{ display: 'none' }}
+              className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border-indigo-200"
+            >
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Request
             </span>

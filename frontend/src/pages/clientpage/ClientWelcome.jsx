@@ -91,10 +91,10 @@ const ClientWelcomePage = () => {
 
           <div className="flex justify-start gap-6">
             <Link
-              to="/clientpostrequest"
+              to="/clientdashboard"
               className="bg-[#008cfc] text-white font-medium py-3 px-6 rounded-md flex items-center gap-2 hover:bg-blue-700 transition"
             >
-              Request a Service Now
+              Go to Dashboard
             </Link>
           </div>
 
