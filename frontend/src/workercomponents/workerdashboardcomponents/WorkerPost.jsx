@@ -121,6 +121,7 @@ function WorkerPost() {
   const [showDeleteDone, setShowDeleteDone] = useState(false);
 
   const [showViewLoading, setShowViewLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
 
   const allowedPHPrefixes = useMemo(
     () =>
@@ -252,7 +253,7 @@ function WorkerPost() {
   };
 
   useEffect(() => {
-    if (!navLoading && !showViewLoading) return;
+    if (!navLoading && !showViewLoading && !editLoading) return;
     const onPopState = () => {
       window.history.pushState(null, '', window.location.href);
     };
@@ -271,7 +272,7 @@ function WorkerPost() {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener('keydown', blockKeys, true);
     };
-  }, [navLoading, showViewLoading]);
+  }, [navLoading, showViewLoading, editLoading]);
 
   useEffect(() => {
     const { firstName, gender } = getWorkerProfile();
@@ -621,6 +622,15 @@ function WorkerPost() {
     };
   }, []);
 
+  const handleEditApplication = () => {
+    const gid = getGroupId(currentApp);
+    if (!gid || editLoading) return;
+    setEditLoading(true);
+    setTimeout(() => {
+      navigate(`/edit-work-application/${encodeURIComponent(gid)}`);
+    }, 2000);
+  };
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm mb-8">
@@ -778,7 +788,7 @@ function WorkerPost() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate(`/edit-work-application/${encodeURIComponent(getGroupId(currentApp))}`)}
+                onClick={handleEditApplication}
                 className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
               >
                 Edit Application
@@ -913,7 +923,14 @@ function WorkerPost() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => navigate(`/edit-work-application/${encodeURIComponent(getGroupId(item))}`)}
+                            onClick={() => {
+                              const gid = getGroupId(item);
+                              if (!gid || editLoading) return;
+                              setEditLoading(true);
+                              setTimeout(() => {
+                                navigate(`/edit-work-application/${encodeURIComponent(gid)}`);
+                              }, 2000);
+                            }}
                             className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
                           >
                             Edit Application
@@ -1196,6 +1213,50 @@ function WorkerPost() {
             <div className="mt-6 text-center">
               <div className="text-lg font-semibold text-gray-900">Loading Request</div>
               <div className="text-sm text-gray-500">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
             </div>
           </div>
         </div>

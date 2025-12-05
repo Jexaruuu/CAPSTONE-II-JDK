@@ -165,6 +165,10 @@ export default function WorkerEditApplication() {
   }, []);
 
   useEffect(() => {
+    try { if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'; } catch {}
+  }, []);
+
+  useEffect(() => {
     const load = async () => {
       setLoading(true);
       setError('');
@@ -264,9 +268,20 @@ export default function WorkerEditApplication() {
     return v !== null && v > 0;
   }, [rateType, rateValue]);
 
+  const handleYearsChange = (e) => {
+    const raw = e.target.value;
+    if (raw === '') { setYearsExp(''); return; }
+    const onlyDigits = raw.replace(/\D/g, '');
+    if (onlyDigits === '') { setYearsExp(''); return; }
+    let n = parseInt(onlyDigits, 10);
+    if (Number.isNaN(n)) { setYearsExp(''); return; }
+    if (n < 1) n = 1;
+    if (n > 50) n = 50;
+    setYearsExp(String(n));
+  };
+
   const yearsValid = useMemo(() => {
-    const y = toNumOrNull(yearsExp);
-    return y !== null && y > 0;
+    return yearsExp !== '' && /^\d+$/.test(yearsExp) && Number(yearsExp) >= 1 && Number(yearsExp) <= 50;
   }, [yearsExp]);
 
   const pairsAllValid = useMemo(() => {
@@ -339,7 +354,7 @@ export default function WorkerEditApplication() {
       const details = {
         service_types,
         service_task,
-        years_experience: toNumOrNull(yearsExp),
+        years_experience: Number(yearsExp),
         tools_provided: fromYesNo(toolsProvided),
         work_description: description
       };
@@ -377,8 +392,33 @@ export default function WorkerEditApplication() {
     }
   };
 
+  const [navLoading, setNavLoading] = useState(false);
+
+  useEffect(() => {
+    if (!navLoading) return;
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [navLoading]);
+
   const onCancel = () => {
-    navigate('/workerdashboard', { replace: true });
+    if (navLoading) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    setNavLoading(true);
+    setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      navigate('/workerdashboard', { replace: true });
+    }, 2000);
   };
 
   const setPairType = (i, v) => {
@@ -632,13 +672,13 @@ export default function WorkerEditApplication() {
                           </div>
 
                           <div className="relative" ref={idx === 0 ? taskRef : null} data-task-container={idx}>
-                            <span className="block text-sm font-medium text-gray-700 mb-2">Service Task {pairs.length > 1 ? `#${idx+1}` : ''}</span>
+                            <span className="block text sm font-medium text-gray-700 mb-2">Service Task {pairs.length > 1 ? `#${idx+1}` : ''}</span>
                             <div className={`flex items-center rounded-xl border ${!p.serviceType ? 'opacity-60 cursor-not-allowed border-gray-300' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                               <button type="button" onClick={()=>p.serviceType && setTaskOpenIndex(taskOpenIndex===idx?null:idx)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none" disabled={!p.serviceType}>
                                 {p.serviceTasks && p.serviceTasks.length ? `${p.serviceTasks.length} selected` : 'Select Service Tasks'}
                               </button>
                               <button type="button" onClick={()=>p.serviceType && setTaskOpenIndex(taskOpenIndex===idx?null:idx)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open service task options" disabled={!p.serviceType}>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
                               </button>
                             </div>
                             {taskOpenIndex === idx && (
@@ -681,14 +721,22 @@ export default function WorkerEditApplication() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 text-base mt-2">
                       <div>
-                        <span className="block text-sm font-medium text-gray-700 mb-2">Years of Experience</span>
+                        <span className="block text-sm font-medium text-gray-700 mb-2">Years of Experience *</span>
                         <input
-                          value={yearsExp}
-                          onChange={e=>setYearsExp(cleanNumber(e.target.value, false))}
-                          placeholder="e.g. 3"
+                          type="number"
+                          min="1"
+                          max="50"
+                          step="1"
                           inputMode="numeric"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#008cfc]/40"
+                          pattern="[0-9]*"
+                          value={yearsExp}
+                          onChange={handleYearsChange}
+                          placeholder="Enter years of experience"
+                          className={`w-full px-4 py-3 rounded-xl border ${yearsExp !== '' && !yearsValid ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-[#008cfc]/40`}
+                          required
+                          aria-invalid={yearsExp !== '' && !yearsValid}
                         />
+                        {yearsExp !== '' && !yearsValid && <p className="text-xs text-red-600 mt-1">Enter a valid number from 1–50.</p>}
                       </div>
 
                       <div className="relative" ref={toolsRef}>
@@ -835,110 +883,6 @@ export default function WorkerEditApplication() {
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
-
-            {false && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
-                <div className="lg:col-span-2 space-y-6">
-                  <div className="bg-gradient-to-b from-gray-50 to-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-visible">
-                    <div className="flex items-center justify-between px-6 py-4">
-                      <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Rate</h3>
-                    </div>
-                    <div className="border-t border-gray-100" />
-                    <div className="px-6 py-6">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="relative" ref={rateTypeRef}>
-                          <span className="block text-sm font-medium text-gray-700 mb-2">Rate Type</span>
-                          <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40 h-[48px]">
-                            <button
-                              type="button"
-                              onClick={()=>setRateTypeOpen(s=>!s)}
-                              className="w-full px-4 text-left rounded-l-xl focus:outline-none"
-                            >
-                              {rateType || 'Select Rate Type'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={()=>setRateTypeOpen(s=>!s)}
-                              className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                              aria-label="Open rate type options"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
-                            </button>
-                          </div>
-                          {rateTypeOpen && (
-                            <PopList
-                              items={['Hourly Rate','By the Job Rate']}
-                              value={rateType}
-                              onSelect={(v)=>{ setRateType(v); setRateFrom(''); setRateTo(''); setRateValue(''); setRateTypeOpen(false); }}
-                              fullWidth
-                              title="Select Rate Type"
-                              clearable
-                              onClear={()=>{ setRateType(''); setRateFrom(''); setRateTo(''); setRateValue(''); setRateTypeOpen(false); }}
-                            />
-                          )}
-                        </div>
-
-                        {String(rateType || '').toLowerCase().includes('hour') ? (
-                          <>
-                            <div className="grid gap-2">
-                              <span className="block text-sm font-medium text-gray-700">Rate From</span>
-                              <div className="flex items-center rounded-xl border border-gray-300 h-[48px] px-3">
-                                <span className="text-gray-500 mr-2">₱</span>
-                                <input value={rateFrom} onChange={e=>setRateFrom(cleanNumber(e.target.value, true))} placeholder="0" inputMode="decimal" className="w-full outline-none" />
-                                <span className="text-gray-500 ml-2 text-sm"></span>
-                              </div>
-                            </div>
-                            <div className="grid gap-2">
-                              <span className="block text-sm font-medium text-gray-700">Rate To</span>
-                              <div className="flex items-center rounded-xl border border-gray-300 h-[48px] px-3">
-                                <span className="text-gray-500 mr-2">₱</span>
-                                <input value={rateTo} onChange={e=>setRateTo(cleanNumber(e.target.value, true))} placeholder="0" inputMode="decimal" className="w-full outline-none" />
-                                <span className="text-gray-500 ml-2 text-sm"></span>
-                              </div>
-                            </div>
-                          </>
-                        ) : String(rateType || '').toLowerCase().includes('job') ? (
-                          <>
-                            <div className="md:col-span-2 grid gap-2">
-                              <span className="block text-sm font-medium text-gray-700">Service Rate</span>
-                              <div className="flex items-center rounded-xl border border-gray-300 h-[48px] px-3">
-                                <span className="text-gray-500 mr-2">₱</span>
-                                <input value={rateValue} onChange={e=>setRateValue(cleanNumber(e.target.value, true))} placeholder="0" inputMode="decimal" className="w-full outline-none" />
-                                <span className="text-gray-500 ml-2 text-sm"></span>
-                              </div>
-                            </div>
-                            <div />
-                          </>
-                        ) : (
-                          <div className="md:col-span-2 h-[48px] grid place-items-center text-sm text-gray-500 rounded-xl border border-dashed border-gray-300">Select a rate type to continue</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <aside className="lg:col-span-1 flex flex-col" />
-              </div>
-            )}
-
-            {false && (
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={()=>setConfirmOpen(true)}
-                  disabled={saving}
-                  className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
-                >
-                  {saving ? 'Saving…' : 'Save Changes'}
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -979,6 +923,30 @@ export default function WorkerEditApplication() {
             <div className="mt-6 text-center">
               <div className="text-lg font-semibold text-gray-900">Saving Changes</div>
               <div className="text-sm text-gray-500">Please wait</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {navLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div role="dialog" aria-modal="true" aria-label="Loading next step" tabIndex={-1} className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
+            <div className="relative mx-auto w-40 h-40">
+              <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={()=>setLogoBroken(true)} />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
             </div>
           </div>
         </div>
