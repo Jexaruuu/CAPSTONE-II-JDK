@@ -66,6 +66,61 @@ const formatDateMDY = (d) => {
   return d;
 };
 
+const normalizeRateType = (v, r = {}) => {
+  const s = String(v || '').trim().toLowerCase().replace(/[^a-z ]/g, '').replace(/\s+/g, ' ');
+  if (['hourly', 'range', 'hourly range', 'hourly rate'].includes(s)) return 'range';
+  if (['by job', 'by the job', 'fixed', 'fixed rate', 'job', 'byjob'].includes(s)) return 'by_job';
+  if (r && (r.rate_from != null || r.rate_to != null)) return 'range';
+  if (r && (r.rate_value != null && r.rate_value !== '')) return 'by_job';
+  return '';
+};
+
+const PopList = ({
+  items,
+  value,
+  onSelect,
+  disabledLabel,
+  emptyLabel = 'No options',
+  fullWidth = false,
+  title = 'Select',
+  clearable = false,
+  onClear,
+  clearText = 'Clear'
+}) => (
+  <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
+    <div className="text-sm font-semibold text-gray-800 px-2 pb-2">{title}</div>
+    <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
+      {items && items.length ? items.map((it) => {
+        const isSel = value === it;
+        const disabled = disabledLabel && disabledLabel(it);
+        return (
+          <button
+            key={it}
+            type="button"
+            disabled={disabled}
+            onClick={() => !disabled && onSelect(it)}
+            className={[
+              'text-left py-2 px-3 rounded-lg text-sm',
+              disabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50',
+              isSel && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
+            ].join(' ')}
+          >
+            {it}
+          </button>
+        );
+      }) : (
+        <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
+      )}
+    </div>
+    <div className="flex items-center justify-between mt-3 px-2">
+      <span className="text-xs text-gray-400">{(items && items.length ? items.length : 0)} result{(items && items.length === 1) ? '' : 's'}</span>
+      {clearable ? (
+        <button type="button" onClick={onClear} className="text-xs text-gray-500 hover:text-gray-700">{clearText}</button>
+      ) : <span />}
+    </div>
+  </div>
+);
+
 export default function ClientEditServiceRequest() {
   const { id } = useParams();
   const gid = decodeURIComponent(id || '');
@@ -110,8 +165,17 @@ export default function ClientEditServiceRequest() {
   const [showSaving, setShowSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  const [orig, setOrig] = useState(null);
+
   const fileRef = useRef(null);
   const clientFileRef = useRef(null);
+
+  const sanitizeDecimal = (s) => {
+    const x = String(s ?? '').replace(/[^\d.]/g, '');
+    const parts = x.split('.');
+    if (parts.length <= 1) return x;
+    return parts[0] + '.' + parts.slice(1).join('').replace(/\./g, '');
+  };
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -129,6 +193,7 @@ export default function ClientEditServiceRequest() {
         const d = data?.details || {};
         const r = data?.rate || {};
         const info = data?.info || {};
+        const normRT = normalizeRateType(r.rate_type, r);
         setServiceType(d.service_type || '');
         setServiceTask(d.service_task || '');
         setPreferredDate(d.preferred_date || '');
@@ -136,7 +201,7 @@ export default function ClientEditServiceRequest() {
         setIsUrgent(toYesNo(d.is_urgent));
         setToolsProvided(toYesNo(d.tools_provided));
         setDescription(d.service_description || '');
-        setRateType(r.rate_type || '');
+        setRateType(normRT);
         setRateFrom(r.rate_from || '');
         setRateTo(r.rate_to || '');
         setRateValue(r.rate_value || '');
@@ -145,6 +210,24 @@ export default function ClientEditServiceRequest() {
         setStreet(info.street || '');
         setAdditionalAddress(info.additional_address || info.additionalAddress || '');
         setClientImageUrl(info.profile_picture_url || '');
+        setOrig({
+          serviceType: d.service_type || '',
+          serviceTask: d.service_task || '',
+          preferredDate: d.preferred_date || '',
+          preferredTime: d.preferred_time || '',
+          isUrgent: toYesNo(d.is_urgent),
+          toolsProvided: toYesNo(d.tools_provided),
+          description: d.service_description || '',
+          rateType: normRT,
+          rateFrom: String(r.rate_from ?? ''),
+          rateTo: String(r.rate_to ?? ''),
+          rateValue: String(r.rate_value ?? ''),
+          barangay: info.barangay || '',
+          street: info.street || '',
+          additionalAddress: info.additional_address || info.additionalAddress || '',
+          imageUrl: d.request_image_url || '',
+          clientImageUrl: info.profile_picture_url || ''
+        });
       } catch {
         setError('Failed to load request');
       } finally {
@@ -153,6 +236,80 @@ export default function ClientEditServiceRequest() {
     };
     if (gid) load();
   }, [gid, headersWithU]);
+
+  const isDirty = useMemo(() => {
+    if (!orig) return false;
+    const a = (x) => String(x ?? '');
+    const changed =
+      a(serviceType) !== a(orig.serviceType) ||
+      a(serviceTask) !== a(orig.serviceTask) ||
+      a(preferredDate) !== a(orig.preferredDate) ||
+      a(preferredTime) !== a(orig.preferredTime) ||
+      a(isUrgent) !== a(orig.isUrgent) ||
+      a(toolsProvided) !== a(orig.toolsProvided) ||
+      a(description) !== a(orig.description) ||
+      a(rateType) !== a(orig.rateType) ||
+      a(rateFrom) !== a(orig.rateFrom) ||
+      a(rateTo) !== a(orig.rateTo) ||
+      a(rateValue) !== a(orig.rateValue) ||
+      a(barangay) !== a(orig.barangay) ||
+      a(street) !== a(orig.street) ||
+      a(additionalAddress) !== a(orig.additionalAddress) ||
+      a(imageUrl) !== a(orig.imageUrl) ||
+      a(clientImageUrl) !== a(orig.clientImageUrl) ||
+      !!imageDataUrl ||
+      !!clientImageDataUrl;
+    return changed;
+  }, [
+    orig,
+    serviceType,
+    serviceTask,
+    preferredDate,
+    preferredTime,
+    isUrgent,
+    toolsProvided,
+    description,
+    rateType,
+    rateFrom,
+    rateTo,
+    rateValue,
+    barangay,
+    street,
+    additionalAddress,
+    imageUrl,
+    clientImageUrl,
+    imageDataUrl,
+    clientImageDataUrl
+  ]);
+
+  useEffect(()=>{ 
+  const lock=cancelLoading; 
+  const html=document.documentElement; 
+  const body=document.body; 
+  const prevHtml=html.style.overflow; 
+  const prevBody=body.style.overflow; 
+  if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } 
+  else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } 
+  return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; 
+},[cancelLoading]);
+
+useEffect(() => { 
+  const handler = (e) => { if (cancelLoading) e.preventDefault(); }; 
+  if (cancelLoading) { 
+    window.addEventListener('wheel', handler, { passive: false }); 
+    window.addEventListener('touchmove', handler, { passive: false }); 
+  } 
+  return () => { 
+    window.removeEventListener('wheel', handler); 
+    window.removeEventListener('touchmove', handler); 
+  }; 
+}, [cancelLoading]);
+
+  const rateTypeDisplay = useMemo(() => {
+    if (String(rateType || '').toLowerCase() === 'range') return 'Hourly Rate';
+    if (String(rateType || '').toLowerCase() === 'by_job' || String(rateType || '').toLowerCase() === 'fixed') return 'By the Job Rate';
+    return '';
+  }, [rateType]);
 
   const onPickImage = async (e) => {
     const f = e.target.files?.[0];
@@ -201,7 +358,7 @@ export default function ClientEditServiceRequest() {
           service_description: description
         },
         rate: {
-          rate_type: rateType,
+          rate_type: rateType || normalizeRateType(rateType, { rate_from: rateFrom, rate_to: rateTo, rate_value: rateValue }),
           rate_from: String(rateType || '').toLowerCase() === 'range' ? toNumOrNull(rateFrom) : null,
           rate_to: String(rateType || '').toLowerCase() === 'range' ? toNumOrNull(rateTo) : null,
           rate_value: String(rateType || '').toLowerCase() === 'range' ? null : toNumOrNull(rateValue)
@@ -225,17 +382,16 @@ export default function ClientEditServiceRequest() {
   const onCancel = () => {
     if (cancelLoading) return;
     setCancelLoading(true);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     setTimeout(() => { navigate('/clientdashboard', { replace: true }); }, 2000);
   };
 
   const onSuccessOk = () => {
     setShowSuccess(false);
     setCancelLoading(true);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     setTimeout(() => { navigate('/clientdashboard', { replace: true }); }, 2000);
   };
-
-  const preferred_time_display = formatTime12h(preferredTime);
-  const preferred_date_display = formatDateMDY(preferredDate);
 
   const serviceTypes = ['Carpentry', 'Electrical Works', 'Plumbing', 'Car Washing', 'Laundry'];
   const serviceTasks = {
@@ -245,7 +401,7 @@ export default function ClientEditServiceRequest() {
     'Car Washing': ['Exterior Wash', 'Interior Cleaning', 'Wax & Polish', 'Underbody Cleaning', 'Engine Bay Cleaning', 'Headlight Restoration', 'Ceramic Coating', 'Tire & Rim Cleaning', 'Vacuum & Odor Removal', 'Paint Protection Film Application'],
     Laundry: ['Dry Cleaning', 'Ironing', 'Wash & Fold', 'Steam Pressing', 'Stain Removal Treatment', 'Curtains & Upholstery Cleaning', 'Delicate Fabric Care', 'Shoe & Leather Cleaning', 'Express Same-Day Laundry', 'Eco-Friendly Washing']
   };
-  const sortedServiceTypes = [...serviceTypes].sort();
+  const sortedServiceTypes = useMemo(() => [...serviceTypes].sort(), []);
 
   const stRef = useRef(null);
   const taskRef = useRef(null);
@@ -254,6 +410,7 @@ export default function ClientEditServiceRequest() {
   const pdRef = useRef(null);
   const ptRef = useRef(null);
   const rateTypeRef = useRef(null);
+  const barangayRef = useRef(null);
 
   const [stOpen, setStOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
@@ -262,6 +419,21 @@ export default function ClientEditServiceRequest() {
   const [pdOpen, setPdOpen] = useState(false);
   const [ptOpen, setPtOpen] = useState(false);
   const [rateTypeOpen, setRateTypeOpen] = useState(false);
+  const [barangayOpen, setBarangayOpen] = useState(false);
+  const [barangayQuery, setBarangayQuery] = useState('');
+
+  const barangays = [
+    'Alangilan', 'Alijis', 'Banago', 'Bata', 'Cabug', 'Estefania', 'Felisa',
+    'Granada', 'Handumanan', 'Lopez Jaena', 'Mandalagan', 'Mansilingan',
+    'Montevista', 'Pahanocoy', 'Punta Taytay', 'Singcang-Airport', 'Sum-ag',
+    'Taculing', 'Tangub', 'Villa Esperanza'
+  ];
+  const sortedBarangays = useMemo(() => [...barangays].sort(), []);
+  const filteredBarangays = useMemo(() => {
+    const q = String(barangayQuery || '').trim().toLowerCase();
+    if (!q) return sortedBarangays;
+    return sortedBarangays.filter(b => b.toLowerCase().includes(q));
+  }, [sortedBarangays, barangayQuery]);
 
   const getTodayLocalDateString = () => {
     const now = new Date();
@@ -284,12 +456,6 @@ export default function ClientEditServiceRequest() {
     return () => clearInterval(id);
   }, []);
 
-  const toYMD = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const da = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${da}`;
-  };
   const toMDY = (d) => {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const da = String(d.getDate()).padStart(2, '0');
@@ -298,8 +464,7 @@ export default function ClientEditServiceRequest() {
   };
   const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
   const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
-  const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, 1);
-  const isSameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const addMonths = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 1);
 
   const [pdView, setPdView] = useState(new Date());
   const monthsList = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -309,9 +474,7 @@ export default function ClientEditServiceRequest() {
     for (let y = start; y <= start + 5; y++) ys.push(y);
     return ys;
   })();
-  const inRangePD = (date) => date >= fromYMDLocal(todayStr);
   const canPrevPD = () => addMonths(startOfMonth(pdView), -1) >= startOfMonth(fromYMDLocal(todayStr));
-  const canNextPD = () => true;
   const [pdMonthOpen, setPdMonthOpen] = useState(false);
   const [pdYearOpen, setPdYearOpen] = useState(false);
 
@@ -336,93 +499,48 @@ export default function ClientEditServiceRequest() {
     const hr = h % 12 === 0 ? 12 : h % 12;
     return `${String(hr).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
     };
-  const timeSlots = (() => {
-    const slots = [];
-    for (let h = 0; h < 24; h++) {
-      for (let m = 0; m < 60; m += 30) {
-        slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-      }
+
+  const rateError = useMemo(() => {
+    if (String(rateType || '').toLowerCase() !== 'range') return '';
+    if (rateFrom === '' || rateTo === '') return '';
+    const f = Number(rateFrom);
+    const t = Number(rateTo);
+    if (Number.isFinite(f) && Number.isFinite(t) && t <= f) return 'To must be greater than From';
+    return '';
+  }, [rateType, rateFrom, rateTo]);
+
+  const isComplete = useMemo(() => {
+    const req = [serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, description, rateType, barangay, street];
+    const allFilled = req.every(v => String(v ?? '').trim() !== '');
+    if (!allFilled) return false;
+    const rt = String(rateType || '').toLowerCase();
+    if (rt === 'range') {
+      if (String(rateFrom ?? '').trim() === '' || String(rateTo ?? '').trim() === '') return false;
+      const f = Number(rateFrom);
+      const t = Number(rateTo);
+      if (!Number.isFinite(f) || !Number.isFinite(t)) return false;
+      if (t <= f) return false;
+      return true;
     }
-    return slots;
-  })();
-  const getNowHHMM = () => {
-    const n = new Date();
-    const hh = String(n.getHours()).padStart(2, '0');
-    const mm = String(n.getMinutes()).padStart(2, '0');
-    return `${hh}:${mm}`;
-  };
-  useEffect(() => {
-    if (preferredDate === todayStr && preferredTime && preferredTime < getNowHHMM()) {
-      setPreferredTime('');
+    if (rt === 'by_job' || rt === 'fixed') {
+      if (String(rateValue ?? '').trim() === '') return false;
+      const v = Number(rateValue);
+      if (!Number.isFinite(v)) return false;
+      return true;
     }
-  }, [preferredDate, todayStr]);
+    return false;
+  }, [serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, description, rateType, barangay, street, rateFrom, rateTo, rateValue]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      const t = event.target;
-      if (stRef.current && !stRef.current.contains(t)) setStOpen(false);
-      if (taskRef.current && !taskRef.current.contains(t)) setTaskOpen(false);
-      if (toolsRef.current && !toolsRef.current.contains(t)) setToolsOpen(false);
-      if (urgentRef.current && !urgentRef.current.contains(t)) setUrgentOpen(false);
-      if (pdRef.current && !pdRef.current.contains(t)) { setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }
-      if (ptRef.current && !ptRef.current.contains(t)) setPtOpen(false);
-      if (rateTypeRef.current && !rateTypeRef.current.contains(t)) setRateTypeOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const canSave = isDirty && !rateError && isComplete && !saving;
 
-  useEffect(() => {
-    if (!cancelLoading) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', onPopState, true);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
-    window.addEventListener('keydown', blockKeys, true);
-    return () => {
-      window.removeEventListener('popstate', onPopState, true);
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener('keydown', blockKeys, true);
-    };
-  }, [cancelLoading]);
+  useEffect(()=>{ document.body.style.overflow=confirmOpen?"hidden":""; return()=>{ document.body.style.overflow=""; }; },[confirmOpen]);
+  useEffect(()=>{ const lock=showSuccess||showSaving; const html=document.documentElement; const body=document.body; const prevHtml=html.style.overflow; const prevBody=body.style.overflow; if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; },[showSuccess,showSaving]);
 
-  const PopList = ({ items, value, onSelect, disabledLabel, emptyLabel='No options', fullWidth=false, title='Select', clearable=false, onClear, clearText='Clear' }) => (
-    <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
-      <div className="text-sm font-semibold text-gray-800 px-2 pb-2">{title}</div>
-      <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
-        {items && items.length ? items.map((it) => {
-          const isSel = value === it;
-          const disabled = disabledLabel && disabledLabel(it);
-          return (
-            <button
-              key={it}
-              type="button"
-              disabled={disabled}
-              onClick={() => !disabled && onSelect(it)}
-              className={[
-                'text-left py-2 px-3 rounded-lg text-sm',
-                disabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50',
-                isSel && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
-              ].join(' ')}
-            >
-              {it}
-            </button>
-          );
-        }) : (
-          <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
-        )}
-      </div>
-      <div className="flex items-center justify-between mt-3 px-2">
-        <span className="text-xs text-gray-400">{(items && items.length ? items.length : 0)} result{(items && items.length === 1) ? '' : 's'}</span>
-        {clearable ? (
-          <button type="button" onClick={onClear} className="text-xs text-gray-500 hover:text-gray-700">{clearText}</button>
-        ) : <span />}
-      </div>
-    </div>
-  );
+  useEffect(() => { const handler = (e) => { if (showSaving) e.preventDefault(); }; if (showSaving) { window.addEventListener('wheel', handler, { passive: false }); window.addEventListener('touchmove', handler, { passive: false }); } return () => { window.removeEventListener('wheel', handler); window.removeEventListener('touchmove', handler); }; }, [showSaving]);
+
+  useEffect(()=>{ const lock=loading; const html=document.documentElement; const body=document.body; const prevHtml=html.style.overflow; const prevBody=body.style.overflow; if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; },[loading]);
+
+  useEffect(() => { const handler = (e) => { if (loading) e.preventDefault(); }; if (loading) { window.addEventListener('wheel', handler, { passive: false }); window.addEventListener('touchmove', handler, { passive: false }); } return () => { window.removeEventListener('wheel', handler); window.removeEventListener('touchmove', handler); }; }, [loading]);
 
   return (
     <>
@@ -449,7 +567,7 @@ export default function ClientEditServiceRequest() {
                 <button
                   type="button"
                   onClick={()=>setConfirmOpen(true)}
-                  disabled={saving}
+                  disabled={saving || !isDirty || !!rateError || !isComplete}
                   className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
                 >
                   {saving ? 'Saving…' : 'Save Changes'}
@@ -521,14 +639,75 @@ export default function ClientEditServiceRequest() {
 
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="grid gap-2">
-                        <span className="block text-sm font-medium text-gray-700">Barangay</span>
-                        <input
-                          value={barangay}
-                          onChange={(e)=>setBarangay(e.target.value)}
-                          placeholder="e.g., Brgy. 123"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
-                        />
+                      <div className="relative" ref={barangayRef}>
+                        <span className="block text-sm font-medium text-gray-700 mb-2">Barangay</span>
+                        <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                          <button
+                            type="button"
+                            onClick={() => setBarangayOpen(s => !s)}
+                            className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
+                            aria-expanded={barangayOpen}
+                            aria-haspopup="listbox"
+                          >
+                            {barangay || 'Select Barangay'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBarangayOpen(s => !s)}
+                            className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                            aria-label="Open barangay list"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </div>
+                        {barangayOpen && (
+                          <div
+                            className="absolute z-50 mt-2 left-0 w-[30rem] max-w-[100vw] rounded-xl border border-gray-200 bg-white shadow-xl p-3"
+                            role="listbox"
+                          >
+                            <div className="px-2 pb-2">
+                              <input
+                                value={barangayQuery}
+                                onChange={(e) => setBarangayQuery(e.target.value)}
+                                placeholder="Search…"
+                                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div className="grid grid-cols-3 gap-1 max-h-56 overflow-y-auto px-2">
+                              {filteredBarangays.length ? (
+                                filteredBarangays.map((b, i) => {
+                                  const isSelected = b === barangay;
+                                  return (
+                                    <button
+                                      key={`${b}-${i}`}
+                                      type="button"
+                                      onClick={() => { setBarangay(b); setBarangayQuery(''); setBarangayOpen(false); }}
+                                      className={['text-left px-3 py-2 rounded-lg text-sm', isSelected ? 'bg-blue-600 text-white hover:bg-blue-600' : 'text-gray-700 hover:bg-blue-50'].join(' ')}
+                                      role="option"
+                                      aria-selected={isSelected}
+                                    >
+                                      {b}
+                                    </button>
+                                  );
+                                })
+                              ) : (
+                                <div className="col-span-3 text-center text-xs text-gray-400 py-3">No options</div>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between mt-3 px-2">
+                              <span className="text-xs text-gray-400">{filteredBarangays.length} result{filteredBarangays.length === 1 ? '' : 's'}</span>
+                              <button
+                                type="button"
+                                onClick={() => { setBarangay(''); setBarangayQuery(''); setBarangayOpen(false); }}
+                                className="text-xs text-gray-500 hover:text-gray-700"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="grid gap-2">
                         <span className="block text-sm font-medium text-gray-700">Street</span>
@@ -579,7 +758,7 @@ export default function ClientEditServiceRequest() {
                       </div>
 
                       <div className="relative" ref={taskRef}>
-                        <span className="block text-sm font-medium text-gray-700 mb-2">Service Task</span>
+                        <span className="block text sm font-medium text-gray-700 mb-2">Service Task</span>
                         <select value={serviceTask} onChange={e=>setServiceTask(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1} disabled={!serviceType}>
                           <option value=""></option>
                           {serviceType && (serviceTasks[serviceType] || []).map((t)=> <option key={t} value={t}>{t}</option>)}
@@ -629,125 +808,6 @@ export default function ClientEditServiceRequest() {
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 01-1-1z" /><path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" /></svg>
                           </button>
                         </div>
-                        {pdOpen && (
-                          <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
-                            <div className="flex items-center justify-between px-2 pb-2">
-                              <button
-                                type="button"
-                                onClick={() => addMonths(startOfMonth(pdView), -1) >= startOfMonth(new Date(todayStr)) && setPdView(addMonths(pdView, -1))}
-                                className={`p-2 rounded-lg hover:bg-gray-100 ${addMonths(startOfMonth(pdView), -1) >= startOfMonth(new Date(todayStr)) ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
-                                aria-label="Previous month"
-                              >‹</button>
-                              <div className="relative flex items-center gap-2">
-                                <div className="relative">
-                                  <button
-                                    type="button"
-                                    onClick={() => { setPdMonthOpen(v=>!v); setPdYearOpen(false); }}
-                                    className="min-w-[120px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
-                                  >
-                                    {['January','February','March','April','May','June','July','August','September','October','November','December'][pdView.getMonth()]}
-                                    <span className="ml-2">▾</span>
-                                  </button>
-                                  {pdMonthOpen ? (
-                                    <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                      {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m,i)=>(
-                                        <button
-                                          key={m}
-                                          type="button"
-                                          onClick={()=>{ const next = new Date(pdView.getFullYear(), i, 1); const minStart = startOfMonth(new Date(todayStr)); setPdView(next < minStart ? minStart : next); setPdMonthOpen(false); }}
-                                          className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${i===pdView.getMonth()?"bg-blue-100":""}`}
-                                        >{m}</button>
-                                      ))}
-                                    </div>
-                                  ) : null}
-                                </div>
-                                <div className="relative">
-                                  <button
-                                    type="button"
-                                    onClick={() => { setPdYearOpen(v=>!v); setPdMonthOpen(false); }}
-                                    className="min-w-[90px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
-                                  >
-                                    {pdView.getFullYear()}
-                                    <span className="ml-2">▾</span>
-                                  </button>
-                                  {pdYearOpen ? (
-                                    <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                      {(() => {
-                                        const ys = []; const start = new Date(todayStr).getFullYear();
-                                        for (let y = start; y <= start + 5; y++) ys.push(y);
-                                        return ys.map((y)=>(
-                                          <button
-                                            key={y}
-                                            type="button"
-                                            onClick={()=>{ const next = new Date(y, pdView.getMonth(), 1); const minStart = startOfMonth(new Date(todayStr)); setPdView(next < minStart ? minStart : next); setPdYearOpen(false); }}
-                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${y===pdView.getFullYear()?"bg-blue-100":""}`}
-                                          >{y}</button>
-                                        ));
-                                      })()}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setPdView(addMonths(pdView, 1))}
-                                className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
-                                aria-label="Next month"
-                              >›</button>
-                            </div>
-
-                            <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
-                              {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d) => <div key={d} className="py-1">{d}</div>)}
-                            </div>
-
-                            {(() => {
-                              const first = startOfMonth(pdView);
-                              const last = endOfMonth(pdView);
-                              const offset = first.getDay();
-                              const total = offset + last.getDate();
-                              const rows = Math.ceil(total / 7);
-                              const selected = preferredDate ? new Date(preferredDate) : null;
-                              const cells = [];
-                              for (let r = 0; r < rows; r++) {
-                                const row = [];
-                                for (let c = 0; c < 7; c++) {
-                                  const idx = r * 7 + c;
-                                  const dayNum = idx - offset + 1;
-                                  if (dayNum < 1 || dayNum > last.getDate()) {
-                                    row.push(<div key={`x-${r}-${c}`} className="py-2" />);
-                                  } else {
-                                    const d = new Date(pdView.getFullYear(), pdView.getMonth(), dayNum);
-                                    const disabled = d < new Date(todayStr);
-                                    const isSelected = selected && d.getFullYear()===selected.getFullYear() && d.getMonth()===selected.getMonth() && d.getDate()===selected.getDate();
-                                    row.push(
-                                      <button
-                                        key={`d-${dayNum}`}
-                                        type="button"
-                                        disabled={disabled}
-                                        onClick={() => { setPreferredDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`); setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }}
-                                        className={[
-                                          'py-2 rounded-lg transition text-sm w-9 h-9 mx-auto',
-                                          disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700',
-                                          isSelected && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
-                                        ].join(' ')}
-                                      >
-                                        {dayNum}
-                                      </button>
-                                    );
-                                  }
-                                }
-                                cells.push(<div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">{row}</div>);
-                              }
-                              return <div className="mt-1">{cells}</div>;
-                            })()}
-
-                            <div className="flex items-center justify-between mt-3 px-2">
-                              <button type="button" onClick={() => { setPreferredDate(''); setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
-                              <button type="button" onClick={() => { setPdView(new Date(todayStr)); }} className="text-xs text-blue-600 hover:text-blue-700">Jump to today</button>
-                            </div>
-                          </div>
-                        )}
-                        <p className="text-xs text-gray-500 mt-1">Earliest: <span className="font-medium">{toMDY(new Date(todayStr))}</span></p>
                       </div>
 
                       <div className="relative md:col-span-2" ref={ptRef}>
@@ -765,63 +825,6 @@ export default function ClientEditServiceRequest() {
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-12.5a.75.75 0 00-1.5 0V10c0 .199.079.39.22.53l2.75 2.75a.75.75 0 101.06-1.06l-2.53-2.53V5.5z" clipRule="evenodd" /></svg>
                           </button>
                         </div>
-                        {ptOpen && (
-                          <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
-                            <div className="text-sm font-semibold text-gray-800 px-2 pb-2">Select Time</div>
-                            <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto px-2">
-                              {(() => {
-                                const slots = [];
-                                for (let h = 0; h < 24; h++) {
-                                  for (let m = 0; m < 60; m += 30) slots.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
-                                }
-                                const nowHHMM = (()=>{ const n=new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}` })();
-                                const isToday = preferredDate === todayStr;
-                                return slots.map((t) => {
-                                  const disabled = isToday && t < nowHHMM;
-                                  return (
-                                    <button
-                                      key={t}
-                                      type="button"
-                                      disabled={disabled}
-                                      onClick={() => { if (!disabled) { setPreferredTime(t); setPtOpen(false); } }}
-                                      className={`py-2 rounded-lg text-sm ${disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700'} ${preferredTime === t && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''}`}
-                                    >
-                                      {to12h(t)}
-                                    </button>
-                                  );
-                                });
-                              })()}
-                            </div>
-                            <div className="flex items-center justify-between mt-3 px-2">
-                              <span className="text-xs text-gray-400">48 results</span>
-                              <div className="flex items-center gap-3">
-                                <button type="button" onClick={() => { setPreferredTime(''); setPtOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const n = new Date();
-                                    const mins = n.getMinutes();
-                                    let up = mins % 30 === 0 ? mins : mins + (30 - (mins % 30));
-                                    let h = n.getHours();
-                                    if (up === 60) { h = h + 1; up = 0; }
-                                    const cand = `${String(h).padStart(2,'0')}:${String(up).padStart(2,'0')}`;
-                                    if (preferredDate === todayStr) {
-                                      const all = []; for (let hh=0; hh<24; hh++){ for(let mm=0; mm<60; mm+=30){ all.push(`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`)}}
-                                      const next = all.find(tt => tt >= cand);
-                                      if (next) setPreferredTime(next); else setPreferredTime('');
-                                    } else {
-                                      setPreferredTime(cand);
-                                    }
-                                    setPtOpen(false);
-                                  }}
-                                  className="text-xs text-blue-600 hover:text-blue-700"
-                                >
-                                  Now (rounded)
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
                       </div>
 
                       <div className="relative" ref={toolsRef}>
@@ -907,7 +910,7 @@ export default function ClientEditServiceRequest() {
                               onClick={()=>setRateTypeOpen(s=>!s)}
                               className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
                             >
-                              {rateType === 'range' ? 'Hourly Rate' : rateType === 'by_job' || rateType === 'fixed' ? 'By the Job Rate' : 'Select Rate Type'}
+                              {rateTypeDisplay || 'Select Rate Type'}
                             </button>
                             <button
                               type="button"
@@ -921,8 +924,8 @@ export default function ClientEditServiceRequest() {
                           {rateTypeOpen && (
                             <PopList
                               items={['Hourly Rate','By the Job Rate']}
-                              value={rateType === 'range' ? 'Hourly Rate' : rateType === 'by_job' || rateType === 'fixed' ? 'By the Job Rate' : ''}
-                              onSelect={(v)=>{ setRateType(v === 'Hourly Rate' ? 'range' : 'by_job'); setRateTypeOpen(false); }}
+                              value={rateTypeDisplay}
+                              onSelect={(v)=>{ setRateType(v === 'Hourly Rate' ? 'range' : 'by_job'); setRateFrom(''); setRateTo(''); setRateValue(''); setRateTypeOpen(false); }}
                               fullWidth
                               title="Select Rate Type"
                               clearable
@@ -935,17 +938,39 @@ export default function ClientEditServiceRequest() {
                           <div className="grid grid-cols-2 gap-3 md:col-span-1">
                             <div className="grid gap-2">
                               <span className="block text sm font-medium text-gray-700">From</span>
-                              <input value={rateFrom} onChange={e=>setRateFrom(e.target.value)} placeholder="0" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40" />
+                              <input
+                                value={rateFrom}
+                                onChange={e=>setRateFrom(sanitizeDecimal(e.target.value))}
+                                placeholder="₱"
+                                inputMode="decimal"
+                                pattern="[0-9]*[.]?[0-9]*"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                              />
                             </div>
                             <div className="grid gap-2">
                               <span className="block text-sm font-medium text-gray-700">To</span>
-                              <input value={rateTo} onChange={e=>setRateTo(e.target.value)} placeholder="0" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40" />
+                              <input
+                                value={rateTo}
+                                onChange={e=>setRateTo(sanitizeDecimal(e.target.value))}
+                                placeholder="₱"
+                                inputMode="decimal"
+                                pattern="[0-9]*[.]?[0-9]*"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                              />
+                              <div className="hidden text-xs text-red-600">{rateError}</div>
                             </div>
                           </div>
                         ) : (
                           <div className="grid gap-2 md:col-span-1">
                             <span className="block text-sm font-medium text-gray-700">Service Rate</span>
-                            <input value={rateValue} onChange={e=>setRateValue(e.target.value)} placeholder="Enter amount" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40" />
+                            <input
+                              value={rateValue}
+                              onChange={e=>setRateValue(sanitizeDecimal(e.target.value))}
+                              placeholder="Enter amount"
+                              inputMode="decimal"
+                              pattern="[0-9]*[.]?[0-9]*"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                            />
                           </div>
                         )}
                       </div>
@@ -966,7 +991,7 @@ export default function ClientEditServiceRequest() {
               <button
                 type="button"
                 onClick={()=>setConfirmOpen(true)}
-                disabled={saving}
+                disabled={saving || !isDirty || !!rateError || !isComplete}
                 className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
               >
                 {saving ? 'Saving…' : 'Save Changes'}
@@ -1086,8 +1111,9 @@ export default function ClientEditServiceRequest() {
                 <button type="button" onClick={()=>setConfirmOpen(false)} className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button
                   type="button"
-                  onClick={()=>{ setConfirmOpen(false); onSave(); }}
-                  className="rounded-xl px-5 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-blue-700"
+                  disabled={!canSave}
+                  onClick={()=>{ setConfirmOpen(false); if (canSave) onSave(); }}
+                  className={`rounded-xl px-5 py-2 text-sm font-medium transition ${canSave?"bg-[#008cfc] text-white hover:bg-blue-700":"bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}
                 >
                   Save
                 </button>

@@ -358,7 +358,9 @@ const ClientPost = () => {
   }, [banners.length]);
 
   useEffect(() => {
-    const id = setInterval(() => setDotStep((s) => (s + 1) % 4), 350);
+    const id = setInterval(() => {
+      setDotStep((s) => (s + 1) % 4), 350
+    });
     return () => clearInterval(id);
   }, []);
 
@@ -780,7 +782,13 @@ const ClientPost = () => {
                 <>
             <button
   type="button"
-  onClick={() => navigate(`/edit-service-request/${encodeURIComponent(currentItem?.id || '')}`)}
+  onClick={() => {
+    if (navLoading) return;
+    setNavLoading(true);
+    setTimeout(() => {
+      navigate(`/edit-service-request/${encodeURIComponent(currentItem?.id || '')}`);
+    }, 2000);
+  }}
   className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
 >
   Edit Request

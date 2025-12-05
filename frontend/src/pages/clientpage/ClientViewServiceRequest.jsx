@@ -231,7 +231,7 @@ const ClientViewServiceRequest = () => {
   const contactDisplay = (
     <div className="inline-flex items-center gap-2">
       <img src="/philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
-      <span className="text-gray-700 text-sm">+63</span>
+     <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>+63</span>
       <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
         {contactLocal10 || '9XXXXXXXXX'}
       </span>
