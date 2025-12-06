@@ -773,7 +773,7 @@ function WorkerPost() {
                   </div>
                   <div className="mt-1 text-base md:text-lg truncate">
                     <span className="font-semibold text-gray-700">Service Tasks:</span>{' '}
-                    <span className="text-gray-900">{currentServiceTasks || '-'}</span>
+                    <span className="text-[#008cfc] font-semibold">{currentServiceTasks || '-'}</span>
                   </div>
                   <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago` : ''}</div>
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
@@ -1216,12 +1216,7 @@ function WorkerPost() {
               <div className="absolute inset-4 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="Logo"
-                    className="w-14 h-14 object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
+                  <img src="/jdklogo.png" alt="Logo" className="w-14 h-14 object-contain" onError={() => setLogoBroken(true)} />
                 ) : (
                   <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>

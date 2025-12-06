@@ -377,9 +377,11 @@ const WorkerViewApplication = () => {
       window.dispatchEvent(new Event('worker-application-viewed'));
     } catch {}
     await new Promise((r) => setTimeout(r, 350));
-    jumpTop();
-    if (window.history.length > 1) navigate(-1);
-    else navigate('/workerdashboard', { replace: true });
+    setTimeout(() => {
+      jumpTop();
+      if (window.history.length > 1) navigate(-1);
+      else navigate('/workerdashboard', { replace: true });
+    }, 2000);
   };
 
   const handleCancel = () => {
@@ -851,29 +853,18 @@ const WorkerViewApplication = () => {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Please wait a moment"
+            aria-label="Loading next step"
             tabIndex={-1}
-            autoFocus
-            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+            className="fixed inset-0 z-[2147483646] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
               <div className="relative mx-auto w-40 h-40">
-                <div
-                  className="absolute inset-0 animate-spin rounded-full"
-                  style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
-                />
+                <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
                 <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   {!logoBroken ? (
-                    <img
-                      src="/jdklogo.png"
-                      alt="JDK Homecare Logo"
-                      className="w-20 h-20 object-contain"
-                      onError={() => setLogoBroken(true)}
-                    />
+                    <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={()=>setLogoBroken(true)} />
                   ) : (
                     <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                       <span className="font-bold text-[#008cfc]">JDK</span>
@@ -881,9 +872,8 @@ const WorkerViewApplication = () => {
                   )}
                 </div>
               </div>
-              <div className="mt-6 text-center space-y-1">
-                <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
-                <div className="text-sm text-gray-600 animate-pulse">Finalizing</div>
+              <div className="mt-6 text-center">
+                <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
               </div>
             </div>
           </div>

@@ -119,6 +119,42 @@ const buildLocation = (info, work) => {
   return parts.join(", ");
 };
 
+const StatusBadge = ({ status }) => {
+  const s = String(status || "").toLowerCase();
+  if (s === "cancelled" || s === "canceled")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
+        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+        Canceled Application
+      </span>
+    );
+  if (s === "declined")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+        Declined Application
+      </span>
+    );
+  if (s === "approved")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+        Approved Application
+      </span>
+    );
+  if (s === "pending")
+    return (
+      <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+        <span className="relative inline-flex">
+          <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
+          <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
+        </span>
+        Pending Application
+      </span>
+    );
+  return null;
+};
+
 const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
   const info = item.info || {};
   const work = item.work || {};
@@ -133,8 +169,7 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
   const serviceTypes = serviceTypesRaw.map((x) => String(x || "").trim()).filter(Boolean);
   const primaryService = serviceTypes[0] || work.primary_service || "";
   const iconSources = serviceTypes.length ? serviceTypes : [primaryService || work?.work_description];
-  const serviceTypesText = serviceTypes.length ? serviceTypes.join(", ") : (primaryService || "Service");
-
+  const serviceTypesText = serviceTypes.length ? serviceTypes.join(" • ") : (primaryService || "Service");
   const statusLower = String(item.status || "").toLowerCase();
   const isPending = statusLower === "pending";
   const isApproved = statusLower === "approved";
@@ -163,6 +198,30 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
       : "";
   const tools = work?.tools_provided;
   const rateTypeText = formatRateType(rate?.rate_type);
+  const showTopBadge = false;
+
+  const buildServiceTasksText = (w) => {
+    const jd = w?.job_details || w?.service_task;
+    const set = new Set();
+    if (Array.isArray(jd)) {
+      jd.forEach((seg) => {
+        const tasks = Array.isArray(seg?.tasks) ? seg.tasks : [];
+        tasks.forEach((t) => {
+          const s = String(t || "").trim();
+          if (s) set.add(s);
+        });
+      });
+    } else if (jd && typeof jd === "object") {
+      Object.values(jd).forEach((v) => {
+        if (Array.isArray(v)) v.forEach((t) => { const s = String(t || "").trim(); if (s) set.add(s); });
+        else { const s = String(v || "").trim(); if (s) set.add(s); }
+      });
+    } else if (typeof jd === "string") {
+      jd.split(/[•,]/).map((x) => String(x || "").trim()).filter(Boolean).forEach((t) => set.add(t));
+    }
+    const out = Array.from(set);
+    return out.length ? out.join(" • ") : "-";
+  };
 
   return (
     <div className={`${cardBase} ${cardState}`}>
@@ -183,38 +242,36 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
           <div className="min-w-0">
             <div className="text-xl md:text-2xl font-semibold truncate">
               <span className="text-gray-700">Service Type:</span>{" "}
-              <span className="text-black">
-                {serviceTypesText}
-              </span>
+              <span className="text-gray-900">{serviceTypesText}</span>
             </div>
-            <div className="mt-1 text-base md:text-lg truncate text-black">
-              <span className="font-semibold text-gray-700">Work Description:</span>{" "}
-              {work?.work_description || "-"}
+            <div className="mt-1 text-base md:text-lg truncate">
+              <span className="font-semibold text-gray-700">Service Tasks:</span>{" "}
+              <span className="text-[#008cfc] font-semibold">{buildServiceTasksText(work)}</span>
             </div>
             <div className="mt-1 text-base text-gray-500">
               {createdAgo ? `Created ${createdAgo}` : ""}
             </div>
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
               <div className="space-y-1.5">
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Address:</span>
-                  <span className="text-black font-medium">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Barangay:</span>
+                  <span className="text-[#008cfc] font-semibold">
                     {address || "-"}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
                   <span className="text-gray-700 font-semibold">
                     Years of Experience:
                   </span>
-                  <span className="text-black font-medium">
+                  <span className="text-[#008cfc] font-semibold">
                     {yearsExp ? yearsExp : "-"}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
                   <span className="text-gray-700 font-semibold">
                     Tools Provided:
                   </span>
-                  <span className="text-black font-medium">
+                  <span className="text-[#008cfc] font-semibold">
                     {typeof tools === "boolean"
                       ? tools
                         ? "Yes"
@@ -224,19 +281,19 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
                 </div>
               </div>
               <div className="space-y-1.5 md:pl-10">
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
                   <span className="text-gray-700 font-semibold">
                     Rate Type:
                   </span>
-                  <span className="text-black font-medium">
+                  <span className="text-[#008cfc] font-semibold">
                     {rateTypeText || "-"}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
                   <span className="text-gray-700 font-semibold">
                     Service Rate:
                   </span>
-                  <span className="text-black font-medium">
+                  <span className="text-[#008cfc] font-semibold">
                     <RateText rate={rate} />
                   </span>
                 </div>
@@ -246,25 +303,25 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {isCancelled && (
+          {false && isCancelled && (
             <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Canceled Application
             </span>
           )}
-          {!isCancelled && isDeclined && (
+          {false && !isCancelled && isDeclined && (
             <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Declined Application
             </span>
           )}
-          {!isCancelled && !isDeclined && isApproved && (
+          {false && !isCancelled && !isDeclined && isApproved && (
             <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Approved Application
             </span>
           )}
-          {!isCancelled && !isDeclined && isPending && (
+          {false && !isCancelled && !isDeclined && isPending && (
             <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
               <span className="relative inline-flex">
                 <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
@@ -666,6 +723,15 @@ export default function WorkerCurrentApplication() {
     return arr.length ? arr.join(", ") : "-";
   };
 
+  const buildServiceTypeArray = (work) => {
+    const arr = Array.isArray(work?.service_types)
+      ? work.service_types.filter(Boolean)
+      : typeof work?.service_types === "string"
+      ? work.service_types.split(",").map((x) => String(x || "").trim()).filter(Boolean)
+      : [];
+    return arr;
+  };
+
   const buildServiceTasks = (work) => {
     const jd = work?.job_details || work?.service_task;
     const set = new Set();
@@ -785,14 +851,19 @@ export default function WorkerCurrentApplication() {
             </div>
           ) : (
             paginated.map((item) => (
-              <Card
-                key={item.id}
-                item={item}
-                onView={onView}
-                onReason={onReason}
-                onDelete={onDelete}
-                onEdit={onEdit}
-              />
+              <div key={item.id} className="space-y-2">
+                <div className="flex items-center justify-end gap-2 pr-1">
+                  <span className="text-gray-700 font-semibold">Status:</span>
+                  <StatusBadge status={item.status} />
+                </div>
+                <Card
+                  item={item}
+                  onView={onView}
+                  onReason={onReason}
+                  onDelete={onDelete}
+                  onEdit={onEdit}
+                />
+              </div>
             ))
           )}
 
@@ -865,6 +936,7 @@ export default function WorkerCurrentApplication() {
             const title = isCancel ? "Cancel Reason" : "Decline Reason";
             const work = reasonTarget?.work || {};
             const serviceTypesText = buildServiceTypeList(work);
+            const serviceTypesArr = buildServiceTypeArray(work);
             const serviceTasksText = buildServiceTasks(work);
 
             return (
@@ -926,7 +998,18 @@ export default function WorkerCurrentApplication() {
                           Service Type
                         </div>
                         <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                          {serviceTypesText}
+                          {serviceTypesArr.length ? (
+                            <span className="text-gray-900">
+                              {serviceTypesArr.map((t, idx) => (
+                                <span key={`${t}-${idx}`} className="inline-flex items-center gap-2 mr-3">
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-current" />
+                                  <span>{t}</span>
+                                </span>
+                              ))}
+                            </span>
+                          ) : (
+                            serviceTypesText
+                          )}
                         </div>
                       </div>
                       <div className="rounded-xl border border-gray-200 bg-white p-4">
