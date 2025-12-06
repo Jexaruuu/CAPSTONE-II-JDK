@@ -191,8 +191,8 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   const contactDisplay = (
     <div className="inline-flex items-center gap-2">
       <img src="/philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
-      <span className={`leading-6 ${contactLocal10 ? 'text-gray-900 font-semibold' : 'text-gray-400'}`}>+63</span>
-      <span className={`leading-6 ${contactLocal10 ? 'text-gray-900 font-semibold' : 'text-gray-400'}`}>
+      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-[#008cfc] font-semibold' : 'text-gray-400'}`}>+63</span>
+      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-[#008cfc] font-semibold' : 'text-gray-400'}`}>
         {contactLocal10 || '9XXXXXXXXX'}
       </span>
     </div>
@@ -209,12 +209,12 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     const display = isElement ? value : isEmpty ? emptyAs : mapped;
     const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
-      <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-        <span className="font-medium text-gray-600">{labelText}</span>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-gray-700 font-semibold">{labelText}</span>
         {isElement ? (
-          <div className="text-[15px] md:text-base text-gray-900">{display}</div>
+          <div className="text-[15px] md:text-base text-[#008cfc] font-semibold">{display}</div>
         ) : (
-          <span className="text-[15px] md:text-base font-semibold text-gray-900">{display}</span>
+          <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">{display}</span>
         )}
       </div>
     );
@@ -514,6 +514,10 @@ agreements: {
       localStorage.setItem(CONFIRM_FLAG, '1');
       localStorage.removeItem(GLOBAL_DESC_KEY);
       window.dispatchEvent(new Event('client-request-confirmed'));
+      try {
+       localStorage.removeItem('clientServiceImageCache');
+       localStorage.setItem('clientServiceImageCleared', '1');
+     } catch {}
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Submission failed';
       setSubmitError(msg);
@@ -530,6 +534,8 @@ agreements: {
       localStorage.removeItem(GLOBAL_DESC_KEY);
       localStorage.setItem(CONFIRM_FLAG, '1');
       window.dispatchEvent(new Event('client-request-confirmed'));
+           localStorage.removeItem('clientServiceImageCache');
+    localStorage.setItem('clientServiceImageCleared', '1');
     } catch {}
 
     jumpTop();
@@ -621,7 +627,7 @@ agreements: {
                     <LabelValue
                       label="Urgent"
                       value={
-                        <span className="text-[15px] md:text-base font-semibold text-gray-900">
+                        <span className="text-[15px] md:text-base font-semibold text-[#008cfc]">
                           {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
                         </span>
                       }
@@ -629,7 +635,7 @@ agreements: {
                     <LabelValue
                       label="Tools Provided"
                       value={
-                        <span className="text-[15px] md:text-base font-semibold text-gray-900">
+                        <span className="text-[15px] md:text-base font-semibold text-[#008cfc]">
                           {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
                         </span>
                       }
@@ -639,8 +645,8 @@ agreements: {
                     </div>
                     {review_image ? (
                       <div className="md:col-span-2">
-                        <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-                          <span className="font-medium text-gray-600">Request Image:</span>
+                        <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Request Image:</span>
                           <div className="w-full">
                             <div className="w-full h-64 rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50">
                               <img src={review_image} alt="" className="w-full h-full object-cover" />
@@ -680,39 +686,44 @@ agreements: {
                   <div className="text-base font-semibold text-gray-900">Summary</div>
                 </div>
                 <div className="border-t border-gray-100" />
-                <div className="px-6 py-5 space-y-4 flex-1">
-                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                <div className="px-6 py-5 space-y-3 flex-1">
+                  <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-gray-700">Client:</span>
-                    <span className="text-base font-semibold text-gray-900">{first_name || '-'} {last_name || ''}</span>
+                    <span className="text-base font-semibold text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
                   </div>
-                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                  <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-gray-700">Service:</span>
-                    <span className="text-base font-semibold text-gray-900 truncate max-w-[60%] text-right sm:text-left">{service_type || '-'}</span>
+                    <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{service_type || '-'}</span>
                   </div>
-                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                  <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-gray-700">Task:</span>
-                    <span className="text-base font-semibold text-gray-900 truncate max-w-[60%] text-right sm:text-left">{service_task || '-'}</span>
+                    <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{service_task || '-'}</span>
                   </div>
-                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                  <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-gray-700">Schedule:</span>
-                    <span className="text-base font-semibold text-gray-900">{preferred_date_display || '-'} • {preferred_time_display || '-'}</span>
+                    <span className="text-base font-semibold text-[#008cfc]">{preferred_date_display || '-'} • {preferred_time_display || '-'}</span>
                   </div>
-                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                  <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-gray-700">Urgent:</span>
-                    <span className="text-base font-semibold text-gray-900">
+                    <span className="text-base font-semibold text-[#008cfc]">
                       {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
                     </span>
                   </div>
-                  <div className="h-px bg-gray-100 my-2" />
-                  <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-medium text-gray-700">Tools:</span>
+                    <span className="text-base font-semibold text-[#008cfc]">
+                      {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2">
                     <span className="text-sm font-medium text-gray-700">Rate:</span>
                     {rate_type === 'Hourly Rate' ? (
-                      <div className="text-lg font-bold text-gray-900">
-                        ₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-medium text-gray-900 opacity-80">per hour</span>
+                      <div className="text-lg font-bold text-[#008cfc]">
+                        ₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-semibold opacity-80">per hour</span>
                       </div>
                     ) : rate_type === 'By the Job Rate' ? (
-                      <div className="text-lg font-bold text-gray-900">
-                        ₱{rate_value ?? 0} <span className="text-sm font-medium text-gray-900 opacity-80">per job</span>
+                      <div className="text-lg font-bold text-[#008cfc]">
+                        ₱{rate_value ?? 0} <span className="text-sm font-semibold opacity-80">per job</span>
                       </div>
                     ) : (
                       <div className="text-gray-500 text-sm">No rate provided</div>

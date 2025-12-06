@@ -4,6 +4,7 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const CONFIRM_FLAG = 'workerApplicationJustSubmitted';
+const fallbackProfile = '/fallback-profile.png';
 
 function computeAge(iso) {
   if (!iso) return null;
@@ -301,8 +302,8 @@ const WorkerReviewPost = ({ handleBack }) => {
   const contactDisplay = (
     <div className="inline-flex items-center gap-2">
       <img src="/philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
-      <span className="text-gray-700 text-sm">+63</span>
-      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
+      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-[#008cfc] font-semibold' : 'text-gray-400'}`}>+63</span>
+      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-[#008cfc] font-semibold' : 'text-gray-400'}`}>
         {contactLocal10 || '9XXXXXXXXX'}
       </span>
     </div>
@@ -318,12 +319,12 @@ const WorkerReviewPost = ({ handleBack }) => {
     const display = isElement ? value : isEmpty ? emptyAs : value;
     const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
-      <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-        <span className="font-medium text-gray-600">{labelText}</span>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-gray-700 font-semibold">{labelText}</span>
         {isElement ? (
-          <div className="text-[15px] md:text-base">{display}</div>
+          <div className="text-[15px] md:text-base text-[#008cfc] font-semibold">{display}</div>
         ) : (
-          <span className="text-[15px] md:text-base font-semibold text-gray-900">{display}</span>
+          <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">{display}</span>
         )}
       </div>
     );
@@ -504,7 +505,7 @@ const WorkerReviewPost = ({ handleBack }) => {
         })
       );
 
-       const docsObjPrepared = await (async () => {
+      const docsObjPrepared = await (async () => {
         const readJson = (k, d) => {
           try { return JSON.parse(localStorage.getItem(k) || d); } catch { return JSON.parse(d); }
         };
@@ -545,27 +546,26 @@ const WorkerReviewPost = ({ handleBack }) => {
         return base;
       })();
 
-            const documentsNormalized = Object.keys(docsObjPrepared || {}).some(k => (docsObjPrepared[k] || '').length)
+      const documentsNormalized = Object.keys(docsObjPrepared || {}).some(k => (docsObjPrepared[k] || '').length)
         ? normalizeDocsForSubmit(docsObjPrepared)
         : normalizeDocsForSubmit(docsDraftProcessed);
 
-
       const docsObject = (() => {
-  const out = {};
-  (documentsNormalized || []).forEach((d) => {
-    const k = d?.kind || '';
-    if (!k) return;
-    const val = d?.data_url || d?.url || '';
-    if (!val) return;
-    out[k] = val;
-  });
-  const srcObj = (docsDraftObj && typeof docsDraftObj === 'object') ? docsDraftObj : {};
-  ['primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate','certificates'].forEach((k) => {
-    const v = srcObj[k];
-    if (typeof v === 'string' && v && !out[k]) out[k] = v;
-  });
-  return out;
-})();
+        const out = {};
+        (documentsNormalized || []).forEach((d) => {
+          const k = d?.kind || '';
+          if (!k) return;
+          const val = d?.data_url || d?.url || '';
+          if (!val) return;
+          out[k] = val;
+        });
+        const srcObj = (savedDocsObj && typeof savedDocsObj === 'object') ? savedDocsObj : {};
+        ['primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate','certificates'].forEach((k) => {
+          const v = srcObj[k];
+          if (typeof v === 'string' && v && !out[k]) out[k] = v;
+        });
+        return out;
+      })();
 
       const emailVal =
         (initialPayload.info.email ||
@@ -849,7 +849,14 @@ const WorkerReviewPost = ({ handleBack }) => {
                   <div className="text-sm font-medium text-gray-700 mb-3">Worker Profile Picture</div>
                   {profile_picture ? (
                     <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
-                      <img src={profile_picture} alt="Profile" className="h-full w-full object-cover" />
+                      <img
+                        src={profile_picture || fallbackProfile}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = fallbackProfile;
+                        }}
+                      />
                     </div>
                   ) : (
                     <div className="w-32 h-32 md:w-40 md:h-40 rounded-full grid place-items-center bg-gray-50 text-gray-400 border border-dashed">
@@ -869,14 +876,12 @@ const WorkerReviewPost = ({ handleBack }) => {
                 </div>
                 <div className="border-t border-gray-100" />
                 <div className="px-6 py-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
-                    <div className="space-y-5">
-                      <LabelValue label="Service Types" value={formatList(service_types)} />
-                      <LabelValue label="Service Tasks" value={formatServiceTasksText(service_task)} />
-                    </div>
-                    <div className="space-y-5">
-                      <LabelValue label="Years of Experience" value={years_experience} />
-                      <LabelValue label="Tools Provided" value={tools_provided} />
+                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
+                    <LabelValue label="Service Types" value={formatList(service_types)} />
+                    <LabelValue label="Service Tasks" value={formatServiceTasksText(service_task)} />
+                    <LabelValue label="Years of Experience" value={years_experience} />
+                    <LabelValue label="Tools Provided" value={tools_provided} />
+                    <div className="md:col-span-2">
                       <LabelValue label="Work Description" value={service_description || '-'} />
                     </div>
                   </div>
@@ -889,7 +894,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                 </div>
                 <div className="border-t border-gray-100" />
                 <div className="px-6 py-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
+                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
                     <LabelValue label="Rate Type" value={rate_type} />
                     {rate_type === 'Hourly Rate' ? (
                       <LabelValue label="Rate" value={rate_from && rate_to ? `₱${rate_from} - ₱${rate_to} per hour` : ''} />
@@ -907,33 +912,32 @@ const WorkerReviewPost = ({ handleBack }) => {
                   <div className="text-base font-semibold text-gray-900">Summary</div>
                 </div>
                 <div className="border-t border-gray-100" />
-                <div className="px-6 py-5 space-y-4 flex-1">
-                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                    <span className="text-sm font-medium text-gray-600">Worker:</span>
-                    <span className="text-base font-semibold text-gray-900">{first_name || '-'} {last_name || ''}</span>
+                <div className="px-6 py-5 space-y-3 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-medium text-gray-700">Worker:</span>
+                    <span className="text-base font-semibold text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
                   </div>
-                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                    <span className="text-sm font-medium text-gray-600">Services:</span>
-                    <span className="text-base font-semibold text-gray-900 truncate max-w-[60%] text-right sm:text-left">{formatList(service_types)}</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-medium text-gray-700">Services:</span>
+                    <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{formatList(service_types)}</span>
                   </div>
-                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                    <span className="text-sm font-medium text-gray-600">Experience:</span>
-                    <span className="text-base font-semibold text-gray-900">{years_experience || '-'}</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-medium text-gray-700">Experience:</span>
+                    <span className="text-base font-semibold text-[#008cfc]">{years_experience || '-'}</span>
                   </div>
-                  <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
-                    <span className="text-sm font-medium text-gray-600">Tools:</span>
-                    <span className="text-base font-semibold text-gray-900">{tools_provided || '-'}</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-medium text-gray-700">Tools:</span>
+                    <span className="text-base font-semibold text-[#008cfc]">{tools_provided || '-'}</span>
                   </div>
-                  <div className="h-px bg-gray-100 my-2" />
-                  <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">
-                    <span className="text-sm font-medium text-gray-600">Rate:</span>
+                  <div className="flex items-start gap-2">
+                    <span className="text-sm font-medium text-gray-700">Rate:</span>
                     {rate_type === 'Hourly Rate' ? (
-                      <div className="text-lg font-bold text-gray-900">
-                        ₱{rate_from || 0}–₱{rate_to || 0} <span className="text-sm font-medium text-gray-700 opacity-80">per hour</span>
+                      <div className="text-lg font-bold text-[#008cfc]">
+                        ₱{rate_from || 0}–₱{rate_to || 0} <span className="text-sm font-semibold opacity-80">per hour</span>
                       </div>
                     ) : rate_type === 'By the Job Rate' ? (
-                      <div className="text-lg font-bold text-gray-900">
-                        ₱{rate_value || 0} <span className="text-sm font-medium text-gray-700 opacity-80">per job</span>
+                      <div className="text-lg font-bold text-[#008cfc]">
+                        ₱{rate_value || 0} <span className="text-sm font-semibold opacity-80">per job</span>
                       </div>
                     ) : (
                       <div className="text-gray-500 text-sm">No rate provided</div>

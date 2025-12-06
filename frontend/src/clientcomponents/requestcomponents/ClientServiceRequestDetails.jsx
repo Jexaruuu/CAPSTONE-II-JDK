@@ -252,6 +252,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const run = async () => {
       if (image) return;
       if (localStorage.getItem(IMAGE_CLEARED_FLAG) === '1') return;
+      const path = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : '';
+    const isCreateFlow = path.includes('/clientpostrequest');
+     if (isCreateFlow) return;
       try {
         const cached = JSON.parse(localStorage.getItem(IMAGE_CACHE_KEY) || 'null');
         if (cached && cached.image) {
