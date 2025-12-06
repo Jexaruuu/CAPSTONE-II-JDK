@@ -532,23 +532,23 @@ function WorkerPost() {
   };
 
   const preloadViewPayload = async (gid) => {
-    try {
-      const email = getWorkerEmail();
-      const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
-        withCredentials: true,
-        headers: headersWithU,
-        params: { scope: 'current', email, groupId: gid }
-      });
-      const items = Array.isArray(data?.items) ? data.items : [];
-      const row = items.find(r => String(r.request_group_id) === String(gid)) || items[0] || null;
-      if (row) {
-        try { sessionStorage.setItem('wa_view_payload', JSON.stringify(row)); } catch {}
-        navigate(`/current-work-post/${encodeURIComponent(gid)}`, { state: { row } });
-        return;
-      }
-    } catch {}
-    navigate(`/current-work-post/${encodeURIComponent(gid)}`);
-  };
+  try {
+    const email = getWorkerEmail();
+    const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
+      withCredentials: true,
+      headers: headersWithU,
+      params: { scope: 'active', email, groupId: gid }
+    });
+    const items = Array.isArray(data?.items) ? data.items : [];
+    const row = items.find(r => String(r.request_group_id) === String(gid)) || null;
+    if (row) {
+      try { sessionStorage.setItem('wa_view_payload', JSON.stringify(row)); } catch {}
+      navigate(`/current-work-post/${encodeURIComponent(gid)}`, { state: { row } });
+      return;
+    }
+  } catch {}
+  navigate(`/current-work-post/${encodeURIComponent(gid)}`);
+};
 
   const handleView = (item) => {
     setShowViewLoading(true);
@@ -614,26 +614,25 @@ function WorkerPost() {
   };
 
   const loadCurrentApplication = async () => {
-    try {
-      const email = getWorkerEmail();
-      const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
-        withCredentials: true,
-        headers: headersWithU,
-        params: { scope: 'current', email }
-      });
-      const items = Array.isArray(data?.items) ? data.items : [];
-      const pick =
-        items.find((r) => String(r.status || '').toLowerCase() === 'pending') ||
-        items.find((r) => String(r.status || '').toLowerCase() === 'approved') ||
-        items[0] ||
-        null;
-      setCurrentApp(pick);
-    } catch {
-      setCurrentApp(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const email = getWorkerEmail();
+    const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
+      withCredentials: true,
+      headers: headersWithU,
+      params: { scope: 'active', email }
+    });
+    const items = Array.isArray(data?.items) ? data.items : [];
+    const pick =
+      items.find((r) => String(r.status || '').toLowerCase() === 'pending') ||
+      items.find((r) => String(r.status || '').toLowerCase() === 'approved') ||
+      null;
+    setCurrentApp(pick);
+  } catch {
+    setCurrentApp(null);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     loadCurrentApplication();

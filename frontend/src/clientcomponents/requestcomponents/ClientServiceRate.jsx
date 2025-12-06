@@ -200,7 +200,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                     <img src="/Clock.png" alt="" className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-gray-900">By the hour</p>
+                    <p className="text-base font-semibold text-gray-900">Hourly Rate</p>
                     <p className="text-sm text-gray-500">Pay per hour of work</p>
                   </div>
                 </div>
@@ -216,7 +216,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                     <img src="/Contract.png" alt="" className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-gray-900">By the job</p>
+                    <p className="text-base font-semibold text-gray-900">By the Job Rate</p>
                     <p className="text-sm text-gray-500">Single fixed price</p>
                   </div>
                 </div>

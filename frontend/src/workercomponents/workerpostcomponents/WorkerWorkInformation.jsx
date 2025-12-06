@@ -338,9 +338,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
           <div className="px-6 py-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               <div>
-                <h3 className="text-xl md:text-2xl font-semibold mb-6">Type of Service</h3>
+                <h3 className="text-xl md:text-2xl font-semibold mb-6">Service Type</h3>
 
-                <div className="mb-4">
+                <div className="mb-8">
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     {serviceTypes.map((type) => (
                       <label key={type} className="flex items-center gap-3 cursor-pointer select-none">
@@ -359,27 +359,16 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
                 {serviceTypesSelected.length > 0 && (
                   <div className="mb-4">
-                    <h4 className="text-base font-semibold mb-2">Service Task</h4>
+                    <h4 className="text-2xl font-semibold mb-2">Service Task</h4>
                     {serviceTypesSelected.map((jobType) => {
                       const options = jobTasks[jobType] || [];
                       const selectedNonEmpty = (serviceTask[jobType] || []).filter((v) => String(v || '').trim() !== '');
                       const hasDetail = selectedNonEmpty.length > 0;
                       return (
                         <div key={jobType} className="mb-6 rounded-xl border border-gray-200 bg-white shadow-xs">
-                          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-gray-100">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-[#008cfc]" />
-                              <div className="text-sm font-medium text-gray-900">{jobType} Services</div>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedNonEmpty.length === 0 ? (
-                                <span className="text-xs text-gray-400">No tasks selected</span>
-                              ) : (
-                                selectedNonEmpty.map((t) => (
-                                  <span key={t} className="inline-flex items-center px-2 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-xs">{t}</span>
-                                ))
-                              )}
-                            </div>
+                          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                            <div className="text-sm font-medium text-gray-900">{jobType} Services</div>
+                            <div className="text-xs text-gray-500">{selectedNonEmpty.length} selected</div>
                           </div>
 
                           <div className="px-4 py-4">
@@ -414,32 +403,11 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                                       />
                                     </div>
                                   )}
-
-                                  {serviceTask[jobType].length > 1 && (
-                                    <div className="flex justify-end">
-                                      <button type="button" onClick={() => removeTaskField(jobType, index)} className="mt-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 text-xs">
-                                        Remove
-                                      </button>
-                                    </div>
-                                  )}
                                 </div>
                               );
                             })}
 
                             {!hasDetail && attempted && <p className="text-xs text-red-600 mt-1">Choose at least one {jobType} service.</p>}
-
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {(options.filter((o) => !(serviceTask[jobType] || []).includes(o))).slice(0, 10).map((suggest) => (
-                                <button
-                                  key={suggest}
-                                  type="button"
-                                  onClick={() => addOrFillTask(jobType, suggest)}
-                                  className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 text-xs hover:bg-gray-50"
-                                >
-                                  {suggest}
-                                </button>
-                              ))}
-                            </div>
 
                             <div className="mt-3 flex items-center justify-between">
                               <button type="button" onClick={() => addTaskField(jobType)} className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 text-sm">
@@ -452,6 +420,19 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                               >
                                 Clear {jobType}
                               </button>
+                            </div>
+
+                            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
+                              {(options.filter((o) => !(serviceTask[jobType] || []).includes(o))).slice(0, 9).map((suggest) => (
+                                <button
+                                  key={suggest}
+                                  type="button"
+                                  onClick={() => addOrFillTask(jobType, suggest)}
+                                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-700 text-xs hover:bg-gray-50"
+                                >
+                                  {suggest}
+                                </button>
+                              ))}
                             </div>
                           </div>
                         </div>

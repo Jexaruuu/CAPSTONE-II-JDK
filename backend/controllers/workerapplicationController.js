@@ -271,33 +271,21 @@ if (rawProfile) {
   }
 }
 
-    let fallbackProfile = null;
-    try {
-      const { data: prevInfo } = await supabaseAdmin
-        .from('worker_information')
-        .select('profile_picture_url, profile_picture_name')
-        .ilike('email_address', canonicalEmail)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (prevInfo) fallbackProfile = prevInfo;
-    } catch {}
-
     const infoRow = {
-      request_group_id,
-      worker_id: effectiveWorkerId,
-      auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
-      email_address: canonicalEmail || metadata.email || null,
-      first_name: first_name || metadata.first_name || null,
-      last_name: last_name || metadata.last_name || null,
-      contact_number: (contact_number ?? metadata.contact_number ?? '').toString(),
-      street: (street ?? metadata.street ?? '').toString(),
-      barangay: (barangay ?? metadata.barangay ?? '').toString(),
-      date_of_birth: date_of_birth || null,
-      age: age || null,
-      profile_picture_url: profileUpload?.url || profileDirect || null,
-      profile_picture_name: profileUpload?.name || profile_picture_name || null
-    };
+  request_group_id,
+  worker_id: effectiveWorkerId,
+  auth_uid: effectiveWorkerId ? effectiveAuthUid : (auth_uid || metadata.auth_uid || null),
+  email_address: canonicalEmail || metadata.email || null,
+  first_name: first_name || metadata.first_name || null,
+  last_name: last_name || metadata.last_name || null,
+  contact_number: (contact_number ?? metadata.contact_number ?? '').toString(),
+  street: (street ?? metadata.street ?? '').toString(),
+  barangay: (barangay ?? metadata.barangay ?? '').toString(),
+  date_of_birth: date_of_birth || null,
+  age: age || null,
+  profile_picture_url: profileUpload?.url || profileDirect || metadata.profile_picture || metadata.profile_picture_url || null,
+  profile_picture_name: profileUpload?.name || profile_picture_name || null
+};
 
     if (!infoRow.profile_picture_url) {
       infoRow.profile_picture_url = metadata.profile_picture || metadata.profile_picture_url || fallbackProfile?.profile_picture_url || null;
@@ -406,27 +394,29 @@ if (rawProfile) {
     if (rateRow.rate_type === 'By the Job Rate' && !rateRow.rate_value) missingRate.push('rate_value');
     if (missingRate.length) return res.status(400).json({ message: `Missing required worker_service_rate fields: ${missingRate.join(', ')}` });
 
-    await insertWorkerRate(rateRow);
-
     try {
-      await insertWorkerRate(rateRow);
-    } catch (e) {
-      const raw = String(e?.message || '');
-      if (/rate_type.*check|rate_type_check/i.test(raw)) {
-        const fallbacks = rateRow.rate_type === 'Hourly Rate' ? ['hourly', 'hourly_rate'] : rateRow.rate_type === 'By the Job Rate' ? ['job', 'by_job_rate'] : [];
-        let inserted = false;
-        for (const alt of fallbacks) {
-          try {
-            await insertWorkerRate({ ...rateRow, rate_type: alt });
-            inserted = true;
-            break;
-          } catch {}
-        }
-        if (!inserted) throw e;
-      } else {
-        throw e;
-      }
+  await insertWorkerRate(rateRow);
+} catch (e) {
+  const raw = String(e?.message || '');
+  if (/rate_type.*check|rate_type_check/i.test(raw)) {
+    const fallbacks = rateRow.rate_type === 'Hourly Rate'
+      ? ['hourly', 'hourly_rate']
+      : rateRow.rate_type === 'By the Job Rate'
+      ? ['job', 'by_job_rate']
+      : [];
+    let inserted = false;
+    for (const alt of fallbacks) {
+      try {
+        await insertWorkerRate({ ...rateRow, rate_type: alt });
+        inserted = true;
+        break;
+      } catch {}
     }
+    if (!inserted) throw e;
+  } else {
+    throw e;
+  }
+}
 
     const bucket = process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments';
     const docCols = {
@@ -444,16 +434,24 @@ if (rawProfile) {
     };
 
     let fallbackDocs = null;
-    try {
-      const { data: prevDocs } = await supabaseAdmin
-        .from('worker_required_documents')
-        .select('primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates')
-        .ilike('email_address', infoRow.email_address)
-        .order('id', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (prevDocs) fallbackDocs = prevDocs;
-    } catch {}
+try {
+  const { data: prevDocs } = await supabaseAdmin
+    .from('worker_required_documents')
+    .select('primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates')
+    .ilike('email_address', infoRow.email_address)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (prevDocs) fallbackDocs = prevDocs;
+} catch {}
+
+if (fallbackDocs) {
+  Object.keys(docCols).forEach(k => {
+    if (k === 'request_group_id' || k === 'worker_id' || k === 'auth_uid' || k === 'email_address') return;
+    if (!docCols[k]) docCols[k] = fallbackDocs[k] || '';
+  });
+}
+
 
     const aliasToKey = (raw, f) => {
       const r = String(raw || '').toLowerCase();
@@ -711,9 +709,11 @@ exports.listMine = async (req, res) => {
     const isCancelled = (r) => ['cancelled','canceled'].includes(String(r.status||'').toLowerCase());
     const isExpired = (r) => String(r.status||'').toLowerCase() === 'expired';
     const isCurrent = (r) => ['pending','approved','declined'].includes(String(r.status||'').toLowerCase());
+    const isActive = (r) => ['pending','approved'].includes(String(r.status||'').toLowerCase());
 
     if (scope === 'cancelled') base = rows.filter(isCancelled);
     else if (scope === 'expired') base = rows.filter(isExpired);
+    else if (scope === 'active') base = rows.filter(isActive);
     else base = rows.filter(isCurrent);
 
     let targetGroups = base.map(r => r.request_group_id).filter(Boolean);
