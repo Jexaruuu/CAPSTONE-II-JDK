@@ -1298,7 +1298,7 @@ function WorkerPost() {
               </div>
             </div>
             <div className="mt-6 text-center">
-              <div className="text-lg font-semibold text-gray-900">Loading Request</div>
+              <div className="text-lg font-semibold text-gray-900">Loading Application</div>
               <div className="text-sm text-gray-500">Please wait a moment</div>
             </div>
           </div>

@@ -167,6 +167,8 @@ const ClientPost = () => {
   const [showDeleteBusy, setShowDeleteBusy] = useState(false);
   const [showDeleteDone, setShowDeleteDone] = useState(false);
 
+  const [editLoading, setEditLoading] = useState(false);
+
   const buildAppU = () => {
     try {
       const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
@@ -224,7 +226,7 @@ const ClientPost = () => {
 
   const handlePostClick = async (e) => {
     e.preventDefault();
-    if (navLoading) return;
+    if (navLoading || editLoading) return;
     if (currentItems.length > 0) return;
     const ok = await checkProfileComplete();
     if (!ok) {
@@ -238,7 +240,7 @@ const ClientPost = () => {
   };
 
   useEffect(() => {
-    if (!navLoading) return;
+    if (!navLoading && !editLoading) return;
     const onPopState = () => {
       window.history.pushState(null, '', window.location.href);
     };
@@ -257,7 +259,7 @@ const ClientPost = () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener('keydown', blockKeys, true);
     };
-  }, [navLoading]);
+  }, [navLoading, editLoading]);
 
   useEffect(() => {
     const { firstName, gender } = getClientProfile();
@@ -704,7 +706,7 @@ const ClientPost = () => {
                   </div>
                   <div className="mt-1 text-base md:text-lg truncate">
                     <span className="font-semibold text-gray-700">Service Task:</span>{' '}
-                    <span className="text-gray-900">{currentItem?.details?.service_task || 'Task'}</span>
+                    <span className="text-[#008cfc] font-semibold">{currentItem?.details?.service_task || 'Task'}</span>
                   </div>
                   <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago ` : ''}</div>
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
@@ -792,8 +794,8 @@ const ClientPost = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      if (navLoading) return;
-                      setNavLoading(true);
+                      if (navLoading || editLoading) return;
+                      setEditLoading(true);
                       setTimeout(() => {
                         navigate(`/edit-service-request/${encodeURIComponent(currentItem?.id || '')}`);
                       }, 2000);
@@ -835,7 +837,7 @@ const ClientPost = () => {
         )}
       </div>
 
-      {SHOW_CAROUSEL && hasApproved && (
+      {false && hasApproved && (
         <div className="mb-8">
           <div className="relative w-full flex justify-center items-center">
             <button
@@ -1140,6 +1142,50 @@ const ClientPost = () => {
               >
                 Done
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
             </div>
           </div>
         </div>

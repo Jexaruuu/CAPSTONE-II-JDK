@@ -340,8 +340,8 @@ const WorkerViewApplication = () => {
   const contactDisplay = (
     <div className="inline-flex items-center gap-2">
       <img src="/philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
-      <span className="text-base md:text-lg leading-6 text-gray-900 font-medium">+63</span>
-      <span className="text-base md:text-lg leading-6 text-gray-900 font-medium">
+      <span className="text-base md:text-lg leading-6 text-[#008cfc] font-semibold">+63</span>
+      <span className="text-base md:text-lg leading-6 text-[#008cfc] font-semibold">
         {contactLocal10 || '9XXXXXXXXX'}
       </span>
     </div>
@@ -358,12 +358,12 @@ const WorkerViewApplication = () => {
     const display = isElement ? value : isEmpty ? emptyAs : mapped;
     const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
-      <div className="grid grid-cols-[160px,1fr] md:grid-cols-[200px,1fr] items-start gap-x-4">
-        <span className="font-medium text-gray-600">{labelText}</span>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="text-[15px] md:text-base font-medium text-gray-700">{labelText}</span>
         {isElement ? (
-          <div className="text-[15px] md:text-base text-gray-900">{display}</div>
+          <div className="inline-flex items-center gap-2 text-[15px] md:text-base text-[#008cfc] font-semibold">{display}</div>
         ) : (
-          <span className="text-[15px] md:text-base font-semibold text-gray-900">{display}</span>
+          <span className="text-[15px] md:text-base font-semibold text-[#008cfc]">{display}</span>
         )}
       </div>
     );
@@ -544,14 +544,10 @@ const WorkerViewApplication = () => {
                       } />
                       <LabelValue
                         label="Tools Provided"
-                        value={
-                          <span className="text-base md:text-lg font-semibold text-gray-900">
-                            {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
-                          </span>
-                        }
+                        value={toBoolStrict(tools_provided) ? 'Yes' : 'No'}
                       />
                       <div className="md:col-span-2">
-                        <LabelValue label="Description" value={application_description || '-'} />
+                        <LabelValue label="Work Description" value={application_description || '-'} />
                       </div>
                     </div>
                   </div>
@@ -585,37 +581,37 @@ const WorkerViewApplication = () => {
                   </div>
                   <div className="border-t border-gray-100" />
                   <div className="px-6 py-5 space-y-4 flex-1">
-                    <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-sm font-medium text-gray-600">Worker:</span>
-                      <span className="text-base font-semibold text-gray-900">{first_name || '-'} {last_name || ''}</span>
+                      <span className="text-base font-semibold text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
                     </div>
-                    <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-sm font-medium text-gray-600">Services:</span>
-                      <span className="text-base font-semibold text-gray-900 truncate max-w-[60%] text-right sm:text-left">
+                      <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">
                         {Array.isArray(service_types) ? service_types.join(', ') : (service_types || '-')}
                       </span>
                     </div>
-                    <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-sm font-medium text-gray-600">Experience:</span>
-                      <span className="text-base font-semibold text-gray-900">
+                      <span className="text-base font-semibold text-[#008cfc]">
                         {years_experience ? `${years_experience} year${Number(years_experience) === 1 ? '' : 's'}` : '-'}
                       </span>
                     </div>
-                    <div className="grid grid-cols-[120px,1fr] items-center gap-x-2">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-sm font-medium text-gray-600">Tools:</span>
-                      <span className="text-base font-semibold text-gray-900">
+                      <span className="text-base font-semibold text-[#008cfc]">
                         {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
                       </span>
                     </div>
-                    <div className="grid grid-cols-[120px,1fr] items-start gap-x-2">
+                    <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
                       <span className="text-sm font-medium text-gray-600">Rate:</span>
                       {rate_type === 'Hourly Rate' ? (
-                        <div className="text-lg font-bold text-gray-900">
-                          ₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-medium text-gray-900 opacity-80">per hour</span>
+                        <div className="text-lg font-bold text-[#008cfc]">
+                          ₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-medium opacity-80">per hour</span>
                         </div>
                       ) : rate_type === 'By the Job Rate' ? (
-                        <div className="text-lg font-bold text-gray-900">
-                          ₱{rate_value ?? 0} <span className="text-sm font-medium text-gray-900 opacity-80">per job</span>
+                        <div className="text-lg font-bold text-[#008cfc]">
+                          ₱{rate_value ?? 0} <span className="text-sm font-medium opacity-80">per job</span>
                         </div>
                       ) : (
                         <div className="text-gray-500 text-sm">No rate provided</div>
