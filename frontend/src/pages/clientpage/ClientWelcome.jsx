@@ -72,26 +72,47 @@ const ClientWelcomePage = () => {
   }, [navLoading]);
 
   useEffect(() => {
-    const ctrl = new AbortController();
-    const x = encodeURIComponent(JSON.stringify(buildAppU()));
-    fetch(`${API_BASE}/api/client/me`, {
-      headers: { 'x-app-u': x },
-      credentials: 'include',
-      signal: ctrl.signal
-    })
-      .then(r => (r.ok ? r.json() : null))
-      .then(p => {
-        if (!p) return;
-        const fn = p.first_name || '';
-        const ln = p.last_name || '';
-        const sx = p.sex || '';
-        setFirstName(fn); localStorage.setItem('first_name', fn);
-        setLastName(ln);  localStorage.setItem('last_name', ln);
-        setSex(sx);       localStorage.setItem('sex', sx);
-      })
-      .catch(() => {})
-    return () => ctrl.abort();
-  }, []);
+  const ctrl = new AbortController();
+  const x = encodeURIComponent(JSON.stringify(buildAppU()));
+  const paths = [
+    `${API_BASE}/api/clients/me`,
+    `${API_BASE}/api/client/me`,
+    `${API_BASE}/clients/me`,
+    `${API_BASE}/client/me`,
+    `${API_BASE}/api/v1/clients/me`,
+    `${API_BASE}/api/v1/client/me`
+  ];
+  const tryFetch = async (u) => {
+    try {
+      const r = await fetch(`${u}?app_u=${x}`, {
+        headers: { 'x-app-u': x },
+        credentials: 'include',
+        signal: ctrl.signal
+      });
+      return r;
+    } catch {
+      return null;
+    }
+  };
+  (async () => {
+    let payload = null;
+    for (const u of paths) {
+      const r = await tryFetch(u);
+      if (r && r.status !== 404) {
+        payload = r.ok ? await r.json() : null;
+        break;
+      }
+    }
+    if (!payload) return;
+    const fn = payload.first_name || '';
+    const ln = payload.last_name || '';
+    const sx = payload.sex || '';
+    setFirstName(fn); localStorage.setItem('first_name', fn);
+    setLastName(ln);  localStorage.setItem('last_name', ln);
+    setSex(sx);       localStorage.setItem('sex', sx);
+  })();
+  return () => ctrl.abort();
+}, []);
 
   const prefix = sex === 'Male' ? 'Mr.' : sex === 'Female' ? 'Ms.' : '';
 

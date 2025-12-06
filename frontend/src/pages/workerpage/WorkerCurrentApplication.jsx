@@ -177,15 +177,7 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
   const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
   const cardBase =
     "bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300";
-  const cardState = isCancelled
-    ? "hover:border-orange-400 hover:ring-2 hover:ring-orange-400 hover:shadow-xl"
-    : isDeclined
-    ? "hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
-    : isApproved
-    ? "hover:border-emerald-600 hover:ring-2 hover:ring-emerald-600 hover:shadow-xl"
-    : isPending
-    ? "hover:border-yellow-500 hover:ring-2 hover:ring-yellow-500 hover:shadow-xl"
-    : "hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl";
+  const cardState = "hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl";
   const profileUrl =
     info?.profile_picture_url || avatarFromName(info?.first_name || "Worker");
   const createdAgo = item.created_at ? timeAgo(item.created_at) : "";
@@ -354,22 +346,18 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
               e.preventDefault();
               onReason(item);
             }}
-            className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium ${
-              isCancelled
-                ? "border-orange-300 text-orange-600 hover:bg-orange-50"
-                : "border-red-300 text-red-600 hover:bg-red-50"
-            }`}
+            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
           >
             View Reason
           </Link>
         ) : (
-  <Link
-  to={`/current-work-post/${encodeURIComponent(item.id)}`}
-  onClick={(e) => { e.preventDefault(); onView(item); }}
-  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
->
-  View
-</Link>
+          <Link
+            to={`/current-work-post/${encodeURIComponent(item.id)}`}
+            onClick={(e) => { e.preventDefault(); onView(item); }}
+            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+          >
+            View
+          </Link>
         )}
 
         {isApproved && !isCancelled && !isDeclined && (
@@ -624,45 +612,44 @@ export default function WorkerCurrentApplication() {
   }, [totalPages, page]);
 
   const getGroupId = (it) => {
-  const g =
-    it?.application_group_id ??
-    it?.group_id ??
-    it?.groupId ??
-    it?.group ??
-    it?.request_group_id ??
-    it?.id;
-  return g ? String(g) : "";
-};
+    const g =
+      it?.application_group_id ??
+      it?.group_id ??
+      it?.groupId ??
+      it?.group ??
+      it?.request_group_id ??
+      it?.id;
+    return g ? String(g) : "";
+  };
 
- const onView = async (item) => {
-  setShowOpenBusy(true);
-  try {
-    const appU = buildAppU();
-    const headers = { "x-app-u": encodeURIComponent(JSON.stringify(appU)) };
-    const gid = getGroupId(item);
-    const url = `${API_BASE}/api/workerapplications`;
-    const params = { scope: "current", limit: 1, groupId: gid || String(item.id) };
-    if (appU.email_address) params.email = appU.email_address;
-    if (appU.auth_uid) params.auth_uid = appU.auth_uid;
-
-    let payload = item;
+  const onView = async (item) => {
+    setShowOpenBusy(true);
     try {
-      const { data } = await axios.get(url, { params, headers, withCredentials: true });
-      const rows = Array.isArray(data?.items) ? data.items : [];
-      if (rows.length) {
-        payload =
-          rows.find(r => String(r.request_group_id || r.id) === String(gid)) ||
-          rows[0];
-      }
-    } catch {}
-    try { sessionStorage.setItem("wa_view_payload", JSON.stringify(payload)); } catch {}
-    try { localStorage.removeItem("workerApplicationJustSubmitted"); } catch {}
-    navigate(`/current-work-post/${encodeURIComponent(gid || item.id)}`, { state: { row: payload } });
-  } finally {
-    setShowOpenBusy(false);
-  }
-};
+      const appU = buildAppU();
+      const headers = { "x-app-u": encodeURIComponent(JSON.stringify(appU)) };
+      const gid = getGroupId(item);
+      const url = `${API_BASE}/api/workerapplications`;
+      const params = { scope: "current", limit: 1, groupId: gid || String(item.id) };
+      if (appU.email_address) params.email = appU.email_address;
+      if (appU.auth_uid) params.auth_uid = appU.auth_uid;
 
+      let payload = item;
+      try {
+        const { data } = await axios.get(url, { params, headers, withCredentials: true });
+        const rows = Array.isArray(data?.items) ? data.items : [];
+        if (rows.length) {
+          payload =
+            rows.find(r => String(r.request_group_id || r.id) === String(gid)) ||
+            rows[0];
+        }
+      } catch {}
+      try { sessionStorage.setItem("wa_view_payload", JSON.stringify(payload)); } catch {}
+      try { localStorage.removeItem("workerApplicationJustSubmitted"); } catch {}
+      navigate(`/current-work-post/${encodeURIComponent(gid || item.id)}`, { state: { row: payload } });
+    } finally {
+      setShowOpenBusy(false);
+    }
+  };
 
   const onEdit = (item) => {
     navigate(`/workerreviewpost?id=${encodeURIComponent(item.id)}`);
@@ -758,7 +745,7 @@ export default function WorkerCurrentApplication() {
       <div className="flex-1 flex flex-col">
         <header className="mx-auto w-full max-w-[1525px] px-6 pt-6 md:pt-8">
           <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-            Current Applications
+            Worker Application Status
           </h1>
         </header>
 
@@ -780,7 +767,7 @@ export default function WorkerCurrentApplication() {
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "pending" ? "all" : "pending"))}
                   className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
-                    statusFilter === "pending" ? "border-yellow-500 bg-yellow-500 text-white hover:bg-yellow-600" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    statusFilter === "pending" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   Pending Applications
@@ -789,7 +776,7 @@ export default function WorkerCurrentApplication() {
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "approved" ? "all" : "approved"))}
                   className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
-                    statusFilter === "approved" ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    statusFilter === "approved" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   Approved Applications
@@ -798,7 +785,7 @@ export default function WorkerCurrentApplication() {
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "declined" ? "all" : "declined"))}
                   className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
-                    statusFilter === "declined" ? "border-red-600 bg-red-600 text-white hover:bg-red-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    statusFilter === "declined" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   Declined Applications
@@ -807,7 +794,7 @@ export default function WorkerCurrentApplication() {
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "cancelled" ? "all" : "cancelled"))}
                   className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
-                    statusFilter === "cancelled" ? "border-orange-600 bg-orange-600 text-white hover:bg-orange-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    statusFilter === "cancelled" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   Canceled Applications
@@ -1008,7 +995,7 @@ export default function WorkerCurrentApplication() {
                               ))}
                             </span>
                           ) : (
-                            serviceTypesText
+                            {serviceTypesText}
                           )}
                         </div>
                       </div>
@@ -1135,7 +1122,7 @@ export default function WorkerCurrentApplication() {
                 {!logoBroken ? (
                   <img src="/jdklogo.png" alt="Logo" className="w-14 h-14 object-contain" onError={() => setLogoBroken(true)} />
                 ) : (
-                  <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items中心 justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
                   </div>
                 )}

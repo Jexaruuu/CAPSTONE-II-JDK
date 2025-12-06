@@ -27,8 +27,11 @@ const timeAgo = (iso) => {
 const formatDate = (iso) => {
   try {
     const d = new Date(iso);
-    const opts = { month: "short", day: "numeric", year: "numeric" };
-    return d.toLocaleDateString(undefined, opts);
+    if (isNaN(d)) return "";
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const y = d.getFullYear();
+    return `${m}/${day}/${y}`;
   } catch {
     return "";
   }
@@ -149,6 +152,51 @@ const formatRateType = (t) => {
   return s.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 };
 
+const avatarFromName = (name) => `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "Client")}`;
+
+const StatusBadge = ({ status, expired }) => {
+  const s = String(status || "").toLowerCase();
+  if (s === "cancelled" || s === "canceled")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
+        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+        Canceled Request
+      </span>
+    );
+  if (s === "declined")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+        Declined Request
+      </span>
+    );
+  if (s === "approved")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+        Approved Request
+      </span>
+    );
+  if (s === "pending" && !expired)
+    return (
+      <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+        <span className="relative inline-flex">
+          <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
+          <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
+        </span>
+        Pending Request
+      </span>
+    );
+  if (expired && s !== "cancelled" && s !== "declined")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
+        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+        Expired Request
+      </span>
+    );
+  return null;
+};
+
 const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
   const d = item.details || {};
   const rate = item.rate || {};
@@ -162,28 +210,16 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
   const isApproved = statusLower === "approved";
   const isDeclined = statusLower === "declined";
   const isExpiredReq = isExpiredDT(d.preferred_date, d.preferred_time);
-  const cardBase = "rounded-2xl border p-5 md:p-6 shadow-sm transition-all duration-300";
-  const cardState = isCancelled && isExpiredReq
-    ? "border-gray-200 bg-gray-50"
-    : isCancelled
-      ? "border-gray-300 bg-white hover:border-orange-400 hover:ring-2 hover:ring-orange-400 hover:shadow-xl"
-      : isExpiredReq
-        ? "border-gray-200 bg-gray-50"
-        : isDeclined
-          ? "border-gray-300 bg-white hover:border-red-500 hover:ring-2 hover:ring-red-500 hover:shadow-xl"
-          : isApproved
-            ? "border-gray-300 bg-white hover:border-emerald-600 hover:ring-2 hover:ring-emerald-600 hover:shadow-xl"
-            : (isPending
-                ? "border-gray-300 bg-white hover:border-yellow-500 hover:ring-2 hover:ring-yellow-500 hover:shadow-xl"
-                : "border-gray-300 bg-white hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl");
   const profileUrl = React.useMemo(() => {
     const u = item?.info?.profile_picture_url || "";
     if (u) return u;
     const name = item?.info?.first_name || "Client";
-    return `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name)}`;
+    return avatarFromName(name);
   }, [item]);
+  const createdAgo = item.created_at ? timeAgo(item.created_at) : "";
+
   return (
-    <div className={`${cardBase} ${cardState}`}>
+    <div className="bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4 min-w-0">
           <div className="shrink-0">
@@ -191,135 +227,82 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
               src={profileUrl}
               alt=""
               className="w-16 h-16 rounded-full object-cover border border-blue-300"
-              onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(item?.info?.first_name || "Client")}`; }}
+              onError={(e) => { e.currentTarget.src = avatarFromName(item?.info?.first_name || "Client"); }}
             />
           </div>
           <div className="min-w-0">
-            <Link to={`/clientreviewservicerequest?id=${encodeURIComponent(item.id)}`} className="block pointer-events-none select-text">
-              <h3 className="text-xl md:text-2xl font-semibold truncate">
-                <span className="text-gray-700">Service Type:</span>{" "}
-                <span className="text-black">{d.service_type || "Service"}</span>
-              </h3>
-              <div className="mt-0.5 text-base md:text-lg truncate text-black">
-                <span className="font-semibold text-gray-700">Service Task:</span> {d.service_task || "Task"}
-              </div>
-            </Link>
-            <p className="mt-1 text-base text-gray-500">Created {timeAgo(item.created_at)}</p>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12 md:gap-x-16 text-base">
+            <div className="text-xl md:text-2xl font-semibold truncate">
+              <span className="text-gray-700">Service Type:</span>{" "}
+              <span className="text-gray-900">{d.service_type || "Service"}</span>
+            </div>
+            <div className="mt-1 text-base md:text-lg truncate">
+              <span className="font-semibold text-gray-700">Service Task:</span>{" "}
+              <span className="text-[#008cfc] font-semibold">{d.service_task || "Task"}</span>
+            </div>
+            <div className="mt-1 text-base text-gray-500">
+              {createdAgo ? `Created ${createdAgo}` : ""}
+            </div>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
               <div className="space-y-1.5">
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
                   <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                  <span className="text-black font-medium">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+                  <span className="text-[#008cfc] font-semibold">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
                 </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
                   <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                  <span className="text-black font-medium">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
+                  <span className="text-[#008cfc] font-semibold">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
                 </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
                   <span className="text-gray-700 font-semibold">Urgency:</span>
-                  <span className="font-medium text-black">
+                  <span className="text-[#008cfc] font-semibold">
                     {hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}
                   </span>
                 </div>
               </div>
               <div className="space-y-1.5 md:pl-10">
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
                   <span className="text-gray-700 font-semibold">Rate Type:</span>
-                  <span className="text-black font-medium">{formatRateType(rate.rate_type)}</span>
+                  <span className="text-[#008cfc] font-semibold">{formatRateType(rate.rate_type)}</span>
                 </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
                   <span className="text-gray-700 font-semibold">Service Rate:</span>
-                  <span className="text-black font-medium"><RateText rate={rate} /></span>
+                  <span className="text-[#008cfc] font-semibold"><RateText rate={rate} /></span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap whitespace-nowrap">
-          {(isCancelled) && (
-            <>
-              <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
-                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                Canceled Request
-              </span>
-              {isExpiredReq && (
-                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
-                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                  Expired Request
-                </span>
-              )}
-            </>
-          )}
-          {(!isCancelled && isDeclined) && (
-            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Declined Request
-            </span>
-          )}
-          {(!isCancelled && !isDeclined && isApproved) && (
-            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Approved Request
-            </span>
-          )}
-          {(!isCancelled && !isDeclined && !isExpiredReq && isPending) && (
-            <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
-              <span className="relative inline-flex">
-                <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
-              </span>
-              Pending Request
-            </span>
-          )}
-          {(isExpiredReq && !isCancelled) && (
-            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Expired Request
-            </span>
-          )}
-          <div className={`h-10 w-10 rounded-lg border flex items-center justify-center ${(isExpiredReq || isDeclined) ? "border-gray-300 text-gray-500" : "border-gray-300 text-[#008cfc]"}`}>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="h-10 w-10 rounded-lg border flex items-center justify-center border-gray-300 text-[#008cfc]">
             <Icon className="h-5 w-5" />
           </div>
         </div>
       </div>
+
       <div className="-mt-9 flex justify-end gap-2">
-        {isCancelled ? (
+        {(isDeclined || isCancelled) ? (
           <Link
             to={`/current-service-request/${encodeURIComponent(item.id)}`}
             onClick={(e) => { e.preventDefault(); onReason(item); }}
-            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-orange-300 text-orange-600 hover:bg-orange-50"
-            aria-disabled={false}
-            tabIndex={0}
-          >
-            View Reason
-          </Link>
-        ) : (!isCancelled && isDeclined) ? (
-          <Link
-            to={`/current-service-request/${encodeURIComponent(item.id)}`}
-            onClick={(e) => { e.preventDefault(); onReason(item); }}
-            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50"
-            aria-disabled={false}
-            tabIndex={0}
+            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
           >
             View Reason
           </Link>
         ) : (
           <Link
             to={`/current-service-request/${encodeURIComponent(item.id)}`}
-            onClick={(e) => { if (isCancelled || isExpiredReq) { e.preventDefault(); return; } e.preventDefault(); onView(item.id); }}
-            className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium ${(isCancelled || isExpiredReq) ? "border-gray-300 text-gray-400 cursor-not-allowed pointer-events-none" : "border-blue-300 text-blue-600 hover:bg-blue-50"}`}
-            aria-disabled={isCancelled || isExpiredReq}
-            tabIndex={(isCancelled || isExpiredReq) ? -1 : 0}
+            onClick={(e) => { e.preventDefault(); onView(item.id); }}
+            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
           >
             View
           </Link>
         )}
-        {!isPending && !isCancelled && !isDeclined && (
+        {isApproved && !isCancelled && !isDeclined && (
           <button
             type="button"
-            onClick={() => { if (!(isCancelled || isExpiredReq || isDeclined)) onEdit(item); }}
-            disabled={isCancelled || isExpiredReq || isDeclined}
-            className={`h-10 px-4 rounded-md transition ${(isCancelled || isExpiredReq || isDeclined) ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-blue-700"}`}
+            onClick={() => onEdit(item)}
+            className="h-10 px-4 rounded-md transition bg-[#008cfc] text-white hover:bg-blue-700"
           >
             Edit Request
           </button>
@@ -423,9 +406,9 @@ export default function ClientCurrentServiceRequest() {
         params: { scope: "cancelled", email: getClientEmail() },
         withCredentials: true,
       });
-      const arr = Array.isArray(data?.items) ? data.items : [];
-      const ids = arr.map(r => r.details?.request_group_id || r.info?.request_group_id || r.rate?.request_group_id || r.id).filter(Boolean);
-      return new Set(ids.map(String));
+        const arr = Array.isArray(data?.items) ? data.items : [];
+        const ids = arr.map(r => r.details?.request_group_id || r.info?.request_group_id || r.rate?.request_group_id || r.id).filter(Boolean);
+        return new Set(ids.map(String));
     } catch {
       return new Set();
     }
@@ -751,38 +734,42 @@ export default function ClientCurrentServiceRequest() {
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "pending" ? "all" : "pending"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "pending" ? "border-yellow-500 bg-yellow-500 text-white hover:bg-yellow-600" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "pending" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
                 >
                   Pending Requests
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "approved" ? "all" : "approved"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "approved" ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "approved" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
                 >
                   Approved Requests
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "declined" ? "all" : "declined"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "declined" ? "border-red-600 bg-red-600 text-white hover:bg-red-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "declined" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
                 >
                   Declined Requests
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "cancelled" ? "all" : "cancelled"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "cancelled" ? "border-orange-600 bg-orange-600 text-white hover:bg-orange-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "cancelled" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
                 >
                   Canceled Requests
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter((v) => (v === "expired" ? "all" : "expired"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "expired" ? "border-gray-600 bg-gray-600 text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
-                >
-                  Expired Requests
-                </button>
+               <button
+  type="button"
+  onClick={() => setStatusFilter((v) => (v === "expired" ? "all" : "expired"))}
+  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+    statusFilter === "expired"
+      ? "border-[#008cfc] bg-[#008cfc] text-white"
+      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+  }`}
+>
+  Expired Requests
+</button>
               </div>
             </div>
             <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
@@ -821,17 +808,25 @@ export default function ClientCurrentServiceRequest() {
               No service requests found.
             </div>
           ) : (
-            paginated.map((item) => (
-              <Card
-                key={item.id}
-                item={item}
-                onEdit={onEdit}
-                onOpenMenu={onOpenMenu}
-                onView={onView}
-                onReason={onReason}
-                onDelete={openDelete}
-              />
-            ))
+            paginated.map((item) => {
+              const expired = isExpiredDT(item?.details?.preferred_date, item?.details?.preferred_time);
+              return (
+                <div key={item.id} className="space-y-2">
+                  <div className="flex items-center justify-end gap-2 pr-1">
+                    <span className="text-gray-700 font-semibold">Status:</span>
+                    <StatusBadge status={item.status} expired={expired} />
+                  </div>
+                  <Card
+                    item={item}
+                    onEdit={onEdit}
+                    onOpenMenu={onOpenMenu}
+                    onView={onView}
+                    onReason={onReason}
+                    onDelete={openDelete}
+                  />
+                </div>
+              );
+            })
           )}
 
           {!loading && (
@@ -956,7 +951,7 @@ export default function ClientCurrentServiceRequest() {
                   <div className={`px-6 py-4 bg-gradient-to-r ${headGrad} to-white ${isCancel ? "border-b border-orange-200" : "border-b border-red-200"}`}>
                     <div className="flex items-center justify-between">
                       <h3 className={`text-lg font-semibold ${titleCol}`}>{title}</h3>
-                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${badgeBg} ${badgeText} ${badgeBorder}`}>
+                      <span className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${badgeBg} ${badgeText} ${badgeBorder}`}>
                         <span className="h-3 w-3 rounded-full bg-current opacity-30" />
                         {(reasonTarget?.details?.service_type || "Request")}
                       </span>

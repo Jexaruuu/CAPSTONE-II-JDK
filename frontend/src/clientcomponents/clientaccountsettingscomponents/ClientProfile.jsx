@@ -191,7 +191,7 @@ export default function ClientProfile() {
         <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-6 md:p-7 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
             <div><h2 className="text-[22px] md:text-3xl font-semibold tracking-tight text-gray-900">Profile</h2><p className="mt-1 text-sm text-gray-600">Manage your personal details and social links</p></div>
-            <div className="text-right"><div className="text-[11px] uppercase tracking-wide text-gray-500">Account Created</div><div className="mt-1 flex items-center justify-end gap-2"><p className="text-sm text-gray-700">{createdAt||"—"}</p><span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium border-emerald-200 text-emerald-700 bg-emerald-50"><span className="h-3 w-3 rounded-full bg-current opacity-30" />Active</span></div></div>
+            <div className="text-right"><div className="text-[11px] uppercase tracking-wide text-gray-500">Account Created</div><div className="mt-1 flex items-center justify-end gap-2"><p className="text-sm text-gray-700">{createdAt||"—"}</p></div></div>
           </div>
         </div>
 
