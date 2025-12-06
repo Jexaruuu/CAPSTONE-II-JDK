@@ -219,103 +219,106 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
   const createdAgo = item.created_at ? timeAgo(item.created_at) : "";
 
   return (
-    <div className="bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4 min-w-0">
-          <div className="shrink-0">
-            <img
-              src={profileUrl}
-              alt=""
-              className="w-16 h-16 rounded-full object-cover border border-blue-300"
-              onError={(e) => { e.currentTarget.src = avatarFromName(item?.info?.first_name || "Client"); }}
-            />
+    <div className="relative overflow-hidden bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+      <div className="relative z-10">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="shrink-0">
+              <img
+                src={profileUrl}
+                alt=""
+                className="w-16 h-16 rounded-full object-cover border border-blue-300"
+                onError={(e) => { e.currentTarget.src = avatarFromName(item?.info?.first_name || "Client"); }}
+              />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xl md:text-2xl font-semibold truncate">
+                <span className="text-gray-700">Service Type:</span>{" "}
+                <span className="text-gray-900">{d.service_type || "Service"}</span>
+              </div>
+              <div className="mt-1 text-base md:text-lg truncate">
+                <span className="font-semibold text-gray-700">Service Task:</span>{" "}
+                <span className="text-[#008cfc] font-semibold">{d.service_task || "Task"}</span>
+              </div>
+              <div className="mt-1 text-base text-gray-500">
+                {createdAgo ? `Created ${createdAgo}` : ""}
+              </div>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Preferred Date:</span>
+                    <span className="text-[#008cfc] font-semibold">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Preferred Time:</span>
+                    <span className="text-[#008cfc] font-semibold">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Urgency:</span>
+                    <span className="text-[#008cfc] font-semibold">
+                      {hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-1.5 md:pl-10">
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Rate Type:</span>
+                    <span className="text-[#008cfc] font-semibold">{formatRateType(rate.rate_type)}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Service Rate:</span>
+                    <span className="text-[#008cfc] font-semibold"><RateText rate={rate} /></span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="min-w-0">
-            <div className="text-xl md:text-2xl font-semibold truncate">
-              <span className="text-gray-700">Service Type:</span>{" "}
-              <span className="text-gray-900">{d.service_type || "Service"}</span>
-            </div>
-            <div className="mt-1 text-base md:text-lg truncate">
-              <span className="font-semibold text-gray-700">Service Task:</span>{" "}
-              <span className="text-[#008cfc] font-semibold">{d.service_task || "Task"}</span>
-            </div>
-            <div className="mt-1 text-base text-gray-500">
-              {createdAgo ? `Created ${createdAgo}` : ""}
-            </div>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                  <span className="text-[#008cfc] font-semibold">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
-                </div>
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                  <span className="text-[#008cfc] font-semibold">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
-                </div>
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Urgency:</span>
-                  <span className="text-[#008cfc] font-semibold">
-                    {hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-1.5 md:pl-10">
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Rate Type:</span>
-                  <span className="text-[#008cfc] font-semibold">{formatRateType(rate.rate_type)}</span>
-                </div>
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Service Rate:</span>
-                  <span className="text-[#008cfc] font-semibold"><RateText rate={rate} /></span>
-                </div>
-              </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="h-10 w-10 rounded-lg border flex items-center justify-center border-gray-300 text-[#008cfc]">
+              <Icon className="h-5 w-5" />
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="h-10 w-10 rounded-lg border flex items-center justify-center border-gray-300 text-[#008cfc]">
-            <Icon className="h-5 w-5" />
-          </div>
-        </div>
-      </div>
-
-      <div className="-mt-9 flex justify-end gap-2">
-        {(isDeclined || isCancelled) ? (
-          <Link
-            to={`/current-service-request/${encodeURIComponent(item.id)}`}
-            onClick={(e) => { e.preventDefault(); onReason(item); }}
-            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-          >
-            View Reason
-          </Link>
-        ) : (
-          <Link
-            to={`/current-service-request/${encodeURIComponent(item.id)}`}
-            onClick={(e) => { e.preventDefault(); onView(item.id); }}
-            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-          >
-            View
-          </Link>
-        )}
-        {isApproved && !isCancelled && !isDeclined && (
+        <div className="-mt-9 flex justify-end gap-2">
+          {(isDeclined || isCancelled) ? (
+            <Link
+              to={`/current-service-request/${encodeURIComponent(item.id)}`}
+              onClick={(e) => { e.preventDefault(); onReason(item); }}
+              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+            >
+              View Reason
+            </Link>
+          ) : (
+            <Link
+              to={`/current-service-request/${encodeURIComponent(item.id)}`}
+              onClick={(e) => { e.preventDefault(); onView(item.id); }}
+              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+            >
+              View
+            </Link>
+          )}
+          {isApproved && !isCancelled && !isDeclined && (
+            <button
+              type="button"
+              onClick={() => onEdit(item)}
+              className="h-10 px-4 rounded-md transition bg-[#008cfc] text-white hover:bg-blue-700"
+            >
+              Edit Request
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => onEdit(item)}
-            className="h-10 px-4 rounded-md transition bg-[#008cfc] text-white hover:bg-blue-700"
+            onClick={() => onDelete(item)}
+            className="h-10 w-10 rounded-md border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
+            aria-label="Delete Request"
+            title="Delete Request"
           >
-            Edit Request
+            <Trash2 className="h-5 w-5" />
           </button>
-        )}
-        <button
-          type="button"
-          onClick={() => onDelete(item)}
-          className="h-10 w-10 rounded-md border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
-          aria-label="Delete Request"
-          title="Delete Request"
-        >
-          <Trash2 className="h-5 w-5" />
-        </button>
+        </div>
       </div>
     </div>
   );

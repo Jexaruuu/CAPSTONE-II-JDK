@@ -55,7 +55,7 @@ function getWorkerEmail() {
 function honorificFromGender(g) {
   const s = String(g || '').trim().toLowerCase();
   if (s === 'male' || s === 'm' || s === 'man' || s === 'mr') return 'Mr.';
-  if (s === 'female' || s === 'f' || s === 'woman' || s === 'ms' || s === 'mrs' || s === 'email') return 'Ms.';
+  if (s === 'female' || s === 'f' || s === 'woman' || s === 'ms' || s === 'mrs') return 'Ms.';
   return '';
 }
 
@@ -532,23 +532,23 @@ function WorkerPost() {
   };
 
   const preloadViewPayload = async (gid) => {
-  try {
-    const email = getWorkerEmail();
-    const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
-      withCredentials: true,
-      headers: headersWithU,
-      params: { scope: 'active', email, groupId: gid }
-    });
-    const items = Array.isArray(data?.items) ? data.items : [];
-    const row = items.find(r => String(r.request_group_id) === String(gid)) || null;
-    if (row) {
-      try { sessionStorage.setItem('wa_view_payload', JSON.stringify(row)); } catch {}
-      navigate(`/current-work-post/${encodeURIComponent(gid)}`, { state: { row } });
-      return;
-    }
-  } catch {}
-  navigate(`/current-work-post/${encodeURIComponent(gid)}`);
-};
+    try {
+      const email = getWorkerEmail();
+      const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
+        withCredentials: true,
+        headers: headersWithU,
+        params: { scope: 'active', email, groupId: gid }
+      });
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const row = items.find(r => String(r.request_group_id) === String(gid)) || null;
+      if (row) {
+        try { sessionStorage.setItem('wa_view_payload', JSON.stringify(row)); } catch {}
+        navigate(`/current-work-post/${encodeURIComponent(gid)}`, { state: { row } });
+        return;
+      }
+    } catch {}
+    navigate(`/current-work-post/${encodeURIComponent(gid)}`);
+  };
 
   const handleView = (item) => {
     setShowViewLoading(true);
@@ -592,8 +592,8 @@ function WorkerPost() {
       try {
         await axios.delete(`${API_BASE}/api/workerapplications/${encodeURIComponent(deleteTarget.id)}`, {
           withCredentials: true,
-          headers: headersWithU}
-        );
+          headers: headersWithU
+        });
         if (deleteTarget.label === 'current') {
           setCurrentApp(null);
         } else {
@@ -614,25 +614,25 @@ function WorkerPost() {
   };
 
   const loadCurrentApplication = async () => {
-  try {
-    const email = getWorkerEmail();
-    const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
-      withCredentials: true,
-      headers: headersWithU,
-      params: { scope: 'active', email }
-    });
-    const items = Array.isArray(data?.items) ? data.items : [];
-    const pick =
-      items.find((r) => String(r.status || '').toLowerCase() === 'pending') ||
-      items.find((r) => String(r.status || '').toLowerCase() === 'approved') ||
-      null;
-    setCurrentApp(pick);
-  } catch {
-    setCurrentApp(null);
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      const email = getWorkerEmail();
+      const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
+        withCredentials: true,
+        headers: headersWithU,
+        params: { scope: 'active', email }
+      });
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const pick =
+        items.find((r) => String(r.status || '').toLowerCase() === 'pending') ||
+        items.find((r) => String(r.status || '').toLowerCase() === 'approved') ||
+        null;
+      setCurrentApp(pick);
+    } catch {
+      setCurrentApp(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadCurrentApplication();
@@ -750,154 +750,157 @@ function WorkerPost() {
         </div>
 
         {hasCurrent ? (
-          <div className="bg-white border border-gray-300 rounded-md p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-4 min-w-0">
-                <div className="shrink-0">
-                  <img
-                    src={profileUrl}
-                    alt=""
-                    className="w-20 h-20 rounded-full object-cover border border-blue-300"
-                    onError={(e) => {
-                      e.currentTarget.src = `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(
-                        capFirst || 'Worker'
-                      )}`;
-                    }}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xl md:text-2xl font-semibold truncate">
-                    <span className="text-gray-700">Service Type:</span>{' '}
-                    <span className="text-gray-900">{buildServiceTypesText(currentApp)}</span>
+          <div className="relative overflow-hidden bg-white border border-gray-300 rounded-md p-6 shadow-sm">
+            <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+            <div className="relative z-10">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4 min-w-0">
+                  <div className="shrink-0">
+                    <img
+                      src={profileUrl}
+                      alt=""
+                      className="w-20 h-20 rounded-full object-cover border border-blue-300"
+                      onError={(e) => {
+                        e.currentTarget.src = `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(
+                          capFirst || 'Worker'
+                        )}`;
+                      }}
+                    />
                   </div>
-                  <div className="mt-1 text-base md:text-lg truncate">
-                    <span className="font-semibold text-gray-700">Service Tasks:</span>{' '}
-                    <span className="text-[#008cfc] font-semibold">{currentServiceTasks || '-'}</span>
-                  </div>
-                  <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago` : ''}</div>
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
-                    <div className="space-y-1.5">
-                      <div className="flex flex-wrap gap-x-2 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Barangay:</span>
-                        <span className="text-[#008cfc] font-semibold">{buildLocation(currentApp) || '-'}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-x-2 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Years of Experience:</span>
-                        <span className="text-[#008cfc] font-semibold">
-                          {currentYearsExperience !== '' &&
-                          currentYearsExperience !== null &&
-                          currentYearsExperience !== undefined
-                            ? String(currentYearsExperience)
-                            : '-'}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-x-2 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Tools Provided:</span>
-                        <span className={toolsClassLocal}>{toolsTextLocal}</span>
-                      </div>
+                  <div className="min-w-0">
+                    <div className="text-xl md:text-2xl font-semibold truncate">
+                      <span className="text-gray-700">Service Type:</span>{' '}
+                      <span className="text-gray-900">{buildServiceTypesText(currentApp)}</span>
                     </div>
-                    <div className="space-y-1.5 md:pl-10">
-                      <div className="flex flex-wrap gap-x-2 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Rate Type:</span>
-                        <span className="text-[#008cfc] font-semibold">{getRateType(currentApp) || '-'}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-x-2 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Service Rate:</span>
-                        <span className="text-[#008cfc] font-semibold">
-                          {(() => {
-                            const d = currentApp?.rate || currentApp?.details || {};
-                            const t = String(d?.rate_type || '').toLowerCase();
-                            const from = d?.rate_from;
-                            const to = d?.rate_to;
-                            const val = d?.rate_value;
-                            const peso = (v) => {
-                              if (v === null || v === undefined) return '';
-                              const s = String(v).trim();
-                              if (!s) return '';
-                              if (/₱|php/i.test(s)) return s;
-                              const n = parseFloat(s.replace(/,/g, ''));
-                              if (!isNaN(n)) return `₱${n.toLocaleString()}`;
-                              return `₱${s}`;
-                            };
-                            if (t.includes('job') || t.includes('fixed')) return val ? `${peso(val)}` : '-';
-                            if (t.includes('hour') || t.includes('range'))
-                              return from || to
-                                ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`
-                                : '-';
-                            if (val) return peso(val);
-                            if (from || to)
-                              return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
-                            return '-';
-                          })()}
-                        </span>
-                      </div>
+                    <div className="mt-1 text-base md:text-lg truncate">
+                      <span className="font-semibold text-gray-700">Service Tasks:</span>{' '}
+                      <span className="text-[#008cfc] font-semibold">{currentServiceTasks || '-'}</span>
                     </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {false && isApproved && (
-                  <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                    <span className="h-3 w-3 rounded-md bg-current opacity-30" />
-                    Approved Application
-                  </span>
-                )}
-                {false && isPending && (
-                  <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
-                    <span className="relative inline-flex">
-                      <span className="absolute inline-flex h-3 w-3 rounded-md bg-current opacity-30 animate-ping" />
-                      <span className="relative inline-flex h-3 w-3 rounded-md bg-current" />
-                    </span>
-                    Pending Application
-                  </span>
-                )}
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const types = buildServiceTypesArr(currentApp);
-                    const srcs = types.length ? types : [buildServiceType(currentApp) || currentApp?.details?.work_description || ''];
-                    return srcs.map((t, i) => {
-                      const Icon = getServiceIcon(t);
-                      return (
-                        <div
-                          key={`${t}-${i}`}
-                          className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center"
-                        >
-                          <Icon className="h-5 w-5" />
+                    <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago` : ''}</div>
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Barangay:</span>
+                          <span className="text-[#008cfc] font-semibold">{buildLocation(currentApp) || '-'}</span>
                         </div>
-                      );
-                    });
-                  })()}
+                        <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Years of Experience:</span>
+                          <span className="text-[#008cfc] font-semibold">
+                            {currentYearsExperience !== '' &&
+                            currentYearsExperience !== null &&
+                            currentYearsExperience !== undefined
+                              ? String(currentYearsExperience)
+                              : '-'}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Tools Provided:</span>
+                          <span className={toolsClassLocal}>{toolsTextLocal}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 md:pl-10">
+                        <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Rate Type:</span>
+                          <span className="text-[#008cfc] font-semibold">{getRateType(currentApp) || '-'}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Service Rate:</span>
+                          <span className="text-[#008cfc] font-semibold">
+                            {(() => {
+                              const d = currentApp?.rate || currentApp?.details || {};
+                              const t = String(d?.rate_type || '').toLowerCase();
+                              const from = d?.rate_from;
+                              const to = d?.rate_to;
+                              const val = d?.rate_value;
+                              const peso = (v) => {
+                                if (v === null || v === undefined) return '';
+                                const s = String(v).trim();
+                                if (!s) return '';
+                                if (/₱|php/i.test(s)) return s;
+                                const n = parseFloat(s.replace(/,/g, ''));
+                                if (!isNaN(n)) return `₱${n.toLocaleString()}`;
+                                return `₱${s}`;
+                              };
+                              if (t.includes('job') || t.includes('fixed')) return val ? `${peso(val)}` : '-';
+                              if (t.includes('hour') || t.includes('range'))
+                                return from || to
+                                  ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`
+                                  : '-';
+                              if (val) return peso(val);
+                              if (from || to)
+                                return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
+                              return '-';
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {false && isApproved && (
+                    <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                      <span className="h-3 w-3 rounded-md bg-current opacity-30" />
+                      Approved Application
+                    </span>
+                  )}
+                  {false && isPending && (
+                    <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+                      <span className="relative inline-flex">
+                        <span className="absolute inline-flex h-3 w-3 rounded-md bg-current opacity-30 animate-ping" />
+                        <span className="relative inline-flex h-3 w-3 rounded-md bg-current" />
+                      </span>
+                      Pending Application
+                    </span>
+                  )}
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const types = buildServiceTypesArr(currentApp);
+                      const srcs = types.length ? types : [buildServiceType(currentApp) || currentApp?.details?.work_description || ''];
+                      return srcs.map((t, i) => {
+                        const Icon = getServiceIcon(t);
+                        return (
+                          <div
+                            key={`${t}-${i}`}
+                            className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center"
+                          >
+                            <Icon className="h-5 w-5" />
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="-mt-9 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => handleView(currentApp)}
-                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-              >
-                View
-              </button>
-              <button
-                type="button"
-                onClick={handleEditApplication}
-                className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
-              >
-                Edit Application
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!currentApp) return;
-                  setDeleteTarget({ id: currentApp.id || currentApp.request_group_id || '', label: 'current' });
-                  setShowDeleteConfirm(true);
-                }}
-                className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
-                aria-label="Delete Application"
-                title="Delete Application"
-              >
-                <Trash2 className="h-5 w-5" />
-              </button>
+              <div className="-mt-9 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleView(currentApp)}
+                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEditApplication}
+                  className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+                >
+                  Edit Application
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!currentApp) return;
+                    setDeleteTarget({ id: currentApp.id || currentApp.request_group_id || '', label: 'current' });
+                    setShowDeleteConfirm(true);
+                  }}
+                  className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
+                  aria-label="Delete Application"
+                  title="Delete Application"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -1298,7 +1301,7 @@ function WorkerPost() {
               </div>
             </div>
             <div className="mt-6 text-center">
-              <div className="text-lg font-semibold text-gray-900">Loading Application</div>
+              <div className="text-lg font-semibold text-gray-900">Loading Request</div>
               <div className="text-sm text-gray-500">Please wait a moment</div>
             </div>
           </div>

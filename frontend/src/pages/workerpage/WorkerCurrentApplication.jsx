@@ -216,169 +216,172 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
   };
 
   return (
-    <div className={`${cardBase} ${cardState}`}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4 min-w-0">
-          <div className="shrink-0">
-            <img
-              src={profileUrl}
-              alt=""
-              className="w-16 h-16 rounded-full object-cover border border-blue-300"
-              onError={(e) => {
-                e.currentTarget.src = avatarFromName(
-                  info?.first_name || "Worker"
-                );
-              }}
-            />
-          </div>
-          <div className="min-w-0">
-            <div className="text-xl md:text-2xl font-semibold truncate">
-              <span className="text-gray-700">Service Type:</span>{" "}
-              <span className="text-gray-900">{serviceTypesText}</span>
+    <div className={`${cardBase} ${cardState} relative overflow-hidden`}>
+      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+      <div className="relative z-10">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="shrink-0">
+              <img
+                src={profileUrl}
+                alt=""
+                className="w-16 h-16 rounded-full object-cover border border-blue-300"
+                onError={(e) => {
+                  e.currentTarget.src = avatarFromName(
+                    info?.first_name || "Worker"
+                  );
+                }}
+              />
             </div>
-            <div className="mt-1 text-base md:text-lg truncate">
-              <span className="font-semibold text-gray-700">Service Tasks:</span>{" "}
-              <span className="text-[#008cfc] font-semibold">{buildServiceTasksText(work)}</span>
-            </div>
-            <div className="mt-1 text-base text-gray-500">
-              {createdAgo ? `Created ${createdAgo}` : ""}
-            </div>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Barangay:</span>
-                  <span className="text-[#008cfc] font-semibold">
-                    {address || "-"}
-                  </span>
+            <div className="min-w-0">
+              <div className="text-xl md:text-2xl font-semibold truncate">
+                <span className="text-gray-700">Service Type:</span>{" "}
+                <span className="text-gray-900">{serviceTypesText}</span>
+              </div>
+              <div className="mt-1 text-base md:text-lg truncate">
+                <span className="font-semibold text-gray-700">Service Tasks:</span>{" "}
+                <span className="text-[#008cfc] font-semibold">{buildServiceTasksText(work)}</span>
+              </div>
+              <div className="mt-1 text-base text-gray-500">
+                {createdAgo ? `Created ${createdAgo}` : ""}
+              </div>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Barangay:</span>
+                    <span className="text-[#008cfc] font-semibold">
+                      {address || "-"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-gray-700 font-semibold">
+                      Years of Experience:
+                    </span>
+                    <span className="text-[#008cfc] font-semibold">
+                      {yearsExp ? yearsExp : "-"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-gray-700 font-semibold">
+                      Tools Provided:
+                    </span>
+                    <span className="text-[#008cfc] font-semibold">
+                      {typeof tools === "boolean"
+                        ? tools
+                          ? "Yes"
+                          : "No"
+                        : String(tools || "").trim() || "-"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="text-gray-700 font-semibold">
-                    Years of Experience:
-                  </span>
-                  <span className="text-[#008cfc] font-semibold">
-                    {yearsExp ? yearsExp : "-"}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="text-gray-700 font-semibold">
-                    Tools Provided:
-                  </span>
-                  <span className="text-[#008cfc] font-semibold">
-                    {typeof tools === "boolean"
-                      ? tools
-                        ? "Yes"
-                        : "No"
-                      : String(tools || "").trim() || "-"}
-                  </span>
+                <div className="space-y-1.5 md:pl-10">
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-gray-700 font-semibold">
+                      Rate Type:
+                    </span>
+                    <span className="text-[#008cfc] font-semibold">
+                      {rateTypeText || "-"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-gray-700 font-semibold">
+                      Service Rate:
+                    </span>
+                    <span className="text-[#008cfc] font-semibold">
+                      <RateText rate={rate} />
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-1.5 md:pl-10">
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="text-gray-700 font-semibold">
-                    Rate Type:
-                  </span>
-                  <span className="text-[#008cfc] font-semibold">
-                    {rateTypeText || "-"}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  <span className="text-gray-700 font-semibold">
-                    Service Rate:
-                  </span>
-                  <span className="text-[#008cfc] font-semibold">
-                    <RateText rate={rate} />
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {false && isCancelled && (
-            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Canceled Application
-            </span>
-          )}
-          {false && !isCancelled && isDeclined && (
-            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Declined Application
-            </span>
-          )}
-          {false && !isCancelled && !isDeclined && isApproved && (
-            <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              Approved Application
-            </span>
-          )}
-          {false && !isCancelled && !isDeclined && isPending && (
-            <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
-              <span className="relative inline-flex">
-                <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
+          <div className="flex items-center gap-2 shrink-0">
+            {false && isCancelled && (
+              <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
+                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                Canceled Application
               </span>
-              Pending Application
-            </span>
-          )}
-          <div className="flex items-center gap-2">
-            {iconSources.map((st, idx) => {
-              const IconComp = iconForService(st);
-              return (
-                <div
-                  key={`${st}-${idx}`}
-                  className="h-10 w-10 rounded-lg border flex items-center justify-center border-gray-300 text-[#008cfc]"
-                >
-                  <IconComp className="h-5 w-5" />
-                </div>
-              );
-            })}
+            )}
+            {false && !isCancelled && isDeclined && (
+              <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                Declined Application
+              </span>
+            )}
+            {false && !isCancelled && !isDeclined && isApproved && (
+              <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                Approved Application
+              </span>
+            )}
+            {false && !isCancelled && !isDeclined && isPending && (
+              <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+                <span className="relative inline-flex">
+                  <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
+                </span>
+                Pending Application
+              </span>
+            )}
+            <div className="flex items-center gap-2">
+              {iconSources.map((st, idx) => {
+                const IconComp = iconForService(st);
+                return (
+                  <div
+                    key={`${st}-${idx}`}
+                    className="h-10 w-10 rounded-lg border flex items-center justify-center border-gray-300 text-[#008cfc]"
+                  >
+                    <IconComp className="h-5 w-5" />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="-mt-9 flex justify-end gap-2">
-        {isDeclined || isCancelled ? (
-          <Link
-            to={`/workerviewapplication?id=${encodeURIComponent(item.id)}`}
-            onClick={(e) => {
-              e.preventDefault();
-              onReason(item);
-            }}
-            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-          >
-            View Reason
-          </Link>
-        ) : (
-          <Link
-            to={`/current-work-post/${encodeURIComponent(item.id)}`}
-            onClick={(e) => { e.preventDefault(); onView(item); }}
-            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-          >
-            View
-          </Link>
-        )}
+        <div className="-mt-9 flex justify-end gap-2">
+          {isDeclined || isCancelled ? (
+            <Link
+              to={`/workerviewapplication?id=${encodeURIComponent(item.id)}`}
+              onClick={(e) => {
+                e.preventDefault();
+                onReason(item);
+              }}
+              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+            >
+              View Reason
+            </Link>
+          ) : (
+            <Link
+              to={`/current-work-post/${encodeURIComponent(item.id)}`}
+              onClick={(e) => { e.preventDefault(); onView(item); }}
+              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+            >
+              View
+            </Link>
+          )}
 
-        {isApproved && !isCancelled && !isDeclined && (
+          {isApproved && !isCancelled && !isDeclined && (
+            <button
+              type="button"
+              onClick={() => onEdit(item)}
+              className="h-10 px-4 rounded-md transition bg-[#008cfc] text-white hover:bg-blue-700"
+            >
+              Edit Application
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={() => onEdit(item)}
-            className="h-10 px-4 rounded-md transition bg-[#008cfc] text-white hover:bg-blue-700"
+            onClick={() => onDelete(item)}
+            className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
+            aria-label="Delete Application"
+            title="Delete Application"
           >
-            Edit Application
+            <Trash2 className="h-5 w-5" />
           </button>
-        )}
-
-        <button
-          type="button"
-          onClick={() => onDelete(item)}
-          className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
-          aria-label="Delete Application"
-          title="Delete Application"
-        >
-          <Trash2 className="h-5 w-5" />
-        </button>
+        </div>
       </div>
     </div>
   );

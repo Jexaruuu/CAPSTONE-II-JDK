@@ -688,134 +688,137 @@ const ClientPost = () => {
         </div>
 
         {hasCurrent ? (
-          <div className="bg-white border border-gray-300 rounded-md p-6 shadow-sm transition-all duration-300">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-4 min-w-0">
-                <div className="shrink-0">
-                  <img
-                    src={profileUrl}
-                    alt=""
-                    className="w-20 h-20 rounded-full object-cover border border-blue-300"
-                    onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(capFirst || 'Client')}`; }}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xl md:text-2xl font-semibold truncate">
-                    <span className="text-gray-700">Service Type:</span>{' '}
-                    <span className="text-gray-900">{currentItem?.details?.service_type || 'Service'}</span>
+          <div className="relative overflow-hidden bg-white border border-gray-300 rounded-md p-6 shadow-sm transition-all duration-300">
+            <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+            <div className="relative z-10">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4 min-w-0">
+                  <div className="shrink-0">
+                    <img
+                      src={profileUrl}
+                      alt=""
+                      className="w-20 h-20 rounded-full object-cover border border-blue-300"
+                      onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(capFirst || 'Client')}`; }}
+                    />
                   </div>
-                  <div className="mt-1 text-base md:text-lg truncate">
-                    <span className="font-semibold text-gray-700">Service Task:</span>{' '}
-                    <span className="text-[#008cfc] font-semibold">{currentItem?.details?.service_task || 'Task'}</span>
-                  </div>
-                  <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago ` : ''}</div>
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
-                    <div className="space-y-1.5">
-                      <div className="flex flex-wrap gap-x-6 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                        <span className="text-[#008cfc] font-semibold">{currentItem?.details?.preferred_date ? formatDateMMDDYYYY(currentItem.details.preferred_date) : '-'}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-x-6 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                        <span className="text-[#008cfc] font-semibold">{currentItem?.details?.preferred_time ? formatTime12h(currentItem.details.preferred_time) : '-'}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-x-6 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Urgency:</span>
-                        <span className={urgentClassMirror}>{urgentTextLocal}</span>
-                      </div>
+                  <div className="min-w-0">
+                    <div className="text-xl md:text-2xl font-semibold truncate">
+                      <span className="text-gray-700">Service Type:</span>{' '}
+                      <span className="text-gray-900">{currentItem?.details?.service_type || 'Service'}</span>
                     </div>
-                    <div className="space-y-1.5 md:pl-10">
-                      <div className="flex flex-wrap gap-x-6 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Rate Type:</span>
-                        <span className="text-[#008cfc] font-semibold">{getRateType(currentItem) || '-'}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-x-6 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Service Rate:</span>
-                        <span className="text-[#008cfc] font-semibold">
-                          {(() => {
-                            const t = String(currentItem?.rate?.rate_type || '').toLowerCase();
-                            const from = currentItem?.rate?.rate_from;
-                            const to = currentItem?.rate?.rate_to;
-                            const val = currentItem?.rate?.rate_value;
-                            const peso = (v) => {
-                              if (v === null || v === undefined) return '';
-                              const s = String(v).trim();
-                              if (!s) return '';
-                              if (/₱|php/i.test(s)) return s;
-                              const n = parseFloat(s.replace(/,/g, ''));
-                              if (!isNaN(n)) return `₱${n.toLocaleString()}`;
-                              return `₱${s}`;
-                            };
-                            if (t === 'fixed' || t === 'by_job' || t === 'by the job' || t === 'by_the_job') return val ? `${peso(val)}` : '-';
-                            if (t === 'hourly' || t === 'range') return from || to ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}` : '-';
-                            if (val) return peso(val);
-                            if (from || to) return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
-                            return '-';
-                          })()}
-                        </span>
-                      </div>
+                    <div className="mt-1 text-base md:text-lg truncate">
+                      <span className="font-semibold text-gray-700">Service Task:</span>{' '}
+                      <span className="text-[#008cfc] font-semibold">{currentItem?.details?.service_task || 'Task'}</span>
                     </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const srcs = [
-                      currentItem?.details?.service_type ||
-                        currentItem?.details?.service_task ||
-                        ''
-                    ].filter(Boolean);
-                    return srcs.map((t, i) => {
-                      const Icon = getServiceIcon(t);
-                      return (
-                        <div
-                          key={`${t}-${i}`}
-                          className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center"
-                        >
-                          <Icon className="h-5 w-5" />
+                    <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago ` : ''}</div>
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Preferred Date:</span>
+                          <span className="text-[#008cfc] font-semibold">{currentItem?.details?.preferred_date ? formatDateMMDDYYYY(currentItem.details.preferred_date) : '-'}</span>
                         </div>
-                      );
-                    });
-                  })()}
+                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Preferred Time:</span>
+                          <span className="text-[#008cfc] font-semibold">{currentItem?.details?.preferred_time ? formatTime12h(currentItem.details.preferred_time) : '-'}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Urgency:</span>
+                          <span className={urgentClassMirror}>{urgentTextLocal}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 md:pl-10">
+                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Rate Type:</span>
+                          <span className="text-[#008cfc] font-semibold">{getRateType(currentItem) || '-'}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Service Rate:</span>
+                          <span className="text-[#008cfc] font-semibold">
+                            {(() => {
+                              const t = String(currentItem?.rate?.rate_type || '').toLowerCase();
+                              const from = currentItem?.rate?.rate_from;
+                              const to = currentItem?.rate?.rate_to;
+                              const val = currentItem?.rate?.rate_value;
+                              const peso = (v) => {
+                                if (v === null || v === undefined) return '';
+                                const s = String(v).trim();
+                                if (!s) return '';
+                                if (/₱|php/i.test(s)) return s;
+                                const n = parseFloat(s.replace(/,/g, ''));
+                                if (!isNaN(n)) return `₱${n.toLocaleString()}`;
+                                return `₱${s}`;
+                              };
+                              if (t === 'fixed' || t === 'by_job' || t === 'by the job' || t === 'by_the_job') return val ? `${peso(val)}` : '-';
+                              if (t === 'hourly' || t === 'range') return from || to ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}` : '-';
+                              if (val) return peso(val);
+                              if (from || to) return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
+                              return '-';
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const srcs = [
+                        currentItem?.details?.service_type ||
+                          currentItem?.details?.service_task ||
+                          ''
+                      ].filter(Boolean);
+                      return srcs.map((t, i) => {
+                        const Icon = getServiceIcon(t);
+                        return (
+                          <div
+                            key={`${t}-${i}`}
+                            className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center"
+                          >
+                            <Icon className="h-5 w-5" />
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="-mt-9 flex justify-end gap-2">
-              <Link
-                to={`/current-service-request/${encodeURIComponent(currentItem?.id || '')}`}
-                onClick={(e) => { e.preventDefault(); navigate(`/current-service-request/${encodeURIComponent(currentItem?.id || '')}`); }}
-                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-              >
-                View
-              </Link>
-              {(isPending || isApproved) && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (navLoading || editLoading) return;
-                      setEditLoading(true);
-                      setTimeout(() => {
-                        navigate(`/edit-service-request/${encodeURIComponent(currentItem?.id || '')}`);
-                      }, 2000);
-                    }}
-                    className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
-                  >
-                    Edit Request
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="h-10 w-10 rounded-md border border-red-300 text-red-600 hover:bg-red-50 transition flex items-center justify-center disabled:opacity-60"
-                    aria-label="Delete Request"
-                    title="Delete Request"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
-                </>
-              )}
+              <div className="-mt-9 flex justify-end gap-2">
+                <Link
+                  to={`/current-service-request/${encodeURIComponent(currentItem?.id || '')}`}
+                  onClick={(e) => { e.preventDefault(); navigate(`/current-service-request/${encodeURIComponent(currentItem?.id || '')}`); }}
+                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+                >
+                  View
+                </Link>
+                {(isPending || isApproved) && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (navLoading || editLoading) return;
+                        setEditLoading(true);
+                        setTimeout(() => {
+                          navigate(`/edit-service-request/${encodeURIComponent(currentItem?.id || '')}`);
+                        }, 2000);
+                      }}
+                      className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+                    >
+                      Edit Request
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="h-10 w-10 rounded-md border border-red-300 text-red-600 hover:bg-red-50 transition flex items-center justify-center disabled:opacity-60"
+                      aria-label="Delete Request"
+                      title="Delete Request"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         ) : (
