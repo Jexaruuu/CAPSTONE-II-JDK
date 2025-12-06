@@ -768,7 +768,7 @@ useEffect(() => {
                             {serviceTask || 'Select Service Task'}
                           </button>
                           <button type="button" onClick={()=>serviceType && setTaskOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open service task options" disabled={!serviceType}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
                           </button>
                         </div>
                         {taskOpen && (
@@ -904,11 +904,11 @@ useEffect(() => {
                             <option value="range">Hourly / Range</option>
                             <option value="by_job">By the Job</option>
                           </select>
-                          <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                          <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40 h-[48px]">
                             <button
                               type="button"
                               onClick={()=>setRateTypeOpen(s=>!s)}
-                              className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
+                              className="w-full px-4 text-left rounded-l-xl focus:outline-none"
                             >
                               {rateTypeDisplay || 'Select Rate Type'}
                             </button>
@@ -937,40 +937,51 @@ useEffect(() => {
                         {String(rateType || '').toLowerCase() === 'range' ? (
                           <div className="grid grid-cols-2 gap-3 md:col-span-1">
                             <div className="grid gap-2">
-                              <span className="block text sm font-medium text-gray-700">From</span>
-                              <input
-                                value={rateFrom}
-                                onChange={e=>setRateFrom(sanitizeDecimal(e.target.value))}
-                                placeholder="₱"
-                                inputMode="decimal"
-                                pattern="[0-9]*[.]?[0-9]*"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
-                              />
+                              <span className="block text sm font-medium text-gray-700">Rate From</span>
+                              <div className={`flex items-center rounded-xl border ${rateError ? 'border-red-300' : 'border-gray-300'} h-[48px] px-3`}>
+                                <span className="text-gray-500 mr-2">₱</span>
+                                <input
+                                  value={rateFrom}
+                                  onChange={e=>setRateFrom(sanitizeDecimal(e.target.value))}
+                                  placeholder="0"
+                                  inputMode="decimal"
+                                  pattern="[0-9]*[.]?[0-9]*"
+                                  className="w-full outline-none"
+                                />
+                                <span className="text-gray-500 ml-2 text-sm"></span>
+                              </div>
                             </div>
                             <div className="grid gap-2">
-                              <span className="block text-sm font-medium text-gray-700">To</span>
-                              <input
-                                value={rateTo}
-                                onChange={e=>setRateTo(sanitizeDecimal(e.target.value))}
-                                placeholder="₱"
-                                inputMode="decimal"
-                                pattern="[0-9]*[.]?[0-9]*"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
-                              />
-                              <div className="hidden text-xs text-red-600">{rateError}</div>
+                              <span className="block text-sm font-medium text-gray-700">Rate To</span>
+                              <div className={`flex items-center rounded-xl border ${rateError ? 'border-red-300' : 'border-gray-300'} h-[48px] px-3`}>
+                                <span className="text-gray-500 mr-2">₱</span>
+                                <input
+                                  value={rateTo}
+                                  onChange={e=>setRateTo(sanitizeDecimal(e.target.value))}
+                                  placeholder="0"
+                                  inputMode="decimal"
+                                  pattern="[0-9]*[.]?[0-9]*"
+                                  className="w-full outline-none"
+                                />
+                                <span className="text-gray-500 ml-2 text-sm"></span>
+                              </div>
                             </div>
                           </div>
                         ) : (
                           <div className="grid gap-2 md:col-span-1">
                             <span className="block text-sm font-medium text-gray-700">Service Rate</span>
-                            <input
-                              value={rateValue}
-                              onChange={e=>setRateValue(sanitizeDecimal(e.target.value))}
-                              placeholder="Enter amount"
-                              inputMode="decimal"
-                              pattern="[0-9]*[.]?[0-9]*"
-                              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
-                            />
+                            <div className="flex items-center rounded-xl border border-gray-300 h-[48px] px-3 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                              <span className="text-gray-500 mr-2">₱</span>
+                              <input
+                                value={rateValue}
+                                onChange={e=>setRateValue(sanitizeDecimal(e.target.value))}
+                                placeholder="0"
+                                inputMode="decimal"
+                                pattern="[0-9]*[.]?[0-9]*"
+                                className="w-full outline-none"
+                              />
+                              <span className="text-gray-500 ml-2 text-sm"></span>
+                            </div>
                           </div>
                         )}
                       </div>
