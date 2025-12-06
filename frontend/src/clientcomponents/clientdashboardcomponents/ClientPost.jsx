@@ -361,7 +361,6 @@ const ClientPost = () => {
     const id = setInterval(() => {
       setDotStep((s) => (s + 1) % 4), 350
     });
-    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -477,7 +476,7 @@ const ClientPost = () => {
     const barangay = item?.info?.barangay ?? item?.details?.barangay ?? item?.details?.brgy ?? '';
     const street = item?.info?.street ?? item?.details?.street ?? item?.details?.street_name ?? '';
     const parts = [];
-    if (barangay) parts.push(`Barangay ${barangay}`);
+    if (barangay) parts.push(String(barangay));
     if (street) parts.push(street);
     return parts.join(', ');
   };
@@ -600,7 +599,7 @@ const ClientPost = () => {
 
   const urgentBoolLocal = toBoolStrictClient(currentItem?.details?.is_urgent);
   const urgentTextLocal = urgentBoolLocal === null ? '-' : urgentBoolLocal ? 'Yes' : 'No';
-  const urgentClassLocal = 'text-gray-900 font-semibold';
+  const urgentClassMirror = 'text-[#008cfc] font-semibold';
 
   const profileUrl = useMemo(() => {
     const u = currentItem?.info?.profile_picture_url || '';
@@ -649,21 +648,40 @@ const ClientPost = () => {
         </div>
       </div>
 
-      <h2 className="text-4xl font-semibold mb-10">
-        Welcome, {honorific ? `${honorific} ` : ''}{capFirst}
-      </h2>
+      <div className="mb-12 flex items-center justify-between">
+        <h2 className="text-4xl font-semibold">
+          Welcome, {honorific ? `${honorific} ` : ''}<span className="text-[#008cfc]">{capFirst}</span>
+        </h2>
+      </div>
 
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-2xl font-semibold">{hasCurrent ? 'Current Service Request' : 'Service Request Post'}</h3>
-          {hasApproved && (
-            <Link
-              to="/clientpostrequest"
-              onClick={handlePostClick}
-              className="inline-block px-4 py-2 border border-[#008cfc] text-[#008cfc] rounded hover:bg-blue-50 transition"
-            >
-              + Post a service request
-            </Link>
+          {hasCurrent && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-700 font-semibold">Status:</span>
+              {isApproved && (
+                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                  <span className="h-3 w-3 rounded-md bg-current opacity-30" />
+                  Approved Request
+                </span>
+              )}
+              {isPending && (
+                <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+                  <span className="relative inline-flex">
+                    <span className="absolute inline-flex h-3 w-3 rounded-md bg-current opacity-30 animate-ping" />
+                    <span className="relative inline-flex h-3 w-3 rounded-md bg-current" />
+                  </span>
+                  Pending Request
+                </span>
+              )}
+              {isDeclined && (
+                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+                  <span className="h-3 w-3 rounded-md bg-current opacity-30" />
+                  Declined Request
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -693,27 +711,25 @@ const ClientPost = () => {
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                        <span className="text-gray-900 font-medium">{currentItem?.details?.preferred_date ? formatDateMMDDYYYY(currentItem.details.preferred_date) : '-'}</span>
+                        <span className="text-[#008cfc] font-semibold">{currentItem?.details?.preferred_date ? formatDateMMDDYYYY(currentItem.details.preferred_date) : '-'}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                        <span className="text-gray-900 font-medium">{currentItem?.details?.preferred_time ? formatTime12h(currentItem.details.preferred_time) : '-'}</span>
+                        <span className="text-[#008cfc] font-semibold">{currentItem?.details?.preferred_time ? formatTime12h(currentItem.details.preferred_time) : '-'}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Urgency:</span>
-                        <span className={urgentClassLocal}>{urgentTextLocal}</span>
+                        <span className={urgentClassMirror}>{urgentTextLocal}</span>
                       </div>
                     </div>
                     <div className="space-y-1.5 md:pl-10">
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Rate Type:</span>
-                        <span className="text-gray-900 font-medium">
-  {getRateType(currentItem) || '-'}
-</span>
+                        <span className="text-[#008cfc] font-semibold">{getRateType(currentItem) || '-'}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-6 gap-y-1">
                         <span className="text-gray-700 font-semibold">Service Rate:</span>
-                        <span className="text-gray-900 font-medium">
+                        <span className="text-[#008cfc] font-semibold">
                           {(() => {
                             const t = String(currentItem?.rate?.rate_type || '').toLowerCase();
                             const from = currentItem?.rate?.rate_from;
@@ -741,31 +757,24 @@ const ClientPost = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {isDeclined && (
-                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
-                    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                    Declined Request
-                  </span>
-                )}
-                {isApproved && (
-                  <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                    <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                    Approved Request
-                  </span>
-                )}
-                {isPending && (
-                  <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
-                    <span className="relative inline-flex">
-                      <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
-                      <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
-                    </span>
-                    Pending Request
-                  </span>
-                )}
-                <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
+                <div className="flex items-center gap-2">
                   {(() => {
-                    const Icon = getServiceIcon(currentItem?.details?.service_type || currentItem?.details?.service_task || '');
-                    return <Icon className="h-5 w-5" />;
+                    const srcs = [
+                      currentItem?.details?.service_type ||
+                        currentItem?.details?.service_task ||
+                        ''
+                    ].filter(Boolean);
+                    return srcs.map((t, i) => {
+                      const Icon = getServiceIcon(t);
+                      return (
+                        <div
+                          key={`${t}-${i}`}
+                          className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center"
+                        >
+                          <Icon className="h-5 w-5" />
+                        </div>
+                      );
+                    });
                   })()}
                 </div>
               </div>
@@ -780,19 +789,19 @@ const ClientPost = () => {
               </Link>
               {(isPending || isApproved) && (
                 <>
-            <button
-  type="button"
-  onClick={() => {
-    if (navLoading) return;
-    setNavLoading(true);
-    setTimeout(() => {
-      navigate(`/edit-service-request/${encodeURIComponent(currentItem?.id || '')}`);
-    }, 2000);
-  }}
-  className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
->
-  Edit Request
-</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navLoading) return;
+                      setNavLoading(true);
+                      setTimeout(() => {
+                        navigate(`/edit-service-request/${encodeURIComponent(currentItem?.id || '')}`);
+                      }, 2000);
+                    }}
+                    className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+                  >
+                    Edit Request
+                  </button>
                   <button
                     type="button"
                     onClick={handleDelete}
@@ -813,7 +822,7 @@ const ClientPost = () => {
               <img src="/Request.png" alt="Request" className="w-20 h-20 object-contain" />
             </div>
             <p className="text-gray-600 mb-4">
-              Start by posting a service request to find available workers.
+              {loading ? 'Checking for service requests…' : 'Start by posting a service request to find available workers.'}
             </p>
             <Link
               to="/clientpostrequest"
@@ -888,10 +897,6 @@ const ClientPost = () => {
                       </div>
 
                       <div className="mt-3 text-sm text-gray-700 space-y-1">
-                        <div className="text-gray-600">
-                          <span className="font-medium text-gray-800">Location:</span>{' '}
-                          {buildLocation(item) || '-'}
-                        </div>
                         <div className="text-gray-600">
                           <span className="font-medium text-gray-800">Preferred Date:</span>{' '}
                           {item?.details?.preferred_date ? formatDateMMDDYYYY(item.details.preferred_date) : '-'}

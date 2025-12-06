@@ -123,6 +123,33 @@ function WorkerPost() {
   const [showViewLoading, setShowViewLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
 
+  const getServiceTasks = (item) => {
+    const d = item?.details || item?.work || item?.work_information || {};
+    const raw = d.service_task || item?.service_task || null;
+    if (Array.isArray(raw)) {
+      const parts = [];
+      for (const seg of raw) {
+        const tasks = Array.isArray(seg?.tasks) ? seg.tasks.filter(Boolean).map(String) : [];
+        for (const t of tasks) if (String(t).trim()) parts.push(String(t).trim());
+      }
+      return parts;
+    }
+    if (raw && typeof raw === 'object') {
+      const parts = [];
+      for (const v of Object.values(raw)) {
+        const arr = Array.isArray(v) ? v : [v];
+        for (const t of arr) if (String(t).trim()) parts.push(String(t).trim());
+      }
+      return parts;
+    }
+    return [];
+  };
+
+  const getServiceTasksText = (item) => {
+    const arr = getServiceTasks(item);
+    return arr.length ? arr.join(' • ') : '';
+  };
+
   const allowedPHPrefixes = useMemo(
     () =>
       new Set([
@@ -213,7 +240,7 @@ function WorkerPost() {
       '';
     if (!raw) return '';
     const s = String(raw).toLowerCase();
-    if (s.includes('hour')) return 'By the hour';
+    if (s.includes('hour')) return 'Hourly Rate';
     if (s.includes('job') || s.includes('fixed') || s.includes('project') || s.includes('task')) return 'By the Job';
     return s.charAt(0).toUpperCase() + s.slice(1);
   };
@@ -472,6 +499,7 @@ function WorkerPost() {
   const currentWorkDescription = useMemo(() => getWorkDescription(currentApp), [currentApp]);
   const currentYearsExperience = useMemo(() => getYearsExperience(currentApp), [currentApp]);
   const currentToolsProvided = useMemo(() => getToolsProvided(currentApp), [currentApp]);
+  const currentServiceTasks = useMemo(() => getServiceTasksText(currentApp), [currentApp]);
 
   const toolsBoolLocal = useMemo(() => {
     const d = currentApp?.details || currentApp?.work || currentApp?.work_information || {};
@@ -490,7 +518,7 @@ function WorkerPost() {
       ? 'Yes'
       : 'No';
 
-  const toolsClassLocal = 'text-gray-900 font-semibold';
+  const toolsClassLocal = 'text-[#008cfc] font-semibold';
 
   const getGroupId = (it) => {
     const g =
@@ -552,7 +580,7 @@ function WorkerPost() {
 
   const buildServiceTypesText = (item) => {
     const arr = buildServiceTypesArr(item);
-    return arr.length ? arr.join(', ') : buildServiceType(item) || 'Service';
+    return arr.length ? arr.join(' • ') : buildServiceType(item) || 'Service';
   };
 
   const confirmDeleteNow = () => {
@@ -564,8 +592,8 @@ function WorkerPost() {
       try {
         await axios.delete(`${API_BASE}/api/workerapplications/${encodeURIComponent(deleteTarget.id)}`, {
           withCredentials: true,
-          headers: headersWithU
-        });
+          headers: headersWithU}
+        );
         if (deleteTarget.label === 'current') {
           setCurrentApp(null);
         } else {
@@ -671,13 +699,55 @@ function WorkerPost() {
         </div>
       </div>
 
-      <h2 className="text-4xl font-semibold mb-10">
-        Welcome, {honorific ? `${honorific} ` : ''}{capFirst}
-      </h2>
+      <div className="mb-12 flex items-center justify-between">
+        <h2 className="text-4xl font-semibold">
+          Welcome, {honorific ? `${honorific} ` : ''}<span className="text-[#008cfc]">{capFirst}</span>
+        </h2>
+        {false && hasCurrent && (
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700 font-semibold">Status:</span>
+            {isApproved && (
+              <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                <span className="h-3 w-3 rounded-md bg-current opacity-30" />
+                Approved Application
+              </span>
+            )}
+            {isPending && (
+              <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+                <span className="relative inline-flex">
+                  <span className="absolute inline-flex h-3 w-3 rounded-md bg-current opacity-30 animate-ping" />
+                  <span className="relative inline-flex h-3 w-3 rounded-md bg-current" />
+                </span>
+                Pending Application
+              </span>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-2xl font-semibold">{hasCurrent ? 'Current Work Application' : 'Work Application Post'}</h3>
+          {hasCurrent && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-700 font-semibold">Status:</span>
+              {isApproved && (
+                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+                  <span className="h-3 w-3 rounded-md bg-current opacity-30" />
+                  Approved Application
+                </span>
+              )}
+              {isPending && (
+                <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
+                  <span className="relative inline-flex">
+                    <span className="absolute inline-flex h-3 w-3 rounded-md bg-current opacity-30 animate-ping" />
+                    <span className="relative inline-flex h-3 w-3 rounded-md bg-current" />
+                  </span>
+                  Pending Application
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {hasCurrent ? (
@@ -702,19 +772,19 @@ function WorkerPost() {
                     <span className="text-gray-900">{buildServiceTypesText(currentApp)}</span>
                   </div>
                   <div className="mt-1 text-base md:text-lg truncate">
-                    <span className="font-semibold text-gray-700">Work Description:</span>{' '}
-                    <span className="text-gray-900">{currentWorkDescription || '-'}</span>
+                    <span className="font-semibold text-gray-700">Service Tasks:</span>{' '}
+                    <span className="text-gray-900">{currentServiceTasks || '-'}</span>
                   </div>
                   <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago` : ''}</div>
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
                     <div className="space-y-1.5">
-                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      <div className="flex flex-wrap gap-x-2 gap-y-1">
                         <span className="text-gray-700 font-semibold">Barangay:</span>
-                        <span className="text-gray-900 font-medium">{buildLocation(currentApp) || '-'}</span>
+                        <span className="text-[#008cfc] font-semibold">{buildLocation(currentApp) || '-'}</span>
                       </div>
-                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      <div className="flex flex-wrap gap-x-2 gap-y-1">
                         <span className="text-gray-700 font-semibold">Years of Experience:</span>
-                        <span className="text-gray-900 font-medium">
+                        <span className="text-[#008cfc] font-semibold">
                           {currentYearsExperience !== '' &&
                           currentYearsExperience !== null &&
                           currentYearsExperience !== undefined
@@ -722,19 +792,19 @@ function WorkerPost() {
                             : '-'}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      <div className="flex flex-wrap gap-x-2 gap-y-1">
                         <span className="text-gray-700 font-semibold">Tools Provided:</span>
                         <span className={toolsClassLocal}>{toolsTextLocal}</span>
                       </div>
                     </div>
                     <div className="space-y-1.5 md:pl-10">
-                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      <div className="flex flex-wrap gap-x-2 gap-y-1">
                         <span className="text-gray-700 font-semibold">Rate Type:</span>
-                        <span className="text-gray-900 font-medium">{getRateType(currentApp) || '-'}</span>
+                        <span className="text-[#008cfc] font-semibold">{getRateType(currentApp) || '-'}</span>
                       </div>
-                      <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      <div className="flex flex-wrap gap-x-2 gap-y-1">
                         <span className="text-gray-700 font-semibold">Service Rate:</span>
-                        <span className="text-gray-900 font-medium">
+                        <span className="text-[#008cfc] font-semibold">
                           {(() => {
                             const d = currentApp?.rate || currentApp?.details || {};
                             const t = String(d?.rate_type || '').toLowerCase();
@@ -767,13 +837,13 @@ function WorkerPost() {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {isApproved && (
+                {false && isApproved && (
                   <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
                     <span className="h-3 w-3 rounded-md bg-current opacity-30" />
                     Approved Application
                   </span>
                 )}
-                {isPending && (
+                {false && isPending && (
                   <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
                     <span className="relative inline-flex">
                       <span className="absolute inline-flex h-3 w-3 rounded-md bg-current opacity-30 animate-ping" />

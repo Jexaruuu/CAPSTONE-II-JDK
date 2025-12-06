@@ -168,6 +168,24 @@ export default function WorkerEditApplication() {
     try { if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'; } catch {}
   }, []);
 
+  const releaseScroll = () => { try{ const h=document.documentElement; const b=document.body; h.style.overflow=''; b.style.overflow=''; }catch{} };
+  useEffect(()=>{ try{ const h=document.documentElement; const b=document.body; h.style.overflow=''; b.style.overflow=''; }catch{} },[]);
+
+  const [navLoading, setNavLoading] = useState(false);
+
+  const navigateWithRelease = (path) => {
+    if (navLoading) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    setNavLoading(true);
+    setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      releaseScroll();
+      navigate(path, { replace: true });
+      setTimeout(releaseScroll, 0);
+      setTimeout(releaseScroll, 200);
+    }, 2000);
+  };
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -335,6 +353,8 @@ export default function WorkerEditApplication() {
     return pairsChanged || yrsChanged || toolsChanged || descChanged || rtChanged || rfChanged || rtoChanged || rvChanged || addrChanged || addAddrChanged || picChanged;
   }, [orig, pairs, yearsExp, toolsProvided, description, rateType, rateFrom, rateTo, rateValue, address, additionalAddress, profileDataUrl, profileUrl]);
 
+  const canSave = useMemo(() => !saving && requiredFilled && pairsAllValid && isDirty, [saving, requiredFilled, pairsAllValid, isDirty]);
+
   const onSave = async () => {
     if (saving) return;
     if (!requiredFilled) return;
@@ -392,8 +412,6 @@ export default function WorkerEditApplication() {
     }
   };
 
-  const [navLoading, setNavLoading] = useState(false);
-
   useEffect(() => {
     if (!navLoading) return;
     const onPopState = () => { window.history.pushState(null, '', window.location.href); };
@@ -411,14 +429,22 @@ export default function WorkerEditApplication() {
     };
   }, [navLoading]);
 
+  const unlockScroll = () => {
+    try {
+      const html = document.documentElement;
+      const body = document.body;
+      html.style.overflow = '';
+      body.style.overflow = '';
+    } catch {}
+  };
+
   const onCancel = () => {
-    if (navLoading) return;
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    setNavLoading(true);
-    setTimeout(() => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      navigate('/workerdashboard', { replace: true });
-    }, 2000);
+    navigateWithRelease('/workerdashboard');
+  };
+
+  const onSuccessOk = () => {
+    setShowSuccess(false);
+    navigateWithRelease('/workerdashboard');
   };
 
   const setPairType = (i, v) => {
@@ -515,6 +541,10 @@ export default function WorkerEditApplication() {
     </div>
   );
 
+  useEffect(()=>{ document.body.style.overflow=confirmOpen?"hidden":""; return()=>{ document.body.style.overflow=""; }; },[confirmOpen]);
+  useEffect(()=>{ const lock=showSuccess||showSaving; const html=document.documentElement; const body=document.body; const prevHtml=html.style.overflow; const prevBody=body.style.overflow; if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; },[showSuccess,showSaving]);
+  useEffect(() => { const handler = (e) => { if (showSaving) e.preventDefault(); }; if (showSaving) { window.addEventListener('wheel', handler, { passive: false }); window.addEventListener('touchmove', handler, { passive: false }); } return () => { window.removeEventListener('wheel', handler); window.removeEventListener('touchmove', handler); }; }, [showSaving]);
+
   return (
     <>
       <WorkerNavigation />
@@ -559,9 +589,9 @@ export default function WorkerEditApplication() {
                       <button
                         type="button"
                         onClick={() => fileRef.current?.click()}
-                        className="w-full h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        className="w-full h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
                       >
-                        Choose Image
+                        Change Profile Picture
                       </button>
                     </div>
                   </div>
@@ -877,7 +907,7 @@ export default function WorkerEditApplication() {
               <button
                 type="button"
                 onClick={()=>setConfirmOpen(true)}
-                disabled={saving || !requiredFilled || !pairsAllValid || !isDirty}
+                disabled={!canSave}
                 className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
               >
                 {saving ? 'Saving…' : 'Save Changes'}
@@ -887,46 +917,75 @@ export default function WorkerEditApplication() {
         </div>
       </div>
 
-      {confirmOpen && (
-        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+      {confirmOpen ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setConfirmOpen(false)} />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="relative z-[101] w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-100">
+            <h4 className="text-lg font-semibold text-gray-900">Save changes?</h4>
+            <p className="mt-1 text-sm text-gray-600">Are you sure saving these changes?</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={()=>setConfirmOpen(false)} className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button
+                type="button"
+                disabled={!canSave}
+                onClick={()=>{ setConfirmOpen(false); if (canSave) onSave(); }}
+                className={`rounded-xl px-5 py-2 text-sm font-medium transition ${canSave?"bg-[#008cfc] text-white hover:bg-blue-700":"bg-[#008cfc] text-white opacity-60 cursor-not-allowed"}`}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showSaving ? (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
+            <div className="relative mx-auto w-32 h-32">
+              <div className="absolute inset-0 animate-spin rounded-full" style={{borderWidth:"8px",borderStyle:"solid",borderColor:"#008cfc22",borderTopColor:"#008cfc",borderRadius:"9999px"}} />
+              <div className="absolute inset-4 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="Logo" className="w-14 h-14 object-contain" onError={()=>setLogoBroken(true)} />
+                ) : (
+                  <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center space-y-1">
+              <div className="text-base font-semibold text-gray-900">Saving Changes</div>
+              <div className="text-sm text-gray-500">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showSuccess ? (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowSuccess(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483648]">
             <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBroken ? (
                 <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={()=>setLogoBroken(true)} />
               ) : (
-                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center"><span className="font-bold text-[#008cfc]">JDK</span></div>
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
               )}
             </div>
             <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">Save your changes?</div>
+              <div className="text-lg font-semibold text-gray-900">Saved Successfully!</div>
+              <div className="text-sm text-gray-600">Your changes have been saved.</div>
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-2">
-              <button type="button" onClick={()=>setConfirmOpen(false)} className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition">Cancel</button>
-              <button type="button" onClick={()=>{ setConfirmOpen(false); onSave(); }} className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition">Save</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showSaving && (
-        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div role="dialog" aria-modal="true" className="relative w-[340px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
-            <div className="relative mx-auto w-40 h-40">
-              <div className="absolute inset-0 rounded-full animate-spin" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderRightColor: '#008cfc', borderRadius: '9999px' }} />
-              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc1f]" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                {!logoBroken ? <img src="/jdklogo.png" alt="Logo" className="w-20 h-20 object-contain" onError={()=>setLogoBroken(true)} /> : <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center"><span className="font-bold text-[#008cfc]">JDK</span></div>}
-              </div>
-            </div>
-            <div className="mt-6 text-center">
-              <div className="text-lg font-semibold text-gray-900">Saving Changes</div>
-              <div className="text-sm text-gray-500">Please wait</div>
+            <div className="mt-6">
+              <button type="button" onClick={onSuccessOk} className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition">OK</button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {navLoading && (
         <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
@@ -947,23 +1006,6 @@ export default function WorkerEditApplication() {
             </div>
             <div className="mt-6 text-center">
               <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showSuccess && (
-        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowSuccess(false)} />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-              {!logoBroken ? <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={()=>setLogoBroken(true)} /> : <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center"><span className="font-bold text-[#008cfc]">JDK</span></div>}
-            </div>
-            <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">Changes Saved</div>
-            </div>
-            <div className="mt-6">
-              <button type="button" onClick={()=>{ setShowSuccess(false); navigate('/workerdashboard', { replace: true }); }} className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition">Done</button>
             </div>
           </div>
         </div>

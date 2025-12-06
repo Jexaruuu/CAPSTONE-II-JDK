@@ -606,6 +606,15 @@ exports.updateByGroup = async (req, res) => {
       } catch {}
     }
 
+    let profileUploaded = null;
+    const profileDataUrl = info.profile_picture_data_url || metadata.profile_picture_data_url || null;
+    if (profileDataUrl) {
+      try {
+        const up = await uploadDataUrlToBucket(bucket, profileDataUrl, `${gid}-profile-${Date.now()}`);
+        if (up?.url) profileUploaded = up;
+      } catch {}
+    }
+
     const current = await getCombinedByGroupId(gid);
     if (!current) return res.status(404).json({ message: 'Not found' });
 
@@ -616,8 +625,8 @@ exports.updateByGroup = async (req, res) => {
       street: info.street ?? current.info?.street ?? '',
       barangay: info.barangay ?? current.info?.barangay ?? '',
       additional_address: info.additional_address ?? current.info?.additional_address ?? '',
-      profile_picture_url: info.profile_picture_url ?? current.info?.profile_picture_url ?? null,
-      profile_picture_name: info.profile_picture_name ?? current.info?.profile_picture_name ?? null
+      profile_picture_url: (profileUploaded?.url ?? info.profile_picture_url ?? current.info?.profile_picture_url ?? null),
+      profile_picture_name: (profileUploaded?.name ?? info.profile_picture_name ?? current.info?.profile_picture_name ?? null)
     };
 
     await updateClientInformation(gid, infoRow);
@@ -694,3 +703,4 @@ exports.updateByGroup = async (req, res) => {
     return res.status(500).json({ message: friendlyError(err) });
   }
 };
+

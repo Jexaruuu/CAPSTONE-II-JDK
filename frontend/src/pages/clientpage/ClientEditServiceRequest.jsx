@@ -606,9 +606,9 @@ useEffect(() => {
                         <button
                           type="button"
                           onClick={() => clientFileRef.current?.click()}
-                          className="w-full h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                          className="w-full h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
                         >
-                          Choose Image
+                          Change Profile Picture
                         </button>
                       </div>
                     </div>
@@ -629,9 +629,9 @@ useEffect(() => {
                         <button
                           type="button"
                           onClick={() => fileRef.current?.click()}
-                          className="w-full h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                          className="w-full h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
                         >
-                          Choose Image
+                          Change Request Image
                         </button>
                       </div>
                     </div>
@@ -937,7 +937,7 @@ useEffect(() => {
                         {String(rateType || '').toLowerCase() === 'range' ? (
                           <div className="grid grid-cols-2 gap-3 md:col-span-1">
                             <div className="grid gap-2">
-                              <span className="block text sm font-medium text-gray-700">Rate From</span>
+                              <span className="block text-sm font-medium text-gray-700">Rate From</span>
                               <div className={`flex items-center rounded-xl border ${rateError ? 'border-red-300' : 'border-gray-300'} h-[48px] px-3`}>
                                 <span className="text-gray-500 mr-2">₱</span>
                                 <input
