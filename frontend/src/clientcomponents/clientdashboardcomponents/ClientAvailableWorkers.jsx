@@ -520,8 +520,9 @@ const ClientAvailableWorkers = () => {
                 style={{ touchAction: 'auto' }}
               >
                 {displayItems.map((w, i) => {
-                  const rating = w.ratingFive != null ? Math.round(w.ratingFive * 10) / 10 : null;
-                  const filledStars = Math.round(rating ?? 0);
+                  const rating = 0;
+                  const filledStars = 0;
+                  const singleIcon = (w.serviceIcons || []).length === 1;
                   return (
                     <div
                       key={w.id}
@@ -529,7 +530,7 @@ const ClientAvailableWorkers = () => {
                       className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl cursor-pointer"
                       style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
                     >
-                      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:160px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+                      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:410px] bg-[position:right_50%] opacity-10 pointer-events-none" />
                       <div className="relative z-10">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3 min-w-0">
@@ -563,38 +564,46 @@ const ClientAvailableWorkers = () => {
                                     fill="currentColor"
                                   />
                                 ))}
-                                <span className="text-xs font-medium text-gray-700">{rating != null ? `${rating.toFixed(1)}/5` : '0/5'}</span>
+                                <span className="text-xs font-medium text-gray-700">{`${rating.toFixed(1)}/5`}</span>
                               </div>
                             </div>
                           </div>
 
-                          <div className="relative w-18 h-18 grid grid-cols-2 auto-rows-[minmax(0,1fr)] gap-2">
-                            {(w.serviceIcons || []).slice(0,5).map((Icon, idx) => {
-                              const pos = [
-                                { gridColumn: '1', gridRow: '1' },
-                                { gridColumn: '2', gridRow: '1' },
-                                { gridColumn: '2', gridRow: '2' },
-                                { gridColumn: '1', gridRow: '2' },
-                                { gridColumn: '2', gridRow: '3' }
-                              ][idx] || { gridColumn: '1', gridRow: '3' };
-                              return (
-                                <span
-                                  key={idx}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200"
-                                  style={{ gridColumn: pos.gridColumn, gridRow: pos.gridRow }}
-                                >
-                                  <Icon size={16} className="text-[#008cfc]" />
-                                </span>
-                              );
-                            })}
-                          </div>
+                          {singleIcon ? (
+                            <div className="relative w-18 h-18 flex items-start justify-end">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200">
+                                {React.createElement(w.serviceIcons[0], { size: 16, className: 'text-[#008cfc]' })}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="relative w-18 h-18 grid grid-cols-2 auto-rows-[minmax(0,1fr)] gap-2">
+                              {(w.serviceIcons || []).slice(0,5).map((Icon, idx) => {
+                                const pos = [
+                                  { gridColumn: '1', gridRow: '1' },
+                                  { gridColumn: '2', gridRow: '1' },
+                                  { gridColumn: '2', gridRow: '2' },
+                                  { gridColumn: '1', gridRow: '2' },
+                                  { gridColumn: '2', gridRow: '3' }
+                                ][idx] || { gridColumn: '1', gridRow: '3' };
+                                return (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200"
+                                    style={{ gridColumn: pos.gridColumn, gridRow: pos.gridRow }}
+                                  >
+                                    <Icon size={16} className="text-[#008cfc]" />
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
 
                         <div className="mt-4 h-px bg-gray-200" />
 
                         <div className="mt-4">
-                          <div className="text-sm font-semibold text-gray-700">Service Type</div>
-                          <div className="mt-1 flex flex-wrap gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-sm font-semibold text-gray-700">Service Type:</div>
                             {(w.serviceTypeList && w.serviceTypeList.length ? w.serviceTypeList : [w.serviceType || '—']).map((lbl, idx) => (
                               <span key={idx} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
                                 {lbl}
@@ -602,28 +611,28 @@ const ClientAvailableWorkers = () => {
                             ))}
                           </div>
 
-                          <div className="mt-3 text-sm font-semibold text-gray-700">Service Task</div>
-                          <div className="mt-1 flex flex-wrap gap-2">
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <div className="text-sm font-semibold text-gray-700">Service Task:</div>
                             {(w.serviceTaskList && w.serviceTaskList.length ? w.serviceTaskList : (w.serviceTask ? String(w.serviceTask).split(/[,/|]+/).map(s=>s.trim()).filter(Boolean) : ['—'])).map((lbl, idx) => (
-                              <span key={idx} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-violet-50 text-violet-700 border-violet-200">
+                              <span key={idx} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
                                 {lbl}
                               </span>
                             ))}
                           </div>
 
                           <div className="mt-3 text-sm font-semibold text-gray-700">Work Description</div>
-                          <div className="text-sm text-gray-800 line-clamp-3">{w.bio || '—'}</div>
+                          <div className="text-sm text-[#008cfc] line-clamp-3">{w.bio || '—'}</div>
                         </div>
 
                         <div className="mt-4 h-px bg-gray-200" />
 
                         <div className="mt-4 flex items-center justify-between">
                           <div>
-                            <div className="text-sm font-semibold text-gray-900">{w.addressLine || w.country}</div>
+                            <div className="text-sm font-semibold text-[#008cfc]">{w.addressLine || w.country}</div>
                             <div className="flex items-center gap-2">
-                              {w.rateType && <div className="text-sm font-semibold text-gray-900">{w.rateType}</div>}
+                              {w.rateType && <div className="text-sm font-semibold text-[#008cfc]">{w.rateType}</div>}
                               {w.rateType ? <span className="text-gray-400">•</span> : null}
-                              <div className="text-sm font-semibold text-gray-900">{w.rate || 'Rate upon request'}</div>
+                              <div className="text-sm font-semibold text-[#008cfc]">{w.rate || 'Rate upon request'}</div>
                             </div>
                           </div>
                           <a href="#" className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition">

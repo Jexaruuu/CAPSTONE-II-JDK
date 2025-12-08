@@ -1,3 +1,4 @@
+// ClientNavigation.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -316,25 +317,29 @@ const ClientNavigation = () => {
           </div>
 
           <div className="flex items-center space-x-3 mt-4 text-md">
-            <div ref={searchBarRef} className="flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2">
-              <span className="text-gray-500 text-lg">🔍︎</span>
-              <input
-                type="text"
-                className="border-none outline-none text-black w-56 sm:w-64 md:w-72 h-full"
-                placeholder="Search workers"
-                value={searchQuery}
-                onChange={(e)=>setSearchQuery(e.target.value)}
-                onKeyDown={onSearchKey}
-              />
-            </div>
+            {!isFindWorker && (
+              <>
+                <div ref={searchBarRef} className="flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2">
+                  <span className="text-gray-500 text-lg">🔍︎</span>
+                  <input
+                    type="text"
+                    className="border-none outline-none text-black w-56 sm:w-64 md:w-72 h-full"
+                    placeholder="Search workers"
+                    value={searchQuery}
+                    onChange={(e)=>setSearchQuery(e.target.value)}
+                    onKeyDown={onSearchKey}
+                  />
+                </div>
 
-            <button
-              type="button"
-              onClick={() => { handleSearchBarDropdown(); goSearch(); }}
-              className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
-            >
-              Search
-            </button>
+                <button
+                  type="button"
+                  onClick={() => { handleSearchBarDropdown(); goSearch(); }}
+                  className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+                >
+                  Search
+                </button>
+              </>
+            )}
 
             <div className="cursor-pointer relative" onClick={() => handleDropdownToggle('Bell')}>
               <img src="/Bellicon.png" alt="Notification Bell" className="h-8 w-8" />
