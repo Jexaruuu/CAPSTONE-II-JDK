@@ -440,6 +440,11 @@ const WorkerAvailableServiceRequest = () => {
               <div
                 ref={scrollRef}
                 onScroll={onTrackScroll}
+                onPointerDown={onDragPointerDown}
+                onPointerMove={onDragPointerMove}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                onClickCapture={onTrackClickCapture}
                 className="flex space-x-6 overflow-x-scroll scroll-smooth no-scrollbar pl-4 pr-4 select-none no-hand"
                 style={{ touchAction: 'auto' }}
               >
@@ -452,7 +457,7 @@ const WorkerAvailableServiceRequest = () => {
                       className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl"
                       style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
                     >
-                      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:160px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+                      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:380px] bg-[position:right_50%] opacity-10 pointer-events-none" />
                       <div className="relative z-10">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3 min-w-0">
@@ -577,36 +582,23 @@ const WorkerAvailableServiceRequest = () => {
 
           <div className="flex items-center justify-between pt-6">
             <div className="text-sm text-gray-600">
-              {items.length} {items.length === 1 ? 'request' : 'requests'}
+              Page {page} of {totalPages}
             </div>
             <nav className="flex items-center gap-2">
               <button
-                className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 hidden"
-                disabled
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 aria-label="Previous page"
               >
                 ‹
               </button>
-              {pages.map((p, idx) =>
-                typeof p === 'number' ? (
-                  <button
-                    key={`${p}-${idx}`}
-                    onClick={() => setPage(p)}
-                    className={`h-9 min-w-9 px-3 rounded-md border text-sm ${
-                      p === page ? 'border-[#008cfc] bg-[#008cfc] text-white' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                    aria-current={p === page ? 'page' : undefined}
-                  >
-                    {p}
-                  </button>
-                ) : (
-                  <span key={`dots-${idx}`} className="px-1 text-gray-500 select-none">…</span>
-                )
-              )}
+              <button className="h-9 min-w-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white">
+                {page}
+              </button>
               <button
-                className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 hidden"
-                disabled
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 aria-label="Next page"
               >

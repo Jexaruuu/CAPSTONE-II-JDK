@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import ClientNavigation from "../../clientcomponents/ClientNavigation";
 import ClientFooter from "../../clientcomponents/ClientFooter";
 import { Star, Hammer, Zap, Wrench, Car, Shirt } from "lucide-react";
+import ClientViewWorker from "../../clientcomponents/clientdashboardcomponents/clientavailableworkercomponents/ClientViewWorker";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -19,6 +20,35 @@ const ServiceTypeCheckbox = ({ label, checked, onChange }) => (
       type="checkbox"
       checked={checked}
       onChange={(e) => onChange(e.target.checked)}
+      className="peer sr-only"
+    />
+    <span
+      className="relative h-5 w-5 rounded-md border border-gray-300 bg-white transition peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 peer-checked:bg-[#008cfc] peer-checked:border-[#008cfc] grid place-items-center"
+      aria-hidden="true"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="h-3.5 w-3.5 opacity-0 peer-checked:opacity-100 transition"
+        fill="none"
+        stroke="white"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    </span>
+    <span className="text-sm text-gray-900">{label}</span>
+  </label>
+);
+
+const RateTypeOption = ({ name, label, value, selected, onSelect }) => (
+  <label className="flex items-start gap-3 cursor-pointer select-none">
+    <input
+      type="radio"
+      name={name}
+      checked={selected}
+      onChange={() => onSelect(value)}
       className="peer sr-only"
     />
     <span
@@ -62,6 +92,35 @@ const FiltersPanel = ({ value, onChange }) => {
   const setService = (key, val) =>
     set({ serviceTypes: { ...(local.serviceTypes || {}), [key]: val } });
 
+  const dropdownRef = useRef(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [barangayQuery, setBarangayQuery] = useState("");
+
+  const barangays = [
+    "Alangilan","Alijis","Banago","Bata","Cabug","Estefania","Felisa",
+    "Granada","Handumanan","Lopez Jaena","Mandalagan","Mansilingan",
+    "Montevista","Pahanocoy","Punta Taytay","Singcang-Airport","Sum-ag",
+    "Taculing","Tangub","Villa Esperanza"
+  ];
+  const sortedBarangays = useMemo(() => [...barangays].sort(), []);
+  const filteredBarangays = useMemo(() => {
+    const q = barangayQuery.trim().toLowerCase();
+    if (!q) return sortedBarangays;
+    return sortedBarangays.filter((b) => b.toLowerCase().includes(q));
+  }, [sortedBarangays, barangayQuery]);
+
+  const toggleDropdown = () => {
+    setBarangayQuery("");
+    setShowDropdown((s) => !s);
+  };
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
   return (
     <aside className="w-full sm:w-72 lg:w-80 shrink-0">
       <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
@@ -94,35 +153,107 @@ const FiltersPanel = ({ value, onChange }) => {
           />
         </div>
 
+        <div className="text-sm font-semibold text-gray-900 mb-3">Barangay</div>
+        <div className="relative mb-5" ref={dropdownRef}>
+          <div className="flex items-center rounded-md border border-gray-300">
+            <button
+              type="button"
+              onClick={toggleDropdown}
+              className="w-full h-10 px-3 text-left rounded-l-md focus:outline-none"
+              aria-expanded={showDropdown}
+              aria-haspopup="listbox"
+            >
+              {local.location?.trim() ? local.location : "Select Barangay"}
+            </button>
+            <button
+              type="button"
+              onClick={toggleDropdown}
+              className="px-3 text-gray-600 hover:text-gray-800"
+              aria-label="Open barangay options"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+
+          {showDropdown && (
+            <div
+              className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-2"
+              role="listbox"
+            >
+              <div className="px-2 pb-2">
+                <input
+                  value={barangayQuery}
+                  onChange={(e) => setBarangayQuery(e.target.value)}
+                  placeholder="Search…"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-1 max-h-56 overflow-y-auto px-1">
+                {filteredBarangays.length ? (
+                  filteredBarangays.map((barangayName, index) => (
+                    <button
+                      key={`${barangayName}-${index}`}
+                      type="button"
+                      onClick={() => {
+                        set({ location: barangayName });
+                        setShowDropdown(false);
+                      }}
+                      className="text-left px-3 py-2 rounded-lg hover:bg-blue-50 text-sm text-gray-700"
+                      role="option"
+                      aria-selected={barangayName === local.location}
+                    >
+                      {barangayName}
+                    </button>
+                  ))
+                ) : (
+                  <div className="col-span-1 text-center text-xs text-gray-400 py-3">No options</div>
+                )}
+              </div>
+              <div className="flex items-center justify-between mt-2 px-2">
+                <span className="text-xs text-gray-400">
+                  {filteredBarangays.length} result{filteredBarangays.length === 1 ? "" : "s"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    set({ location: "" });
+                    setBarangayQuery("");
+                    setShowDropdown(false);
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="text-sm font-semibold text-gray-900 mb-2">Service rate</div>
-        <div className="space-y-2 mb-3">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="rateType"
-              checked={local.rateType === "any"}
-              onChange={() => set({ rateType: "any" })}
-            />
-            Any
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="rateType"
-              checked={local.rateType === "hourly"}
-              onChange={() => set({ rateType: "hourly" })}
-            />
-            Hourly Rate
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="rateType"
-              checked={local.rateType === "job"}
-              onChange={() => set({ rateType: "job" })}
-            />
-            By the Job Rate
-          </label>
+        <div className="space-y-3 mb-3">
+          <RateTypeOption
+            name="rateType"
+            label="Any"
+            value="any"
+            selected={local.rateType === "any"}
+            onSelect={(v) => set({ rateType: v })}
+          />
+          <RateTypeOption
+            name="rateType"
+            label="Hourly Rate"
+            value="hourly"
+            selected={local.rateType === "hourly"}
+            onSelect={(v) => set({ rateType: v })}
+          />
+          <RateTypeOption
+            name="rateType"
+            label="By the Job Rate"
+            value="job"
+            selected={local.rateType === "job"}
+            onSelect={(v) => set({ rateType: v })}
+          />
         </div>
 
         {local.rateType === "hourly" && (
@@ -165,66 +296,60 @@ const FiltersPanel = ({ value, onChange }) => {
           </div>
         )}
 
-        <div className="text-sm font-semibold text-gray-900 mb-3">Location</div>
-        <input
-          type="text"
-          placeholder="Barangay"
-          value={local.location ?? ""}
-          onChange={(e) => set({ location: e.target.value })}
-          className="w-full h-10 rounded-md border border-gray-300 px-3 text-sm outline-none mb-5"
-        />
-
-        <div className="text-sm font-semibold text-gray-900 mb-3">Talent time zones</div>
-        <input
-          type="text"
-          placeholder="Select time zones"
-          value={local.timezones ?? ""}
-          onChange={(e) => set({ timezones: e.target.value })}
-          className="w-full h-10 rounded-md border border-gray-300 px-3 text-sm outline-none mb-5"
-        />
-
-        <div className="text-sm font-semibold text-gray-900 mb-3">Talent type</div>
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="talentType"
-              checked={local.talentType === "both"}
-              onChange={() => set({ talentType: "both" })}
-            />
-            Freelancers & Agencies
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="talentType"
-              checked={local.talentType === "freelancers"}
-              onChange={() => set({ talentType: "freelancers" })}
-            />
-            Freelancers
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="talentType"
-              checked={local.talentType === "agencies"}
-              onChange={() => set({ talentType: "agencies" })}
-            />
-            Agencies
-          </label>
+        <div className="text-sm font-semibold text-gray-900 mb-2">Rating</div>
+        <div className="space-y-3 mb-5">
+          <RateTypeOption
+            name="ratingMin"
+            label="Any"
+            value={0}
+            selected={!Number(local.ratingMin)}
+            onSelect={(v) => set({ ratingMin: v })}
+          />
+          <RateTypeOption
+            name="ratingMin"
+            label="4+ stars"
+            value={4}
+            selected={Number(local.ratingMin) === 4}
+            onSelect={(v) => set({ ratingMin: v })}
+          />
+          <RateTypeOption
+            name="ratingMin"
+            label="3+ stars"
+            value={3}
+            selected={Number(local.ratingMin) === 3}
+            onSelect={(v) => set({ ratingMin: v })}
+          />
+          <RateTypeOption
+            name="ratingMin"
+            label="2+ stars"
+            value={2}
+            selected={Number(local.ratingMin) === 2}
+            onSelect={(v) => set({ ratingMin: v })}
+          />
+          <RateTypeOption
+            name="ratingMin"
+            label="1+ star"
+            value={1}
+            selected={Number(local.ratingMin) === 1}
+            onSelect={(v) => set({ ratingMin: v })}
+          />
         </div>
       </div>
     </aside>
   );
 };
 
-const WorkerCard = ({ item }) => {
+const WorkerCard = ({ item, onView }) => {
   const serviceTypes = Array.isArray(item.serviceTypeList) ? item.serviceTypeList : [];
   const serviceTasks = Array.isArray(item.serviceTaskList) ? item.serviceTaskList : [];
   const icons = (serviceTypes || []).slice(0, 5).map((lbl) => iconFor(lbl));
-  const rating = 0;
-  const filledStars = 0;
+  const rating = Number.isFinite(item.rating) ? Math.max(0, Math.min(5, item.rating)) : 0;
+  const filledStars = Math.round(rating);
   const singleIcon = icons.length === 1;
+  const workDone = Number.isFinite(item.workDone) ? item.workDone : 0;
+  const workerSuccess = Number.isFinite(item.workerSuccess)
+    ? (rating > 0 ? item.workerSuccess : 0)
+    : (Number.isFinite(item.jobSuccess) ? (rating > 0 ? item.jobSuccess : 0) : 0);
 
   return (
     <div className="relative overflow-hidden bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl">
@@ -329,9 +454,21 @@ const WorkerCard = ({ item }) => {
               <div className="text-sm font-semibold text-[#008cfc]">{item.displayRate || "Rate upon request"}</div>
             </div>
           </div>
-          <a href="#" className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition">
-            View worker
-          </a>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
+                Work Done
+                <span className="ml-2 text-sm font-semibold text-[#008cfc]">{workDone}</span>
+              </span>
+              <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
+                Worker Success
+                <span className="ml-2 text-sm font-semibold text-[#008cfc]">{workerSuccess}%</span>
+              </span>
+            </div>
+            <button onClick={() => onView(item)} className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition">
+              View worker
+            </button>
+          </div>
         </div>
       </div>
 
@@ -353,11 +490,12 @@ export default function ClientFindAvailableWorker() {
     rateJob: undefined,
     rateType: "any",
     location: "",
-    timezones: "",
-    talentType: "both",
-    serviceTypes: {}
+    serviceTypes: {},
+    ratingMin: 0
   });
   const [page, setPage] = useState(1);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewWorker, setViewWorker] = useState(null);
   const navigate = useNavigate();
 
   const normalizeItems = (rows) => {
@@ -453,6 +591,21 @@ export default function ClientFindAvailableWorker() {
       }
 
       const emailAddress = info.email_address || r.email_address || r.email || "";
+      const rawRating =
+        r.rating ?? r.avg_rating ?? r.average_rating ?? r.reviews_avg ?? r.rating_average ?? (r.reviews && r.reviews.avg);
+      const rating = Number(rawRating);
+      const ratingSafe = Number.isFinite(rating) ? Math.max(0, Math.min(5, rating)) : 0;
+
+      const rawWorkDone =
+        r.work_done ?? r.completed_jobs ?? r.jobs_completed ?? r.completed_works ?? (r.stats && (r.stats.work_done || r.stats.completed || r.stats.jobs));
+      const wd = Number(rawWorkDone);
+      const workDone = Number.isFinite(wd) && wd >= 0 ? Math.floor(wd) : 0;
+
+      const rawSuccess =
+        r.success_rate ?? r.job_success ?? r.jobs_success ?? r.jobSuccess ?? (r.stats && r.stats.success_rate) ?? rate.rate_success;
+      const succ = Number(rawSuccess);
+      const workerSuccessBase = Number.isFinite(succ) ? Math.max(0, Math.min(100, succ)) : 0;
+      const workerSuccess = ratingSafe > 0 ? workerSuccessBase : 0;
 
       return {
         id: r.id || r.request_group_id || `${i}`,
@@ -476,6 +629,9 @@ export default function ClientFindAvailableWorker() {
         serviceTypeList,
         serviceTaskList,
         emailAddress,
+        rating: ratingSafe,
+        workDone,
+        workerSuccess,
         raw: r
       };
     });
@@ -554,6 +710,10 @@ export default function ClientFindAvailableWorker() {
       }
     }
 
+    if (typeof filters.ratingMin === "number" && filters.ratingMin > 0) {
+      base = base.filter((w) => (Number(w.rating) || 0) >= filters.ratingMin);
+    }
+
     const map = filters.serviceTypes || {};
     const selected = Object.keys(map).filter((k) => map[k]);
     if (selected.length) {
@@ -599,7 +759,7 @@ export default function ClientFindAvailableWorker() {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search"
+                    placeholder="Search Worker Name"
                     className="border-none outline-none text-black w-full h-full placeholder:text-gray-400 bg-transparent"
                   />
                 </div>
@@ -627,7 +787,7 @@ export default function ClientFindAvailableWorker() {
                   No workers found.
                 </div>
               ) : (
-                pageItems.map((w) => <WorkerCard key={w.id} item={w} />)
+                pageItems.map((w) => <WorkerCard key={w.id} item={w} onView={(item)=>{ setViewWorker(item); setViewOpen(true); }} />)
               )}
 
               {!loading && (
@@ -664,6 +824,8 @@ export default function ClientFindAvailableWorker() {
       <div className="mt-auto w-full">
         <ClientFooter />
       </div>
+
+      <ClientViewWorker open={viewOpen} onClose={() => setViewOpen(false)} worker={viewWorker} />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
 import { ArrowRight, ArrowLeft, Star, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
+import ClientViewWorker from '../clientdashboardcomponents/clientavailableworkercomponents/ClientViewWorker'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -158,6 +159,29 @@ const iconFor = (s) => {
 
 const ClientAvailableWorkers = () => {
   const [items, setItems] = useState([]);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewWorker, setViewWorker] = useState(null);
+
+  useEffect(() => {
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyPaddingRight = document.body.style.paddingRight;
+    if (viewOpen) {
+      const sw = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      if (sw > 0) document.body.style.paddingRight = `${sw}px`;
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.paddingRight = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.paddingRight = '';
+    };
+  }, [viewOpen]);
 
   useEffect(() => {
     let alive = true;
@@ -302,12 +326,14 @@ const ClientAvailableWorkers = () => {
     return () => { alive = false; };
   }, []);
 
+  const VIEW_LIMIT = 6;
   const PER_PAGE = 3;
   const PAGE_SIZE = 3;
 
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
-  const displayItems = items.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE);
+  const viewItems = items.slice(0, VIEW_LIMIT);
+  const totalPages = Math.max(1, Math.ceil(viewItems.length / PAGE_SIZE));
+  const displayItems = viewItems.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE);
 
   const scrollRef = useRef(null);
   const wrapRef   = useRef(null);
@@ -530,7 +556,7 @@ const ClientAvailableWorkers = () => {
                       className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl cursor-pointer"
                       style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
                     >
-                      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:410px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+                      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:380px] bg-[position:right_50%] opacity-10 pointer-events-none" />
                       <div className="relative z-10">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3 min-w-0">
@@ -635,9 +661,13 @@ const ClientAvailableWorkers = () => {
                               <div className="text-sm font-semibold text-[#008cfc]">{w.rate || 'Rate upon request'}</div>
                             </div>
                           </div>
-                          <a href="#" className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition">
+                          <button
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={() => { setViewWorker(w); setViewOpen(true); }}
+                            className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition"
+                          >
                             View worker
-                          </a>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -658,50 +688,23 @@ const ClientAvailableWorkers = () => {
 
           <div className="flex items-center justify-between pt-6">
             <div className="text-sm text-gray-600">
-              {items.length} {items.length === 1 ? 'worker' : 'workers'}
+              Page {page} of {totalPages}
             </div>
             <nav className="flex items-center gap-2">
               <button
-                className="h-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white hover:bg-[#0078d6] disabled:opacity-50 hidden"
-                disabled
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 aria-label="Previous page"
               >
                 ‹
               </button>
-              {(() => {
-                const t = totalPages;
-                const p = page;
-                const out = [];
-                if (t <= 7) {
-                  for (let i = 1; i <= t; i++) out.push(i);
-                } else {
-                  out.push(1);
-                  if (p > 4) out.push('…');
-                  const start = Math.max(2, p - 1);
-                  const end = Math.min(t - 1, p + 1);
-                  for (let i = start; i <= end; i++) out.push(i);
-                  if (p < t - 3) out.push('…');
-                  out.push(t);
-                }
-                return out.map((pg, idx) =>
-                  typeof pg === 'number' ? (
-                    <button
-                      key={`${pg}-${idx}`}
-                      onClick={() => setPage(pg)}
-                      className="h-9 min-w-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white text-sm hover:bg-[#0078d6]"
-                      aria-current={pg === page ? 'page' : undefined}
-                    >
-                      {pg}
-                    </button>
-                  ) : (
-                    <span key={`dots-${idx}`} className="px-1 text-gray-500 select-none text-sm">…</span>
-                  )
-                );
-              })()}
+              <button className="h-9 min-w-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white">
+                {page}
+              </button>
               <button
-                className="h-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white hover:bg-[#0078d6] disabled:opacity-50 hidden"
-                disabled
+                className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 aria-label="Next page"
               >
@@ -721,6 +724,8 @@ const ClientAvailableWorkers = () => {
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
       `}</style>
+
+      <ClientViewWorker open={viewOpen} onClose={() => setViewOpen(false)} worker={viewWorker} />
     </div>
   );
 };
