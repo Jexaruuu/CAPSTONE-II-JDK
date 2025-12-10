@@ -46,6 +46,31 @@ function isExpiredPreferredDate(val) {
   today.setHours(0, 0, 0, 0);
   return d < today;
 }
+function parseHM24(val) {
+  if (!val) return { h: 23, m: 59 };
+  const s = String(val).trim();
+  let d = new Date(`1970-01-01T${s}`);
+  if (isNaN(d)) d = new Date(`1970-01-01 ${s}`);
+  if (!isNaN(d)) return { h: d.getHours(), m: d.getMinutes() };
+  const m = /^(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])?$/.exec(s);
+  if (!m) return { h: 23, m: 59 };
+  let h = parseInt(m[1], 10);
+  let min = m[2] ? parseInt(m[2], 10) : 0;
+  const ap = m[3] ? m[3].toUpperCase() : null;
+  if (ap === 'PM' && h < 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  if (!ap && h > 23) h = 23;
+  if (min > 59) min = 59;
+  return { h, m: min };
+}
+function isExpiredPreferredDateTime(details) {
+  const d = dateOnlyFrom(details?.preferred_date);
+  if (!d) return false;
+  const { h, m } = parseHM24(details?.preferred_time);
+  d.setHours(h, m, 0, 0);
+  const now = new Date();
+  return d.getTime() < now.getTime();
+}
 function toBoolStrict(v) {
   if (typeof v === 'boolean') return v;
   if (v === 1 || v === '1') return true;
@@ -160,7 +185,7 @@ exports.submitFullRequest = async (req, res) => {
       const active = rows.filter(r => {
         const s = String(r.status || '').toLowerCase();
         const notCancelled = !cancelled.includes(r.request_group_id);
-        const notExpired = !isExpiredPreferredDate(r?.details?.preferred_date);
+        const notExpired = !isExpiredPreferredDateTime(r?.details || {});
         return (s === 'pending' || s === 'approved') && notExpired && notCancelled;
       });
       if (active.length > 0) return res.status(409).json({ message: 'You already have an active service request.' });
@@ -387,7 +412,7 @@ const { data, error } = await supabaseAdmin
     const gids = fixed.map(it => it.request_group_id).filter(Boolean);
     let cancelled = [];
     try { cancelled = await getCancelledByGroupIds(gids); } catch {}
-    const filtered = fixed.filter((it) => !isExpiredPreferredDate(it?.details?.preferred_date) && !cancelled.includes(it.request_group_id));
+    const filtered = fixed.filter((it) => !isExpiredPreferredDateTime(it?.details || {}) && !cancelled.includes(it.request_group_id));
     return res.status(200).json({ items: filtered });
   } catch {
     return res.status(500).json({ message: 'Failed to load approved requests' });
@@ -703,4 +728,3 @@ exports.updateByGroup = async (req, res) => {
     return res.status(500).json({ message: friendlyError(err) });
   }
 };
-
