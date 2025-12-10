@@ -419,6 +419,22 @@ const ClientCard = ({ item, onView }) => {
                 </span>
               </div>
             </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-gray-700">Rate Type</div>
+              <div className="mt-1">
+                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                  {item.rateTypeLabel || "—"}
+                </span>
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-gray-700">Service Rate</div>
+              <div className="mt-1">
+                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                  {item.displayRate || item.budgetLabel || "—"}
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="mt-3 text-sm font-semibold text-gray-700">Request Description</div>
@@ -547,12 +563,18 @@ export default function WorkerFindAvailableClient() {
 
       const rawType = String(rate.rate_type || r.rate_type || "").trim();
       const s = rawType.toLowerCase();
-      const rateType = s.includes("hour") ? "hourly" : s.includes("job") || s.includes("fixed") || s.includes("flat") ? "job" : "";
-      const rateTypeLabel = rawType || (rateType === "hourly" ? "Hourly Rate" : rateType === "job" ? "By the Job Rate" : "");
+      let rateType = "";
+      if (s.includes("hour") || s === "range") rateType = "hourly";
+      else if (s.includes("job") || s.includes("fixed") || s.includes("flat")) rateType = "job";
+      const rateTypeLabel = rateType === "hourly" ? "Hourly Rate" : rateType === "job" ? "By the Job Rate" : (rawType || "");
 
-      const rateFrom = rate.rate_from != null ? Number(rate.rate_from) : null;
-      const rateTo = rate.rate_to != null ? Number(rate.rate_to) : null;
-      const rateValue = (rate.rate_value != null ? Number(rate.rate_value) : null) ?? (r.price != null ? Number(r.price) : null);
+      const n = (v) => {
+        const num = v == null ? null : Number(v);
+        return Number.isFinite(num) ? num : null;
+      };
+      const rateFrom = n(rate.rate_from);
+      const rateTo = n(rate.rate_to);
+      const rateValue = n(rate.rate_value) ?? n(r.price);
 
       let displayRate = "";
       if (rateType === "hourly") {

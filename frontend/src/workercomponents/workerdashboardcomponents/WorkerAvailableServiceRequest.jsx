@@ -27,7 +27,7 @@ function fmtTime(v) {
 function fmtRate(rate) {
   const t = String(rate?.rate_type || '').toLowerCase();
   const peso = (n) => `₱${Number(n).toLocaleString()}`;
-  if (t.includes('hour')) {
+  if (t.includes('hour') || t === 'range') {
     const f = rate?.rate_from, to = rate?.rate_to;
     if (f && to) return `${peso(f)} - ${peso(to)}`;
     if (f) return `${peso(f)}`;
@@ -35,13 +35,14 @@ function fmtRate(rate) {
   }
   if (t.includes('job') && rate?.rate_value) return peso(rate.rate_value);
   if (t === 'fixed' && rate?.rate_value) return peso(rate.rate_value);
-  if (t === 'range' && (rate?.rate_from || rate?.rate_to)) {
-    const a = rate?.rate_from ? peso(rate.rate_from) : '';
-    const b = rate?.rate_to ? peso(rate.rate_to) : '';
-    return [a, b].filter(Boolean).join(' - ');
-  }
-  if (rate?.rate_value) return peso(rate.rate_value);
+  if ((t === '' || (!t && rate)) && rate?.rate_value) return peso(rate.rate_value);
   return '';
+}
+function toRateTypeLabel(rt) {
+  const s = String(rt || '').toLowerCase();
+  if (s.includes('hour') || s === 'range') return 'Hourly Rate';
+  if (s.includes('job') || s === 'fixed' || s.includes('flat')) return 'By the Job Rate';
+  return rt || '';
 }
 
 const getServiceIcon = (t) => {
@@ -146,109 +147,109 @@ const WorkerAvailableServiceRequest = () => {
       if (!ok) return;
       const now = Date.now();
       const mapped = (dataArr || []).map((r, idx) => {
-  const infoRaw = r.info ?? r.client_info ?? r.client_information ?? r.client ?? r.profile ?? {};
-  const detailsRaw = r.details ?? {};
-  const rateRaw = r.rate ?? {};
-  const i = toObj(infoRaw);
-  const d = toObj(detailsRaw);
-  const rate = toObj(rateRaw);
+        const infoRaw = r.info ?? r.client_info ?? r.client_information ?? r.client ?? r.profile ?? {};
+        const detailsRaw = r.details ?? {};
+        const rateRaw = r.rate ?? {};
+        const i = toObj(infoRaw);
+        const d = toObj(detailsRaw);
+        const rate = toObj(rateRaw);
 
-  const name = [i.first_name, i.last_name].filter(Boolean).join(' ').trim() || 'Client';
+        const name = [i.first_name, i.last_name].filter(Boolean).join(' ').trim() || 'Client';
 
-  const ia = toObj(i.address);
-  const da = toObj(d.address);
-  const barangay =
-    pick(i, ['barangay','brgy']) ||
-    pick(ia, ['barangay','brgy']) ||
-    pick(d, ['barangay']) ||
-    pick(da, ['barangay']);
-  const street =
-    pick(i, ['street','street_name','street_address','address_line1']) ||
-    pick(ia, ['street','street_name','street_address','address_line1']) ||
-    pick(d, ['street','street_name','street_address']) ||
-    pick(da, ['street','street_name','street_address']);
-  const addl =
-    pick(i, ['additional_address','additional_street','address_line2']) ||
-    pick(ia, ['additional_address','additional_street','address_line2']) ||
-    pick(d, ['additional_address','additional_street','address_line2']) ||
-    pick(da, ['additional_address','additional_street','address_line2']);
+        const ia = toObj(i.address);
+        const da = toObj(d.address);
+        const barangay =
+          pick(i, ['barangay','brgy']) ||
+          pick(ia, ['barangay','brgy']) ||
+          pick(d, ['barangay']) ||
+          pick(da, ['barangay']);
+        const street =
+          pick(i, ['street','street_name','street_address','address_line1']) ||
+          pick(ia, ['street','street_name','street_address','address_line1']) ||
+          pick(d, ['street','street_name','street_address']) ||
+          pick(da, ['street','street_name','street_address']);
+        const addl =
+          pick(i, ['additional_address','additional_street','address_line2']) ||
+          pick(ia, ['additional_address','additional_street','address_line2']) ||
+          pick(d, ['additional_address','additional_street','address_line2']) ||
+          pick(da, ['additional_address','additional_street','address_line2']);
 
-  const addressLine = [barangay, street, addl].map((s)=>String(s||'').trim()).filter(Boolean).join(', ');
+        const addressLine = [barangay, street, addl].map((s)=>String(s||'').trim()).filter(Boolean).join(', ');
 
-  const dt = buildDateTime(d.preferred_date || '', d.preferred_time || '');
-  const statusLower = String(r.status || '').toLowerCase();
-  const isExpired = statusLower === 'expired' || (dt && dt.getTime() < now);
+        const dt = buildDateTime(d.preferred_date || '', d.preferred_time || '');
+        const statusLower = String(r.status || '').toLowerCase();
+        const isExpired = statusLower === 'expired' || (dt && dt.getTime() < now);
 
-  const iconLabels = [];
-  const pushType = (val) => {
-    if (val == null) return;
-    if (Array.isArray(val)) { val.forEach(pushType); return; }
-    if (typeof val === 'object') {
-      if (val.category) iconLabels.push(String(val.category));
-      else if (val.name) iconLabels.push(String(val.name));
-      else if (val.type) iconLabels.push(String(val.type));
-      return;
-    }
-    String(val).split(/[,/|]+/).forEach((s) => { s = s.trim(); if (s) iconLabels.push(s); });
-  };
-  pushType(d.service_type);
+        const iconLabels = [];
+        const pushType = (val) => {
+          if (val == null) return;
+          if (Array.isArray(val)) { val.forEach(pushType); return; }
+          if (typeof val === 'object') {
+            if (val.category) iconLabels.push(String(val.category));
+            else if (val.name) iconLabels.push(String(val.name));
+            else if (val.type) iconLabels.push(String(val.type));
+            return;
+          }
+          String(val).split(/[,/|]+/).forEach((s) => { s = s.trim(); if (s) iconLabels.push(s); });
+        };
+        pushType(d.service_type);
 
-  const seen = new Set();
-  const icons = [];
-  iconLabels.forEach((lbl) => {
-    const Icon = getServiceIcon(lbl);
-    const key = Icon.displayName || Icon.name || 'Icon';
-    if (!seen.has(key)) { seen.add(key); icons.push(Icon); }
-  });
-  const serviceIcons = icons.slice(0, 3);
+        const seen = new Set();
+        const icons = [];
+        iconLabels.forEach((lbl) => {
+          const Icon = getServiceIcon(lbl);
+          const key = Icon.displayName || Icon.name || 'Icon';
+          if (!seen.has(key)) { seen.add(key); icons.push(Icon); }
+        });
+        const serviceIcons = icons.slice(0, 3);
 
-  const tasksOut = [];
-  const addTask = (val) => {
-    if (val == null) return;
-    if (Array.isArray(val)) { val.forEach(addTask); return; }
-    if (typeof val === 'object') {
-      if (Array.isArray(val.tasks)) val.tasks.forEach(addTask);
-      else Object.values(val).forEach(addTask);
-      return;
-    }
-    String(val).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) tasksOut.push(s); });
-  };
-  addTask(d.service_task);
+        const tasksOut = [];
+        const addTask = (val) => {
+          if (val == null) return;
+          if (Array.isArray(val)) { val.forEach(addTask); return; }
+          if (typeof val === 'object') {
+            if (Array.isArray(val.tasks)) val.tasks.forEach(addTask);
+            else Object.values(val).forEach(addTask);
+            return;
+          }
+          String(val).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) tasksOut.push(s); });
+        };
+        addTask(d.service_task);
 
-  const service_task_label = [...new Set(tasksOut)].join(', ');
+        const service_task_label = [...new Set(tasksOut)].join(', ');
 
-  let stLabel = '';
-  const st = d.service_type ?? d.service_types ?? rate.service_type ?? '';
-  if (Array.isArray(st)) stLabel = String(st[0] || '').trim();
-  else if (st && typeof st === 'object') stLabel = (st.category || st.name || st.type || '').toString().trim();
-  else stLabel = String(st || '').trim();
+        let stLabel = '';
+        const st = d.service_type ?? d.service_types ?? rate.service_type ?? '';
+        if (Array.isArray(st)) stLabel = String(st[0] || '').trim();
+        else if (st && typeof st === 'object') stLabel = (st.category || st.name || st.type || '').toString().trim();
+        else stLabel = String(st || '').trim();
 
-  const mergedRate = rate.rate_type
-    ? rate
-    : { ...rate, rate_type: d.rate_type, rate_from: d.rate_from, rate_to: d.rate_to, rate_value: d.rate_value };
+        const mergedRate = rate.rate_type
+          ? rate
+          : { ...rate, rate_type: d.rate_type, rate_from: d.rate_from, rate_to: d.rate_to, rate_value: d.rate_value };
 
-  return {
-    id: r.id || idx + 1,
-    request_group_id: r.request_group_id || '',
-    name,
-    email: i.email_address || r.email_address || '',
-    image: i.profile_picture_url || avatarFromName(name),
-    barangay,
-    street,
-    additional_address: addl,
-    preferred_date: d.preferred_date || '',
-    preferred_time: d.preferred_time || '',
-    urgency: (d.is_urgent || '').toString(),
-    service_type: stLabel || '',
-    service_task: service_task_label || '',
-    description: d.service_description || '',
-    rate_type: mergedRate.rate_type || '',
-    price: fmtRate(mergedRate),
-    addressLine,
-    isExpired,
-    serviceIcons
-  };
-});
+        return {
+          id: r.id || idx + 1,
+          request_group_id: r.request_group_id || '',
+          name,
+          email: i.email_address || r.email_address || '',
+          image: i.profile_picture_url || avatarFromName(name),
+          barangay,
+          street,
+          additional_address: addl,
+          preferred_date: d.preferred_date || '',
+          preferred_time: d.preferred_time || '',
+          urgency: (d.is_urgent || '').toString(),
+          service_type: stLabel || '',
+          service_task: service_task_label || '',
+          description: d.service_description || '',
+          rate_type: toRateTypeLabel(mergedRate.rate_type || ''),
+          price: fmtRate(mergedRate),
+          addressLine,
+          isExpired,
+          serviceIcons
+        };
+      });
 
       const active = mapped.filter((x) => !x.isExpired);
       setItems(active);

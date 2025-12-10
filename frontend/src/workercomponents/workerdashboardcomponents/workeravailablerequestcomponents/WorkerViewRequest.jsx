@@ -98,41 +98,41 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const r = w.rate || w;
 
   const serviceTypes = (() => {
-  const out = [];
-  const add = (val) => {
-    if (val == null) return;
-    if (Array.isArray(val)) { val.forEach(add); return; }
-    if (typeof val === "object") {
-      const lbl = val.category || val.name || val.type || val.label;
-      if (lbl) add(lbl);
-      if (Array.isArray(val.types)) val.types.forEach(add);
-      if (Array.isArray(val.items)) val.items.forEach(add);
-      if (Array.isArray(val.services)) val.services.forEach(add);
-      return;
-    }
-    String(val).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) out.push(s); });
-  };
-  add(d.service_types ?? d.service_type ?? d.serviceTypes ?? d.serviceType);
-  add(w.service_types ?? w.service_type ?? w.serviceTypes ?? w.serviceType);
-  if (Array.isArray(w.serviceTypeList)) out.push(...w.serviceTypeList);
-  return [...new Set(out)];
-})();
+    const out = [];
+    const add = (val) => {
+      if (val == null) return;
+      if (Array.isArray(val)) { val.forEach(add); return; }
+      if (typeof val === "object") {
+        const lbl = val.category || val.name || val.type || val.label;
+        if (lbl) add(lbl);
+        if (Array.isArray(val.types)) val.types.forEach(add);
+        if (Array.isArray(val.items)) val.items.forEach(add);
+        if (Array.isArray(val.services)) val.services.forEach(add);
+        return;
+      }
+      String(val).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) out.push(s); });
+    };
+    add(d.service_types ?? d.service_type ?? d.serviceTypes ?? d.serviceType);
+    add(w.service_types ?? w.service_type ?? w.serviceTypes ?? w.serviceType);
+    if (Array.isArray(w.serviceTypeList)) out.push(...w.serviceTypeList);
+    return [...new Set(out)];
+  })();
   const serviceTasks = (() => {
-  const out = [];
-  const add = (val) => {
-    if (val == null) return;
-    if (Array.isArray(val)) { val.forEach(add); return; }
-    if (typeof val === 'object') {
-      if (Array.isArray(val.tasks)) val.tasks.forEach(add);
-      else Object.values(val).forEach(add);
-      return;
-    }
-    String(val).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) out.push(s); });
-  };
-  add(d.service_task ?? w.service_task ?? w.serviceTask);
-  if (Array.isArray(w.serviceTaskList)) out.push(...w.serviceTaskList);
-  return [...new Set(out)];
-})();
+    const out = [];
+    const add = (val) => {
+      if (val == null) return;
+      if (Array.isArray(val)) { val.forEach(add); return; }
+      if (typeof val === 'object') {
+        if (Array.isArray(val.tasks)) val.tasks.forEach(add);
+        else Object.values(val).forEach(add);
+        return;
+      }
+      String(val).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) out.push(s); });
+    };
+    add(d.service_task ?? w.service_task ?? w.serviceTask);
+    if (Array.isArray(w.serviceTaskList)) out.push(...w.serviceTaskList);
+    return [...new Set(out)];
+  })();
   const avatar = i.profile_picture_url || w.client_image || w.image || w.avatar || "/Clienticon.png";
 
   const barangay = i.barangay || d.barangay || "";
@@ -150,22 +150,36 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   })();
   const yearsExp = Number.isFinite(d.years_experience) ? d.years_experience : null;
 
-  const rateTypeRaw = r.rate_type || r.rateType || d.rate_type || "";
-  const rateType = /hour/i.test(String(rateTypeRaw)) ? "Hourly Rate" : (/job|fixed|flat/i.test(String(rateTypeRaw)) ? "By the Job Rate" : (rateTypeRaw || ""));
+  const rateTypeRaw = r.rate_type || r.rateType || d.rate_type || d.rateType || "";
+  const rateType = (() => {
+    const s = String(rateTypeRaw).toLowerCase();
+    if (s.includes("hour") || s === "range" || s === "ranged") return "Hourly Rate";
+    if (/job|fixed|flat/.test(s)) return "By the Job Rate";
+    return rateTypeRaw || "";
+  })();
+
   const peso = (n) => {
     const x = Number(n);
     if (!Number.isFinite(x)) return "";
     return `₱${x.toLocaleString()}`;
   };
+  const rateFrom = r.rate_from ?? d.rate_from ?? r.from ?? d.from ?? null;
+  const rateTo = r.rate_to ?? d.rate_to ?? r.to ?? d.to ?? null;
+  const rateValue = r.rate_value ?? d.rate_value ?? r.value ?? d.value ?? null;
+
   let displayRate = "";
   if (/hour/i.test(rateType)) {
-    if (r.rate_from && r.rate_to) displayRate = `${peso(r.rate_from)}–${peso(r.rate_to)}/hr`;
-    else if (r.rate_from) displayRate = `${peso(r.rate_from)}/hr`;
-    else if (r.rate_to) displayRate = `${peso(r.rate_to)}/hr`;
+    if (rateFrom && rateTo) displayRate = `${peso(rateFrom)}–${peso(rateTo)}/hr`;
+    else if (rateFrom) displayRate = `${peso(rateFrom)}/hr`;
+    else if (rateTo) displayRate = `${peso(rateTo)}/hr`;
   } else if (/job/i.test(rateType)) {
-    if (r.rate_value || d.rate_value) displayRate = `${peso(r.rate_value || d.rate_value)}`;
+    if (rateValue) displayRate = `${peso(rateValue)}`;
   }
-  if (!displayRate) displayRate = w.displayRate || d.display_rate || "Rate not provided";
+  if (!displayRate && (rateFrom || rateTo)) {
+    displayRate = rateFrom && rateTo ? `${peso(rateFrom)}–${peso(rateTo)}/hr` : `${peso(rateFrom ?? rateTo)}/hr`;
+  }
+  if (!displayRate && rateValue) displayRate = `${peso(rateValue)}`;
+  if (!displayRate) displayRate = "Rate not provided";
 
   const name = w.client_name || [i.first_name, i.last_name].filter(Boolean).join(" ") || "Client";
   const emailAddress = w.client_email || i.email_address || "";
