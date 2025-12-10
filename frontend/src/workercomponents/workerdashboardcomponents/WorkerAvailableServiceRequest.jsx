@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
 import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt, Star } from 'lucide-react';
+import WorkerViewRequest from '../workerdashboardcomponents/workeravailablerequestcomponents/WorkerViewRequest';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -89,6 +90,29 @@ const toObj = (v) => {
 
 const WorkerAvailableServiceRequest = () => {
   const [items, setItems] = useState([]);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewRequest, setViewRequest] = useState(null);
+
+  useEffect(() => {
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyPaddingRight = document.body.style.paddingRight;
+    if (viewOpen) {
+      const sw = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      if (sw > 0) document.body.style.paddingRight = `${sw}px`;
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.paddingRight = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.paddingRight = '';
+    };
+  }, [viewOpen]);
 
   useEffect(() => {
     let ok = true;
@@ -128,36 +152,28 @@ const WorkerAvailableServiceRequest = () => {
         const i = toObj(infoRaw);
         const d = toObj(detailsRaw);
         const rate = toObj(rateRaw);
-
         const name = [i.first_name, i.last_name].filter(Boolean).join(' ').trim() || 'Client';
-
         const ia = toObj(i.address);
         const da = toObj(d.address);
-
         const barangay =
           pick(i, ['barangay','brgy']) ||
           pick(ia, ['barangay','brgy']) ||
           pick(d, ['barangay']) ||
           pick(da, ['barangay']);
-
         const street =
           pick(i, ['street','street_name','street_address','address_line1']) ||
           pick(ia, ['street','street_name','street_address','address_line1']) ||
           pick(d, ['street','street_name','street_address']) ||
           pick(da, ['street','street_name','street_address']);
-
         const addl =
           pick(i, ['additional_address','additional_street','address_line2']) ||
           pick(ia, ['additional_address','additional_street','address_line2']) ||
           pick(d, ['additional_address','additional_street','address_line2']) ||
           pick(da, ['additional_address','additional_street','address_line2']);
-
         const addressLine = [barangay, street, addl].map((s)=>String(s||'').trim()).filter(Boolean).join(', ');
-
         const dt = buildDateTime(d.preferred_date || '', d.preferred_time || '');
         const statusLower = String(r.status || '').toLowerCase();
         const isExpired = statusLower === 'expired' || (dt && dt.getTime() < now);
-
         const iconLabels = [];
         const pushType = (val) => {
           if (val == null) return;
@@ -171,7 +187,6 @@ const WorkerAvailableServiceRequest = () => {
           String(val).split(/[,/|]+/).forEach((s) => { s = s.trim(); if (s) iconLabels.push(s); });
         };
         pushType(d.service_type);
-
         const seen = new Set();
         const icons = [];
         iconLabels.forEach((lbl) => {
@@ -180,11 +195,9 @@ const WorkerAvailableServiceRequest = () => {
           if (!seen.has(key)) { seen.add(key); icons.push(Icon); }
         });
         const serviceIcons = icons.slice(0, 3);
-
         const mergedRate = rate.rate_type
           ? rate
           : { ...rate, rate_type: d.rate_type, rate_from: d.rate_from, rate_to: d.rate_to, rate_value: d.rate_value };
-
         return {
           id: r.id || idx + 1,
           request_group_id: r.request_group_id || '',
@@ -213,7 +226,9 @@ const WorkerAvailableServiceRequest = () => {
     return () => { ok = false; };
   }, []);
 
+  const VIEW_LIMIT = 6;
   const PER_PAGE = 3;
+  const PAGE_SIZE = 3;
 
   const scrollRef = useRef(null);
   const wrapRef = useRef(null);
@@ -228,10 +243,10 @@ const WorkerAvailableServiceRequest = () => {
   const [endPad, setEndPad] = useState(0);
 
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 9;
 
-  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
-  const displayItems = items.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE);
+  const viewItems = items.slice(0, VIEW_LIMIT);
+  const totalPages = Math.max(1, Math.ceil(viewItems.length / PAGE_SIZE));
+  const displayItems = viewItems.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE);
 
   const totalSlides = Math.max(1, Math.ceil(displayItems.length / PER_PAGE));
 
@@ -478,7 +493,10 @@ const WorkerAvailableServiceRequest = () => {
                               />
                             </div>
                             <div className="min-w-0">
-                              <div className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight truncate">{req.name}</div>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-sm md:text-lg font-semibold text-gray-700">Client:</span>
+                                <span className="text-lg md:text-lg font-semibold text-[#008cfc] leading-tight truncate">{req.name}</span>
+                              </div>
                               {req.email ? (
                                 <div className="text-xs text-gray-600 truncate">{req.email}</div>
                               ) : null}
@@ -508,12 +526,12 @@ const WorkerAvailableServiceRequest = () => {
 
                         <div className="mt-4">
                           <div className="text-sm font-semibold text-gray-700">Preferred Schedule</div>
-                          <div className="mt-1 flex items-center gap-2 text-sm text-gray-900 font-medium">
-                            <span>{fmtDate(req.preferred_date) || '—'}</span>
+                          <div className="mt-1 flex items-center gap-2 text-sm font-medium">
+                            <span className="text-[#008cfc]">{fmtDate(req.preferred_date) || '—'}</span>
                             <span className="text-gray-400">•</span>
-                            <span>{fmtTime(req.preferred_time) || '—'}</span>
+                            <span className="text-[#008cfc]">{fmtTime(req.preferred_time) || '—'}</span>
                             <span className="text-gray-400">•</span>
-                            <span className="text-gray-900">{toBool(req.urgency) ? 'Urgent' : 'Not urgent'}</span>
+                            <span className="text-[#008cfc]">{toBool(req.urgency) ? 'Urgent' : 'Not urgent'}</span>
                           </div>
 
                           <div className="mt-3 flex items-start gap-3 flex-wrap">
@@ -528,7 +546,7 @@ const WorkerAvailableServiceRequest = () => {
                             <div className="min-w-0">
                               <div className="text-sm font-semibold text-gray-700">Service Task</div>
                               <div className="mt-1">
-                                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-violet-50 text-violet-700 border-violet-200">
+                                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
                                   {req.service_task || '—'}
                                 </span>
                               </div>
@@ -536,27 +554,32 @@ const WorkerAvailableServiceRequest = () => {
                           </div>
 
                           <div className="mt-3 text-sm font-semibold text-gray-700">Request Description</div>
-                          <div className="text-sm text-gray-900 font-medium leading-relaxed line-clamp-3">{req.description || '—'}</div>
+                          <div className="text-sm text-[#008cfc] font-medium leading-relaxed line-clamp-3">{req.description || '—'}</div>
                         </div>
 
                         <div className="mt-4 h-px bg-gray-200" />
 
                         <div className="mt-4">
-                          <div className="text-sm font-semibold text-gray-900">
+                          <div className="text-sm font-semibold text-[#008cfc]">
                             {[req.barangay, req.street].filter(Boolean).join(', ') || req.addressLine}
                           </div>
                           {req.additional_address ? (
-                            <div className="text-sm text-gray-700">{req.additional_address}</div>
+                            <div className="text-sm flex items-baseline gap-1">
+                              <span className="font-semibold text-gray-700">Landmark:</span>
+                              <span className="text-[#008cfc]">{req.additional_address}</span>
+                            </div>
                           ) : null}
 
                           <div className="mt-1 flex items-end justify-between">
                             <div className="flex items-center gap-2">
-                              {req.rate_type && <div className="text-sm font-semibold text-gray-900">{req.rate_type}</div>}
+                              {req.rate_type && <div className="text-sm font-semibold text-[#008cfc]">{req.rate_type}</div>}
                               {req.rate_type ? <span className="text-gray-400">•</span> : null}
-                              <div className="text-sm font-semibold text-gray-900">{req.price || 'Rate upon request'}</div>
+                              <div className="text-sm font-semibold text-[#008cfc]">{req.price || 'Rate upon request'}</div>
                             </div>
                             <a
                               href={req.request_group_id ? `/worker/requests/${req.request_group_id}` : '#'}
+                              onPointerDown={(e)=>e.stopPropagation()}
+                              onClick={(e)=>{ e.preventDefault(); setViewRequest(req); setViewOpen(true); }}
                               className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition self-end"
                             >
                               View Request
@@ -617,6 +640,8 @@ const WorkerAvailableServiceRequest = () => {
         .card-border-fix::after { content: none; }
         .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
       `}</style>
+
+      <WorkerViewRequest open={viewOpen} onClose={()=>setViewOpen(false)} request={viewRequest} />
     </div>
   );
 };

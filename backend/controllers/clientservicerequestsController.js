@@ -108,6 +108,74 @@ async function publicOrSignedUrl(bucket, path) {
   return signed?.signedUrl || null;
 }
 
+exports.listOpen = async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '50', 10), 1), 200);
+    const { data: rows, error } = await supabaseAdmin
+      .from('client_service_request_status')
+      .select('request_group_id,status,created_at,details')
+      .in('status', ['pending', 'approved'])
+      .order('created_at', { ascending: false })
+      .limit(limit * 2);
+    if (error) throw error;
+
+    const items = Array.isArray(rows) ? rows : [];
+    const valid = items.filter(r => !isExpiredPreferredDateTime(r?.details || {}));
+    const gids = valid.map(r => r.request_group_id).filter(Boolean);
+    let cancelled = [];
+    try { cancelled = await getCancelledByGroupIds(gids); } catch {}
+    const open = valid.filter(r => !cancelled.includes(r.request_group_id));
+
+    const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
+    const combined = await Promise.all(open.map(async r => {
+      const row = await getCombinedByGroupId(r.request_group_id);
+      if (!row) return null;
+      const d = row.details || {};
+      if (!d.request_image_url && d.image_name) {
+        row.details = { ...d, request_image_url: await publicOrSignedUrl(bucket, d.image_name) };
+      }
+      return {
+        id: r.request_group_id,
+        request_group_id: r.request_group_id,
+        created_at: r.created_at,
+        status: r.status,
+        info: {
+          email_address: row.info?.email_address || null,
+          first_name: row.info?.first_name || null,
+          last_name: row.info?.last_name || null,
+          contact_number: row.info?.contact_number || null,
+          street: row.info?.street || '',
+          barangay: row.info?.barangay || '',
+          additional_address: row.info?.additional_address || '',
+          profile_picture_url: row.info?.profile_picture_url || null
+        },
+        details: {
+          service_type: row.details?.service_type || '',
+          service_task: row.details?.service_task || '',
+          preferred_date: row.details?.preferred_date || null,
+          preferred_time: row.details?.preferred_time || null,
+          is_urgent: row.details?.is_urgent || '',
+          tools_provided: row.details?.tools_provided || '',
+          service_description: row.details?.service_description || '',
+          request_image_url: row.details?.request_image_url || null,
+          image_name: row.details?.image_name || null
+        },
+        rate: {
+          rate_type: row.rate?.rate_type || '',
+          rate_from: row.rate?.rate_from || null,
+          rate_to: row.rate?.rate_to || null,
+          rate_value: row.rate?.rate_value || null
+        }
+      };
+    }));
+
+    const cleaned = combined.filter(Boolean).slice(0, limit);
+    return res.status(200).json({ items: cleaned });
+  } catch (err) {
+    return res.status(500).json({ message: friendlyError(err) });
+  }
+};
+
 exports.submitFullRequest = async (req, res) => {
   try {
     const src = req.body || {};

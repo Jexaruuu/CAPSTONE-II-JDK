@@ -6,5 +6,6 @@ router.post("/register", clientController.registerClient);
 router.get("/me", clientController.me);
 router.post("/password", clientController.password);
 router.post("/profile", clientController.updateProfile);
+router.get("/public/sex", clientController.publicSex);
 
 module.exports = router;

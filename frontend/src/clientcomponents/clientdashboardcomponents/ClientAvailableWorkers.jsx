@@ -577,7 +577,10 @@ const ClientAvailableWorkers = () => {
                               />
                             </div>
                             <div className="min-w-0">
-                              <div className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight truncate">{w.name}</div>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-sm md:text-lg font-semibold text-gray-700">Worker:</span>
+                                <span className="text-lg md:text-lg font-semibold text-[#008cfc] leading-tight truncate">{w.name}</span>
+                              </div>
                               {w.emailAddress ? (
                                 <div className="text-xs text-gray-600 truncate">{w.emailAddress}</div>
                               ) : null}
