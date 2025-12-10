@@ -347,9 +347,6 @@ const WorkerCard = ({ item, onView }) => {
   const filledStars = Math.round(rating);
   const singleIcon = icons.length === 1;
   const workDone = Number.isFinite(item.workDone) ? item.workDone : 0;
-  const workerSuccess = Number.isFinite(item.workerSuccess)
-    ? (rating > 0 ? item.workerSuccess : 0)
-    : (Number.isFinite(item.jobSuccess) ? (rating > 0 ? item.jobSuccess : 0) : 0);
 
   return (
     <div className="relative overflow-hidden bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl">
@@ -459,10 +456,6 @@ const WorkerCard = ({ item, onView }) => {
               <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
                 Work Done
                 <span className="ml-2 text-sm font-semibold text-[#008cfc]">{workDone}</span>
-              </span>
-              <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
-                Worker Success
-                <span className="ml-2 text-sm font-semibold text-[#008cfc]">{workerSuccess}%</span>
               </span>
             </div>
             <button onClick={() => onView(item)} className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition">

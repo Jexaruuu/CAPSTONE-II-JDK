@@ -170,6 +170,13 @@ const StatusBadge = ({ status, expired }) => {
         Declined Request
       </span>
     );
+  if (expired && s !== "cancelled" && s !== "declined")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
+        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+        Expired Request
+      </span>
+    );
   if (s === "approved")
     return (
       <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
@@ -185,13 +192,6 @@ const StatusBadge = ({ status, expired }) => {
           <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
         </span>
         Pending Request
-      </span>
-    );
-  if (expired && s !== "cancelled" && s !== "declined")
-    return (
-      <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
-        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-        Expired Request
       </span>
     );
   return null;

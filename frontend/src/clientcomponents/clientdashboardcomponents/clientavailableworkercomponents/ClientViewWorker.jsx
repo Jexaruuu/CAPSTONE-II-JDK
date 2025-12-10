@@ -159,6 +159,16 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const avgFilled = Math.round(avgFive);
   const reviewItems = reviewsState.items;
 
+  const rawWorkDone =
+    w.workDone ?? w.completed_jobs ?? w.jobs_completed ?? w.completed_works ?? (w.stats && (w.stats.work_done || w.stats.completed || w.stats.jobs));
+  const wd = Number(rawWorkDone);
+  const workDone = Number.isFinite(wd) && wd >= 0 ? Math.floor(wd) : 0;
+
+  const rawSuccess =
+    w.workerSuccess ?? w.success_rate ?? w.job_success ?? w.jobs_success ?? w.jobSuccess ?? (w.stats && w.stats.success_rate) ?? r.rate_success;
+  const succ = Number(rawSuccess);
+  const workerSuccess = rating > 0 ? (Number.isFinite(succ) ? Math.max(0, Math.min(100, succ)) : 0) : 0;
+
   return (
     <div className={`fixed inset-0 z-[120] ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
       <div className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
@@ -227,7 +237,15 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                 <div className="relative px-5 pb-5 overflow-y-auto">
                   <div className="mt-4 border-t border-gray-200" />
                   <div className="mt-6">
-                    <div className="text-sm font-semibold text-gray-700">Service Type</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-gray-700">Service Type</div>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
+                          Work Done
+                          <span className="ml-2 text-sm font-semibold text-[#008cfc]">{workDone}</span>
+                        </span>
+                      </div>
+                    </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {(serviceTypes.length ? serviceTypes : ["—"]).map((t, i) => (
                         <span key={i} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">{t}</span>
@@ -309,6 +327,12 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                   </div>
 
                   <div className="mt-6 flex items-center justify-end gap-3">
+                    <div className="items-center gap-2 mr-auto hidden">
+                      <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
+                        Works Done
+                        <span className="ml-2 text-sm font-semibold text-[#008cfc]">{workDone}</span>
+                      </span>
+                    </div>
                     <button onClick={onClose} className="hidden">Close</button>
                     <a href="/client/post" className="h-9 px-4 rounded-md bg-[#008cfc] text-sm text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Hire Worker</a>
                   </div>
