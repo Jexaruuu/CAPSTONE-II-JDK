@@ -283,24 +283,26 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
         </div>
 
         <div className="-mt-9 flex justify-end gap-2">
-          {(isDeclined || isCancelled) ? (
-            <Link
-              to={`/current-service-request/${encodeURIComponent(item.id)}`}
-              onClick={(e) => { e.preventDefault(); onReason(item); }}
-              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-            >
-              View Reason
-            </Link>
-          ) : (
-            <Link
-              to={`/current-service-request/${encodeURIComponent(item.id)}`}
-              onClick={(e) => { e.preventDefault(); onView(item.id); }}
-              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-            >
-              View
-            </Link>
-          )}
-          {isApproved && !isCancelled && !isDeclined && (
+         {(isDeclined || isCancelled) ? (
+  <Link
+    to={`/current-service-request/${encodeURIComponent(item.id)}`}
+    onClick={(e) => { e.preventDefault(); onReason(item); }}
+    className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+  >
+    View Reason
+  </Link>
+) : (
+  !isExpiredReq && (
+    <Link
+      to={`/current-service-request/${encodeURIComponent(item.id)}`}
+      onClick={(e) => { e.preventDefault(); onView(item.id); }}
+      className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+    >
+      View
+    </Link>
+  )
+)}
+          {isApproved && !isCancelled && !isDeclined && !isExpiredReq && (
             <button
               type="button"
               onClick={() => onEdit(item)}
@@ -520,7 +522,11 @@ export default function ClientCurrentServiceRequest() {
     if (statusFilter === "approved") list = list.filter((i) => (i.status || "").toLowerCase() === "approved" && !i.user_cancelled);
     if (statusFilter === "declined") list = list.filter((i) => (i.status || "").toLowerCase() === "declined" && !i.user_cancelled);
     if (statusFilter === "cancelled") list = list.filter((i) => ((i.status || "").toLowerCase() === "cancelled") || i.user_cancelled);
-    if (statusFilter === "expired") list = list.filter((i) => isExpiredDT(i?.details?.preferred_date, i?.details?.preferred_time));
+    if (statusFilter === "expired") list = list.filter((i) => {
+      const expired = isExpiredDT(i?.details?.preferred_date, i?.details?.preferred_time);
+      const st = String(i.status || "").toLowerCase();
+      return expired && st !== "declined" && st !== "cancelled" && st !== "canceled";
+    });
     if (!q) return list;
     return list.filter((i) => {
       const s1 = (i.details?.service_type || "").toLowerCase();
