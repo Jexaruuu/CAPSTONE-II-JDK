@@ -366,10 +366,10 @@ const ClientViewServiceRequest = () => {
                     <LabelValue label="Email" value={email} />
                     <LabelValue
                       label="Address"
-                      value={street && barangay ? `${street}, ${barangay}` : street || barangay}
+                      value={barangay && street ? `${barangay}, ${street}` : barangay || street}
                     />
                     {additional_address ? (
-                      <LabelValue label="Additional Address" value={additional_address} />
+                      <LabelValue label="Landmark" value={additional_address} />
                     ) : (
                       <div className="hidden md:block" />
                     )}

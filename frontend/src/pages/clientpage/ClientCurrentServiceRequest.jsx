@@ -342,18 +342,19 @@ export default function ClientCurrentServiceRequest() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDeleteBusy, setShowDeleteBusy] = useState(false);
   const [showDeleteDone, setShowDeleteDone] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (showReason || showDelete || showDeleteConfirm || showDeleteBusy || showDeleteDone) {
+    if (showReason || showDelete || showDeleteConfirm || showDeleteBusy || showDeleteDone || editLoading || isOpeningView) {
       const original = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       return () => {
         document.body.style.overflow = original;
       };
     }
-  }, [showReason, showDelete, showDeleteConfirm, showDeleteBusy, showDeleteDone]);
+  }, [showReason, showDelete, showDeleteConfirm, showDeleteBusy, showDeleteDone, editLoading, isOpeningView]);
 
   const getHiddenSet = () => {
     try {
@@ -573,7 +574,10 @@ export default function ClientCurrentServiceRequest() {
   const onEdit = (item) => {
     const navId = item.id;
     if (navId !== undefined && navId !== null) {
-      navigate(`/clientreviewservicerequest?id=${encodeURIComponent(navId)}`);
+      setEditLoading(true);
+      setTimeout(() => {
+        navigate(`/edit-service-request/${encodeURIComponent(navId)}`);
+      }, 2000);
     }
   };
 
@@ -828,7 +832,7 @@ export default function ClientCurrentServiceRequest() {
                   <Card
                     item={item}
                     onEdit={onEdit}
-                    onOpenMenu={onOpenMenu}
+                    onOpenMenu={() => {}}
                     onView={onView}
                     onReason={onReason}
                     onDelete={openDelete}
@@ -1161,6 +1165,50 @@ export default function ClientCurrentServiceRequest() {
               >
                 Done
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
             </div>
           </div>
         </div>

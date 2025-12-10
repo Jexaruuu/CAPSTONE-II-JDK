@@ -992,13 +992,13 @@ useEffect(() => {
             </div>
 
             <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="inline-flex items-center rounded-lg border px-4 py-2 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
+            <button
+  type="button"
+  onClick={onCancel}
+  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+>
+  Cancel
+</button>
               <button
                 type="button"
                 onClick={()=>setConfirmOpen(true)}
