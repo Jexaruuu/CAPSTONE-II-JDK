@@ -113,9 +113,11 @@ const buildLocation = (info, work) => {
     info?.street_name ??
     work?.street_name ??
     "";
+  const b = String(barangay || "").replace(/^\s*barangay\s+/i, "").trim();
+  const s = String(street || "").trim();
   const parts = [];
-  if (barangay) parts.push(`Barangay ${barangay}`);
-  if (street) parts.push(street);
+  if (b) parts.push(b);
+  if (s) parts.push(s);
   return parts.join(", ");
 };
 
@@ -413,16 +415,30 @@ export default function WorkerCurrentApplication() {
   const [deleting, setDeleting] = useState(false);
 
   const [showOpenBusy, setShowOpenBusy] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
-    if (showReason || showOpenBusy) {
+    if (showReason || showOpenBusy || editLoading) {
+      const onPopState = () => {
+        window.history.pushState(null, "", window.location.href);
+      };
+      window.history.pushState(null, "", window.location.href);
+      window.addEventListener("popstate", onPopState, true);
       const original = document.body.style.overflow;
       document.body.style.overflow = "hidden";
+      document.activeElement && document.activeElement.blur();
+      const blockKeys = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      };
+      window.addEventListener("keydown", blockKeys, true);
       return () => {
+        window.removeEventListener("popstate", onPopState, true);
         document.body.style.overflow = original;
+        window.removeEventListener("keydown", blockKeys, true);
       };
     }
-  }, [showReason, showOpenBusy]);
+  }, [showReason, showOpenBusy, editLoading]);
 
   const buildAppU = () => {
     let email = "";
@@ -655,7 +671,12 @@ export default function WorkerCurrentApplication() {
   };
 
   const onEdit = (item) => {
-    navigate(`/workerreviewpost?id=${encodeURIComponent(item.id)}`);
+    const gid = getGroupId(item);
+    if (!gid || editLoading) return;
+    setEditLoading(true);
+    setTimeout(() => {
+      navigate(`/edit-work-application/${encodeURIComponent(gid)}`);
+    }, 2000);
   };
 
   const getReasonText = (row) => {
@@ -998,7 +1019,7 @@ export default function WorkerCurrentApplication() {
                               ))}
                             </span>
                           ) : (
-                            {serviceTypesText}
+                            serviceTypesText
                           )}
                         </div>
                       </div>
@@ -1163,6 +1184,50 @@ export default function WorkerCurrentApplication() {
               >
                 Done
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
             </div>
           </div>
         </div>

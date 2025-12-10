@@ -40,12 +40,12 @@ function buildAppU() {
 
 function normLocation(info) {
   const i = info || {};
-  const fromObj = typeof i.address === 'object' && i.address ? i.address : {};
+  const fromObj = typeof i.address === 'object' && i.address ? i.address : (typeof i.current_address === 'object' && i.current_address ? i.current_address : {});
   const barangay =
     i.barangay ??
-    i.baragay ??
     i.brgy ??
     i.brgy_name ??
+    i.address_barangay ??
     fromObj.barangay ??
     fromObj.brgy ??
     '';
@@ -53,6 +53,7 @@ function normLocation(info) {
     i.street ??
     i.address_line2 ??
     i.additional_address ??
+    i.address_street ??
     fromObj.street ??
     fromObj.line2 ??
     '';
@@ -61,7 +62,8 @@ function normLocation(info) {
 
 export default function WorkerEditApplication() {
   const { id } = useParams();
-  const gid = decodeURIComponent(id || '');
+  const gidRaw = id || '';
+  const gid = decodeURIComponent(gidRaw);
   const navigate = useNavigate();
 
   const appU = useMemo(() => buildAppU(), []);
@@ -139,6 +141,8 @@ export default function WorkerEditApplication() {
     return sortedBarangays.filter(b => b.toLowerCase().includes(q));
   }, [sortedBarangays, barangayQuery]);
 
+  const [recIds, setRecIds] = useState({ groupId: gid, appId: '' });
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       const t = event.target;
@@ -191,13 +195,55 @@ export default function WorkerEditApplication() {
       setLoading(true);
       setError('');
       try {
-        const { data } = await axios.get(`${API_BASE}/api/workerapplications/by-group/${encodeURIComponent(gid)}`, {
-          withCredentials: true,
-          headers: headersWithU
-        });
-        const info = data?.info || {};
-        const details = data?.details || {};
-        const rate = data?.rate || {};
+        const tryKeys = [
+          { groupId: gid },
+          { request_group_id: gid },
+          { group_id: gid },
+          { requestGroupId: gid }
+        ];
+        const gidAlts = Array.from(new Set([gid, gidRaw, (gid || '').trim()])).filter(Boolean);
+        const shapes = [
+          p => axios.get(`${API_BASE}/api/workerapplications`, { withCredentials: true, headers: headersWithU, params: { ...p, limit: 1 } }),
+          p => axios.get(`${API_BASE}/api/workerapplications`, { withCredentials: true, headers: headersWithU, params: { scope: 'current', ...p, limit: 1 } })
+        ];
+        let row = null;
+        let lastErr = null;
+        outer: for (const g of gidAlts) {
+          for (const key of tryKeys) {
+            const payload = Object.fromEntries(Object.entries(key).map(([k]) => [k, g]));
+            for (const fn of shapes) {
+              try {
+                const { data } = await fn(payload);
+                if (Array.isArray(data) && data.length) { row = data[0]; break outer; }
+                if (Array.isArray(data?.items) && data.items.length) { row = data.items[0]; break outer; }
+                if (data && (data.info || data.details || data.rate)) { row = data; break outer; }
+                if (data?.item && (data.item.info || data.item.details)) { row = data.item; break outer; }
+              } catch (e) {
+                lastErr = e;
+              }
+            }
+          }
+        }
+        if (!row) {
+          try {
+            const { data } = await axios.get(`${API_BASE}/api/workerapplications/by-group/${encodeURIComponent(gid)}`, { withCredentials: true, headers: headersWithU });
+            if (Array.isArray(data) && data.length) row = data[0];
+            else if (Array.isArray(data?.items) && data.items.length) row = data.items[0];
+            else if (data && (data.info || data.details || data.rate)) row = data;
+          } catch (e) {
+            lastErr = e;
+          }
+        }
+        if (!row) {
+          const msg = (lastErr && (lastErr.response?.data?.message || lastErr.message)) || 'Failed to load application';
+          throw new Error(msg);
+        }
+        const info = row?.info || {};
+        const details = row?.details || {};
+        const rate = row?.rate || {};
+        const groupIdResp = row?.group_id || row?.request_group_id || row?.application_group_id || row?.worker_application_group_id || row?.groupId || row?.requestGroupId || gid;
+        const appIdResp = row?.id || row?.application_id || row?.worker_application_id || row?.appId || '';
+        setRecIds({ groupId: groupIdResp, appId: appIdResp });
         const types = Array.isArray(details.service_types) ? details.service_types : [];
         const tasks = Array.isArray(details.service_task) ? details.service_task : [];
         const merged = types.length ? types.map(ct => {
@@ -239,13 +285,13 @@ export default function WorkerEditApplication() {
           profileUrl: info.profile_picture_url || ''
         });
       } catch (e) {
-        setError('Failed to load application');
+        setError(e?.message || 'Failed to load application');
       } finally {
         setLoading(false);
       }
     };
     if (gid) load();
-  }, [gid, headersWithU]);
+  }, [gid, gidRaw, headersWithU]);
 
   const onPickProfile = async (e) => {
     const f = e.target.files?.[0];
@@ -364,48 +410,120 @@ export default function WorkerEditApplication() {
     setError('');
     try {
       const cleanPairs = pairs.filter(p => p.serviceType && Array.isArray(p.serviceTasks) && p.serviceTasks.length);
-      const service_types = Array.from(new Set(cleanPairs.map(p => p.serviceType)));
+      const service_types = Array.from(new Set(cleanPairs.map(p => String(p.serviceType).trim())));
       const grouped = {};
       cleanPairs.forEach(p => {
-        if (!grouped[p.serviceType]) grouped[p.serviceType] = [];
-        grouped[p.serviceType].push(...p.serviceTasks);
+        const k = String(p.serviceType).trim();
+        if (!grouped[k]) grouped[k] = [];
+        grouped[k].push(...p.serviceTasks.map(t => String(t).trim()).filter(Boolean));
       });
       const service_task = Object.keys(grouped).map(k => ({ category: k, tasks: Array.from(new Set(grouped[k])) }));
+
       const details = {
         service_types,
         service_task,
-        years_experience: Number(yearsExp),
+        years_experience: Number(String(yearsExp).replace(/\D/g, '')),
         tools_provided: fromYesNo(toolsProvided),
-        work_description: description
+        work_description: String(description || '').trim()
       };
+
       const ratePayload = {
-        rate_type: rateType,
+        rate_type: String(rateType || '').trim(),
         rate_from: String(rateType || '').toLowerCase().includes('hour') ? toNumOrNull(rateFrom) : null,
         rate_to: String(rateType || '').toLowerCase().includes('hour') ? toNumOrNull(rateTo) : null,
         rate_value: String(rateType || '').toLowerCase().includes('job') ? toNumOrNull(rateValue) : null
       };
+
+      const addrObj = { barangay: String(address || '').trim(), street: String(additionalAddress || '').trim() };
+
       const infoPayload = {
-        first_name: firstName,
-        last_name: lastName,
-        contact_number: contactNumber,
-        email_address: email,
-        address,
-        additional_address: additionalAddress,
-        street: additionalAddress,
-        barangay: address,
-        current_address: address
+        first_name: String(firstName || '').trim(),
+        last_name: String(lastName || '').trim(),
+        contact_number: String(contactNumber || '').trim(),
+        email_address: String(email || '').trim(),
+        address: addrObj,
+        current_address: addrObj,
+        barangay: addrObj.barangay,
+        street: addrObj.street,
+        additional_address: addrObj.street
       };
-      const body = { info: infoPayload, details, rate: ratePayload };
+
+      const effectiveGroupId = recIds.groupId || gid;
+      const effectiveAppId = recIds.appId || '';
+
+      const body = { group_id: effectiveGroupId, request_group_id: effectiveGroupId, application_id: effectiveAppId, info: infoPayload, details, rate: ratePayload };
       if (profileDataUrl) body.profile_picture_data_url = profileDataUrl;
-      await axios.put(`${API_BASE}/api/workerapplications/by-group/${encodeURIComponent(gid)}`, body, {
-        withCredentials: true,
-        headers: headersWithU
+
+      await axios.put(
+        `${API_BASE}/api/workerapplications/by-group/${encodeURIComponent(effectiveGroupId)}`,
+        body,
+        { withCredentials: true, headers: headersWithU, params: { groupId: effectiveGroupId, applicationId: effectiveAppId } }
+      );
+
+      const { data: refreshed } = await axios.get(
+        `${API_BASE}/api/workerapplications/by-group/${encodeURIComponent(effectiveGroupId)}`,
+        { withCredentials: true, headers: headersWithU }
+      );
+
+      const rInfo = refreshed?.info || {};
+      const rDetails = refreshed?.details || {};
+      const rRate = refreshed?.rate || {};
+      const newGroupId = refreshed?.group_id || refreshed?.request_group_id || refreshed?.groupId || refreshed?.requestGroupId || effectiveGroupId;
+      const newAppId = refreshed?.id || refreshed?.application_id || refreshed?.worker_application_id || effectiveAppId;
+      setRecIds({ groupId: newGroupId, appId: newAppId });
+
+      const types = Array.isArray(rDetails.service_types) ? rDetails.service_types : [];
+      const tasks = Array.isArray(rDetails.service_task) ? rDetails.service_task : [];
+      const merged = types.length ? types.map(ct => {
+        const f = tasks.find(x => String(x?.category || '') === ct);
+        const arr = f && Array.isArray(f.tasks) ? f.tasks.filter(Boolean) : [];
+        return { serviceType: ct, serviceTasks: arr };
+      }) : [{ serviceType: '', serviceTasks: [] }];
+
+      setPairs(merged);
+      const st = merged[0]?.serviceType || '';
+      const tk = (merged[0]?.serviceTasks || [])[0] || '';
+      setServiceType(st || '');
+      setServiceTask(tk || '');
+      setYearsExp(rDetails.years_experience ?? '');
+      setToolsProvided(toYesNo(rDetails.tools_provided));
+      setDescription(rDetails.work_description || '');
+      setRateType(rRate.rate_type || '');
+      setRateFrom(rRate.rate_from ?? '');
+      setRateTo(rRate.rate_to ?? '');
+      setRateValue(rRate.rate_value ?? '');
+
+      const loc = normLocation(rInfo);
+      const finalBarangay = loc.barangay || addrObj.barangay;
+      const finalStreet = loc.street || addrObj.street;
+      setAddress(finalBarangay);
+      setAdditionalAddress(finalStreet);
+
+      setProfileUrl(rInfo.profile_picture_url || '');
+      setFirstName(rInfo.first_name || '');
+      setLastName(rInfo.last_name || '');
+      setContactNumber(rInfo.contact_number || '');
+      setEmail(rInfo.email_address || rInfo.email || '');
+
+      setOrig({
+        pairs: merged,
+        yearsExp: String(rDetails.years_experience ?? ''),
+        toolsProvided: toYesNo(rDetails.tools_provided),
+        description: rDetails.work_description || '',
+        rateType: rRate.rate_type || '',
+        rateFrom: String(rRate.rate_from ?? ''),
+        rateTo: String(rRate.rate_to ?? ''),
+        rateValue: String(rRate.rate_value ?? ''),
+        address: finalBarangay,
+        additionalAddress: finalStreet,
+        profileUrl: rInfo.profile_picture_url || ''
       });
+
       setOk('Changes saved');
       setShowSuccess(true);
       try { window.dispatchEvent(new Event('worker-application-submitted')); } catch {}
     } catch (e) {
-      setError(e?.response?.data?.message || 'Failed to save changes');
+      setError(e?.response?.data?.message || e?.message || 'Failed to save changes');
     } finally {
       setSaving(false);
       setShowSaving(false);
