@@ -8,7 +8,7 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const [fetched, setFetched] = useState(null);
   const base = request || {};
   const info = base.info || {};
-  const emailGuess = base.client_email || info.email_address || base.email || base.email_address || "";
+  const emailGuess = base.client_email || info.email_address || base.email || base.email_address || base.emailAddress || "";
   const gidGuess = base.request_group_id || base.requestGroupId || base.requestGroupID || base.group_id || base.groupId || "";
 
   useEffect(() => {
@@ -97,21 +97,42 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const d = w.details || w.work || w;
   const r = w.rate || w;
 
-  const serviceTypes =
-  Array.isArray(d.service_types) ? d.service_types
-  : Array.isArray(d.service_type) ? d.service_type
-  : Array.isArray(d.serviceTypes) ? d.serviceTypes
-  : Array.isArray(d.serviceType) ? d.serviceType
-  : Array.isArray(w.service_types) ? w.service_types
-  : Array.isArray(w.service_type) ? w.service_type
-  : Array.isArray(w.serviceTypes) ? w.serviceTypes
-  : Array.isArray(w.serviceTypeList) ? w.serviceTypeList
-  : typeof d.service_type === "string" && d.service_type.trim() ? [d.service_type.trim()]
-  : typeof w.serviceType === "string" && w.serviceType.trim() ? [w.serviceType.trim()]
-  : [];
-  const serviceTasks = Array.isArray(d.service_task)
-    ? d.service_task.flatMap((t) => Array.isArray(t?.tasks) ? t.tasks : []).filter(Boolean)
-    : (Array.isArray(w.serviceTaskList) ? w.serviceTaskList : (typeof w.serviceTask === "string" ? w.serviceTask.split(/[,/|]+/).map(s=>s.trim()).filter(Boolean) : []));
+  const serviceTypes = (() => {
+  const out = [];
+  const add = (val) => {
+    if (val == null) return;
+    if (Array.isArray(val)) { val.forEach(add); return; }
+    if (typeof val === "object") {
+      const lbl = val.category || val.name || val.type || val.label;
+      if (lbl) add(lbl);
+      if (Array.isArray(val.types)) val.types.forEach(add);
+      if (Array.isArray(val.items)) val.items.forEach(add);
+      if (Array.isArray(val.services)) val.services.forEach(add);
+      return;
+    }
+    String(val).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) out.push(s); });
+  };
+  add(d.service_types ?? d.service_type ?? d.serviceTypes ?? d.serviceType);
+  add(w.service_types ?? w.service_type ?? w.serviceTypes ?? w.serviceType);
+  if (Array.isArray(w.serviceTypeList)) out.push(...w.serviceTypeList);
+  return [...new Set(out)];
+})();
+  const serviceTasks = (() => {
+  const out = [];
+  const add = (val) => {
+    if (val == null) return;
+    if (Array.isArray(val)) { val.forEach(add); return; }
+    if (typeof val === 'object') {
+      if (Array.isArray(val.tasks)) val.tasks.forEach(add);
+      else Object.values(val).forEach(add);
+      return;
+    }
+    String(val).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) out.push(s); });
+  };
+  add(d.service_task ?? w.service_task ?? w.serviceTask);
+  if (Array.isArray(w.serviceTaskList)) out.push(...w.serviceTaskList);
+  return [...new Set(out)];
+})();
   const avatar = i.profile_picture_url || w.client_image || w.image || w.avatar || "/Clienticon.png";
 
   const barangay = i.barangay || d.barangay || "";
