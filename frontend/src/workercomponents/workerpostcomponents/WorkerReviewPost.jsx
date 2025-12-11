@@ -83,6 +83,13 @@ const WorkerReviewPost = ({ handleBack }) => {
   const [submitError, setSubmitError] = useState('');
   const [applicationGroupId, setApplicationGroupId] = useState(null);
   const [workerIdState, setWorkerIdState] = useState(null);
+  const [showPay, setShowPay] = useState(false);
+  const [payMethod, setPayMethod] = useState('qr');
+  const [payError, setPayError] = useState('');
+  const [payFields, setPayFields] = useState({ name: '', number: '', ref: '', screenshotDataUrl: '' });
+  const [payProcessing, setPayProcessing] = useState(false);
+  const [paymentMeta, setPaymentMeta] = useState(null);
+  const FEE = 150;
 
   useEffect(() => {
     try {
@@ -377,7 +384,63 @@ const WorkerReviewPost = ({ handleBack }) => {
     return out;
   };
 
-  const handleConfirm = async () => {
+  const readFileAsDataUrl = (file) =>
+    new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onloadend = () => resolve(fr.result);
+      fr.readAsDataURL(file);
+    });
+
+  const genRef = () => {
+    const t = Date.now();
+    const r = Math.floor(Math.random() * 1e6).toString().padStart(6, '0');
+    return `JDK-${t}-${r}`;
+  };
+
+  const openPayment = () => {
+    setPayError('');
+    setPayFields((f) => ({ ...f, ref: f.ref || genRef() }));
+    setShowPay(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    setPayError('');
+    setPayProcessing(true);
+    try {
+      if (payMethod === 'qr') {
+        if (!payFields.ref) {
+          setPayError('Enter the GCASH reference number.');
+          setPayProcessing(false);
+          return;
+        }
+      } else {
+        if (!payFields.name || !payFields.number) {
+          setPayError('Provide GCash name and number.');
+          setPayProcessing(false);
+          return;
+        }
+      }
+      const meta = {
+        method: 'gcash',
+        option: payMethod,
+        amount: FEE,
+        reference: payFields.ref || genRef(),
+        payer_name: payFields.name || '',
+        payer_number: payFields.number || '',
+        screenshot: payFields.screenshotDataUrl || '',
+        currency: 'PHP'
+      };
+      setPaymentMeta(meta);
+      setShowPay(false);
+      await handleConfirm(meta);
+    } catch (e) {
+      setPayError('Payment confirmation failed.');
+    } finally {
+      setPayProcessing(false);
+    }
+  };
+
+  const handleConfirm = async (payment = null) => {
     try {
       setSubmitError('');
       setIsSubmitting(true);
@@ -713,7 +776,8 @@ const WorkerReviewPost = ({ handleBack }) => {
         agreements: normalized.agreements,
         email_address: normalized.email_address,
         worker_id: normalized.worker_id,
-        metadata: normalized.metadata
+        metadata: normalized.metadata,
+        payment: payment || paymentMeta || null
       };
 
       const res = await axios.post(`${API_BASE}/api/workerapplications/submit`, submitBody, {
@@ -743,7 +807,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   };
 
   useEffect(() => {
-    const lock = isSubmitting || showSuccess || isLoadingBack;
+    const lock = isSubmitting || showSuccess || isLoadingBack || showPay;
     if (!lock) return;
     const onPopState = () => {
       window.history.pushState(null, '', window.location.href);
@@ -767,7 +831,7 @@ const WorkerReviewPost = ({ handleBack }) => {
       body.style.overflow = prevBodyOverflow || '';
       window.removeEventListener('keydown', blockKeys, true);
     };
-  }, [isSubmitting, showSuccess, isLoadingBack]);
+  }, [isSubmitting, showSuccess, isLoadingBack, showPay]);
 
   const TaskPill = ({ children }) => (
     <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 text-xs md:text-sm px-2.5 py-1">
@@ -957,10 +1021,10 @@ const WorkerReviewPost = ({ handleBack }) => {
                   </button>
                   <button
                     type="button"
-                    onClick={handleConfirm}
+                    onClick={openPayment}
                     className="w-full sm:w-1/2 h-[48px] px-5 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                   >
-                    Confirm
+                    Pay & Submit
                   </button>
                 </div>
               </div>
@@ -1127,6 +1191,145 @@ const WorkerReviewPost = ({ handleBack }) => {
               >
                 Go back to Dashboard
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPay && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="GCash Payment"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[520px] max-w-[94vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl">
+            <div className="px-6 pt-6">
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-semibold text-gray-900">Pay via GCash</div>
+                <div className="text-sm text-gray-500">Amount: <span className="font-semibold text-[#008cfc]">₱{FEE}</span></div>
+              </div>
+              <div className="mt-2 text-xs text-gray-500">Choose a method</div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPayMethod('qr')}
+                  className={`h-10 rounded-xl border ${payMethod==='qr'?'border-[#008cfc] bg-blue-50 text-[#008cfc]':'border-gray-300 text-gray-700'} transition`}
+                >
+                  GCash QR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPayMethod('details')}
+                  className={`h-10 rounded-xl border ${payMethod==='details'?'border-[#008cfc] bg-blue-50 text-[#008cfc]':'border-gray-300 text-gray-700'} transition`}
+                >
+                  Fill GCash Details
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-5">
+              {payMethod === 'qr' ? (
+                <div className="space-y-4">
+                  <div className="w-full grid place-items-center">
+                    <div className="rounded-2xl border border-gray-200 p-3 bg-white shadow-sm">
+                      <img
+                        src="/gcash-qr.png"
+                        alt="GCash QR"
+                        className="w-56 h-56 object-contain"
+                        onError={(e)=>{e.currentTarget.style.display='none';}}
+                      />
+                      <div className="text-center text-xs text-gray-500 mt-2">Scan this QR using GCash</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="text-sm text-gray-700">Reference No.</div>
+                    <input
+                      value={payFields.ref}
+                      onChange={(e)=>setPayFields((f)=>({...f, ref: e.target.value.trim()}))}
+                      placeholder="Enter GCash Ref. No."
+                      className="h-11 w-full rounded-xl border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                    />
+                    <div className="text-sm text-gray-700">Upload Screenshot (optional)</div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e)=>{
+                        const file=e.target.files?.[0];
+                        if (file) {
+                          const du=await readFileAsDataUrl(file);
+                          setPayFields((f)=>({...f, screenshotDataUrl: du}));
+                        }
+                      }}
+                      className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:bg-blue-50 file:text-[#008cfc] hover:file:bg-blue-100"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <div className="text-sm text-gray-700">GCash Account Name</div>
+                    <input
+                      value={payFields.name}
+                      onChange={(e)=>setPayFields((f)=>({...f, name: e.target.value}))}
+                      placeholder="e.g. Juan Dela Cruz"
+                      className="h-11 w-full rounded-xl border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-700">GCash Number</div>
+                    <input
+                      value={payFields.number}
+                      onChange={(e)=>setPayFields((f)=>({...f, number: e.target.value.replace(/[^0-9+]/g,'')}))}
+                      placeholder="09XXXXXXXXX"
+                      className="h-11 w-full rounded-xl border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-700">Reference No. (optional)</div>
+                    <input
+                      value={payFields.ref}
+                      onChange={(e)=>setPayFields((f)=>({...f, ref: e.target.value.trim()}))}
+                      placeholder="Enter GCash Ref. No."
+                      className="h-11 w-full rounded-xl border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                    />
+                  </div>
+                </div>
+              )}
+              {payError ? <div className="mt-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{payError}</div> : null}
+            </div>
+
+            <div className="px-6 pb-6">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  disabled={payProcessing}
+                  onClick={()=>setShowPay(false)}
+                  className="w-full sm:w-1/2 h-[48px] px-5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={payProcessing}
+                  onClick={handleConfirmPayment}
+                  className="w-full sm:w-1/2 h-[48px] px-5 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 disabled:opacity-60"
+                >
+                  {payProcessing ? 'Processing…' : `Confirm Payment`}
+                </button>
+              </div>
+              <div className="mt-3 text-center text-[11px] text-gray-500">GCash only • Secure payment • Non-refundable application fee</div>
             </div>
           </div>
         </div>
