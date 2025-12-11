@@ -337,7 +337,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                       </span>
                     </div>
                     <button onClick={onClose} className="hidden">Close</button>
-                    <a href="/client/post" className="h-9 px-4 rounded-md bg-[#008cfc] text-sm text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Hire Worker</a>
+                    <a href="/client/post" className="h-9 px-4 rounded-md bg-[#008cfc] text-sm text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Book Worker</a>
                   </div>
                 </div>
               </div>

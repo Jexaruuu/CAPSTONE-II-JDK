@@ -293,7 +293,7 @@ const ClientNavigation = () => {
                   className="text-black font-medium relative inline-block"
                   onClick={(e) => { e.preventDefault(); handleSearchBarDropdown(); goTop(); beginRoute('/find-a-worker'); }}
                 >
-                  <span className="relative">Hire a Worker<span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" /></span>
+                  <span className="relative">Book a Worker<span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" /></span>
                 </Link>
               </li>
 

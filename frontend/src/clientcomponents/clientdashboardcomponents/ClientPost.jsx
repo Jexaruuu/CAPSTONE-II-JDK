@@ -713,25 +713,25 @@ const ClientPost = () => {
                     <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago ` : ''}</div>
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
                       <div className="space-y-1.5">
-                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <div className="flex flex-wrap gap-x-1 gap-y-1">
                           <span className="text-gray-700 font-semibold">Preferred Date:</span>
                           <span className="text-[#008cfc] font-semibold">{currentItem?.details?.preferred_date ? formatDateMMDDYYYY(currentItem.details.preferred_date) : '-'}</span>
                         </div>
-                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <div className="flex flex-wrap gap-x-1 gap-y-1">
                           <span className="text-gray-700 font-semibold">Preferred Time:</span>
                           <span className="text-[#008cfc] font-semibold">{currentItem?.details?.preferred_time ? formatTime12h(currentItem.details.preferred_time) : '-'}</span>
                         </div>
-                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <div className="flex flex-wrap gap-x-1 gap-y-1">
                           <span className="text-gray-700 font-semibold">Urgency:</span>
                           <span className={urgentClassMirror}>{urgentTextLocal}</span>
                         </div>
                       </div>
                       <div className="space-y-1.5 md:pl-10">
-                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <div className="flex flex-wrap gap-x-1 gap-y-1">
                           <span className="text-gray-700 font-semibold">Rate Type:</span>
                           <span className="text-[#008cfc] font-semibold">{getRateType(currentItem) || '-'}</span>
                         </div>
-                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                        <div className="flex flex-wrap gap-x-1 gap-y-1">
                           <span className="text-gray-700 font-semibold">Service Rate:</span>
                           <span className="text-[#008cfc] font-semibold">
                             {(() => {

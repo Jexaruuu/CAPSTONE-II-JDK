@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const services = [
   {
@@ -22,17 +23,15 @@ const services = [
     description: 'Want a spotless car? Book a car wash today and enjoy a clean, shiny ride without the hassle!',
   },
   {
-    image: '/Laundry.jpg', 
+    image: '/Laundry.jpg',
     title: 'Laundry',
     description: 'Need your clothes cleaned? Book a laundry service today for fresh, clean clothes delivered right to your door!',
   },
 ];
 
-// 1) Optional network fallback (like your other screens)
 const dicebearFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || 'Service')}`;
 
-// 2) Final fallback: inline SVG data URL with an initial in a circle (no network needed)
 const initialDataUrl = (name) => {
   const initial = (name || '?').trim().charAt(0).toUpperCase();
   const size = 256;
@@ -49,6 +48,38 @@ const initialDataUrl = (name) => {
 };
 
 const WorkerAvailableServiceSection = () => {
+  const navigate = useNavigate();
+  const [navLoading, setNavLoading] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
+
+  const goTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {} };
+
+  const beginRoute = (to) => {
+    if (navLoading) return;
+    goTop();
+    setNavLoading(true);
+    setTimeout(() => { navigate(to, { replace: true }); }, 2000);
+  };
+
+  const goFindClient = () => beginRoute('/find-a-client');
+
+  useEffect(() => {
+    if (!navLoading) return;
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [navLoading]);
+
   return (
     <section id="services" className="bg-white py-20">
       <div className="max-w-[1525px] mx-auto px-6">
@@ -62,12 +93,14 @@ const WorkerAvailableServiceSection = () => {
           {services.map((service, idx) => (
             <div
               key={idx}
-              className="relative group rounded-md overflow-hidden p-4 bg-white border border-gray-300 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl"
+              className="relative group rounded-md overflow-hidden p-4 bg-white border border-gray-300 transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl cursor-pointer"
+              onClick={goFindClient}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') goFindClient(); }}
             >
-              {/* Image area (unchanged layout) */}
               <div className="w-full h-36 rounded-xl mb-4 overflow-hidden bg-gray-100 relative">
                 <img
-                  // Try your local image first; if empty, try Dicebear; the last fallback is the inline SVG
                   src={services[idx].image || dicebearFromName(service.title)}
                   alt={service.title}
                   className="w-full h-full object-cover"
@@ -75,24 +108,65 @@ const WorkerAvailableServiceSection = () => {
                   onError={(e) => {
                     const tried = e.currentTarget.getAttribute('data-dicebear-tried');
                     if (!tried) {
-                      // Second attempt: Dicebear (keeps parity with your other pages)
                       e.currentTarget.setAttribute('data-dicebear-tried', '1');
                       e.currentTarget.src = dicebearFromName(service.title);
                       return;
                     }
-                    // Final, guaranteed fallback: inline SVG with initial (prevents alt text from showing)
-                    e.currentTarget.onerror = null; // stop loops
+                    e.currentTarget.onerror = null;
                     e.currentTarget.src = initialDataUrl(service.title);
                   }}
                 />
               </div>
-
               <h3 className="text-lg font-semibold text-gray-900">{service.title}</h3>
               <p className="text-sm text-gray-600 mt-1">{service.description}</p>
             </div>
           ))}
         </div>
       </div>
+
+      {navLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

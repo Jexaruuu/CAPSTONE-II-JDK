@@ -328,7 +328,7 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                       <div className="text-sm font-semibold text-gray-700">Service Type</div>
                       <div className="flex items-center gap-2">
                         <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
-                          Jobs Posted
+                          Request Done
                           <span className="ml-2 text-sm font-semibold text-[#008cfc]">{Number.isFinite(w.completed_jobs) ? w.completed_jobs : 0}</span>
                         </span>
                       </div>
@@ -419,12 +419,12 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                   <div className="mt-6 flex items-center justify-end gap-3">
                     <div className="items-center gap-2 mr-auto hidden">
                       <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
-                        Jobs Posted
+                        Request Done
                         <span className="ml-2 text-sm font-semibold text-[#008cfc]">{Number.isFinite(w.completed_jobs) ? w.completed_jobs : 0}</span>
                       </span>
                     </div>
                     <button onClick={onClose} className="hidden">Close</button>
-                    <button onClick={applyNow} className="h-9 px-4 rounded-md bg-[#008cfc] text-sm text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Apply to Request</button>
+                    <button onClick={applyNow} className="h-9 px-4 rounded-md bg-[#008cfc] text-sm text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Accept Request</button>
                   </div>
                 </div>
               </div>
@@ -434,7 +434,7 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
           <div className="border-t border-gray-200 bg-white p-4 sticky bottom-0 hidden">
             <div className="flex items-center justify-end gap-3">
               <button onClick={onClose} className="h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">Close</button>
-              <button onClick={applyNow} className="h-10 px-5 rounded-md bg-[#008cfc] text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Apply to Request</button>
+              <button onClick={applyNow} className="h-10 px-5 rounded-md bg-[#008cfc] text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Accept Request</button>
             </div>
           </div>
         </div>

@@ -350,6 +350,7 @@ const ClientCard = ({ item, onView }) => {
   const topIcons = serviceIcons.slice(0, 3);
   const primaryType = serviceTypes[0] || item.service_type || "—";
   const primaryTask = serviceTasks[0] || item.service_task || "—";
+  const requestDone = Number.isFinite(item.requestDone) ? item.requestDone : 0;
 
   return (
     <div className="relative overflow-hidden bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl">
@@ -419,22 +420,26 @@ const ClientCard = ({ item, onView }) => {
                 </span>
               </div>
             </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-gray-700">Rate Type</div>
-              <div className="mt-1">
-                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
-                  {item.rateTypeLabel || "—"}
-                </span>
+            {false && (
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-700">Rate Type</div>
+                <div className="mt-1">
+                  <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                    {item.rateTypeLabel || "—"}
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-gray-700">Service Rate</div>
-              <div className="mt-1">
-                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
-                  {item.displayRate || item.budgetLabel || "—"}
-                </span>
+            )}
+            {false && (
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-700">Service Rate</div>
+                <div className="mt-1">
+                  <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                    {item.displayRate || item.budgetLabel || "—"}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="mt-3 text-sm font-semibold text-gray-700">Request Description</div>
@@ -460,12 +465,18 @@ const ClientCard = ({ item, onView }) => {
               {item.rateTypeLabel ? <span className="text-gray-400">•</span> : null}
               <div className="text-sm font-semibold text-[#008cfc]">{item.displayRate || item.budgetLabel || "Rate upon request"}</div>
             </div>
-            <button
-              onClick={() => onView(item)}
-              className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition self-end"
-            >
-              View Request
-            </button>
+            <div className="flex items-center gap-4">
+              <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
+                Request Done
+                <span className="ml-2 text-sm font-semibold text-[#008cfc]">{requestDone}</span>
+              </span>
+              <button
+                onClick={() => onView(item)}
+                className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition self-end"
+              >
+                View Request
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -603,6 +614,10 @@ export default function WorkerFindAvailableClient() {
       const paymentVerified = !!(r.payment_verified || r.payment_verified === true);
       const budgetLabel = r.budget ? `₱${Number(r.budget).toLocaleString()}` : displayRate || "Negotiable";
       const emailAddress = r.email || r.email_address || info.email_address || "";
+      const reqDoneRaw =
+        r.request_done ?? r.requests_done ?? r.completed_requests ?? r.requests_completed ?? r.jobs_posted ?? r.completed_jobs ?? (r.stats && (r.stats.request_done || r.stats.completed_requests));
+      const reqn = Number(reqDoneRaw);
+      const requestDone = Number.isFinite(reqn) && reqn >= 0 ? Math.floor(reqn) : 0;
 
       return {
         id: r.id ?? r.request_group_id ?? `${i}`,
@@ -635,7 +650,8 @@ export default function WorkerFindAvailableClient() {
         rateFrom,
         rateTo,
         rateValue,
-        rateNum
+        rateNum,
+        requestDone
       };
     });
   };
