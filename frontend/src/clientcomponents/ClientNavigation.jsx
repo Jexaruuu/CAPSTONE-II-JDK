@@ -289,6 +289,16 @@ const ClientNavigation = () => {
 
               <li className="relative cursor-pointer group">
                 <Link
+                  to="/ongoing-service"
+                  className="text-black font-medium relative inline-block"
+                  onClick={(e) => { e.preventDefault(); handleSearchBarDropdown(); goTop(); beginRoute('/ongoing-service'); }}
+                >
+                  <span className="relative">On Going Request<span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" /></span>
+                </Link>
+              </li>
+
+              <li className="relative cursor-pointer group">
+                <Link
                   to="/find-a-worker"
                   className="text-black font-medium relative inline-block"
                   onClick={(e) => { e.preventDefault(); handleSearchBarDropdown(); goTop(); beginRoute('/find-a-worker'); }}

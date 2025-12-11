@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { Link } from "react-router-dom";
 import { Hammer, Zap, Wrench, Car, Shirt } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -7,6 +8,9 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 export default function ClientViewWorker({ open, onClose, worker }) {
   const [fetched, setFetched] = useState(null);
   const [reviewsState, setReviewsState] = useState({ items: [], avg: 0, count: 0 });
+  const [showNoApproved, setShowNoApproved] = useState(false);
+  const [btnLoading, setBtnLoading] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
   const base = worker || {};
   const baseInfo = base.info || {};
   const emailGuess = base.emailAddress || baseInfo.email_address || base.email || base.email_address || "";
@@ -88,6 +92,23 @@ export default function ClientViewWorker({ open, onClose, worker }) {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!btnLoading) return;
+    const onPopState = () => { window.history.pushState(null, "", window.location.href); };
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", onPopState, true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener("keydown", blockKeys, true);
+    return () => {
+      window.removeEventListener("popstate", onPopState, true);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", blockKeys, true);
+    };
+  }, [btnLoading]);
+
   const iconFor = (s) => {
     const k = String(s || "").toLowerCase();
     if (k.includes("elect")) return Zap;
@@ -168,6 +189,45 @@ export default function ClientViewWorker({ open, onClose, worker }) {
     w.workerSuccess ?? w.success_rate ?? w.job_success ?? w.jobs_success ?? w.jobSuccess ?? (w.stats && w.stats.success_rate) ?? r.rate_success;
   const succ = Number(rawSuccess);
   const workerSuccess = rating > 0 ? (Number.isFinite(succ) ? Math.max(0, Math.min(100, succ)) : 0) : 0;
+
+  const getClientEmail = () => {
+    try {
+      const a = JSON.parse(localStorage.getItem("clientAuth") || "{}");
+      if (a && a.email) return a.email;
+    } catch {}
+    return (
+      localStorage.getItem("clientEmail") ||
+      localStorage.getItem("client_email") ||
+      localStorage.getItem("email_address") ||
+      localStorage.getItem("email") ||
+      ""
+    );
+  };
+
+  const handleBookClick = async (e) => {
+    e.preventDefault();
+    if (btnLoading) return;
+    try {
+      const clientEmail = getClientEmail();
+      if (!clientEmail) {
+        setShowNoApproved(true);
+        return;
+      }
+      const res = await axios.get(`${API_BASE}/api/clientservicerequests/approved`, { params: { email: clientEmail, limit: 10 } });
+      const items = Array.isArray(res.data?.items) ? res.data.items : [];
+      if (!items.length) {
+        setShowNoApproved(true);
+        return;
+      }
+      window.location.href = "/clientpostrequest";
+    } catch {
+      setShowNoApproved(true);
+    }
+  };
+
+  const goTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className={`fixed inset-0 z-[120] ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
@@ -337,7 +397,9 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                       </span>
                     </div>
                     <button onClick={onClose} className="hidden">Close</button>
-                    <a href="/client/post" className="h-9 px-4 rounded-md bg-[#008cfc] text-sm text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Book Worker</a>
+                    <a href="/clientpostrequest" onClick={handleBookClick} className={`h-9 px-4 rounded-md ${btnLoading ? "opacity-60 pointer-events-none" : ""} bg-[#008cfc] text-sm text-white hover:bg-[#0078d6] inline-flex items-center justify-center`}>
+                      Book Worker
+                    </a>
                   </div>
                 </div>
               </div>
@@ -347,11 +409,101 @@ export default function ClientViewWorker({ open, onClose, worker }) {
           <div className="border-t border-gray-200 bg-white p-4 sticky bottom-0 hidden">
             <div className="flex items-center justify-end gap-3">
               <button onClick={onClose} className="h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">Close</button>
-              <a href="/client/post" className="h-10 px-5 rounded-md bg-[#008cfc] text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Hire Worker</a>
+              <a href="/clientpostrequest" onClick={handleBookClick} className="h-10 px-5 rounded-md bg-[#008cfc] text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Hire Worker</a>
             </div>
           </div>
         </div>
       </div>
+
+      {showNoApproved ? (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowNoApproved(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483648]">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">
+                You need an approved service request to book a worker
+              </div>
+              <div className="text-sm text-gray-600">
+                Post a service request first. Once approved and active, you can hire a worker.
+              </div>
+            </div>
+            <div className="mt-6 grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowNoApproved(false)}
+                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition hidden"
+              >
+                Cancel
+              </button>
+              <a
+                href="/clientpostrequest"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowNoApproved(false);
+                  setBtnLoading(true);
+                  setTimeout(() => { window.location.href = "/clientpostrequest"; }, 2000);
+                }}
+                className="px-6 py-3 bg-[#008cfc] text-white rounded-md shadow-sm hover:bg-blue-700 transition text-center whitespace-nowrap"
+              >
+                Post a Request
+              </a>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {btnLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: "10px",
+                  borderStyle: "solid",
+                  borderColor: "#008cfc22",
+                  borderTopColor: "#008cfc",
+                  borderRadius: "9999px"
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

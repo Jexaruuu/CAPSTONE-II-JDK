@@ -234,6 +234,17 @@ const WorkerNavigation = () => {
 
               <li className="relative cursor-pointer group">
                 <Link
+                  to="/ongoing-service"
+                  className="text-black font-medium relative inline-block"
+                  onClick={(e) => { e.preventDefault(); goTop(); beginRoute('/ongoing-service'); }}
+                >
+                  On Going Service
+                  <span className="absolute -bottom-1 left-0 h-[2px] bg-[#008cfc] w-0 group-hover:w-full transition-all duration-300 ease-in-out" />
+                </Link>
+              </li>
+
+              <li className="relative cursor-pointer group">
+                <Link
                   to="/find-a-client"
                   className="text-black font-medium relative inline-block"
                   onClick={(e) => { e.preventDefault(); goTop(); beginRoute('/find-a-client'); }}
