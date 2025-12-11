@@ -287,5 +287,18 @@ const publicSex = async (req, res) => {
     return res.status(400).json({ sex: null });
   }
 };
+const listPublicReviews = async (req, res) => {
+  try {
+    const email = String(req.query.email || "").trim().toLowerCase();
+    const auth_uid = String(req.query.auth_uid || "").trim();
+    const request_group_id = String(req.query.request_group_id || "").trim() || null;
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+    const out = await workerModel.listPublicReviews({ email, auth_uid, request_group_id, limit });
+    return res.status(200).json(out);
+  } catch {
+    return res.status(200).json({ items: [], avg: 0, count: 0 });
+  }
+};
 
-module.exports = { registerWorker, me, password, updateProfile, publicSex };
+
+module.exports = { registerWorker, me, password, updateProfile, publicSex, listPublicReviews };

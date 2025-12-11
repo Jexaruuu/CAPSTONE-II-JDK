@@ -181,6 +181,49 @@ async function isSocialLinkTakenAcrossAll(kind, value, excludeAuthUid) {
   return hitAuthUid !== excludeAuthUid;
 }
 
+async function listPublicReviews({ email, auth_uid, request_group_id, limit = 20 }) {
+  const e = String(email || "").trim().toLowerCase();
+  const au = String(auth_uid || "").trim();
+  if (!e && !au) return { items: [], avg: 0, count: 0 };
+
+  let workerEmail = e;
+  if (!workerEmail && au) {
+    try {
+      const { data } = await supabaseAdmin.from("user_worker").select("email_address").eq("auth_uid", au).limit(1);
+      workerEmail = data && data[0] ? String(data[0].email_address || "").toLowerCase() : "";
+    } catch {}
+  }
+
+  const tables = ["worker_reviews", "reviews_worker", "reviews", "service_reviews"];
+  const emailCols = ["worker_email", "email", "email_address"];
+  const uidCols = ["worker_auth_uid", "auth_uid", "worker_uid"];
+
+  for (const t of tables) {
+    try {
+      const attempts = [];
+      if (au) uidCols.forEach(c => attempts.push({ col: c, op: "eq", val: au }));
+      if (workerEmail) emailCols.forEach(c => attempts.push({ col: c, op: "ilike", val: workerEmail }));
+
+      for (const a of attempts) {
+        let q = supabaseAdmin.from(t).select("*").order("created_at", { ascending: false }).limit(Number(limit) || 20);
+        q = a.op === "eq" ? q.eq(a.col, a.val) : q.ilike(a.col, a.val);
+        if (request_group_id) q = q.eq("request_group_id", request_group_id);
+        const { data, error } = await q;
+        if (error) continue;
+        if (Array.isArray(data)) {
+          const items = data;
+          const count = items.length;
+          const avg = count ? items.reduce((s, r) => s + Number(r.rating || 0), 0) / count : 0;
+          return { items, avg, count };
+        }
+      }
+    } catch {}
+  }
+
+  return { items: [], avg: 0, count: 0 };
+}
+
+
 module.exports = {
   createWorker,
   checkEmailExistence,
@@ -195,4 +238,5 @@ module.exports = {
   isSocialLinkTakenAcrossAll,
   normalizeFacebook,
   normalizeInstagram,
+  listPublicReviews,
 };
