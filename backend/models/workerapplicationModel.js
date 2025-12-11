@@ -78,7 +78,6 @@ async function findWorkerByEmail(email) {
   if (error) throw error;
   return data;
 }
-
 async function findWorkerById(id) {
   const { data, error } = await supabaseAdmin
     .from('user_worker')
@@ -88,7 +87,6 @@ async function findWorkerById(id) {
   if (error) throw error;
   return data;
 }
-
 async function findWorkerByAuthUid(auth_uid) {
   const { data, error } = await supabaseAdmin
     .from('user_worker')
@@ -96,6 +94,26 @@ async function findWorkerByAuthUid(auth_uid) {
     .eq('auth_uid', String(auth_uid || '').trim())
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+async function insertWorkerPaymentFee(row) {
+  const payload = {
+    request_group_id: row.request_group_id || null,
+    worker_id: row.worker_id || null,
+    auth_uid: row.auth_uid || null,
+    email_address: row.email_address || null,
+    payment: typeof row.payment === 'string' ? row.payment : JSON.stringify(row.payment || null),
+    proof_of_payment: row.proof_of_payment || '',
+    reference_no: row.reference_no || '',
+    gcash_name: row.gcash_name || '',
+    gcash_number: row.gcash_number || ''
+  };
+  const { data, error } = await supabaseAdmin
+    .from('worker_payment_fee')
+    .insert([payload])
+    .select('id')
+    .single();
   if (error) throw error;
   return data;
 }
@@ -112,5 +130,6 @@ module.exports = {
   newGroupId,
   findWorkerByEmail,
   findWorkerById,
-  findWorkerByAuthUid
+  findWorkerByAuthUid,
+  insertWorkerPaymentFee
 };

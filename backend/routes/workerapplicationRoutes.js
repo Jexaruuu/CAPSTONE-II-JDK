@@ -13,5 +13,4 @@ router.delete('/:id', controller.deleteApplication);
 router.get('/by-group/:id', controller.getByGroupFull);
 router.put('/by-group/:id', controller.updateByGroup);
 
-
 module.exports = router;

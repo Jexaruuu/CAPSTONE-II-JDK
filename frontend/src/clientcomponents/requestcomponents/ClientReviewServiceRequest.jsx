@@ -17,6 +17,13 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   const [showSuccess, setShowSuccess] = useState(false);
   const [requestGroupId, setRequestGroupId] = useState(null);
   const [clientIdState, setClientIdState] = useState(null);
+  const [showPay, setShowPay] = useState(false);
+  const [payMethod, setPayMethod] = useState('qr');
+  const [payError, setPayError] = useState('');
+  const [payFields, setPayFields] = useState({ name: '', number: '', ref: '', screenshotDataUrl: '' });
+  const [payProcessing, setPayProcessing] = useState(false);
+  const [paymentMeta, setPaymentMeta] = useState(null);
+  const FEE = 150;
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -57,7 +64,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   }, [headersWithU]);
 
   useEffect(() => {
-    const lock = isSubmitting || showSuccess || isLoadingBack;
+    const lock = isSubmitting || showSuccess || isLoadingBack || showPay;
     const html = document.documentElement;
     const body = document.body;
     const prevHtmlOverflow = html.style.overflow;
@@ -73,7 +80,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       html.style.overflow = prevHtmlOverflow || '';
       body.style.overflow = prevBodyOverflow || '';
     };
-  }, [isSubmitting, showSuccess, isLoadingBack]);
+  }, [isSubmitting, showSuccess, isLoadingBack, showPay]);
 
   useEffect(() => {
     if (!isLoadingBack) return;
@@ -236,6 +243,25 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     }
   };
 
+  const readFileAsDataUrl = (file) =>
+    new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onloadend = () => resolve(fr.result);
+      fr.readAsDataURL(file);
+    });
+
+  const genRef = () => {
+    const t = Date.now();
+    const r = Math.floor(Math.random() * 1e6).toString().padStart(6, '0');
+    return `JDK-${t}-${r}`;
+  };
+
+  const openPayment = () => {
+    setPayError('');
+    setPayFields((f) => ({ ...f, ref: f.ref || genRef() }));
+    setShowPay(true);
+  };
+
   const cleanNumber = (v) => {
     if (v === null || v === undefined || v === '') return null;
     const n = Number(String(v).toString().replace(/[^\d.]/g, ''));
@@ -251,7 +277,44 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     return missing;
   };
 
-  const handleConfirm = async () => {
+  const handleConfirmPayment = async () => {
+    setPayError('');
+    setPayProcessing(true);
+    try {
+      if (payMethod === 'qr') {
+        if (!payFields.ref) {
+          setPayError('Enter the GCASH reference number.');
+          setPayProcessing(false);
+          return;
+        }
+      } else {
+        if (!payFields.name || !payFields.number) {
+          setPayError('Provide GCash name and number.');
+          setPayProcessing(false);
+          return;
+        }
+      }
+      const meta = {
+        method: 'gcash',
+        option: payMethod,
+        amount: FEE,
+        reference: payFields.ref || genRef(),
+        payer_name: payFields.name || '',
+        payer_number: payFields.number || '',
+        screenshot: payFields.screenshotDataUrl || '',
+        currency: 'PHP'
+      };
+      setPaymentMeta(meta);
+      setShowPay(false);
+      await handleConfirm(meta);
+    } catch {
+      setPayError('Payment confirmation failed.');
+    } finally {
+      setPayProcessing(false);
+    }
+  };
+
+  const handleConfirm = async (payment = null) => {
     try {
       setSubmitError('');
       setIsSubmitting(true);
@@ -470,39 +533,40 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       };
 
       const jsonBody = {
-  client_id: normalized.client_id,
-  first_name: normalized.first_name,
-  last_name: normalized.last_name,
-  email_address: normalized.email_address,
-  contact_number: normalized.contact_number,
-  barangay: normalized.barangay,
-  address: normalized.address,
-  street: normalized.street,
-  additional_address: normalized.additional_address,
-  service_type: normalized.service_type,
-  category: normalized.category,
-  service_task: normalized.service_task,
-  description: normalized.description,
-  preferred_date: normalized.preferred_date,
-  preferred_time: normalized.preferred_time,
-  is_urgent: normalized.is_urgent,
-  tools_provided: normalized.tools_provided,
-  rate_type: normalized.rate_type,
-  rate_from: normalized.rate_from,
-  rate_to: normalized.rate_to,
-  rate_value: normalized.rate_value,
-  attachments: Array.isArray(normalized.attachments) && normalized.attachments.length ? normalized.attachments : (normalized.attachment ? [normalized.attachment] : []),
-  metadata: metadataPayload,
-  info: infoPayload,
-  details: detailsPayload,
-  rate: ratePayload,
-agreements: {
-  email_address: (agreementsDraft.email_address || normalized.email_address || '').toString().trim(),
-  agree_verify: !!agreementsDraft.agree_verify,
-  agree_tos: !!agreementsDraft.agree_tos,
-  agree_privacy: !!agreementsDraft.agree_privacy
-}
-};
+        client_id: normalized.client_id,
+        first_name: normalized.first_name,
+        last_name: normalized.last_name,
+        email_address: normalized.email_address,
+        contact_number: normalized.contact_number,
+        barangay: normalized.barangay,
+        address: normalized.address,
+        street: normalized.street,
+        additional_address: normalized.additional_address,
+        service_type: normalized.service_type,
+        category: normalized.category,
+        service_task: normalized.service_task,
+        description: normalized.description,
+        preferred_date: normalized.preferred_date,
+        preferred_time: normalized.preferred_time,
+        is_urgent: normalized.is_urgent,
+        tools_provided: normalized.tools_provided,
+        rate_type: normalized.rate_type,
+        rate_from: normalized.rate_from,
+        rate_to: normalized.rate_to,
+        rate_value: normalized.rate_value,
+        attachments: Array.isArray(normalized.attachments) && normalized.attachments.length ? normalized.attachments : (normalized.attachment ? [normalized.attachment] : []),
+        metadata: metadataPayload,
+        info: infoPayload,
+        details: detailsPayload,
+        rate: ratePayload,
+        agreements: {
+          email_address: (agreementsDraft.email_address || normalized.email_address || '').toString().trim(),
+          agree_verify: !!agreementsDraft.agree_verify,
+          agree_tos: !!agreementsDraft.agree_tos,
+          agree_privacy: !!agreementsDraft.agree_privacy
+        },
+        payment: payment || paymentMeta || null
+      };
 
       const jsonRes = await axios.post(
         `${API_BASE}/api/clientservicerequests/submit`,
@@ -515,9 +579,9 @@ agreements: {
       localStorage.removeItem(GLOBAL_DESC_KEY);
       window.dispatchEvent(new Event('client-request-confirmed'));
       try {
-       localStorage.removeItem('clientServiceImageCache');
-       localStorage.setItem('clientServiceImageCleared', '1');
-     } catch {}
+        localStorage.removeItem('clientServiceImageCache');
+        localStorage.setItem('clientServiceImageCleared', '1');
+      } catch {}
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Submission failed';
       setSubmitError(msg);
@@ -534,8 +598,8 @@ agreements: {
       localStorage.removeItem(GLOBAL_DESC_KEY);
       localStorage.setItem(CONFIRM_FLAG, '1');
       window.dispatchEvent(new Event('client-request-confirmed'));
-           localStorage.removeItem('clientServiceImageCache');
-    localStorage.setItem('clientServiceImageCleared', '1');
+      localStorage.removeItem('clientServiceImageCache');
+      localStorage.setItem('clientServiceImageCleared', '1');
     } catch {}
 
     jumpTop();
@@ -743,10 +807,10 @@ agreements: {
                   </button>
                   <button
                     type="button"
-                    onClick={handleConfirm}
+                    onClick={openPayment}
                     className="w-full sm:w-1/2 h-[48px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                   >
-                    Confirm
+                    Pay & Submit
                   </button>
                 </div>
               </div>
@@ -885,6 +949,147 @@ agreements: {
               >
                 Go back to Dashboard
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPay && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="GCash Payment"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[520px] max-w-[94vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl">
+            <div className="px-6 pt-6">
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-semibold text-gray-900">Pay via GCash</div>
+                <div className="text-sm text-gray-500">Amount: <span className="font-semibold text-[#008cfc]">₱{FEE}</span></div>
+              </div>
+              <div className="mt-2 text-xs text-gray-500">Choose a method</div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPayMethod('qr')}
+                  className={`h-10 rounded-xl border ${payMethod==='qr'?'border-[#008cfc] bg-blue-50 text-[#008cfc]':'border-gray-300 text-gray-700'} transition`}
+                >
+                  GCash QR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPayMethod('details')}
+                  className={`h-10 rounded-xl border ${payMethod==='details'?'border-[#008cfc] bg-blue-50 text-[#008cfc]':'border-gray-300 text-gray-700'} transition`}
+                >
+                  Fill GCash Details
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-5">
+              {payMethod === 'qr' ? (
+                <div className="space-y-4">
+                  <div className="w-full grid place-items-center">
+                    <div className="rounded-2xl border border-gray-200 p-3 bg-white shadow-sm">
+                      <img
+                        src="/QR.jpg"
+                        alt="GCash QR"
+                        className="w-56 h-56 object-contain"
+                        onError={(e)=>{e.currentTarget.style.display='none';}}
+                      />
+                      <div className="text-center text-xs text-gray-500 mt-2">Scan this QR using GCash</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="text-sm text-gray-700">Reference No.</div>
+                    <input
+                      value={payFields.ref}
+                      onChange={(e)=>setPayFields((f)=>({...f, ref: e.target.value.trim()}))}
+                      placeholder="Enter GCash Ref. No."
+                      className="h-11 w-full rounded-xl border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                    />
+                    <div className="text-sm text-gray-700">Upload Screenshot</div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e)=>{
+                        const file=e.target.files?.[0];
+                        if (file) {
+                          const du=await readFileAsDataUrl(file);
+                          setPayFields((f)=>({...f, screenshotDataUrl: du}));
+                        }
+                      }}
+                      className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:bg-blue-50 file:text-[#008cfc] hover:file:bg-blue-100"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <div className="text-sm text-gray-700">GCash Account Name</div>
+                    <input
+                      value={payFields.name}
+                      onChange={(e)=>setPayFields((f)=>({...f, name: e.target.value}))}
+                      placeholder="e.g. Juan Dela Cruz"
+                      className="h-11 w-full rounded-xl border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-700">GCash Number</div>
+                    <input
+                      value={payFields.number}
+                      onChange={(e)=>setPayFields((f)=>({...f, number: e.target.value.replace(/[^0-9+]/g,'')}))}
+                      placeholder="09XXXXXXXXX"
+                      className="h-11 w-full rounded-xl border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-700">Reference No.</div>
+                    <input
+                      value={payFields.ref}
+                      onChange={(e)=>setPayFields((f)=>({...f, ref: e.target.value.trim()}))}
+                      placeholder="Enter GCash Ref. No."
+                      className="h-11 w-full rounded-xl border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
+                    />
+                  </div>
+                </div>
+              )}
+              {payError ? <div className="mt-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{payError}</div> : null}
+            </div>
+
+            <div className="px-6 pb-6">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  disabled={payProcessing}
+                  onClick={()=>setShowPay(false)}
+                  className="w-full sm:w-1/2 h-[48px] px-5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={payProcessing}
+                  onClick={handleConfirmPayment}
+                  className="w-full sm:w-1/2 h-[48px] px-5 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 disabled:opacity-60"
+                >
+                  {payProcessing ? 'Processing…' : `Confirm Payment`}
+                </button>
+              </div>
+              <div className="mt-3 text-center text-[11px] text-gray-500">GCash only • Secure payment • Non-refundable posting fee</div>
             </div>
           </div>
         </div>

@@ -1208,8 +1208,10 @@ const WorkerReviewPost = ({ handleBack }) => {
             e.stopPropagation();
           }}
           onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
+            if (e.target === e.currentTarget) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
           }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center"
         >
@@ -1245,7 +1247,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                   <div className="w-full grid place-items-center">
                     <div className="rounded-2xl border border-gray-200 p-3 bg-white shadow-sm">
                       <img
-                        src="/gcash-qr.png"
+                        src="/QR.jpg"
                         alt="GCash QR"
                         className="w-56 h-56 object-contain"
                         onError={(e)=>{e.currentTarget.style.display='none';}}
@@ -1261,7 +1263,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                       placeholder="Enter GCash Ref. No."
                       className="h-11 w-full rounded-xl border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
                     />
-                    <div className="text-sm text-gray-700">Upload Screenshot (optional)</div>
+                    <div className="text-sm text-gray-700">Upload Screenshot</div>
                     <input
                       type="file"
                       accept="image/*"
@@ -1297,7 +1299,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                     />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-700">Reference No. (optional)</div>
+                    <div className="text-sm text-gray-700">Reference No.</div>
                     <input
                       value={payFields.ref}
                       onChange={(e)=>setPayFields((f)=>({...f, ref: e.target.value.trim()}))}

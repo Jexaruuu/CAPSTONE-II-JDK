@@ -15,7 +15,8 @@ const {
   updateClientInformation,
   updateServiceRequestDetails,
   updateServiceRate,
-  insertClientAgreements
+  insertClientAgreements,
+  insertClientPaymentFee
 } = require('../models/clientservicerequestsModel');
 
 const { insertPendingRequest } = require('../models/clientservicerequeststatusModel');
@@ -378,22 +379,22 @@ exports.submitFullRequest = async (req, res) => {
     }
 
     const agreementsSrc = src.agreements || src.terms || {};
-const agree_verify = toBoolStrict(pick(agreementsSrc, ['agree_verify', 'verify']));
-const agree_tos = toBoolStrict(pick(agreementsSrc, ['agree_tos', 'tos']));
-const agree_privacy = toBoolStrict(pick(agreementsSrc, ['agree_privacy', 'privacy']));
-if (agree_verify || agree_tos || agree_privacy) {
-  try {
-    await insertClientAgreements({
-      request_group_id,
-      client_id: effectiveClientId,
-      auth_uid: effectiveAuthUid || auth_uid || null,
-      email_address: infoRow.email_address,
-      agree_verify,
-      agree_tos,
-      agree_privacy
-    });
-  } catch (e) {}
-}
+    const agree_verify = toBoolStrict(pick(agreementsSrc, ['agree_verify', 'verify']));
+    const agree_tos = toBoolStrict(pick(agreementsSrc, ['agree_tos', 'tos']));
+    const agree_privacy = toBoolStrict(pick(agreementsSrc, ['agree_privacy', 'privacy']));
+    if (agree_verify || agree_tos || agree_privacy) {
+      try {
+        await insertClientAgreements({
+          request_group_id,
+          client_id: effectiveClientId,
+          auth_uid: effectiveAuthUid || auth_uid || null,
+          email_address: infoRow.email_address,
+          agree_verify,
+          agree_tos,
+          agree_privacy
+        });
+      } catch (e) {}
+    }
 
     const pendingInfo = {
       first_name: infoRow.first_name,
@@ -426,18 +427,51 @@ if (agree_verify || agree_tos || agree_privacy) {
 
     let pendingRow;
     try {
- pendingRow = await insertPendingRequest({
-  request_group_id,
-  email_address: infoRow.email_address,
-  client_id: effectiveClientId,
-  auth_uid: infoRow.auth_uid || effectiveAuthUid || auth_uid || null,
-  info: pendingInfo,
-  details: pendingDetails,
-  rate: pendingRate,
-  status: 'pending'
-});
+      pendingRow = await insertPendingRequest({
+        request_group_id,
+        email_address: infoRow.email_address,
+        client_id: effectiveClientId,
+        auth_uid: infoRow.auth_uid || effectiveAuthUid || auth_uid || null,
+        info: pendingInfo,
+        details: pendingDetails,
+        rate: pendingRate,
+        status: 'pending'
+      });
     } catch (e) {
       return res.status(400).json({ message: friendlyError(e) });
+    }
+
+    const pay = src.payment || null;
+    if (pay && typeof pay === 'object') {
+      let proofUrl = '';
+      const shot = String(pay.screenshot || '').trim();
+      if (shot.startsWith('data:')) {
+        try {
+          const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments', shot, `${request_group_id}-payment`);
+          proofUrl = up?.url || '';
+        } catch {}
+      }
+      try {
+        await insertClientPaymentFee({
+          request_group_id,
+          client_id: Number.isFinite(Number(effectiveClientId)) ? Number(effectiveClientId) : null,
+          auth_uid: effectiveAuthUid || auth_uid || null,
+          email_address: infoRow.email_address,
+          payment: JSON.stringify({
+            method: pay.method || '',
+            option: pay.option || '',
+            amount: pay.amount || null,
+            currency: pay.currency || 'PHP',
+            reference: pay.reference || pay.reference_no || '',
+            payer_name: pay.payer_name || pay.gcash_name || '',
+            payer_number: pay.payer_number || pay.gcash_number || ''
+          }),
+          proof_of_payment: proofUrl,
+          reference_no: pay.reference || pay.reference_no || '',
+          gcash_name: pay.gcash_name || '',
+          gcash_number: pay.gcash_number || ''
+        });
+      } catch {}
     }
 
     return res.status(201).json({
@@ -459,13 +493,13 @@ exports.listApproved = async (req, res) => {
     const email = String(req.query.email || '').trim();
     if (!email) return res.status(400).json({ message: 'Email is required' });
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
-const { data, error } = await supabaseAdmin
-  .from('client_service_request_status')
-  .select('id, request_group_id, status, created_at, email_address, client_id, auth_uid, info, details, rate')
-  .eq('status', 'approved')
-  .eq('email_address', email)
-  .order('created_at', { ascending: false })
-  .limit(limit);
+    const { data, error } = await supabaseAdmin
+      .from('client_service_request_status')
+      .select('id, request_group_id, status, created_at, email_address, client_id, auth_uid, info, details, rate')
+      .eq('status', 'approved')
+      .eq('email_address', email)
+      .order('created_at', { ascending: false })
+      .limit(limit);
     if (error) throw error;
 
     const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
@@ -539,32 +573,32 @@ exports.listCurrent = async (req, res) => {
       const r = row.rate || {};
       const gid = row.details?.request_group_id || row.info?.request_group_id || row.rate?.request_group_id || '';
       const base = {
-  id: gid,
-  client_id: row.info?.client_id || null,
-  auth_uid: row.info?.auth_uid || null,
-  created_at: d.created_at || row.info?.created_at || new Date().toISOString(),
-  details: {
-    service_type: d.service_type || '',
-    service_task: d.service_task || '',
-    preferred_date: d.preferred_date || '',
-    preferred_time: d.preferred_time || '',
-    is_urgent: d.is_urgent || '',
-    request_image_url: d.request_image_url || null,
-    image_name: d.image_name || null,
-    service_description: d.service_description || ''
-  },
-  rate: {
-    rate_type: r.rate_type || '',
-    rate_from: r.rate_from || '',
-    rate_to: r.rate_to || '',
-    rate_value: r.rate_value || ''
-  },
-  info: {
-    profile_picture_url: row.info?.profile_picture_url || null,
-    first_name: row.info?.first_name || null,
-    last_name: row.info?.last_name || null
-  }
-};
+        id: gid,
+        client_id: row.info?.client_id || null,
+        auth_uid: row.info?.auth_uid || null,
+        created_at: d.created_at || row.info?.created_at || new Date().toISOString(),
+        details: {
+          service_type: d.service_type || '',
+          service_task: d.service_task || '',
+          preferred_date: d.preferred_date || '',
+          preferred_time: d.preferred_time || '',
+          is_urgent: d.is_urgent || '',
+          request_image_url: d.request_image_url || null,
+          image_name: d.image_name || null,
+          service_description: d.service_description || ''
+        },
+        rate: {
+          rate_type: r.rate_type || '',
+          rate_from: r.rate_from || '',
+          rate_to: r.rate_to || '',
+          rate_value: r.rate_value || ''
+        },
+        info: {
+          profile_picture_url: row.info?.profile_picture_url || null,
+          first_name: row.info?.first_name || null,
+          last_name: row.info?.last_name || null
+        }
+      };
       if (scope === 'cancelled') {
         const cr = cancelReasonsMap[gid] || {};
         return { ...base, status: 'cancelled', canceled_at: cr.canceled_at || cancelMap[gid] || null, reason_choice: cr.reason_choice || null, reason_other: cr.reason_other || null };

@@ -1,4 +1,3 @@
-// clientservicerequestsModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 const crypto = require('crypto');
 
@@ -221,6 +220,27 @@ async function insertClientAgreements(row) {
   return data;
 }
 
+async function insertClientPaymentFee(row) {
+  const payload = {
+    request_group_id: row.request_group_id || null,
+    client_id: row.client_id || null,
+    auth_uid: row.auth_uid || null,
+    email_address: row.email_address || null,
+    payment: typeof row.payment === 'string' ? row.payment : JSON.stringify(row.payment || null),
+    proof_of_payment: row.proof_of_payment || '',
+    reference_no: row.reference_no || '',
+    gcash_name: row.gcash_name || '',
+    gcash_number: row.gcash_number || ''
+  };
+  const { data, error } = await supabaseAdmin
+    .from('client_payment_fee')
+    .insert([payload])
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 module.exports = {
   uploadDataUrlToBucket,
   findClientByEmail,
@@ -240,5 +260,6 @@ module.exports = {
   updateClientInformation,
   updateServiceRequestDetails,
   updateServiceRate,
-  insertClientAgreements
+  insertClientAgreements,
+  insertClientPaymentFee
 };
