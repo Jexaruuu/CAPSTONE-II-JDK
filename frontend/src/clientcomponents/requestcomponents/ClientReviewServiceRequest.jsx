@@ -23,6 +23,8 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   const [payFields, setPayFields] = useState({ name: '', number: '', ref: '', screenshotDataUrl: '' });
   const [payProcessing, setPayProcessing] = useState(false);
   const [paymentMeta, setPaymentMeta] = useState(null);
+  const [showPayProcessing, setShowPayProcessing] = useState(false);
+  const [showPaySuccess, setShowPaySuccess] = useState(false);
   const FEE = 150;
 
   useEffect(() => {
@@ -64,7 +66,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   }, [headersWithU]);
 
   useEffect(() => {
-    const lock = isSubmitting || showSuccess || isLoadingBack || showPay;
+    const lock = isSubmitting || showSuccess || isLoadingBack || showPay || showPayProcessing || showPaySuccess;
     const html = document.documentElement;
     const body = document.body;
     const prevHtmlOverflow = html.style.overflow;
@@ -80,7 +82,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       html.style.overflow = prevHtmlOverflow || '';
       body.style.overflow = prevBodyOverflow || '';
     };
-  }, [isSubmitting, showSuccess, isLoadingBack, showPay]);
+  }, [isSubmitting, showSuccess, isLoadingBack, showPay, showPayProcessing, showPaySuccess]);
 
   useEffect(() => {
     if (!isLoadingBack) return;
@@ -282,8 +284,8 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     setPayProcessing(true);
     try {
       if (payMethod === 'qr') {
-        if (!payFields.ref) {
-          setPayError('Enter the GCASH reference number.');
+        if (!payFields.screenshotDataUrl) {
+          setPayError('Upload the GCash payment screenshot.');
           setPayProcessing(false);
           return;
         }
@@ -306,12 +308,21 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       };
       setPaymentMeta(meta);
       setShowPay(false);
-      await handleConfirm(meta);
+      setShowPayProcessing(true);
+      setTimeout(() => {
+        setShowPayProcessing(false);
+        setShowPaySuccess(true);
+      }, 1500);
     } catch {
       setPayError('Payment confirmation failed.');
     } finally {
       setPayProcessing(false);
     }
+  };
+
+  const proceedAfterPaymentSuccess = async () => {
+    setShowPaySuccess(false);
+    await handleConfirm(paymentMeta);
   };
 
   const handleConfirm = async (payment = null) => {
@@ -609,6 +620,10 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       replace: true,
     });
   };
+
+  const isConfirmDisabled = payMethod === 'qr'
+    ? !payFields.screenshotDataUrl
+    : !(payFields.name && payFields.number);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
@@ -1082,14 +1097,100 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                 </button>
                 <button
                   type="button"
-                  disabled={payProcessing}
+                  disabled={payProcessing || isConfirmDisabled}
                   onClick={handleConfirmPayment}
-                  className="w-full sm:w-1/2 h-[48px] px-5 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 disabled:opacity-60"
+                  className={`w-full sm:w-1/2 h-[48px] px-5 rounded-xl ${payProcessing || isConfirmDisabled ? 'bg-[#008cfc] text-white opacity-60 cursor-not-allowed' : 'bg-[#008cfc] text-white hover:bg-[#0077d6]'} transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40`}
                 >
-                  {payProcessing ? 'Processing…' : `Confirm Payment`}
+                  {payProcessing ? 'Processing…' : 'Confirm Payment'}
                 </button>
               </div>
               <div className="mt-3 text-center text-[11px] text-gray-500">GCash only • Secure payment • Non-refundable posting fee</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPayProcessing && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Processing payment"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[360px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-32 h-32">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{ borderWidth: '8px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-14 h-14 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center space-y-1">
+              <div className="text-lg font-semibold text-gray-900">Processing Payment</div>
+              <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPaySuccess && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Payment successful"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img
+                  src="/jdklogo.png"
+                  alt="JDK Homecare Logo"
+                  className="w-16 h-16 object-contain"
+                  onError={() => setLogoBroken(true)}
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Payment Successful!</div>
+              <div className="text-sm text-gray-600">Your payment was received. You can now submit your request.</div>
+            </div>
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={proceedAfterPaymentSuccess}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+              >
+                Continue
+              </button>
             </div>
           </div>
         </div>

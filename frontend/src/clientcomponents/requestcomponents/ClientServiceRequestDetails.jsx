@@ -482,41 +482,49 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     return false;
   };
 
-  const PopList = ({ items, value, onSelect, disabledLabel, emptyLabel='No options', fullWidth=false, title='Select', clearable=false, onClear, clearText='Clear' }) => (
-    <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
-      <div className="text-sm font-semibold text-gray-800 px-2 pb-2">{title}</div>
-      <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
-        {items && items.length ? items.map((it) => {
-          const isSel = value === it;
-          const disabled = disabledLabel && disabledLabel(it);
-          const colorClass = disabled ? 'text-gray-300 cursor-not-allowed' : `hover:bg-blue-50 ${isGreenTime(it) ? 'text-green-600' : isRedTime(it) ? 'text-red-600' : 'text-gray-700'}`;
-          return (
-            <button
-              key={it}
-              type="button"
-              disabled={disabled}
-              onClick={() => !disabled && onSelect(it)}
-              className={[
-                'text-left py-2 px-3 rounded-lg text-sm',
-                colorClass,
-                isSel && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
-              ].join(' ')}
-            >
-              {to12h(it)}
-            </button>
-          );
-        }) : (
-          <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
-        )}
+  const PopList = ({ items, value, onSelect, disabledLabel, emptyLabel='No options', fullWidth=false, title='Select', clearable=false, onClear, clearText='Clear' }) => {
+    const isTimeString = (s) => /^\d{1,2}:\d{2}$/.test(String(s || ''));
+    const timeMode = Array.isArray(items) && items.length > 0 && items.every(isTimeString);
+    return (
+      <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
+        <div className="text-sm font-semibold text-gray-800 px-2 pb-2">{title}</div>
+        <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
+          {items && items.length ? items.map((it) => {
+            const isSel = value === it;
+            const disabled = disabledLabel && disabledLabel(it);
+            const colorClass = disabled
+              ? 'text-gray-300 cursor-not-allowed'
+              : timeMode
+                ? `hover:bg-blue-50 ${isGreenTime(it) ? 'text-green-600' : isRedTime(it) ? 'text-red-600' : 'text-gray-700'}`
+                : 'hover:bg-blue-50 text-gray-700';
+            return (
+              <button
+                key={it}
+                type="button"
+                disabled={disabled}
+                onClick={() => !disabled && onSelect(it)}
+                className={[
+                  'text-left py-2 px-3 rounded-lg text-sm',
+                  colorClass,
+                  isSel && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
+                ].join(' ')}
+              >
+                {timeMode ? to12h(it) : it}
+              </button>
+            );
+          }) : (
+            <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-3 px-2">
+          <span className="text-xs text-gray-400">{(items && items.length ? items.length : 0)} result{(items && items.length === 1) ? '' : 's'}</span>
+          {clearable ? (
+            <button type="button" onClick={onClear} className="text-xs text-gray-500 hover:text-gray-700">{clearText}</button>
+          ) : <span />}
+        </div>
       </div>
-      <div className="flex items-center justify-between mt-3 px-2">
-        <span className="text-xs text-gray-400">{(items && items.length ? items.length : 0)} result{(items && items.length === 1) ? '' : 's'}</span>
-        {clearable ? (
-          <button type="button" onClick={onClear} className="text-xs text-gray-500 hover:text-gray-700">{clearText}</button>
-        ) : <span />}
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
@@ -1050,7 +1058,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
             Back : Personal Information
           </button>
 
-          <button
+        <button
             type="button"
             onClick={onNextClick}
             disabled={!isFormValid}

@@ -89,6 +89,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   const [payFields, setPayFields] = useState({ name: '', number: '', ref: '', screenshotDataUrl: '' });
   const [payProcessing, setPayProcessing] = useState(false);
   const [paymentMeta, setPaymentMeta] = useState(null);
+  const [showPaySuccess, setShowPaySuccess] = useState(false);
   const FEE = 150;
 
   useEffect(() => {
@@ -405,18 +406,15 @@ const WorkerReviewPost = ({ handleBack }) => {
 
   const handleConfirmPayment = async () => {
     setPayError('');
-    setPayProcessing(true);
     try {
       if (payMethod === 'qr') {
-        if (!payFields.ref) {
-          setPayError('Enter the GCASH reference number.');
-          setPayProcessing(false);
+        if (!payFields.screenshotDataUrl) {
+          setPayError('Upload the GCash payment screenshot.');
           return;
         }
       } else {
         if (!payFields.name || !payFields.number) {
           setPayError('Provide GCash name and number.');
-          setPayProcessing(false);
           return;
         }
       }
@@ -432,10 +430,17 @@ const WorkerReviewPost = ({ handleBack }) => {
       };
       setPaymentMeta(meta);
       setShowPay(false);
-      await handleConfirm(meta);
+      setPayProcessing(true);
+      setTimeout(() => {
+        setPayProcessing(false);
+        setShowPaySuccess(true);
+        setTimeout(async () => {
+          setShowPaySuccess(false);
+          await handleConfirm(meta);
+        }, 1200);
+      }, 1200);
     } catch (e) {
       setPayError('Payment confirmation failed.');
-    } finally {
       setPayProcessing(false);
     }
   };
@@ -807,7 +812,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   };
 
   useEffect(() => {
-    const lock = isSubmitting || showSuccess || isLoadingBack || showPay;
+    const lock = isSubmitting || showSuccess || isLoadingBack || showPay || payProcessing || showPaySuccess;
     if (!lock) return;
     const onPopState = () => {
       window.history.pushState(null, '', window.location.href);
@@ -831,7 +836,7 @@ const WorkerReviewPost = ({ handleBack }) => {
       body.style.overflow = prevBodyOverflow || '';
       window.removeEventListener('keydown', blockKeys, true);
     };
-  }, [isSubmitting, showSuccess, isLoadingBack, showPay]);
+  }, [isSubmitting, showSuccess, isLoadingBack, showPay, payProcessing, showPaySuccess]);
 
   const TaskPill = ({ children }) => (
     <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 text-xs md:text-sm px-2.5 py-1">
@@ -865,6 +870,10 @@ const WorkerReviewPost = ({ handleBack }) => {
     const uniq = Array.from(new Set(clean));
     return uniq.length ? uniq.join(', ') : '-';
   };
+
+  const canConfirmPayment = payMethod === 'qr'
+    ? !!payFields.screenshotDataUrl
+    : !!payFields.name && !!payFields.number;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
@@ -1207,12 +1216,6 @@ const WorkerReviewPost = ({ handleBack }) => {
             e.preventDefault();
             e.stopPropagation();
           }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              e.preventDefault();
-              e.stopPropagation();
-            }
-          }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -1324,14 +1327,109 @@ const WorkerReviewPost = ({ handleBack }) => {
                 </button>
                 <button
                   type="button"
-                  disabled={payProcessing}
+                  disabled={payProcessing || !canConfirmPayment}
                   onClick={handleConfirmPayment}
                   className="w-full sm:w-1/2 h-[48px] px-5 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 disabled:opacity-60"
                 >
-                  {payProcessing ? 'Processing…' : `Confirm Payment`}
+                  {payProcessing ? 'Processing…' : 'Confirm Payment'}
                 </button>
               </div>
               <div className="mt-3 text-center text-[11px] text-gray-500">GCash only • Secure payment • Non-refundable application fee</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {payProcessing && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Processing payment"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center space-y-1">
+              <div className="text-lg font-semibold text-gray-900">Processing Payment</div>
+              <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPaySuccess && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Payment successful"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img
+                  src="/jdklogo.png"
+                  alt="JDK Homecare Logo"
+                  className="w-16 h-16 object-contain"
+                  onError={() => setLogoBroken(true)}
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Payment Successfully</div>
+              <div className="text-sm text-gray-600">Submitting your application…</div>
             </div>
           </div>
         </div>

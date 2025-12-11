@@ -1,4 +1,3 @@
-// controllers/workerapplicationController.js
 const {
   uploadDataUrlToBucket,
   insertWorkerInformation,
@@ -16,6 +15,8 @@ const {
 } = require('../models/workerapplicationModel');
 
 const { supabaseAdmin } = require('../supabaseClient');
+
+const fallbackProfile = { profile_picture_url: '/fallback-profile.png', profile_picture_name: 'fallback-profile.png' };
 
 function friendlyError(err) {
   const raw = err?.message || String(err);
