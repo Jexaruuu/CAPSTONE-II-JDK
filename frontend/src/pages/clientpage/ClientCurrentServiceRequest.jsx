@@ -197,7 +197,7 @@ const StatusBadge = ({ status, expired }) => {
   return null;
 };
 
-const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete }) => {
+const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep }) => {
   const d = item.details || {};
   const rate = item.rate || {};
   const Icon = iconForService(d.service_type || d.service_task);
@@ -343,8 +343,16 @@ export default function ClientCurrentServiceRequest() {
   const [showDeleteBusy, setShowDeleteBusy] = useState(false);
   const [showDeleteDone, setShowDeleteDone] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
+  const [dotStep, setDotStep] = useState(0);
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setDotStep((s) => (s + 1) % 4);
+    }, 350);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (showReason || showDelete || showDeleteConfirm || showDeleteBusy || showDeleteDone || editLoading || isOpeningView) {
@@ -823,11 +831,22 @@ export default function ClientCurrentServiceRequest() {
           ) : (
             paginated.map((item) => {
               const expired = isExpiredDT(item?.details?.preferred_date, item?.details?.preferred_time);
+              const isApproved = String(item?.status || "").toLowerCase() === "approved";
               return (
                 <div key={item.id} className="space-y-2">
                   <div className="flex items-center justify-end gap-2 pr-1">
                     <span className="text-gray-700 font-semibold">Status:</span>
                     <StatusBadge status={item.status} expired={expired} />
+                    {isApproved && !expired && (
+                      <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+                        Matching worker
+                        <span className="ml-1 inline-flex w-6 justify-between font-mono">
+                          <span className={`transition-opacity duration-200 ${dotStep >= 1 ? "opacity-100" : "opacity-0"}`}>.</span>
+                          <span className={`transition-opacity duration-200 ${dotStep >= 2 ? "opacity-100" : "opacity-0"}`}>.</span>
+                          <span className={`transition-opacity duration-200 ${dotStep >= 3 ? "opacity-100" : "opacity-0"}`}>.</span>
+                        </span>
+                      </span>
+                    )}
                   </div>
                   <Card
                     item={item}
@@ -836,6 +855,7 @@ export default function ClientCurrentServiceRequest() {
                     onView={onView}
                     onReason={onReason}
                     onDelete={openDelete}
+                    dotStep={dotStep}
                   />
                 </div>
               );
