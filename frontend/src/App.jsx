@@ -20,6 +20,7 @@ import ClientCompletedRequest from './pages/clientpage/ClientCompletedRequest';
 import ClientFindAvailableWorker from './pages/clientpage/ClientFindAvailableWorker';
 import ClientViewServiceRequest from './pages/clientpage/ClientViewServiceRequest';
 import ClientEditServiceRequest from './pages/clientpage/ClientEditServiceRequest';
+import ClientOnGoingRequest from './pages/clientpage/ClientOnGoingRequest';
 
 import WorkerSignUpPage from './pages/signuppage/WorkerSignup';
 import WorkerSuccessPage from './pages/successpage/WorkerSuccess';
@@ -34,7 +35,6 @@ import WorkerCompletedWorks from './pages/workerpage/WorkerCompletedWorks';
 import WorkerFindAvailableClient from './pages/workerpage/WorkerFindAvailableClient';
 import WorkerViewApplication from './pages/workerpage/WorkerViewApplication';
 import WorkerEditApplication from './pages/workerpage/WorkerEditApplication';
-
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
 import AdminSignup from './pages/signuppage/AdminSignup';
@@ -294,7 +294,7 @@ const App = () => {
           }
         />
 
-          <Route
+        <Route
           path="/current-service-request/:id"
           element={
             <ProtectedRoute>
@@ -317,21 +317,30 @@ const App = () => {
         />
 
         <Route
-  path="/edit-work-application/:id"
-  element={
-    <ProtectedRoute>
-      <WorkerOnlyRoute>
-        <WorkerEditApplication />
-      </WorkerOnlyRoute>
-    </ProtectedRoute>
-  }
-/>
+          path="/edit-work-application/:id"
+          element={
+            <ProtectedRoute>
+              <WorkerOnlyRoute>
+                <WorkerEditApplication />
+              </WorkerOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
 
+        <Route
+          path="/ongoing-service"
+          element={
+            <ProtectedRoute>
+              <ClientOnlyRoute>
+                <ClientOnGoingRequest />
+              </ClientOnlyRoute>
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
-    
   );
 };
 
