@@ -253,8 +253,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       if (image) return;
       if (localStorage.getItem(IMAGE_CLEARED_FLAG) === '1') return;
       const path = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : '';
-    const isCreateFlow = path.includes('/clientpostrequest');
-     if (isCreateFlow) return;
+      const isCreateFlow = path.includes('/clientpostrequest');
+      if (isCreateFlow) return;
       try {
         const cached = JSON.parse(localStorage.getItem(IMAGE_CACHE_KEY) || 'null');
         if (cached && cached.image) {
@@ -445,7 +445,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const [h, m] = hhmm.split(':').map((x) => parseInt(x, 10));
     const ampm = h >= 12 ? 'PM' : 'AM';
     const hr = h % 12 === 0 ? 12 : h % 12;
-    return `${String(hr).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+    return `${hr}:${String(m).padStart(2, '0')} ${ampm}`;
   };
   const timeSlots = (() => {
     const slots = [];
@@ -469,6 +469,19 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     }
   }, [preferredDate, todayStr]);
 
+  const isGreenTime = (t) => {
+    const [hh, mm] = t.split(':').map((x) => parseInt(x, 10));
+    if (hh >= 1 && hh <= 5) return true;
+    if (hh === 6 && (mm === 0 || mm === 30)) return true;
+    return false;
+  };
+  const isRedTime = (t) => {
+    const [hh, mm] = t.split(':').map((x) => parseInt(x, 10));
+    if (hh >= 20 && hh <= 23) return true;
+    if (hh === 0 && (mm === 0 || mm === 30)) return true;
+    return false;
+  };
+
   const PopList = ({ items, value, onSelect, disabledLabel, emptyLabel='No options', fullWidth=false, title='Select', clearable=false, onClear, clearText='Clear' }) => (
     <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
       <div className="text-sm font-semibold text-gray-800 px-2 pb-2">{title}</div>
@@ -476,6 +489,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         {items && items.length ? items.map((it) => {
           const isSel = value === it;
           const disabled = disabledLabel && disabledLabel(it);
+          const colorClass = disabled ? 'text-gray-300 cursor-not-allowed' : `hover:bg-blue-50 ${isGreenTime(it) ? 'text-green-600' : isRedTime(it) ? 'text-red-600' : 'text-gray-700'}`;
           return (
             <button
               key={it}
@@ -484,11 +498,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
               onClick={() => !disabled && onSelect(it)}
               className={[
                 'text-left py-2 px-3 rounded-lg text-sm',
-                disabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50',
+                colorClass,
                 isSel && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
               ].join(' ')}
             >
-              {it}
+              {to12h(it)}
             </button>
           );
         }) : (
@@ -658,7 +672,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         aria-label="Open calendar"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" />
+                          <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 01-1-1z" />
                           <path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" />
                         </svg>
                       </button>
@@ -827,7 +841,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                                   setPreferredTime(t);
                                   setPtOpen(false);
                                 }}
-                                className={`py-2 rounded-lg text-sm ${disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700'} ${preferredTime === t && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''}`}
+                                className={`py-2 rounded-lg text-sm ${disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 '}${disabled ? '' : (isGreenTime(t) ? 'text-green-600' : isRedTime(t) ? 'text-red-600' : 'text-gray-700')} ${preferredTime === t && !disabled ? ' bg-blue-600 text-white hover:bg-blue-600' : ''}`}
                               >
                                 {to12h(t)}
                               </button>
@@ -895,7 +909,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         aria-label="Open tools provided options"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" />
                         </svg>
                       </button>
                     </div>
@@ -1060,7 +1074,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
+          <div className="relative w-[320px] max-w=[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"

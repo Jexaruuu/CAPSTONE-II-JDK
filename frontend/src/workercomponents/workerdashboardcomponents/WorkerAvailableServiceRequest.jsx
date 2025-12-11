@@ -611,7 +611,7 @@ const WorkerAvailableServiceRequest = () => {
                               href={req.request_group_id ? `/worker/requests/${req.request_group_id}` : '#'}
                               onPointerDown={(e)=>e.stopPropagation()}
                               onClick={(e)=>{ e.preventDefault(); setViewRequest(req); setViewOpen(true); }}
-                              className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition self-end"
+                              className="inline-flex items-center justify-center px-4 h-10 rounded-md bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition self-end"
                             >
                               View Request
                             </a>

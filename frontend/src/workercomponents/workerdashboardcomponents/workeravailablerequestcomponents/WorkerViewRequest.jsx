@@ -6,10 +6,38 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const [fetched, setFetched] = useState(null);
+  const [checkingApply, setCheckingApply] = useState(false);
+  const [showNoApproved, setShowNoApproved] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
+  const [btnLoading, setBtnLoading] = useState(false);
+
   const base = request || {};
   const info = base.info || {};
   const emailGuess = base.client_email || info.email_address || base.email || base.email_address || base.emailAddress || "";
   const gidGuess = base.request_group_id || base.requestGroupId || base.requestGroupID || base.group_id || base.groupId || "";
+
+  const appU = useMemo(() => {
+    try {
+      const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+      const au =
+        a.auth_uid ||
+        a.authUid ||
+        a.uid ||
+        a.id ||
+        localStorage.getItem('auth_uid') ||
+        '';
+      const e =
+        a.email ||
+        localStorage.getItem('worker_email') ||
+        localStorage.getItem('email_address') ||
+        localStorage.getItem('email') ||
+        '';
+      return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
+    } catch {
+      return '';
+    }
+  }, []);
+  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
 
   useEffect(() => {
     let cancel = false;
@@ -66,6 +94,23 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
       body.style.paddingRight = prevPaddingRight || "";
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!btnLoading) return;
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [btnLoading]);
 
   const iconFor = (s) => {
     const k = String(s || "").toLowerCase();
@@ -248,7 +293,29 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     });
   }, [w, i, d]);
 
-  const applyNow = () => {
+  const hasActiveApproved = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/workerapplications`, {
+        withCredentials: true,
+        headers: headersWithU,
+        params: { scope: 'active' }
+      });
+      const items = Array.isArray(res.data?.items) ? res.data.items : [];
+      return items.some(r => String(r.status || '').toLowerCase() === 'approved');
+    } catch {
+      return false;
+    }
+  };
+
+  const applyNow = async () => {
+    if (checkingApply) return;
+    setCheckingApply(true);
+    const ok = await hasActiveApproved();
+    setCheckingApply(false);
+    if (!ok) {
+      setShowNoApproved(true);
+      return;
+    }
     if (typeof onApply === "function") onApply({ request: w });
     else window.location.href = "/worker/apply";
   };
@@ -280,34 +347,38 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                           {emailAddress ? <div className="text-xs text-gray-600 truncate">{emailAddress}</div> : null}
                         </div>
                         <div className="hidden" />
-                        {singleIcon ? (
-                          <div className="relative w-18 h-18 flex items-start justify-end">
-                            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200">
-                              {React.createElement(icons[0] || Hammer, { size: 16, className: "text-[#008cfc]" })}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="relative w-18 h-18 grid grid-cols-2 auto-rows-[minmax(0,1fr)] gap-2">
-                            {(icons.length ? icons : [Hammer]).map((Icon, idx) => {
-                              const pos = [
-                                { gridColumn: "1", gridRow: "1" },
-                                { gridColumn: "2", gridRow: "1" },
-                                { gridColumn: "2", gridRow: "2" },
-                                { gridColumn: "1", gridRow: "2" },
-                                { gridColumn: "2", gridRow: "3" }
-                              ][idx] || { gridColumn: "1", gridRow: "3" };
-                              return (
-                                <span
-                                  key={idx}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200"
-                                  style={{ gridColumn: pos.gridColumn, gridRow: pos.gridRow }}
-                                >
-                                  {React.createElement(Icon || Hammer, { size: 16, className: "text-[#008cfc]" })}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
+                        {(() => {
+                          const icons = (serviceTypes || []).slice(0, 5).map((lbl) => iconFor(lbl));
+                          const singleIcon = icons.length === 1;
+                          return singleIcon ? (
+                            <div className="relative w-18 h-18 flex items-start justify-end">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200">
+                                {React.createElement(icons[0] || Hammer, { size: 16, className: "text-[#008cfc]" })}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="relative w-18 h-18 grid grid-cols-2 auto-rows-[minmax(0,1fr)] gap-2">
+                              {(icons.length ? icons : [Hammer]).map((Icon, idx) => {
+                                const pos = [
+                                  { gridColumn: "1", gridRow: "1" },
+                                  { gridColumn: "2", gridRow: "1" },
+                                  { gridColumn: "2", gridRow: "2" },
+                                  { gridColumn: "1", gridRow: "2" },
+                                  { gridColumn: "2", gridRow: "3" }
+                                ][idx] || { gridColumn: "1", gridRow: "3" };
+                                return (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200"
+                                    style={{ gridColumn: pos.gridColumn, gridRow: pos.gridRow }}
+                                  >
+                                    {React.createElement(Icon || Hammer, { size: 16, className: "text-[#008cfc]" })}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="mt-2 flex items-center gap-1">
                         {[0,1,2,3,4].map((i) => (
@@ -424,7 +495,13 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                       </span>
                     </div>
                     <button onClick={onClose} className="hidden">Close</button>
-                    <button onClick={applyNow} className="h-9 px-4 rounded-md bg-[#008cfc] text-sm text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Accept Request</button>
+                    <button
+                      onClick={applyNow}
+                      disabled={checkingApply}
+                      className={`h-9 px-4 rounded-md text-sm inline-flex items-center justify-center ${checkingApply ? "bg-[#98cfff] text-white cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-[#0078d6]"}`}
+                    >
+                      {checkingApply ? "Checking…" : "Accept Request"}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -439,6 +516,96 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
           </div>
         </div>
       </div>
+
+      {showNoApproved ? (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowNoApproved(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483648]">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">
+                You need an approved worker application to accept requests
+              </div>
+              <div className="text-sm text-gray-600">
+                Submit your work application and wait for approval. Once approved, you can accept client requests.
+              </div>
+            </div>
+            <div className="mt-6 grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowNoApproved(false)}
+                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition hidden"
+              >
+                Cancel
+              </button>
+              <a
+                href="/workerpostapplication"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowNoApproved(false);
+                  setBtnLoading(true);
+                  setTimeout(() => { window.location.href = "/workerpostapplication"; }, 2000);
+                }}
+                className="px-6 py-3 bg-[#008cfc] text-white rounded-md shadow-sm hover:bg-blue-700 transition text-center whitespace-nowrap"
+              >
+                Become a Worker
+              </a>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {btnLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
