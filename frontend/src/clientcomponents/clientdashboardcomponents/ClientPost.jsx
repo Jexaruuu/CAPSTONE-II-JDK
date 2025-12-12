@@ -320,31 +320,31 @@ const ClientPost = () => {
   }, []);
 
   useEffect(() => {
-    const loadCurrent = async () => {
-      try {
-        const email = getClientEmail();
-        const { data } = await axios.get(`${API_BASE}/api/client/service-requests`, {
-          withCredentials: true,
-          headers: headersWithU,
-          params: { email }
-        });
-        const items = Array.isArray(data?.items) ? data.items : [];
-        const filtered = items.filter((it) => {
-          const stat = String(it?.status || it?.details?.status || '').toLowerCase();
-          if (stat === 'declined') return false;
-          const d = it?.details?.preferred_date;
-          const t = it?.details?.preferred_time;
-          return !isExpiredPreferred(d, t);
-        });
-        setCurrentItems(filtered);
-      } catch {
-        setCurrentItems([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadCurrent();
-  }, [appU]);
+  const loadCurrent = async () => {
+    try {
+      const email = getClientEmail();
+      const { data } = await axios.get(`${API_BASE}/api/clientservicerequests`, {
+        withCredentials: true,
+        headers: headersWithU,
+        params: { email }
+      });
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const filtered = items.filter((it) => {
+        const stat = String(it?.status || it?.details?.status || '').toLowerCase();
+        if (stat === 'declined') return false;
+        const d = it?.details?.preferred_date;
+        const t = it?.details?.preferred_time;
+        return !isExpiredPreferred(d, t);
+      });
+      setCurrentItems(filtered);
+    } catch {
+      setCurrentItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+  loadCurrent();
+}, [appU]);
 
   useEffect(() => {
     if (banners.length < 2) return;

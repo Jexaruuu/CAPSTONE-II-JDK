@@ -16,9 +16,7 @@ const {
   updateServiceRequestDetails,
   updateServiceRate,
   insertClientAgreements,
-  insertClientPaymentFee,
-  getDeletedByGroupIds,
-  insertClientDeletedRequest
+  insertClientPaymentFee
 } = require('../models/clientservicerequestsModel');
 
 const { insertPendingRequest } = require('../models/clientservicerequeststatusModel');
@@ -127,9 +125,8 @@ exports.listOpen = async (req, res) => {
     const gids = valid.map(r => r.request_group_id).filter(Boolean);
     let cancelled = [];
     try { cancelled = await getCancelledByGroupIds(gids); } catch {}
-    let deleted = [];
-    try { deleted = await getDeletedByGroupIds(gids); } catch {}
-    const open = valid.filter(r => !cancelled.includes(r.request_group_id) && !deleted.includes(r.request_group_id));
+
+    const open = valid.filter(r => !cancelled.includes(r.request_group_id));
 
     const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
     const combined = await Promise.all(open.map(async r => {
@@ -260,13 +257,11 @@ exports.submitFullRequest = async (req, res) => {
       const rows = Array.isArray(existing) ? existing : [];
       const gids = rows.map(r => r.request_group_id).filter(Boolean);
       const cancelled = await getCancelledByGroupIds(gids);
-      const deleted = await getDeletedByGroupIds(gids);
       const active = rows.filter(r => {
         const s = String(r.status || '').toLowerCase();
         const notCancelled = !cancelled.includes(r.request_group_id);
-        const notDeleted = !deleted.includes(r.request_group_id);
         const notExpired = !isExpiredPreferredDateTime(r?.details || {});
-        return (s === 'pending' || s === 'approved') && notExpired && notCancelled && notDeleted;
+        return (s === 'pending' || s === 'approved') && notExpired && notCancelled;
       });
       if (active.length > 0) return res.status(409).json({ message: 'You already have an active service request.' });
     } catch {}
@@ -477,10 +472,10 @@ exports.submitFullRequest = async (req, res) => {
             payer_name: pay.payer_name || pay.gcash_name || '',
             payer_number: pay.payer_number || pay.gcash_number || ''
           }),
-          proof_of_payment: proofUrl,
-          reference_no: pay.reference || pay.reference_no || '',
-          gcash_name: pay.gcash_name || '',
-          gcash_number: pay.gcash_number || ''
+            proof_of_payment: proofUrl,
+            reference_no: pay.reference || pay.reference_no || '',
+            gcash_name: pay.gcash_name || '',
+            gcash_number: pay.gcash_number || ''
         });
       } catch {}
     }
@@ -534,9 +529,7 @@ exports.listApproved = async (req, res) => {
     const gids = fixed.map(it => it.request_group_id).filter(Boolean);
     let cancelled = [];
     try { cancelled = await getCancelledByGroupIds(gids); } catch {}
-    let deleted = [];
-    try { deleted = await getDeletedByGroupIds(gids); } catch {}
-    const filtered = fixed.filter((it) => !isExpiredPreferredDateTime(it?.details || {}) && !cancelled.includes(it.request_group_id) && !deleted.includes(it.request_group_id));
+    const filtered = fixed.filter((it) => !isExpiredPreferredDateTime(it?.details || {}) && !cancelled.includes(it.request_group_id));
     return res.status(200).json({ items: filtered });
   } catch {
     return res.status(500).json({ message: 'Failed to load approved requests' });
@@ -555,14 +548,13 @@ exports.listCurrent = async (req, res) => {
     const cancelledIds = await getCancelledByGroupIds(groups);
     const cancelMap = await getCancelledMapByGroupIds(groups);
     const cancelReasonsMap = await getCancelledReasonsByGroupIds(groups);
-    const deletedIds = await getDeletedByGroupIds(groups);
     let targetGroups = groups;
     let statusValue = 'pending';
     if (scope === 'cancelled') {
       targetGroups = cancelledIds;
       statusValue = 'cancelled';
     } else {
-      const activeGroups = groups.filter(g => !cancelledIds.includes(g) && !deletedIds.includes(g));
+      const activeGroups = groups.filter(g => !cancelledIds.includes(g));
       targetGroups = activeGroups;
       statusValue = 'pending';
     }
@@ -570,8 +562,7 @@ exports.listCurrent = async (req, res) => {
       if (scope === 'cancelled') {
         targetGroups = cancelledIds.includes(groupIdFilter) ? [groupIdFilter] : [];
       } else {
-        if (deletedIds.includes(groupIdFilter)) targetGroups = [];
-        else targetGroups = cancelledIds.includes(groupIdFilter) ? [] : (groups.includes(groupIdFilter) ? [groupIdFilter] : []);
+        targetGroups = cancelledIds.includes(groupIdFilter) ? [] : (groups.includes(groupIdFilter) ? [groupIdFilter] : []);
       }
     }
     let statusMap = {};
@@ -682,21 +673,8 @@ exports.deleteRequest = async (req, res) => {
   try {
     const gid = String(req.params.groupId || '').trim();
     if (!gid) return res.status(400).json({ message: 'groupId is required' });
-
     const combined = await getCombinedByGroupId(gid);
     if (!combined) return res.status(404).json({ message: 'Not found' });
-
-    const info = combined.info || {};
-    const payload = {
-      request_group_id: gid,
-      client_id: info.client_id ?? null,
-      auth_uid: info.auth_uid ?? null,
-      email_address: info.email_address ?? null,
-      deleted_at: new Date().toISOString()
-    };
-
-    await insertClientDeletedRequest(payload);
-
     return res.status(200).json({ message: 'Request deleted', request_group_id: gid });
   } catch (e) {
     return res.status(500).json({ message: friendlyError(e) });

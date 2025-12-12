@@ -241,33 +241,6 @@ async function insertClientPaymentFee(row) {
   return data;
 }
 
-async function insertClientDeletedRequest(row) {
-  const payload = {
-    request_group_id: row.request_group_id || null,
-    client_id: row.client_id ?? null,
-    auth_uid: row.auth_uid ?? null,
-    email_address: row.email_address ?? null,
-    deleted_at: row.deleted_at || new Date().toISOString()
-  };
-  const { data, error } = await supabaseAdmin
-    .from('client_deleted_request')
-    .insert([payload])
-    .select('id')
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-async function getDeletedByGroupIds(groupIds) {
-  if (!Array.isArray(groupIds) || groupIds.length === 0) return [];
-  const { data, error } = await supabaseAdmin
-    .from('client_deleted_request')
-    .select('request_group_id')
-    .in('request_group_id', groupIds);
-  if (error) throw error;
-  return (data || []).map(x => x.request_group_id).filter(Boolean);
-}
-
 module.exports = {
   uploadDataUrlToBucket,
   findClientByEmail,
@@ -288,7 +261,5 @@ module.exports = {
   updateServiceRequestDetails,
   updateServiceRate,
   insertClientAgreements,
-  insertClientPaymentFee,
-  insertClientDeletedRequest,
-  getDeletedByGroupIds
+  insertClientPaymentFee
 };
