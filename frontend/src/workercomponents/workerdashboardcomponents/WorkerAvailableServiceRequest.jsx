@@ -119,17 +119,19 @@ const WorkerAvailableServiceRequest = () => {
     let ok = true;
     (async () => {
       const base = API_BASE.replace(/\/+$/,'');
-      const paths = [
+      let dataArr = [];
+      const primary = [`${base}/api/clientservicerequests/open`];
+      const fallbacks = [
         `${base}/api/admin/servicerequests`,
         `${base}/api/admin/servicerequests/approved`,
         `${base}/admin/servicerequests/approved`,
         `${base}/admin/service-requests`,
         `${base}/admin/servicerequests`
       ];
-      let dataArr = [];
-      for (const url of paths) {
+      for (const url of [...primary, ...fallbacks]) {
         try {
-          const { data, status } = await axios.get(url, { params: { status: 'approved' } });
+          const params = url.endsWith('/open') ? { limit: 50 } : { status: 'approved' };
+          const { data, status } = await axios.get(url, { params });
           if (status === 200) {
             const arr = Array.isArray(data)
               ? data
