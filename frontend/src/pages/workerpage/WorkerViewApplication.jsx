@@ -468,19 +468,13 @@ const WorkerViewApplication = () => {
       setSubmittingCancel(false);
       setShowCancel(true);
     } finally {
-      setTimeout(() => {
-        setSubmittingCancel(false);
-        setTimeout(() => {
-          jumpTop();
-          navigate('/workerdashboard', { replace: true, state: { cancelled: id } });
-        }, 300);
-      }, 600);
+      setSubmittingCancel(false);
     }
   };
 
   const handleGoAfterCancel = () => {
     jumpTop();
-    navigate('/current-application', { replace: true, state: { cancelled: id } });
+    navigate('/workerdashboard', { replace: true, state: { cancelled: id } });
   };
 
   const schedule_date = (fx?.details?.preferred_date || fx?.work?.preferred_date || '');
@@ -857,7 +851,7 @@ const WorkerViewApplication = () => {
                   onClick={handleGoAfterCancel}
                   className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                 >
-                  Go to Current Applications
+                  Go to Dashboard
                 </button>
               </div>
             </div>
