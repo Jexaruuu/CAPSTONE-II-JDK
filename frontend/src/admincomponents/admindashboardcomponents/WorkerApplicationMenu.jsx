@@ -1316,7 +1316,7 @@ age: ageValue ?? "-",
             <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium text-gray-700">Filter</span>
-                <div className="flex.items-center gap-2">
+                <div className="flex items-center gap-2">
                   {[{ key:"all",label:"All",count:counts.total },{ key:"pending",label:"Pending",count:counts.pending },{ key:"approved",label:"Approved",count:counts.approved },{ key:"declined",label:"Declined",count:counts.declined }].map((t) => {
                     const active = filter === t.key;
                     return (
