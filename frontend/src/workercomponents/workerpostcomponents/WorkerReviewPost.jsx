@@ -557,6 +557,12 @@ const WorkerReviewPost = ({ handleBack }) => {
         initialPayload.info.profilePicture = profilePicData;
       }
 
+      if (!initialPayload.info.profilePicture) {
+        setIsSubmitting(false);
+        setSubmitError('Please upload a profile picture.');
+        return;
+      }
+
       const docsCandidatesMerged = []
         .concat(Array.isArray(docsDraftA) ? docsDraftA : [])
         .concat(Array.isArray(docsDraftB) ? docsDraftB : []);
@@ -682,7 +688,7 @@ const WorkerReviewPost = ({ handleBack }) => {
         metadata: {
           profile_picture_name: initialPayload.info.profilePictureName || '',
           auth_uid: localStorage.getItem('auth_uid') || workerAuth.auth_uid || '',
-          profile_picture_data_url: profilePicData
+          profile_picture_data_url: initialPayload.info.profilePicture || ''
         }
       };
 
@@ -710,7 +716,8 @@ const WorkerReviewPost = ({ handleBack }) => {
         'barangay',
         'service_types',
         'service_description',
-        'rate_type'
+        'rate_type',
+        'profile_picture'
       ]);
       if (missing.length) {
         setIsSubmitting(false);
@@ -1230,7 +1237,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                 <button
                   type="button"
                   onClick={() => setPayMethod('qr')}
-                  className={`h-10 rounded-xl border ${payMethod==='qr'?'border-[#008cfc] bg-blue-50 text-[#008cfc]':'border-gray-300 text-gray-700'} transition`}
+                  className={`h-10 rounded-xl border ${payMethod==='qr'?'border[#008cfc] border-[#008cfc] bg-blue-50 text-[#008cfc]':'border-gray-300 text-gray-700'} transition`}
                 >
                   GCash QR
                 </button>

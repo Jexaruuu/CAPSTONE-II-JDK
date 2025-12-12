@@ -159,6 +159,7 @@ exports.submitFullApplication = async (req, res) => {
     const date_of_birth = pick(src, ['date_of_birth', 'birthDate', 'info.date_of_birth', 'info.birthDate', 'metadata.date_of_birth']);
     const age = pick(src, ['age', 'info.age', 'metadata.age']);
     const auth_uid = pick(src, ['auth_uid', 'authUid', 'info.auth_uid', 'metadata.auth_uid']);
+
     const profile_picture_any = pick(src, [
       'profile_picture',
       'profilePicture',
@@ -255,7 +256,7 @@ exports.submitFullApplication = async (req, res) => {
       paymentRow = {
         request_group_id,
         worker_id: Number.isFinite(Number(effectiveWorkerId)) ? Number(effectiveWorkerId) : null,
-        auth_uid: isUuid(effectiveAuthUid || auth_uid) ? (effectiveAuthUid || auth_uid) : null,
+        auth_uid: isUuid(effectiveAuthUid || auth_uid) ? (effectiveWorkerId ? effectiveAuthUid : (auth_uid || null)) : null,
         email_address: canonicalEmail || null,
         payment: JSON.stringify({
           method: paymentIn.method || '',
@@ -299,7 +300,7 @@ exports.submitFullApplication = async (req, res) => {
           profileUpload = null;
         }
       } else if (/^https?:\/\//i.test(s)) {
-        profileDirect = s;
+        if (!/\/fallback-profile\.png$/i.test(s)) profileDirect = s;
       } else {
         const coerced = coerceDataUrl(s, 'image/jpeg');
         if (coerced) {
@@ -325,14 +326,11 @@ exports.submitFullApplication = async (req, res) => {
       barangay: (barangay ?? metadata.barangay ?? '').toString(),
       date_of_birth: date_of_birth || null,
       age: age || null,
-      profile_picture_url: profileUpload?.url || profileDirect || metadata.profile_picture || metadata.profile_picture_url || null,
+      profile_picture_url: profileUpload?.url || profileDirect || null,
       profile_picture_name: profileUpload?.name || profile_picture_name || null
     };
 
-    if (!infoRow.profile_picture_url) {
-      infoRow.profile_picture_url = metadata.profile_picture || metadata.profile_picture_url || fallbackProfile?.profile_picture_url || null;
-      if (!infoRow.profile_picture_name) infoRow.profile_picture_name = fallbackProfile?.profile_picture_name || null;
-    }
+    if (!infoRow.profile_picture_url) return res.status(400).json({ message: 'Missing profile picture for this application.' });
 
     const missingInfo = [];
     if (!infoRow.email_address) missingInfo.push('email_address');
@@ -987,7 +985,7 @@ exports.updateByGroup = async (req, res) => {
           profile_picture_url = up?.url || profile_picture_url || null;
           profile_picture_name = up?.name || profile_picture_name || null;
         } else if (/^https?:\/\//i.test(s)) {
-          profile_picture_url = s;
+          if (!/\/fallback-profile\.png$/i.test(s)) profile_picture_url = s;
         }
       }
 

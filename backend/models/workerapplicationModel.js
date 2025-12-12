@@ -1,4 +1,3 @@
-// models/workerapplicationModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 const crypto = require('crypto');
 
