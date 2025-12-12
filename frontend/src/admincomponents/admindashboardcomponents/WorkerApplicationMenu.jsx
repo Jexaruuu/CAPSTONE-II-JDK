@@ -1097,7 +1097,7 @@ age: ageValue ?? "-",
           <SectionCard
             title="Service Rate"
             badge={
-              <span className="inline-flex items.center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="inline-flex items.center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white text-gray-700 border-gray-200">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
                 Pricing
               </span>
@@ -1316,7 +1316,7 @@ age: ageValue ?? "-",
             <div className="px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium text-gray-700">Filter</span>
-                <div className="flex items-center gap-2">
+                <div className="flex.items-center gap-2">
                   {[{ key:"all",label:"All",count:counts.total },{ key:"pending",label:"Pending",count:counts.pending },{ key:"approved",label:"Approved",count:counts.approved },{ key:"declined",label:"Declined",count:counts.declined }].map((t) => {
                     const active = filter === t.key;
                     return (
@@ -1425,7 +1425,7 @@ age: ageValue ?? "-",
                             className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
                             onClick={() => toggleSort("service_types_lex")}
                           >
-                            <span className="inline-flex items-center">
+                            <span className="inline-flex.items-center">
                               Service Type
                             </span>
                           </th>
@@ -1591,7 +1591,7 @@ age: ageValue ?? "-",
             aria-modal="true"
             aria-label="Worker application details"
             tabIndex={-1}
-            className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[2147483647] flex items-center justify.center p-4"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
             <div className="relative w-full max-w-[960px] max-h-[80vh] rounded-2xl border border-gray-200 bg-white shadow-2xl flex flex-col overflow-hidden">
@@ -1619,9 +1619,10 @@ age: ageValue ?? "-",
                       />
                     </div>
                     <div className="space-y-1">
-                      <div className="text-lg sm:text-xl font-semibold text-gray-900">
-                        {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
-                      </div>
+                      // display worker full name
+                                            <div className="text-lg sm:text-xl font-semibold text-gray-900">
+                                              {`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim() || "-"}
+                                            </div>
                       <div className="text-sm text-gray-500">{viewRow.email || "-"}</div>
                     </div>
                   </div>
@@ -1762,14 +1763,25 @@ age: ageValue ?? "-",
           >
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingDecline && setShowDecline(false)} />
             <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
-              <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
-                <div className="text-xl font-semibold">Decline Application</div>
-                <div className="text-xs opacity-90">Select reason for declining</div>
+              <div className="px-6 pt-6">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-100 grid place-items-center">
+                    <span className="text-blue-600 text-lg">ⓘ</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xl font-semibold text-gray-900">Decline Worker Application</div>
+                    <div className="text-sm text-gray-600">Select reason for declining.</div>
+                  </div>
+                </div>
               </div>
+
               <div className="px-6 py-5 space-y-4">
                 <div className="grid grid-cols-1 gap-2">
                   {REASONS_ADMIN.map((r) => (
-                    <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${declineReason===r?'border-red-500 ring-1 ring-red-300 bg-red-50':'border-gray-200 hover:bg-gray-50'}`}>
+                    <label
+                      key={r}
+                      className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${declineReason===r?'border-blue-500 ring-1 ring-blue-300 bg-blue-50':'border-gray-200 hover:bg-gray-50'}`}
+                    >
                       <input
                         type="radio"
                         name="decline-reason"
@@ -1790,12 +1802,13 @@ age: ageValue ?? "-",
                     onChange={(e) => setDeclineOther(e.target.value)}
                     disabled={submittingDecline}
                     placeholder="Type other reason here"
-                    className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                    className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
 
                 {declineErr ? <div className="text-sm text-red-700">{declineErr}</div> : null}
               </div>
+
               <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end bg-white">
                 <button
                   type="button"
@@ -1808,7 +1821,7 @@ age: ageValue ?? "-",
                 <button
                   type="button"
                   onClick={submitDecline}
-                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-60"
                   disabled={submittingDecline}
                 >
                   Confirm Decline
@@ -1828,7 +1841,7 @@ age: ageValue ?? "-",
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
             <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
-              <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
+              <div className="px-6 py-4 bg-gradient-to-r from-red-50 to.white border-b border-red-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
@@ -2028,49 +2041,49 @@ age: ageValue ?? "-",
           </div>
         )}
 
-        {showDeclineSuccess && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Application declined successfully"
-            tabIndex={-1}
-            autoFocus
-            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            className="fixed inset-0 z-[2147483647] flex.items-center justify-center"
-          >
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
-              <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-                {!logoBrokenDecline2 ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-16 h-16 object-contain"
-                    onError={() => setLogoBrokenDecline2(true)}
-                  />
-                ) : (
-                  <div className="w-16 h-16 rounded-full border border-[#0b82ff] flex items-center justify-center">
-                    <span className="font-bold text-[#0b82ff]">JDK</span>
-                  </div>
-                )}
-              </div>
-              <div className="mt-6 text-center space-y-2">
-                <div className="text-lg font-semibold text-gray-900">Application Declined Successfully</div>
-                <div className="text-sm text-gray-600">The application has been declined.</div>
-              </div>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowDeclineSuccess(false)}
-                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
+      {showDeclineSuccess && (
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-label="Application declined successfully"
+    tabIndex={-1}
+    autoFocus
+    onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+    className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+  >
+    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+    <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
+      <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+        {!logoBrokenDecline2 ? (
+          <img
+            src="/jdklogo.png"
+            alt="JDK Homecare Logo"
+            className="w-16 h-16 object-contain"
+            onError={() => setLogoBrokenDecline2(true)}
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-full border border-[#0b82ff] flex items-center justify-center">
+            <span className="font-bold text-[#0b82ff]">JDK</span>
           </div>
         )}
+      </div>
+      <div className="mt-6 text-center space-y-2">
+        <div className="text-lg font-semibold text-gray-900">Application Declined Successfully</div>
+        <div className="text-sm text-gray-600">The application has been declined.</div>
+      </div>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowDeclineSuccess(false)}
+          className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </main>
     </>
   );

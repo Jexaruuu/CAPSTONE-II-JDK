@@ -1487,88 +1487,92 @@ export default function AdminServiceRequests() {
         )}
 
       {showDecline && (
-  <div
-    role="dialog"
-    aria-modal="true"
-    aria-label="Decline Service Request"
-    tabIndex={-1}
-    autoFocus
-    className="fixed inset-0 z-[2147483646] flex items-center justify-center"
-  >
-    <div
-      className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-      onClick={() => !submittingDecline && setShowDecline(false)}
-    />
-    <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
-      <div className="px-6 py-5 rounded-t-2xl bg-gradient-to-r from-red-600 to-red-500 text-white">
-        <div className="text-xl font-semibold">Decline Service Request</div>
-        <div className="text-xs opacity-90">Select reason for declining</div>
-      </div>
-
-      <div className="px-6 py-5 space-y-4">
-        <div className="grid grid-cols-1 gap-3">
-          {REASONS_ADMIN.map((r) => (
-            <label
-              key={r}
-              className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${
-                declineReason === r
-                  ? "border-red-500 ring-1 ring-red-300 bg-red-50"
-                  : "border-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              <input
-                type="radio"
-                name="decline-reason"
-                className="h-4 w-4"
-                checked={declineReason === r}
-                onChange={() =>
-                  setDeclineReason((curr) => (curr === r ? "" : r))
-                }
-                disabled={submittingDecline}
-              />
-              <span className="text-sm md:text-base">{r}</span>
-            </label>
-          ))}
-        </div>
-
-        <div className="space-y-2">
-          <div className="text-sm font-semibold text-gray-700">Other</div>
-          <textarea
-            value={declineOther}
-            onChange={(e) => setDeclineOther(e.target.value)}
-            disabled={submittingDecline}
-            placeholder="Type other reason here"
-            className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Decline Service Request"
+          tabIndex={-1}
+          autoFocus
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center"
+        >
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => !submittingDecline && setShowDecline(false)}
           />
+          <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="px-6 pt-6">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-100 grid place-items-center">
+                  <span className="text-blue-600 text-lg">ⓘ</span>
+                </div>
+                <div className="flex-1">
+                  <div className="text-xl font-semibold text-gray-900">Decline Service Request</div>
+                  <div className="text-sm text-gray-600">Select reason for declining.</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-1 gap-2">
+                {REASONS_ADMIN.map((r) => (
+                  <label
+                    key={r}
+                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
+                      declineReason === r
+                        ? "border-blue-400 ring-1 ring-blue-200 bg-blue-50"
+                        : "border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="decline-reason"
+                      className="h-4 w-4"
+                      checked={declineReason === r}
+                      onChange={() => setDeclineReason((curr) => (curr === r ? "" : r))}
+                      disabled={submittingDecline}
+                    />
+                    <span className="text-sm md:text-base">{r}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-sm font-semibold text-gray-700">Other</div>
+                <textarea
+                  value={declineOther}
+                  onChange={(e) => setDeclineOther(e.target.value)}
+                  disabled={submittingDecline}
+                  placeholder="Type other reason here"
+                  className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              {declineErr ? (
+                <div className="text-sm text-blue-700">{declineErr}</div>
+              ) : null}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => !submittingDecline && setShowDecline(false)}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-60"
+                disabled={submittingDecline}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={submitDecline}
+                className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition disabled:opacity-60"
+                disabled={submittingDecline}
+              >
+                {submittingDecline ? "Submitting..." : "Confirm Decline"}
+              </button>
+            </div>
+          </div>
         </div>
-
-        {declineErr ? (
-          <div className="text-sm text-red-700">{declineErr}</div>
-        ) : null}
-      </div>
-
-      <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-end gap-3">
-        <button
-          type="button"
-          onClick={() => !submittingDecline && setShowDecline(false)}
-          className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-60"
-          disabled={submittingDecline}
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          onClick={submitDecline}
-          className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60"
-          disabled={submittingDecline}
-        >
-          Confirm Decline
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
+      )}
 
 {showReason && (
   <div
