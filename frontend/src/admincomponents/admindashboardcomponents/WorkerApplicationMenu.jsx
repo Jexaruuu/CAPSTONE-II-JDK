@@ -584,7 +584,7 @@ export default function WorkerApplicationMenu() {
   const [selected, setSelected] = useState(() => new Set());
   const headerCheckboxRef = useRef(null);
   const [viewRow, setViewRow] = useState(null);
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0, total: 0 });
   const [showDocs, setShowDocs] = useState(false);
@@ -1413,7 +1413,7 @@ age: ageValue ?? "-",
                             className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 w-[180px] min-w-[180px]"
                             onClick={() => toggleSort("full_name")}
                           >
-                            <span className="inline-flex.items-center gap-1">
+                            <span className="inline-flex items-center gap-1">
                               Worker Name
                               <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                             </span>
@@ -1425,7 +1425,7 @@ age: ageValue ?? "-",
                             className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
                             onClick={() => toggleSort("service_types_lex")}
                           >
-                            <span className="inline-flex.items-center">
+                            <span className="inline-flex items-center">
                               Service Type
                             </span>
                           </th>
