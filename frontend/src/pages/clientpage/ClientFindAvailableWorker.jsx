@@ -89,8 +89,16 @@ const FiltersPanel = ({ value, onChange }) => {
     setLocal(next);
     onChange(next);
   };
-  const setService = (key, val) =>
-    set({ serviceTypes: { ...(local.serviceTypes || {}), [key]: val } });
+  const setService = (key, val) => {
+    const prev = local.serviceTypes || {};
+    const next = { ...prev, [key]: val };
+    if (val) delete next.any;
+    set({ serviceTypes: next });
+  };
+  const setAny = (val) => {
+    if (val) set({ serviceTypes: { any: true } });
+    else set({ serviceTypes: {} });
+  };
 
   const dropdownRef = useRef(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -121,34 +129,42 @@ const FiltersPanel = ({ value, onChange }) => {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
+  const svc = local.serviceTypes || {};
+  const anyChecked = !!svc.any || !Object.keys(svc).some((k) => k !== "any" && svc[k]);
+
   return (
     <aside className="w-full sm:w-72 lg:w-80 shrink-0">
       <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
         <div className="text-sm font-semibold text-gray-900 mb-3">Service Type</div>
         <div className="space-y-3 mb-5">
           <ServiceTypeCheckbox
+            label="Any"
+            checked={anyChecked}
+            onChange={(v) => setAny(v)}
+          />
+          <ServiceTypeCheckbox
             label="Carwasher"
-            checked={!!local.serviceTypes?.carwasher}
+            checked={!!svc.carwasher && !svc.any}
             onChange={(v) => setService("carwasher", v)}
           />
           <ServiceTypeCheckbox
             label="Carpenter"
-            checked={!!local.serviceTypes?.carpenter}
+            checked={!!svc.carpenter && !svc.any}
             onChange={(v) => setService("carpenter", v)}
           />
           <ServiceTypeCheckbox
             label="Electrician"
-            checked={!!local.serviceTypes?.electrician}
+            checked={!!svc.electrician && !svc.any}
             onChange={(v) => setService("electrician", v)}
           />
           <ServiceTypeCheckbox
             label="Laundry"
-            checked={!!local.serviceTypes?.laundry}
+            checked={!!svc.laundry && !svc.any}
             onChange={(v) => setService("laundry", v)}
           />
           <ServiceTypeCheckbox
             label="Plumber"
-            checked={!!local.serviceTypes?.plumber}
+            checked={!!svc.plumber && !svc.any}
             onChange={(v) => setService("plumber", v)}
           />
         </div>
@@ -708,7 +724,7 @@ export default function ClientFindAvailableWorker() {
     }
 
     const map = filters.serviceTypes || {};
-    const selected = Object.keys(map).filter((k) => map[k]);
+    const selected = Object.keys(map).filter((k) => map[k] && k !== "any");
     if (selected.length) {
       const labels = {
         carwasher: ["carwasher", "car washing", "car wash"],

@@ -31,6 +31,13 @@ export default function ClientOnGoingRequest() {
   const appU = useMemo(() => buildAppU(), []);
   const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
 
+  const getClientEmail = () => {
+    try {
+      const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
+      return a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+    } catch { return ''; }
+  };
+
   useEffect(() => {
     const fetchMe = async () => {
       try {
@@ -51,11 +58,35 @@ export default function ClientOnGoingRequest() {
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      if (!id) { setLoading(false); return; }
+      if (!id) return;
       setLoading(true);
       try {
         const { data } = await axios.get(`${API_BASE}/api/clientservicerequests/by-group/${encodeURIComponent(id)}`, { withCredentials: true, headers: headersWithU });
         if (!cancelled) setRow(data || null);
+      } catch {
+        if (!cancelled) setRow(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [id, headersWithU]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (id) return;
+      setLoading(true);
+      try {
+        const email = getClientEmail();
+        if (!email) {
+          setRow(null);
+        } else {
+          const { data } = await axios.get(`${API_BASE}/api/clientservicerequests/approved`, { params: { email, limit: 1 }, withCredentials: true, headers: headersWithU });
+          const item = Array.isArray(data?.items) ? data.items[0] || null : null;
+          if (!cancelled) setRow(item);
+        }
       } catch {
         if (!cancelled) setRow(null);
       } finally {
@@ -342,6 +373,26 @@ export default function ClientOnGoingRequest() {
   const preferred_time_display = formatTime12h(preferred_time);
   const preferred_date_display = formatDateMDY(preferred_date);
 
+  const handleMessageWorker = () => {
+    const to = workerEmail || '';
+    if (to) window.location.href = `mailto:${to}`;
+  };
+
+  const groupId =
+    fx.request_group_id ||
+    fx.group_id ||
+    detR.request_group_id ||
+    fx.groupId ||
+    id ||
+    '';
+
+  const bookingId = useMemo(() => {
+    if (!groupId) return null;
+    const core = String(groupId).replace(/[^a-z0-9]/gi, '');
+    const compact = (core.length >= 10 ? core.slice(0,4) + core.slice(-6) : core).toUpperCase();
+    return `JDK-${compact}`;
+  }, [groupId]);
+
   return (
     <>
       <ClientNavigation />
@@ -356,24 +407,62 @@ export default function ClientOnGoingRequest() {
             </div>
 
             <div className="flex items-center gap-4 max-w-[55%]">
-              {workerPhoto ? (
-                <img src={workerPhoto} alt="" className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover ring-2 ring-blue-100 flex-shrink-0" />
-              ) : (
-                <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-blue-50 text-[#008cfc] border border-blue-200 grid place-items-center text-sm font-semibold flex-shrink-0">
-                  {workerInitials || 'WK'}
-                </div>
-              )}
-              <div className="min-w-0 text-right">
-                <div className="text-[11px] md:text-xs text-gray-600">Assigned Worker</div>
-                <div className="text-sm md:text-base font-semibold text-gray-900 truncate">{workerFullName || '—'}</div>
-                <div className="text-[11px] md:text-xs text-[#008cfc] truncate">{workerEmail || ''}</div>
-              </div>
+              {(() => {
+                const workerRaw =
+                  fx.worker ||
+                  fx.accepted_worker ||
+                  fx.assigned_worker ||
+                  fx.assignee ||
+                  fx.provider ||
+                  fx.worker_info ||
+                  {};
+                const workerObj = workerRaw.info || workerRaw.worker || workerRaw || {};
+                const pick = (o, arr) => { for (const k of arr) { if (o?.[k]) return o[k]; } return null; };
+                const wf = pick(workerObj, ['first_name','firstName']) || '';
+                const wl = pick(workerObj, ['last_name','lastName']) || '';
+                const wname = pick(workerObj, ['full_name','fullName']) || `${wf} ${wl}`.trim();
+                const wemail = pick(workerObj, ['email_address','email']) || '';
+                const wphoto = pick(workerObj, ['profile_picture_url','profile_picture']) || '';
+                const initials = (() => {
+                  const f = String(wf || '').trim().slice(0,1);
+                  const l = String(wl || '').trim().slice(0,1);
+                  if (wname && !f && !l) {
+                    const parts = String(wname).trim().split(/\s+/);
+                    const a = (parts[0] || '').slice(0,1);
+                    const b = (parts[parts.length-1] || '').slice(0,1);
+                    return `${a}${b}`.toUpperCase();
+                  }
+                  return `${f}${l}`.toUpperCase();
+                })();
+                return (
+                  <>
+                    {wphoto ? (
+                      <img src={wphoto} alt="" className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover ring-2 ring-blue-100 flex-shrink-0" />
+                    ) : (
+                      <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-blue-50 text-[#008cfc] border border-blue-200 grid place-items-center text-sm font-semibold flex-shrink-0">
+                        {initials || 'WK'}
+                      </div>
+                    )}
+                    <div className="min-w-0 text-right">
+                      <div className="text-[11px] md:text-xs text-gray-600">Assigned Worker</div>
+                      <div className="text-sm md:text-base font-semibold text-gray-900 truncate">{wname || '—'}</div>
+                      <div className="text-[11px] md:text-xs text-[#008cfc] truncate">{wemail || ''}</div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
 
         <div className="mx-auto w-full max-w-[1420px] px-6">
-          <div className="mt-6 bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+          {bookingId ? (
+            <div className="mt-6 mb-2 text-sm md:text-base font-semibold text-gray-600">
+              Booking ID: <span className="text-[#008cfc]">{bookingId}</span>
+            </div>
+          ) : null}
+
+          <div className="mt-2 bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4">
               <h3 className="text-lg md:text-xl font-semibold text-gray-900">Progress</h3>
               <div className="text-xs md:text-sm px-2 py-1 rounded-lg bg-blue-50 text-[#008cfc] font-semibold">{stepIndex < steps.length - 1 ? `Step ${stepIndex + 1} of ${steps.length}` : 'Completed'}</div>
@@ -522,14 +611,11 @@ export default function ClientOnGoingRequest() {
                     <div className="flex gap-2 justify-end">
                       <button
                         type="button"
-                        onClick={handleBack}
-                        className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+                        onClick={handleMessageWorker}
+                        className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold bg-[#008cfc] text-white"
                       >
-                        Back
+                        Message Worker
                       </button>
-                      <div className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold bg-[#008cfc] text-white">
-                        {stepIndex < steps.length - 1 ? `Step ${stepIndex + 1} of ${steps.length}` : 'Completed'}
-                      </div>
                     </div>
                   </div>
                 </div>

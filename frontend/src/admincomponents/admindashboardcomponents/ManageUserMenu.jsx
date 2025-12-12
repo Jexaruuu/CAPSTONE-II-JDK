@@ -827,26 +827,6 @@ function RowMenu({ onView, onEdit, onRemove, onDisable, isAdmin }) {
         >
           View
         </span>
-        {!isAdmin && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              setOpen(false);
-              onDisable?.();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onDisable?.();
-              }
-            }}
-            className="cursor-pointer inline-flex items-center rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-            aria-label="Disable user"
-          >
-            Disable
-          </span>
-        )}
       </div>
     </div>
   );

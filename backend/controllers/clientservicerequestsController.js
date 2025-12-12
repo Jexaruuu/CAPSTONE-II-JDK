@@ -135,20 +135,25 @@ exports.listOpen = async (req, res) => {
       if (!d.request_image_url && d.image_name) {
         row.details = { ...d, request_image_url: await publicOrSignedUrl(bucket, d.image_name) };
       }
+      const ip = row.info || {};
+      let info = { ...ip };
+      if (!info.profile_picture_url && info.profile_picture_name) {
+        info.profile_picture_url = await publicOrSignedUrl(bucket, info.profile_picture_name);
+      }
       return {
         id: r.request_group_id,
         request_group_id: r.request_group_id,
         created_at: r.created_at,
         status: r.status,
         info: {
-          email_address: row.info?.email_address || null,
-          first_name: row.info?.first_name || null,
-          last_name: row.info?.last_name || null,
-          contact_number: row.info?.contact_number || null,
-          street: row.info?.street || '',
-          barangay: row.info?.barangay || '',
-          additional_address: row.info?.additional_address || '',
-          profile_picture_url: row.info?.profile_picture_url || null
+          email_address: info.email_address || null,
+          first_name: info.first_name || null,
+          last_name: info.last_name || null,
+          contact_number: info.contact_number || null,
+          street: info.street || '',
+          barangay: info.barangay || '',
+          additional_address: info.additional_address || '',
+          profile_picture_url: info.profile_picture_url || null
         },
         details: {
           service_type: row.details?.service_type || '',
@@ -509,7 +514,17 @@ exports.listApproved = async (req, res) => {
       if (d.is_urgent !== undefined) d.is_urgent = yesNo(toBoolStrict(d.is_urgent));
       if (d.tools_provided !== undefined) d.tools_provided = yesNo(toBoolStrict(d.tools_provided));
       if (!d.request_image_url && d.image_name) d.request_image_url = await publicOrSignedUrl(bucket, d.image_name);
-      return { ...it, details: d };
+      let info = it.info || {};
+      if (!info.profile_picture_url || info.profile_picture_url === '') {
+        const combined = await getCombinedByGroupId(it.request_group_id);
+        const ip = combined?.info || {};
+        if (!ip.profile_picture_url && ip.profile_picture_name) {
+          info = { ...info, profile_picture_url: await publicOrSignedUrl(bucket, ip.profile_picture_name) };
+        } else if (ip.profile_picture_url) {
+          info = { ...info, profile_picture_url: ip.profile_picture_url };
+        }
+      }
+      return { ...it, details: d, info };
     }));
     const gids = fixed.map(it => it.request_group_id).filter(Boolean);
     let cancelled = [];
@@ -566,7 +581,12 @@ exports.listCurrent = async (req, res) => {
       if (!row) return null;
       const d = row.details || {};
       if (!d.request_image_url && d.image_name) d.request_image_url = await publicOrSignedUrl(bucket, d.image_name);
-      return { ...row, details: d };
+      const ip = row.info || {};
+      let info = ip;
+      if (!ip.profile_picture_url && ip.profile_picture_name) {
+        info = { ...ip, profile_picture_url: await publicOrSignedUrl(bucket, ip.profile_picture_name) };
+      }
+      return { ...row, details: d, info };
     }));
     const items = combined.filter(Boolean).map(row => {
       const d = row.details || {};
@@ -635,9 +655,13 @@ exports.byGroup = async (req, res) => {
     const row = await getCombinedByGroupId(gid);
     if (!row) return res.status(404).json({ message: 'Not found' });
     const d = row.details || {};
+    const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
     if (!d.request_image_url && d.image_name) {
-      const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
       row.details = { ...d, request_image_url: await publicOrSignedUrl(bucket, d.image_name) };
+    }
+    const ip = row.info || {};
+    if (!ip.profile_picture_url && ip.profile_picture_name) {
+      row.info = { ...ip, profile_picture_url: await publicOrSignedUrl(bucket, ip.profile_picture_name) };
     }
     return res.status(200).json(row);
   } catch {

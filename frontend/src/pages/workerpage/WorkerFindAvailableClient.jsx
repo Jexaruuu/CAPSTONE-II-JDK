@@ -122,8 +122,14 @@ const FiltersPanel = ({ value, onChange }) => {
     setLocal(next);
     onChange(next);
   };
-  const setService = (key, val) =>
-    set({ serviceTypes: { ...(local.serviceTypes || {}), [key]: val } });
+  const setService = (key, val) => {
+    if (val) set({ serviceTypes: { [key]: true } });
+    else set({ serviceTypes: { any: true } });
+  };
+  const setAny = (val) => {
+    if (val) set({ serviceTypes: { any: true } });
+    else set({ serviceTypes: {} });
+  };
 
   const dropdownRef = useRef(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -154,34 +160,42 @@ const FiltersPanel = ({ value, onChange }) => {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
+  const svc = local.serviceTypes || {};
+  const anyChecked = !!svc.any || !Object.keys(svc).some((k) => k !== "any" && svc[k]);
+
   return (
     <aside className="w-full sm:w-72 lg:w-80 shrink-0">
       <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
         <div className="text-sm font-semibold text-gray-900 mb-3">Service Type</div>
         <div className="space-y-3 mb-5">
           <ServiceTypeCheckbox
-            label="Carwasher"
-            checked={!!local.serviceTypes?.carwasher}
+            label="Any"
+            checked={anyChecked}
+            onChange={(v) => setAny(v)}
+          />
+          <ServiceTypeCheckbox
+            label="Car Washing"
+            checked={!!svc.carwasher && !svc.any}
             onChange={(v) => setService("carwasher", v)}
           />
           <ServiceTypeCheckbox
-            label="Carpenter"
-            checked={!!local.serviceTypes?.carpenter}
+            label="Carpentry"
+            checked={!!svc.carpenter && !svc.any}
             onChange={(v) => setService("carpenter", v)}
           />
           <ServiceTypeCheckbox
-            label="Electrician"
-            checked={!!local.serviceTypes?.electrician}
+            label="Electrical Works"
+            checked={!!svc.electrician && !svc.any}
             onChange={(v) => setService("electrician", v)}
           />
           <ServiceTypeCheckbox
             label="Laundry"
-            checked={!!local.serviceTypes?.laundry}
+            checked={!!svc.laundry && !svc.any}
             onChange={(v) => setService("laundry", v)}
           />
           <ServiceTypeCheckbox
-            label="Plumber"
-            checked={!!local.serviceTypes?.plumber}
+            label="Plumbing"
+            checked={!!svc.plumber && !svc.any}
             onChange={(v) => setService("plumber", v)}
           />
         </div>
@@ -264,7 +278,32 @@ const FiltersPanel = ({ value, onChange }) => {
           )}
         </div>
 
-        <div className="text-sm font-semibold text-gray-900 mb-2">Client budget</div>
+        <div className="text-sm font-semibold text-gray-900 mb-2">Urgency</div>
+        <div className="space-y-3 mb-5">
+          <RateTypeOption
+            name="urgency"
+            label="Any"
+            value="any"
+            selected={local.urgency === "any"}
+            onSelect={(v) => set({ urgency: v })}
+          />
+          <RateTypeOption
+            name="urgency"
+            label="Urgent"
+            value="urgent"
+            selected={local.urgency === "urgent"}
+            onSelect={(v) => set({ urgency: v })}
+          />
+          <RateTypeOption
+            name="urgency"
+            label="Not urgent"
+            value="not_urgent"
+            selected={local.urgency === "not_urgent"}
+            onSelect={(v) => set({ urgency: v })}
+          />
+        </div>
+
+        <div className="text-sm font-semibold text-gray-900 mb-2">Service rate</div>
         <div className="space-y-3 mb-3">
           <RateTypeOption
             name="rateType"
@@ -328,6 +367,45 @@ const FiltersPanel = ({ value, onChange }) => {
             />
           </div>
         )}
+
+        <div className="text-sm font-semibold text-gray-900 mb-2">Rating</div>
+        <div className="space-y-3 mb-5">
+          <RateTypeOption
+            name="ratingMin"
+            label="Any"
+            value={0}
+            selected={!Number(local.ratingMin)}
+            onSelect={(v) => set({ ratingMin: v })}
+          />
+          <RateTypeOption
+            name="ratingMin"
+            label="4+ stars"
+            value={4}
+            selected={Number(local.ratingMin) === 4}
+            onSelect={(v) => set({ ratingMin: v })}
+          />
+          <RateTypeOption
+            name="ratingMin"
+            label="3+ stars"
+            value={3}
+            selected={Number(local.ratingMin) === 3}
+            onSelect={(v) => set({ ratingMin: v })}
+          />
+          <RateTypeOption
+            name="ratingMin"
+            label="2+ stars"
+            value={2}
+            selected={Number(local.ratingMin) === 2}
+            onSelect={(v) => set({ ratingMin: v })}
+          />
+          <RateTypeOption
+            name="ratingMin"
+            label="1+ star"
+            value={1}
+            selected={Number(local.ratingMin) === 1}
+            onSelect={(v) => set({ ratingMin: v })}
+          />
+        </div>
       </div>
     </aside>
   );
@@ -351,6 +429,8 @@ const ClientCard = ({ item, onView }) => {
   const primaryType = serviceTypes[0] || item.service_type || "—";
   const primaryTask = serviceTasks[0] || item.service_task || "—";
   const requestDone = Number.isFinite(item.requestDone) ? item.requestDone : 0;
+  const ratingSafe = Number.isFinite(item.rating) ? Math.max(0, Math.min(5, item.rating)) : 0;
+  const filledStars = Math.round(ratingSafe);
 
   return (
     <div className="relative overflow-hidden bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl">
@@ -376,9 +456,14 @@ const ClientCard = ({ item, onView }) => {
               {item.emailAddress ? <div className="text-xs text-gray-600 truncate">{item.emailAddress}</div> : null}
               <div className="mt-1 flex items-center gap-1">
                 {[0,1,2,3,4].map((idx) => (
-                  <Star key={idx} size={14} className="text-gray-300" fill="currentColor" />
+                  <Star
+                    key={idx}
+                    size={14}
+                    className={idx < filledStars ? "text-yellow-400" : "text-gray-300"}
+                    fill="currentColor"
+                  />
                 ))}
-                <span className="text-xs font-medium text-gray-700">0.0/5</span>
+                <span className="text-xs font-medium text-gray-700">{`${(ratingSafe || 0).toFixed(1)}/5`}</span>
               </div>
             </div>
           </div>
@@ -420,26 +505,6 @@ const ClientCard = ({ item, onView }) => {
                 </span>
               </div>
             </div>
-            {false && (
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-gray-700">Rate Type</div>
-                <div className="mt-1">
-                  <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
-                    {item.rateTypeLabel || "—"}
-                  </span>
-                </div>
-              </div>
-            )}
-            {false && (
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-gray-700">Service Rate</div>
-                <div className="mt-1">
-                  <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
-                    {item.displayRate || item.budgetLabel || "—"}
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="mt-3 text-sm font-semibold text-gray-700">Request Description</div>
@@ -504,7 +569,9 @@ export default function WorkerFindAvailableClient() {
     rateMax: undefined,
     rateJob: undefined,
     rateType: "any",
-    location: ""
+    location: "",
+    urgency: "any",
+    ratingMin: 0
   });
 
   const normalizeItems = (rows) => {
@@ -619,6 +686,11 @@ export default function WorkerFindAvailableClient() {
       const reqn = Number(reqDoneRaw);
       const requestDone = Number.isFinite(reqn) && reqn >= 0 ? Math.floor(reqn) : 0;
 
+      const rawRating =
+        r.rating ?? r.avg_rating ?? r.average_rating ?? r.reviews_avg ?? r.rating_average ?? (r.reviews && r.reviews.avg);
+      const ratingNum = Number(rawRating);
+      const rating = Number.isFinite(ratingNum) ? Math.max(0, Math.min(5, ratingNum)) : 0;
+
       return {
         id: r.id ?? r.request_group_id ?? `${i}`,
         avatar: info.profile_picture_url || r.avatar,
@@ -651,7 +723,8 @@ export default function WorkerFindAvailableClient() {
         rateTo,
         rateValue,
         rateNum,
-        requestDone
+        requestDone,
+        rating
       };
     });
   };
@@ -699,6 +772,12 @@ export default function WorkerFindAvailableClient() {
       base = base.filter((it) => String(it.locationLabel || "").toLowerCase().includes(loc));
     }
 
+    if (filters.urgency === "urgent") {
+      base = base.filter((it) => toBool(it.urgency) === true);
+    } else if (filters.urgency === "not_urgent") {
+      base = base.filter((it) => toBool(it.urgency) === false);
+    }
+
     if (filters.rateType === "hourly") {
       base = base.filter((it) => it.rateType === "hourly");
       if (typeof filters.rateMin === "number") {
@@ -727,20 +806,25 @@ export default function WorkerFindAvailableClient() {
       }
     }
 
+    if (typeof filters.ratingMin === "number" && filters.ratingMin > 0) {
+      base = base.filter((it) => (Number(it.rating) || 0) >= filters.ratingMin);
+    }
+
     const map = filters.serviceTypes || {};
-    const selected = Object.keys(map).filter((k) => map[k]);
+    const selected = Object.keys(map).filter((k) => map[k] && k !== "any");
     if (selected.length) {
       const labels = {
-        carwasher: ["carwasher", "car washing", "car wash"],
-        carpenter: ["carpenter", "carpentry"],
-        electrician: ["electrician"],
-        laundry: ["laundry", "laundy", "cleaning"],
-        plumber: ["plumber", "plumbing"]
+        carwasher: ["car washing", "carwash", "car washer", "carwasher", "car wash", "auto detailing", "detailing"],
+        carpenter: ["carpentry", "carpenter", "wood", "woodwork", "furniture"],
+        electrician: ["electrician", "electrical", "electrical works", "wiring", "circuit", "outlet", "breaker"],
+        laundry: ["laundry", "wash", "washing", "cleaning", "launder"],
+        plumber: ["plumber", "plumbing", "pipe", "leak", "drain", "toilet", "faucet"]
       };
       base = base.filter((it) => {
-        const skillSet = [...(it.serviceTypeList || []), ...(it.serviceTaskList || [])].map((s) => String(s).toLowerCase());
+        const skillSet = [...(it.serviceTypeList || []), ...(it.serviceTaskList || [])]
+          .map((s) => String(s).toLowerCase());
         return selected.some((k) =>
-          (labels[k] || []).some((alias) => skillSet.includes(alias))
+          (labels[k] || []).some((alias) => skillSet.some((s) => s.includes(alias)))
         );
       });
     }
