@@ -416,6 +416,14 @@ export default function WorkerCurrentApplication() {
 
   const [showOpenBusy, setShowOpenBusy] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
+  const [dotStep, setDotStep] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setDotStep((s) => (s + 1) % 4);
+    }, 350);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (showReason || showOpenBusy || editLoading) {
@@ -861,21 +869,34 @@ export default function WorkerCurrentApplication() {
               No applications found.
             </div>
           ) : (
-            paginated.map((item) => (
-              <div key={item.id} className="space-y-2">
-                <div className="flex items-center justify-end gap-2 pr-1">
-                  <span className="text-gray-700 font-semibold">Status:</span>
-                  <StatusBadge status={item.status} />
+            paginated.map((item) => {
+              const isApproved = String(item?.status || "").toLowerCase() === "approved";
+              return (
+                <div key={item.id} className="space-y-2">
+                  <div className="flex items-center justify-end gap-2 pr-1">
+                    <span className="text-gray-700 font-semibold">Status:</span>
+                    <StatusBadge status={item.status} />
+                    {isApproved && (
+                      <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+                        Matching client
+                        <span className="ml-1 inline-flex w-6 justify-between font-mono">
+                          <span className={`transition-opacity duration-200 ${dotStep >= 1 ? "opacity-100" : "opacity-0"}`}>.</span>
+                          <span className={`transition-opacity duration-200 ${dotStep >= 2 ? "opacity-100" : "opacity-0"}`}>.</span>
+                          <span className={`transition-opacity duration-200 ${dotStep >= 3 ? "opacity-100" : "opacity-0"}`}>.</span>
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                  <Card
+                    item={item}
+                    onView={onView}
+                    onReason={onReason}
+                    onDelete={onDelete}
+                    onEdit={onEdit}
+                  />
                 </div>
-                <Card
-                  item={item}
-                  onView={onView}
-                  onReason={onReason}
-                  onDelete={onDelete}
-                  onEdit={onEdit}
-                />
-              </div>
-            ))
+              );
+            })
           )}
 
           {!loading && (

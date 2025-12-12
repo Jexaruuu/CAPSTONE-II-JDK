@@ -11,10 +11,50 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const [showNoApproved, setShowNoApproved] = useState(false);
   const [btnLoading, setBtnLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+  const [approvedClientTypes, setApprovedClientTypes] = useState([]);
+  const [checkedTypes, setCheckedTypes] = useState(false);
+  const [approvedClientRequests, setApprovedClientRequests] = useState([]);
   const base = worker || {};
   const baseInfo = base.info || {};
   const emailGuess = base.emailAddress || baseInfo.email_address || base.email || base.email_address || "";
   const gidGuess = base.request_group_id || base.requestGroupId || base.requestGroupID || "";
+
+  const canonType = (s) => {
+    const k = String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+    if (/carpent/.test(k)) return "carpentry";
+    if (/elect/.test(k)) return "electrical works";
+    if (/plumb/.test(k)) return "plumbing";
+    if (/(car\s*wash|carwash|auto)/.test(k)) return "car washing";
+    if (/laund/.test(k)) return "laundry";
+    return k;
+  };
+
+  const canonRateType = (t) => {
+    const s = String(t || "").toLowerCase().replace(/\s+/g, " ").replace(/_/g, " ").trim();
+    if (!s) return "";
+    if (s.includes("hour")) return "Hourly Rate";
+    if (s === "range") return "Hourly Rate";
+    if (s.includes("job") || s.includes("fixed") || s.includes("flat") || s.includes("project") || s.includes("task")) return "By the Job Rate";
+    if (s === "by the job rate") return "By the Job Rate";
+    return "";
+  };
+
+  const clientRateTypeToWorker = (t) => canonRateType(t);
+  const workerRateTypeCanon = (t) => canonRateType(t);
+
+  const getClientEmail = () => {
+    try {
+      const a = JSON.parse(localStorage.getItem("clientAuth") || "{}");
+      if (a && a.email) return a.email;
+    } catch {}
+    return (
+      localStorage.getItem("clientEmail") ||
+      localStorage.getItem("client_email") ||
+      localStorage.getItem("email_address") ||
+      localStorage.getItem("email") ||
+      ""
+    );
+  };
 
   useEffect(() => {
     let cancel = false;
@@ -75,6 +115,42 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   }, [open, gidGuess, emailGuess, base.auth_uid, base.authUid]);
 
   useEffect(() => {
+    let cancel = false;
+    async function loadApprovedClientTypes() {
+      if (!open) return;
+      const clientEmail = getClientEmail();
+      if (!clientEmail) {
+        setApprovedClientTypes([]);
+        setApprovedClientRequests([]);
+        setCheckedTypes(true);
+        return;
+      }
+      try {
+        const res = await axios.get(`${API_BASE}/api/clientservicerequests/approved`, { params: { email: clientEmail, limit: 20 } });
+        const items = Array.isArray(res.data?.items) ? res.data.items : [];
+        const types = items
+          .map((it) => it?.details?.service_type || it?.details?.category || "")
+          .filter(Boolean)
+          .map(canonType);
+        const unique = Array.from(new Set(types));
+        if (!cancel) {
+          setApprovedClientTypes(unique);
+          setApprovedClientRequests(items);
+        }
+      } catch {
+        if (!cancel) {
+          setApprovedClientTypes([]);
+          setApprovedClientRequests([]);
+        }
+      } finally {
+        if (!cancel) setCheckedTypes(true);
+      }
+    }
+    loadApprovedClientTypes();
+    return () => { cancel = true };
+  }, [open]);
+
+  useEffect(() => {
     const body = document.body;
     const prevOverflow = body.style.overflow;
     const prevPaddingRight = body.style.paddingRight;
@@ -122,7 +198,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const merged = useMemo(() => {
     if (!fetched) return base;
     const i = fetched.info || {};
-    const d = fetched.details || {};
+    const d = fetched.details || fetched.work || {};
     const r = fetched.rate || {};
     const withGender = fetched.gender ? { gender: fetched.gender } : {};
     return {
@@ -154,7 +230,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const yearsExp = Number.isFinite(d.years_experience) ? d.years_experience : (Number.isFinite(w.years) ? w.years : null);
 
   const rateTypeRaw = r.rate_type || r.rateType || "";
-  const rateType = /hour/i.test(String(rateTypeRaw)) ? "Hourly Rate" : (/job|fixed|flat/i.test(String(rateTypeRaw)) ? "By the Job Rate" : (rateTypeRaw || ""));
+  const rateType = workerRateTypeCanon(rateTypeRaw);
   const peso = (n) => {
     const x = Number(n);
     if (!Number.isFinite(x)) return "";
@@ -190,32 +266,94 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const succ = Number(rawSuccess);
   const workerSuccess = rating > 0 ? (Number.isFinite(succ) ? Math.max(0, Math.min(100, succ)) : 0) : 0;
 
-  const getClientEmail = () => {
-    try {
-      const a = JSON.parse(localStorage.getItem("clientAuth") || "{}");
-      if (a && a.email) return a.email;
-    } catch {}
-    return (
-      localStorage.getItem("clientEmail") ||
-      localStorage.getItem("client_email") ||
-      localStorage.getItem("email_address") ||
-      localStorage.getItem("email") ||
-      ""
-    );
-  };
+  const workerCanonTypes = Array.from(new Set((serviceTypes || []).map(canonType)));
+  const hasTypeMatch = approvedClientTypes.some((t) => workerCanonTypes.includes(t));
+  const canBook = checkedTypes ? hasTypeMatch : false;
+
+  const matchedRequests = useMemo(() => {
+    const list = Array.isArray(approvedClientRequests) ? approvedClientRequests : [];
+    const out = [];
+    for (const req of list) {
+      const cd = req?.details || {};
+      const crMerged = Object.assign(
+        {},
+        req?.details || {},
+        req?.rate || {},
+        req?.pricing || {},
+        req?.payment || {}
+      );
+      const cType = canonType(cd.service_type || cd.category || "");
+      const typeOk = cType && workerCanonTypes.includes(cType);
+      const cRateTypeRaw =
+        crMerged.rate_type ??
+        crMerged.pricing_type ??
+        crMerged.price_rate ??
+        crMerged.service_price_rate ??
+        "";
+      const cRateType = clientRateTypeToWorker(cRateTypeRaw);
+      const rateTypeOk = !!cRateType && cRateType === rateType;
+      let rateOk = false;
+      if (rateType === "Hourly Rate") {
+        const cf = Number(crMerged.rate_from);
+        const ct = Number(crMerged.rate_to);
+        const wf = Number(r.rate_from);
+        const wt = Number(r.rate_to);
+        const cHas = Number.isFinite(cf) || Number.isFinite(ct);
+        const wHas = Number.isFinite(wf) || Number.isFinite(wt);
+        if (cHas && wHas) {
+          const cmin = Number.isFinite(cf) ? cf : ct;
+          const cmax = Number.isFinite(ct) ? ct : cf;
+          const wmin = Number.isFinite(wf) ? wf : wt;
+          const wmax = Number.isFinite(wt) ? wt : wf;
+          if (Number.isFinite(cmin) && Number.isFinite(cmax) && Number.isFinite(wmin) && Number.isFinite(wmax)) {
+            rateOk = wmax >= cmin && wmin <= cmax;
+          }
+        }
+      } else if (rateType === "By the Job Rate") {
+        const cv = Number(crMerged.rate_value);
+        const wv = Number(r.rate_value);
+        if (Number.isFinite(cv) && Number.isFinite(wv)) {
+          rateOk = wv <= cv;
+        }
+      }
+      if (typeOk || rateTypeOk || rateOk) {
+        out.push({
+          request_group_id: req.request_group_id || req.id || "",
+          service_type: cd.service_type || cd.category || "",
+          client_rate_type: cRateTypeRaw || "",
+          client_rate_from: crMerged.rate_from ?? null,
+          client_rate_to: crMerged.rate_to ?? null,
+          client_rate_value: crMerged.rate_value ?? null,
+          matches: {
+            service_type: !!typeOk,
+            rate_type: !!rateTypeOk,
+            service_rate: !!rateOk
+          }
+        });
+      }
+    }
+    return out;
+  }, [approvedClientRequests, workerCanonTypes, rateType, r.rate_from, r.rate_to, r.rate_value]);
+
+  const anyMatch = matchedRequests.length > 0;
+  const allThreeMatch = matchedRequests.some(m => m.matches.service_type && m.matches.rate_type && m.matches.service_rate);
 
   const handleBookClick = async (e) => {
     e.preventDefault();
     if (btnLoading) return;
+    const clientEmail = getClientEmail();
+    if (!clientEmail) {
+      setShowNoApproved(true);
+      return;
+    }
     try {
-      const clientEmail = getClientEmail();
-      if (!clientEmail) {
-        setShowNoApproved(true);
-        return;
-      }
-      const res = await axios.get(`${API_BASE}/api/clientservicerequests/approved`, { params: { email: clientEmail, limit: 10 } });
+      const res = await axios.get(`${API_BASE}/api/clientservicerequests/approved`, { params: { email: clientEmail, limit: 20 } });
       const items = Array.isArray(res.data?.items) ? res.data.items : [];
-      if (!items.length) {
+      const cTypes = items.map((it) => it?.details?.service_type || it?.details?.category || "").filter(Boolean).map(canonType);
+      const cSet = new Set(cTypes);
+      const wSet = new Set(workerCanonTypes);
+      const ok = Array.from(wSet).some((x) => cSet.has(x));
+      if (!ok) {
         setShowNoApproved(true);
         return;
       }
@@ -228,6 +366,14 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const goTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const typeMatchOk = hasTypeMatch;
+  const rateTypeMatchOk = matchedRequests.some(m => m.matches.rate_type);
+  const rateValueMatchOk = matchedRequests.some(m => m.matches.service_rate);
+  const matchCount = [typeMatchOk, rateTypeMatchOk, rateValueMatchOk].filter(Boolean).length;
+  const statusLabel = allThreeMatch ? "Strong Match" : anyMatch ? "Partial Match" : "No Match";
+  const statusClasses = allThreeMatch ? "bg-emerald-50 text-emerald-700 border-emerald-200" : anyMatch ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-rose-50 text-rose-700 border-rose-200";
+  const progressWidth = `${Math.max(0, Math.min(100, Math.round((matchCount / 3) * 100)))}%`;
 
   return (
     <div className={`fixed inset-0 z-[120] ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
@@ -332,7 +478,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                     </div>
                     <div className="rounded-xl border border-gray-200 p-4 bg-white">
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Age</div>
-                      <div className="text-sm text-[#008cfc]">{Number.isFinite(age) ? age : "—"}</div>
+                      <div className="text-sm text-[#008cfc]">{Number.isFinite(yearsExp) ? "" : ""}{Number.isFinite(age) ? `${age}` : "—"}</div>
                     </div>
                     <div className="rounded-xl border border-gray-200 p-4 bg-white">
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Barangay</div>
@@ -359,6 +505,63 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                   <div className="mt-6">
                     <div className="text-sm font-semibold text-gray-700">Work Description</div>
                     <div className="mt-2 text-sm text-[#008cfc] leading-6 bg-gray-50/60 border border-gray-200 rounded-xl p-4">{w.bio || w.title || d.work_description || "—"}</div>
+                  </div>
+
+                  <div className="mt-8 border-t border-gray-200" />
+
+                  <div className="mt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-gray-700">Match With Your Approved Request</div>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border ${statusClasses}`}>{statusLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 rounded-xl border border-gray-200 bg-gradient-to-b from-gray-50/60 to-white p-4">
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        <span>{matchCount} of 3 criteria matched</span>
+                        <span className="font-medium">{progressWidth}</span>
+                      </div>
+                      <div className="mt-2 h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+                        <div className="h-2 bg-[#008cfc] rounded-full transition-all" style={{ width: progressWidth }} />
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${typeMatchOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>Service Type {typeMatchOk ? "✓" : "✗"}</div>
+                        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${rateTypeMatchOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>Rate Type {rateTypeMatchOk ? "✓" : "✗"}</div>
+                        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${rateValueMatchOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>Service Rate {rateValueMatchOk ? "✓" : "✗"}</div>
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="text-xs text-gray-500">Matching Approved Requests</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(matchedRequests.length ? matchedRequests : []).slice(0, 4).map((m) => {
+                            const t = m.service_type || "—";
+                            const rt = clientRateTypeToWorker(m.client_rate_type) || "—";
+                            let rv = "";
+                            if (rt === "Hourly Rate") {
+                              const f = m.client_rate_from != null ? Number(m.client_rate_from) : null;
+                              const to = m.client_rate_to != null ? Number(m.client_rate_to) : null;
+                              if (Number.isFinite(f) && Number.isFinite(to)) rv = `${peso(f)}–${peso(to)}/hr`;
+                              else if (Number.isFinite(f)) rv = `${peso(f)}/hr`;
+                              else if (Number.isFinite(to)) rv = `${peso(to)}/hr`;
+                            } else if (rt === "By the Job Rate") {
+                              const v = m.client_rate_value != null ? Number(m.client_rate_value) : null;
+                              if (Number.isFinite(v)) rv = `${peso(v)}`;
+                            }
+                            return (
+                              <span key={m.request_group_id || Math.random()} className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs bg-white border-gray-200 text-gray-700 shadow-sm">
+                                <span className="font-semibold">{t}</span>
+                                <span className="h-1 w-1 rounded-full bg-gray-300" />
+                                <span>{rt}</span>
+                                {rv ? (<><span className="h-1 w-1 rounded-full bg-gray-300" /><span>{rv}</span></>) : null}
+                              </span>
+                            );
+                          })}
+                          {!matchedRequests.length ? <span className="text-xs text-gray-400">None</span> : null}
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="mt-8 border-t border-gray-200" />
@@ -397,8 +600,13 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                       </span>
                     </div>
                     <button onClick={onClose} className="hidden">Close</button>
-                    <a href="/clientpostrequest" onClick={handleBookClick} className={`h-9 px-4 rounded-md ${btnLoading ? "opacity-60 pointer-events-none" : ""} bg-[#008cfc] text-sm text-white hover:bg-[#0078d6] inline-flex items-center justify-center`}>
-                      Book Worker
+                    <a
+                      href="/clientpostrequest"
+                      onClick={handleBookClick}
+                      aria-disabled={!canBook}
+                      className={`h-9 px-4 rounded-md ${btnLoading ? "opacity-60 pointer-events-none" : ""} ${canBook ? "bg-[#008cfc] text-white hover:bg-[#0078d6]" : "bg-gray-200 text-gray-500 pointer-events-none"} text-sm inline-flex items-center justify-center`}
+                    >
+                      {checkedTypes ? (canBook ? "Book Worker" : "Book Worker") : "Book Worker"}
                     </a>
                   </div>
                 </div>

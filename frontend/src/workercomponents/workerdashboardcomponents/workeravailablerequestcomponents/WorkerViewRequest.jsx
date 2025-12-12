@@ -8,8 +8,11 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const [fetched, setFetched] = useState(null);
   const [checkingApply, setCheckingApply] = useState(false);
   const [showNoApproved, setShowNoApproved] = useState(false);
+  const [showTypeMismatch, setShowTypeMismatch] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [btnLoading, setBtnLoading] = useState(false);
+  const [approvedTypes, setApprovedTypes] = useState([]);
+  const [hasApproved, setHasApproved] = useState(false);
 
   const base = request || {};
   const info = base.info || {};
@@ -293,6 +296,70 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     });
   }, [w, i, d]);
 
+  const normalizeKind = (s) => {
+    const t = String(s || '').trim().toLowerCase();
+    if (!t) return '';
+    if (/^carpent/.test(t) || t === 'carpenter') return 'carpentry';
+    if (/^elect/.test(t) || t === 'electrician' || t === 'electrical work' || t === 'electrical work(s)') return 'electrical works';
+    if (/^plumb/.test(t) || t === 'plumber') return 'plumbing';
+    if (/car\s*wash/.test(t) || t === 'car washer' || t === 'carwasher' || t === 'car-washer') return 'car washing';
+    if (/laund/.test(t)) return 'laundry';
+    return t;
+  };
+
+  const extractTypeList = (val) => {
+    const out = [];
+    const add = (v) => {
+      if (!v) return;
+      if (Array.isArray(v)) { v.forEach(add); return; }
+      if (typeof v === 'object') {
+        const lbl = v.category || v.name || v.type || v.label;
+        if (lbl) out.push(lbl);
+        if (Array.isArray(v.types)) v.types.forEach(add);
+        if (Array.isArray(v.items)) v.items.forEach(add);
+        return;
+      }
+      String(v).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) out.push(s); });
+    };
+    add(val);
+    return [...new Set(out)];
+  };
+
+  useEffect(() => {
+    let stop = false;
+    async function loadApproved() {
+      try {
+        const res = await axios.get(`${API_BASE}/api/workerapplications`, {
+          withCredentials: true,
+          headers: headersWithU,
+          params: { scope: 'active' }
+        });
+        const items = Array.isArray(res.data?.items) ? res.data.items : [];
+        const approved = items.filter(r => String(r.status || '').toLowerCase() === 'approved');
+        const first = approved[0] || null;
+        const src = first?.details || first?.work || {};
+        const list = extractTypeList(src?.service_types || src?.service_type || []);
+        if (!stop) {
+          setHasApproved(!!first);
+          setApprovedTypes(list);
+        }
+      } catch {
+        if (!stop) {
+          setHasApproved(false);
+          setApprovedTypes([]);
+        }
+      }
+    }
+    loadApproved();
+    return () => { stop = true; };
+  }, [headersWithU]);
+
+  const clientTypeRaw = d.service_type || d.serviceType || '';
+  const clientType = normalizeKind(clientTypeRaw);
+  const workerTypesNorm = approvedTypes.map(normalizeKind);
+  const serviceMatch = clientType && workerTypesNorm.includes(clientType);
+  const canAccept = hasApproved && serviceMatch;
+
   const hasActiveApproved = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/workerapplications`, {
@@ -314,6 +381,10 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     setCheckingApply(false);
     if (!ok) {
       setShowNoApproved(true);
+      return;
+    }
+    if (!serviceMatch) {
+      setShowTypeMismatch(true);
       return;
     }
     if (typeof onApply === "function") onApply({ request: w });
@@ -398,6 +469,11 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold text-gray-700">Service Type</div>
                       <div className="flex items-center gap-2">
+                        {clientType ? (
+                          <span className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border ${canAccept ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
+                            {canAccept ? 'Matched' : 'Not Matched'}
+                          </span>
+                        ) : null}
                         <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
                           Request Done
                           <span className="ml-2 text-sm font-semibold text-[#008cfc]">{Number.isFinite(w.completed_jobs) ? w.completed_jobs : 0}</span>
@@ -497,10 +573,10 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                     <button onClick={onClose} className="hidden">Close</button>
                     <button
                       onClick={applyNow}
-                      disabled={checkingApply}
-                      className={`h-9 px-4 rounded-md text-sm inline-flex items-center justify-center ${checkingApply ? "bg-[#98cfff] text-white cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-[#0078d6]"}`}
+                      disabled={checkingApply || !canAccept}
+                      className={`h-9 px-4 rounded-md text-sm inline-flex items-center justify-center ${checkingApply || !canAccept ? "bg-[#98cfff] text-white cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-[#0078d6]"}`}
                     >
-                      {checkingApply ? "Checking…" : "Accept Request"}
+                      {checkingApply ? "Checking…" : (!hasApproved ? "Accept Request" : (!serviceMatch ? "Service Type Not Matched" : "Accept Request"))}
                     </button>
                   </div>
                 </div>
@@ -531,21 +607,10 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
               )}
             </div>
             <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">
-                You need an approved worker application to accept requests
-              </div>
-              <div className="text-sm text-gray-600">
-                Submit your work application and wait for approval. Once approved, you can accept client requests.
-              </div>
+              <div className="text-lg font-semibold text-gray-900">You need an approved worker application to accept requests</div>
+              <div className="text-sm text-gray-600">Submit your work application and wait for approval. Once approved, you can accept client requests.</div>
             </div>
             <div className="mt-6 grid grid-cols-1 gap-2">
-              <button
-                type="button"
-                onClick={() => setShowNoApproved(false)}
-                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition hidden"
-              >
-                Cancel
-              </button>
               <a
                 href="/workerpostapplication"
                 onClick={(e) => {
@@ -558,6 +623,32 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
               >
                 Become a Worker
               </a>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showTypeMismatch ? (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowTypeMismatch(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-rose-200 bg-white shadow-2xl p-8 z-[2147483648]">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-rose-200 flex items-center justify-center bg-gradient-to-br from-rose-50 to-white">
+              <div className="w-16 h-16 rounded-full border border-rose-400 flex items-center justify-center">
+                <span className="font-bold text-rose-500">JDK</span>
+              </div>
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Service type not matched</div>
+              <div className="text-sm text-gray-600">Your approved application’s service type does not match this request.</div>
+            </div>
+            <div className="mt-6 grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowTypeMismatch(false)}
+                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-md hover:bg-gray-50 transition text-center whitespace-nowrap"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

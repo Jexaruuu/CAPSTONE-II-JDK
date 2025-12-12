@@ -510,10 +510,10 @@ const ClientPost = () => {
       item?.payment?.rate_type ??
       '';
     if (!raw) return '';
-    const s = String(raw).toLowerCase();
-    if (s.includes('hour')) return 'By the hour';
-    if (s.includes('job') || s.includes('fixed') || s.includes('project') || s.includes('task')) return 'By the Job';
-    return s.charAt(0).toUpperCase() + s.slice(1);
+    const s = String(raw).toLowerCase().replace(/\s+/g, '_');
+    if (s.includes('hour') || s.includes('per_hour') || s === 'hourly' || s === 'hourly_rate') return 'Hourly Rate';
+    if (s.includes('job') || s.includes('fixed') || s.includes('project') || s.includes('task') || s.includes('by_the_job') || s === 'by_the_job_rate' || s === 'by_job') return 'By The Job Rate';
+    return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
   };
 
   const isPointerDownRef = useRef(false);
@@ -1141,7 +1141,7 @@ const ClientPost = () => {
         <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteDone(false)} />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items中心 justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBroken ? (
                 <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
               ) : (
