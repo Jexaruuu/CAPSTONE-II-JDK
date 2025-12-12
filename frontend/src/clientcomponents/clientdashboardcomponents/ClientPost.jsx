@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt, Trash2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -821,16 +821,6 @@ const ClientPost = () => {
                       className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
                     >
                       Edit Request
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      disabled={deleting}
-                      className="h-10 w-10 rounded-md border border-red-300 text-red-600 hover:bg-red-50 transition flex items-center justify-center disabled:opacity-60"
-                      aria-label="Delete Request"
-                      title="Delete Request"
-                    >
-                      <Trash2 className="h-5 w-5" />
                     </button>
                   </>
                 )}
