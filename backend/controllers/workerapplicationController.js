@@ -395,7 +395,7 @@ exports.submitFullApplication = async (req, res) => {
     };
 
     const missingDetails = [];
-    if (!detailsRow.service_types || !detailsRow.service_types.length) missingDetails.push('service_types');
+    if (!detailsRow.service_types || detailsRow.service_types.length === 0) missingDetails.push('service_types');
     if (!detailsRow.tools_provided) detailsRow.tools_provided = 'No';
     if (!detailsRow.work_description) missingDetails.push('work_description');
     if (missingDetails.length) return res.status(400).json({ message: `Missing required worker_work_information fields: ${missingDetails.join(', ')}` });
@@ -678,34 +678,60 @@ exports.listPublicApproved = async (req, res) => {
 
     const gids = [...new Set(rows.map(r => r.request_group_id).filter(Boolean))];
 
-    let infoMap = {}, workMap = {}, rateMap = {};
+    let latestMap = {};
+    let canceledSet = new Set();
+
     if (gids.length) {
-      const [{ data: infos }, { data: works }, { data: rates }] = await Promise.all([
-        supabaseAdmin.from('worker_information').select('*').in('request_group_id', gids),
-        supabaseAdmin.from('worker_work_information').select('*').in('request_group_id', gids),
-        supabaseAdmin.from('worker_service_rate').select('*').in('request_group_id', gids)
-      ]);
-      (infos || []).forEach(r => { if (r?.request_group_id) infoMap[r.request_group_id] = r; });
-      (works || []).forEach(r => { if (r?.request_group_id) workMap[r.request_group_id] = r; });
-      (rates || []).forEach(r => { if (r?.request_group_id) rateMap[r.request_group_id] = r; });
+      const { data: allStatus } = await supabaseAdmin
+        .from('worker_application_status')
+        .select('request_group_id,status,created_at')
+        .in('request_group_id', gids)
+        .order('created_at', { ascending: false });
+      (allStatus || []).forEach(r => {
+        const gid = r.request_group_id;
+        if (!latestMap[gid]) latestMap[gid] = String(r.status || '').toLowerCase();
+      });
+
+      const { data: canc } = await supabaseAdmin
+        .from('worker_cancel_application')
+        .select('request_group_id')
+        .in('request_group_id', gids);
+      (canc || []).forEach(r => { if (r?.request_group_id) canceledSet.add(r.request_group_id); });
     }
 
-    const items = rows.map(r => {
-      const gid = r.request_group_id;
-      const i = infoMap[gid] || r.info || {};
-      const w = workMap[gid] || r.details || {};
-      const rt = rateMap[gid] || r.rate || {};
-      return {
-        id: r.id,
-        request_group_id: gid,
-        email_address: r.email_address || i.email_address || w.email_address || null,
-        status: r.status,
-        created_at: r.created_at,
-        info: i,
-        work: w,
-        rate: rt
-      };
-    });
+    const approvedCurrentGids = gids.filter(gid => latestMap[gid] === 'approved' && !canceledSet.has(gid));
+    if (!approvedCurrentGids.length) return res.status(200).json({ items: [] });
+
+    let infoMap = {}, workMap = {}, rateMap = {};
+    const targets = approvedCurrentGids;
+
+    const [{ data: infos }, { data: works }, { data: rates }] = await Promise.all([
+      supabaseAdmin.from('worker_information').select('*').in('request_group_id', targets),
+      supabaseAdmin.from('worker_work_information').select('*').in('request_group_id', targets),
+      supabaseAdmin.from('worker_service_rate').select('*').in('request_group_id', targets)
+    ]);
+    (infos || []).forEach(r => { if (r?.request_group_id) infoMap[r.request_group_id] = r; });
+    (works || []).forEach(r => { if (r?.request_group_id) workMap[r.request_group_id] = r; });
+    (rates || []).forEach(r => { if (r?.request_group_id) rateMap[r.request_group_id] = r; });
+
+    const items = rows
+      .filter(r => approvedCurrentGids.includes(r.request_group_id))
+      .map(r => {
+        const gid = r.request_group_id;
+        const i = infoMap[gid] || r.info || {};
+        const w = workMap[gid] || r.details || {};
+        const rt = rateMap[gid] || r.rate || {};
+        return {
+          id: r.id,
+          request_group_id: gid,
+          email_address: r.email_address || i.email_address || w.email_address || null,
+          status: 'approved',
+          created_at: r.created_at,
+          info: i,
+          work: w,
+          rate: rt
+        };
+      });
 
     return res.status(200).json({ items });
   } catch (e) {
@@ -868,45 +894,56 @@ exports.deleteApplication = async (req, res) => {
 exports.cancel = async (req, res) => {
   try {
     const body = req.body || {};
-    const id = String(body.application_id || body.id || '').trim();
+    const status_id = String(body.application_id || body.id || '').trim();
+    const request_group_id_in = String(body.request_group_id || '').trim();
     const reason_choice = String(body.reason_choice || '').trim() || null;
     const reason_other = String(body.reason_other || '').trim() || null;
     const worker_id = body.worker_id ? Number(body.worker_id) : null;
     const email_address = String(body.email_address || '').trim() || null;
-    if (!id) return res.status(400).json({ message: 'Missing application_id' });
 
-    const { data: existing, error: getErr } = await supabaseAdmin
-      .from('worker_application_status')
-      .select('id, status, email_address, request_group_id, auth_uid, worker_id')
-      .eq('id', id)
-      .maybeSingle();
-    if (getErr) throw getErr;
-    if (!existing) return res.status(404).json({ message: 'Application not found' });
+    if (!reason_choice && !reason_other) return res.status(400).json({ message: 'Provide a reason' });
 
-    const upd = { status: 'cancelled', reason_choice, reason_other };
-    const { data: updated, error: upErr } = await supabaseAdmin
-      .from('worker_application_status')
-      .update(upd)
-      .eq('id', existing.id)
-      .select('id, status, reason_choice, reason_other')
-      .maybeSingle();
-    if (upErr) throw upErr;
+    let found = null;
+    if (status_id) {
+      const { data } = await supabaseAdmin
+        .from('worker_application_status')
+        .select('id, status, email_address, request_group_id, auth_uid, worker_id')
+        .eq('id', status_id)
+        .maybeSingle();
+      if (data) found = data;
+    }
+    if (!found && request_group_id_in) {
+      const { data } = await supabaseAdmin
+        .from('worker_application_status')
+        .select('id, status, email_address, request_group_id, auth_uid, worker_id, created_at')
+        .eq('request_group_id', request_group_id_in)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data) found = data;
+    }
+    if (!found) return res.status(404).json({ message: 'Application not found' });
 
     const canceled_at = new Date().toISOString();
-    const { error: insErr } = await supabaseAdmin
+
+    await supabaseAdmin
       .from('worker_cancel_application')
       .insert([{
-        request_group_id: existing.request_group_id || null,
-        worker_id: worker_id || existing.worker_id || null,
-        auth_uid: existing.auth_uid || null,
-        email_address: email_address || existing.email_address || null,
+        request_group_id: found.request_group_id || request_group_id_in || null,
+        worker_id: worker_id || found.worker_id || null,
+        auth_uid: found.auth_uid || null,
+        email_address: email_address || found.email_address || null,
         reason_choice,
         reason_other,
         canceled_at
       }]);
-    if (insErr) throw insErr;
 
-    return res.status(201).json({ message: 'Cancellation recorded', canceled_at, id: updated?.id || existing.id });
+    await supabaseAdmin
+      .from('worker_application_status')
+      .update({ status: 'cancelled', reason_choice, reason_other, decided_at: canceled_at })
+      .eq('id', found.id);
+
+    return res.status(201).json({ message: 'Cancellation recorded', canceled_at, request_group_id: found.request_group_id, id: found.id });
   } catch (e) {
     return res.status(500).json({ message: friendlyError(e) });
   }
@@ -1012,8 +1049,9 @@ exports.updateByGroup = async (req, res) => {
         profile_picture_name
       };
 
-      if (existing?.id) {
-        await supabaseAdmin.from('worker_information').update(base).eq('id', existing.id);
+      const { data: existId } = await supabaseAdmin.from('worker_information').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
+      if (existId?.id) {
+        await supabaseAdmin.from('worker_information').update(base).eq('id', existId.id);
       } else {
         await insertWorkerInformation(base);
       }
@@ -1081,8 +1119,9 @@ exports.updateByGroup = async (req, res) => {
         work_description
       };
 
-      if (existing?.id) {
-        await supabaseAdmin.from('worker_work_information').update(row).eq('id', existing.id);
+      const { data: existId } = await supabaseAdmin.from('worker_work_information').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
+      if (existId?.id) {
+        await supabaseAdmin.from('worker_work_information').update(row).eq('id', existId.id);
       } else {
         await insertWorkerWorkInformation(row);
       }
@@ -1113,9 +1152,9 @@ exports.updateByGroup = async (req, res) => {
         rate_to: rt,
         rate_value: rv
       };
-      const { data: existing } = await supabaseAdmin.from('worker_service_rate').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
-      if (existing?.id) {
-        await supabaseAdmin.from('worker_service_rate').update(row).eq('id', existing.id);
+      const { data: existId } = await supabaseAdmin.from('worker_service_rate').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
+      if (existId?.id) {
+        await supabaseAdmin.from('worker_service_rate').update(row).eq('id', existId.id);
       } else {
         await insertWorkerRate(row);
       }
@@ -1156,9 +1195,9 @@ exports.updateByGroup = async (req, res) => {
       await setUrl('medical_certificate', docs.medical_certificate || docs.medical);
       await setUrl('certificates', docs.certificates);
 
-      const { data: existing } = await supabaseAdmin.from('worker_required_documents').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
-      if (existing?.id) {
-        await supabaseAdmin.from('worker_required_documents').update(shape).eq('id', existing.id);
+      const { data: existId } = await supabaseAdmin.from('worker_required_documents').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
+      if (existId?.id) {
+        await supabaseAdmin.from('worker_required_documents').update(shape).eq('id', existId.id);
       } else {
         await insertWorkerRequiredDocuments(shape);
       }
@@ -1199,3 +1238,5 @@ exports.updateByGroup = async (req, res) => {
     return res.status(500).json({ message: friendlyError(e) });
   }
 };
+
+exports.cancelWorkerApplication = exports.cancel;

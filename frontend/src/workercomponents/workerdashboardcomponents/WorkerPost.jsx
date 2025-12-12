@@ -622,9 +622,13 @@ function WorkerPost() {
         params: { scope: 'active', email }
       });
       const items = Array.isArray(data?.items) ? data.items : [];
+      const onlyActive = items.filter(r => {
+        const st = String(r.status || '').toLowerCase();
+        return st === 'pending' || st === 'approved';
+      });
       const pick =
-        items.find((r) => String(r.status || '').toLowerCase() === 'pending') ||
-        items.find((r) => String(r.status || '').toLowerCase() === 'approved') ||
+        onlyActive.find((r) => String(r.status || '').toLowerCase() === 'pending') ||
+        onlyActive.find((r) => String(r.status || '').toLowerCase() === 'approved') ||
         null;
       setCurrentApp(pick);
     } catch {
@@ -640,11 +644,14 @@ function WorkerPost() {
 
   useEffect(() => {
     const onSubmitted = () => loadCurrentApplication();
+    const onCancelled = () => loadCurrentApplication();
     const onFocus = () => loadCurrentApplication();
     window.addEventListener('worker-application-submitted', onSubmitted);
+    window.addEventListener('worker-application-cancelled', onCancelled);
     window.addEventListener('focus', onFocus);
     return () => {
       window.removeEventListener('worker-application-submitted', onSubmitted);
+      window.removeEventListener('worker-application-cancelled', onCancelled);
       window.removeEventListener('focus', onFocus);
     };
   }, []);

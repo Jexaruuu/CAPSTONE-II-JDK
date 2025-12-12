@@ -115,7 +115,7 @@ exports.listOpen = async (req, res) => {
     const { data: rows, error } = await supabaseAdmin
       .from('client_service_request_status')
       .select('request_group_id,status,created_at,details')
-      .in('status', ['pending', 'approved'])
+      .eq('status', 'approved')
       .order('created_at', { ascending: false })
       .limit(limit * 2);
     if (error) throw error;
@@ -829,8 +829,9 @@ exports.updateByGroup = async (req, res) => {
 
     const updated = await getCombinedByGroupId(gid);
     const d = updated.details || {};
+    const bucket2 = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
     if (!d.request_image_url && d.image_name) {
-      updated.details = { ...d, request_image_url: await publicOrSignedUrl(bucket, d.image_name) };
+      updated.details = { ...d, request_image_url: await publicOrSignedUrl(bucket2, d.image_name) };
     }
 
     return res.status(200).json(updated);

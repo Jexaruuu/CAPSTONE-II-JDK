@@ -279,11 +279,13 @@ const WorkerAvailableServiceRequest = () => {
           price: fmtRate(mergedRate),
           addressLine,
           isExpired,
-          serviceIcons
+          serviceIcons,
+          status: statusLower
         };
       });
 
-      const active = mapped.filter((x) => !x.isExpired);
+      const onlyApproved = mapped.filter(x => x.status === 'approved');
+      const active = onlyApproved.filter((x) => !x.isExpired);
       setItems(active);
     })();
     return () => { ok = false; };

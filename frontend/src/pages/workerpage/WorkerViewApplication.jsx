@@ -437,6 +437,19 @@ const WorkerViewApplication = () => {
         if (!arr.includes(id)) arr.push(id);
         localStorage.setItem(k, JSON.stringify(arr));
       } catch {}
+      try {
+        await axios.post(
+          `${API_BASE}/api/workerapplications/cancel`,
+          {
+            request_group_id: id,
+            reason_choice: reason || null,
+            reason_other: otherReason || null,
+            worker_id: workerIdState || null,
+            email_address: email || null
+          },
+          { withCredentials: true, headers: headersWithU }
+        );
+      } catch {}
       setRow((prev) =>
         prev
           ? {
@@ -455,7 +468,13 @@ const WorkerViewApplication = () => {
       setSubmittingCancel(false);
       setShowCancel(true);
     } finally {
-      setSubmittingCancel(false);
+      setTimeout(() => {
+        setSubmittingCancel(false);
+        setTimeout(() => {
+          jumpTop();
+          navigate('/workerdashboard', { replace: true, state: { cancelled: id } });
+        }, 300);
+      }, 600);
     }
   };
 
