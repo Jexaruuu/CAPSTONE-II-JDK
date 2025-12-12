@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt, Star } from 'lucide-react';
 import WorkerViewRequest from '../workerdashboardcomponents/workeravailablerequestcomponents/WorkerViewRequest';
 
@@ -94,6 +95,18 @@ const WorkerAvailableServiceRequest = () => {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewRequest, setViewRequest] = useState(null);
 
+  const navigate = useNavigate();
+  const [navLoading, setNavLoading] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
+
+  const goTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {} };
+  const beginRoute = (to) => {
+    if (navLoading) return;
+    goTop();
+    setNavLoading(true);
+    setTimeout(() => { navigate(to, { replace: true }); }, 2000);
+  };
+
   useEffect(() => {
     const originalBodyOverflow = document.body.style.overflow;
     const originalHtmlOverflow = document.documentElement.style.overflow;
@@ -114,6 +127,23 @@ const WorkerAvailableServiceRequest = () => {
       document.body.style.paddingRight = '';
     };
   }, [viewOpen]);
+
+  useEffect(() => {
+    if (!navLoading) return;
+    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', onPopState, true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.activeElement && document.activeElement.blur();
+    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', blockKeys, true);
+    };
+  }, [navLoading]);
 
   useEffect(() => {
     let ok = true;
@@ -458,7 +488,11 @@ const WorkerAvailableServiceRequest = () => {
     <div className="max-w-[1525px] mx-auto px-6 -py-5 relative">
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-2xl font-semibold text-gray-800">Available Service Requests</h2>
-        <a href="/browse-requests" className="text-[#008cfc] flex items-center gap-1 font-medium hover:underline">
+        <a
+          href="/find-a-client"
+          className="text-[#008cfc] flex items-center gap-1 font-medium hover:underline"
+          onClick={(e) => { e.preventDefault(); beginRoute('/find-a-client'); }}
+        >
           Browse available requests <ArrowRight size={16} />
         </a>
       </div>
@@ -675,6 +709,50 @@ const WorkerAvailableServiceRequest = () => {
       `}</style>
 
       <WorkerViewRequest open={viewOpen} onClose={()=>setViewOpen(false)} request={viewRequest} />
+
+      {navLoading && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

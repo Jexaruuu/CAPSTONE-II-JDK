@@ -373,16 +373,6 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
               Edit Application
             </button>
           )}
-
-          <button
-            type="button"
-            onClick={() => onDelete(item)}
-            className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
-            aria-label="Delete Application"
-            title="Delete Application"
-          >
-            <Trash2 className="h-5 w-5" />
-          </button>
         </div>
       </div>
     </div>

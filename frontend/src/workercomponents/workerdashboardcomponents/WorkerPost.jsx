@@ -902,19 +902,6 @@ function WorkerPost() {
                 >
                   Edit Application
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!currentApp) return;
-                    setDeleteTarget({ id: currentApp.id || currentApp.request_group_id || '', label: 'current' });
-                    setShowDeleteConfirm(true);
-                  }}
-                  className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
-                  aria-label="Delete Application"
-                  title="Delete Application"
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
               </div>
             </div>
           </div>
@@ -1044,20 +1031,6 @@ function WorkerPost() {
                             className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
                           >
                             Edit Application
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const id = item?.id || item?.request_group_id || '';
-                              if (!id) return;
-                              setDeleteTarget({ id, label: 'item' });
-                              setShowDeleteConfirm(true);
-                            }}
-                            className="h-10 w-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 flex items-center justify-center"
-                            aria-label="Delete Application"
-                            title="Delete Application"
-                          >
-                            <Trash2 className="h-5 w-5" />
                           </button>
                         </div>
                       </div>
