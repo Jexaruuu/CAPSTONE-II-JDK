@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import { Hammer, Zap, Wrench, Car, Shirt, TrendingUp } from 'lucide-react';
 
 import {
@@ -11,6 +12,8 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const StatsCard = ({
   title,
@@ -52,48 +55,174 @@ const StatsCard = ({
   );
 };
 
-const inDemandWorks = [
-  { title: 'Carpentry',        Icon: Hammer, primaryLabel: 'Requests', primaryValue: '0', primaryDelta: '+0.00%', secondaryLabel: 'Completion', secondaryValue: '0%', secondaryDelta: '+0.00%' },
-  { title: 'Electrical Works', Icon: Zap,    primaryLabel: 'Requests', primaryValue: '0', primaryDelta: '+0.00%', secondaryLabel: 'Completion', secondaryValue: '0%', secondaryDelta: '+0.00%' },
-  { title: 'Plumbing',         Icon: Wrench, primaryLabel: 'Requests', primaryValue: '0', primaryDelta: '+0.00%', secondaryLabel: 'Completion', secondaryValue: '0%', secondaryDelta: '+0.00%' },
-  { title: 'Car Washing',      Icon: Car,    primaryLabel: 'Requests', primaryValue: '0', primaryDelta: '+0.00%', secondaryLabel: 'Completion', secondaryValue: '0%', secondaryDelta: '+0.00%' },
-  { title: 'Laundry',          Icon: Shirt,  primaryLabel: 'Requests', primaryValue: '0', primaryDelta: '+0.00%', secondaryLabel: 'Completion', secondaryValue: '0%', secondaryDelta: '+0.00%' },
+const baseWorks = [
+  { key: 'carpentry',        title: 'Carpentry',        Icon: Hammer },
+  { key: 'electrical works', title: 'Electrical Works', Icon: Zap },
+  { key: 'plumbing',         title: 'Plumbing',         Icon: Wrench },
+  { key: 'car washing',      title: 'Car Washing',      Icon: Car },
+  { key: 'laundry',          title: 'Laundry',          Icon: Shirt },
 ];
 
-const inDemandWorkers = [
-  { title: 'Carpenter',         Icon: Hammer, primaryLabel: 'Hires', primaryValue: '0', primaryDelta: '+0.00%', secondaryLabel: 'Rating', secondaryValue: '0.0', secondaryDelta: '+0.00%' },
-  { title: 'Electrician',       Icon: Zap,    primaryLabel: 'Hires', primaryValue: '0', primaryDelta: '+0.00%', secondaryLabel: 'Rating', secondaryValue: '0.0', secondaryDelta: '+0.00%' },
-  { title: 'Plumber',           Icon: Wrench, primaryLabel: 'Hires', primaryValue: '0', primaryDelta: '+0.00%', secondaryLabel: 'Rating', secondaryValue: '0.0', secondaryDelta: '+0.00%' },
-  { title: 'Car Washer',        Icon: Car,    primaryLabel: 'Hires', primaryValue: '0', primaryDelta: '+0.00%', secondaryLabel: 'Rating', secondaryValue: '0.0', secondaryDelta: '+0.00%' },
-  { title: 'Laundry Attendant', Icon: Shirt,  primaryLabel: 'Hires', primaryValue: '0', primaryDelta: '+0.00%', secondaryLabel: 'Rating', secondaryValue: '0.0', secondaryDelta: '+0.00%' },
+const baseWorkers = [
+  { key: 'carpentry',        title: 'Carpenter',         Icon: Hammer },
+  { key: 'electrical works', title: 'Electrician',       Icon: Zap },
+  { key: 'plumbing',         title: 'Plumber',           Icon: Wrench },
+  { key: 'car washing',      title: 'Car Washer',        Icon: Car },
+  { key: 'laundry',          title: 'Laundry Attendant', Icon: Shirt },
 ];
 
-const barangayData = [
-  { name: 'Alangilan', requests: 14000, completed: 12000 },
-  { name: 'Alijis', requests: 17000, completed: 9000  },
-  { name: 'Banago', requests: 5000,  completed: 22000 },
-  { name: 'Bata', requests: 16000, completed: 6000  },
-  { name: 'Cabug', requests: 12000, completed: 11000 },
-  { name: 'Estefania', requests: 16500, completed: 14000 },
-  { name: 'Felisa', requests: 21000, completed: 10500 },
-  { name: 'Granada', requests: 21000, completed: 10500 },
-  { name: 'Handumanan', requests: 21000, completed: 10500 },
-  { name: 'Lopez Jaena', requests: 21000, completed: 10500 },
-  { name: 'Mandalagan', requests: 21000, completed: 10500 },
-  { name: 'Mansilingan', requests: 21000, completed: 10500 },
-  { name: 'Montevista', requests: 21000, completed: 10500 },
-  { name: 'Pahanocoy', requests: 21000, completed: 10500 },
-  { name: 'Punta Taytay', requests: 21000, completed: 10500 },
-  { name: 'Singcang-Airport', requests: 21000, completed: 10500 },
-  { name: 'Sum-ag', requests: 21000, completed: 10500 },
-  { name: 'Taculing', requests: 21000, completed: 10500 },
-  { name: 'Tangub', requests: 21000, completed: 10500 },
-  { name: 'Villa Esperanza', requests: 21000, completed: 10500 },
+const staticWorkCards = baseWorks.map(({ title, Icon }) => ({
+  title,
+  Icon,
+  primaryLabel: 'Requests',
+  primaryValue: '0',
+  primaryDelta: '+0.00%',
+  secondaryLabel: 'Completion',
+  secondaryValue: '0%',
+  secondaryDelta: '+0.00%',
+}));
+
+const staticWorkerCards = baseWorkers.map(({ title, Icon }) => ({
+  title,
+  Icon,
+  primaryLabel: 'Hires',
+  primaryValue: '0',
+  primaryDelta: '+0.00%',
+  secondaryLabel: 'Rating',
+  secondaryValue: '0.0',
+  secondaryDelta: '+0.00%',
+}));
+
+const staticBarangayData = [
+  { name: 'Alangilan', requests: 0, completed: 0 },
+  { name: 'Alijis', requests: 0, completed: 0 },
+  { name: 'Banago', requests: 0, completed: 0 },
+  { name: 'Bata', requests: 0, completed: 0 },
+  { name: 'Cabug', requests: 0, completed: 0 },
+  { name: 'Estefania', requests: 0, completed: 0 },
+  { name: 'Felisa', requests: 0, completed: 0 },
+  { name: 'Granada', requests: 0, completed: 0 },
+  { name: 'Handumanan', requests: 0, completed: 0 },
+  { name: 'Lopez Jaena', requests: 0, completed: 0 },
+  { name: 'Mandalagan', requests: 0, completed: 0 },
+  { name: 'Mansilingan', requests: 0, completed: 0 },
+  { name: 'Montevista', requests: 0, completed: 0 },
+  { name: 'Pahanocoy', requests: 0, completed: 0 },
+  { name: 'Punta Taytay', requests: 0, completed: 0 },
+  { name: 'Singcang-Airport', requests: 0, completed: 0 },
+  { name: 'Sum-ag', requests: 0, completed: 0 },
+  { name: 'Taculing', requests: 0, completed: 0 },
+  { name: 'Tangub', requests: 0, completed: 0 },
+  { name: 'Villa Esperanza', requests: 0, completed: 0 },
 ];
+
+const zeroBarangayData = staticBarangayData;
 
 const formatK = (v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : v);
 
+function normalizeKey(s) {
+  return String(s || '').trim().toLowerCase();
+}
+
 export default function DashboardMenu() {
+  const [workCards, setWorkCards] = useState(staticWorkCards);
+  const [workerCards, setWorkerCards] = useState(staticWorkerCards);
+  const [barangayRows, setBarangayRows] = useState(zeroBarangayData);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const [requestsRes, workersRes] = await Promise.allSettled([
+          axios.get(`${API_BASE}/api/clientservicerequests/open`, { params: { limit: 500 } }),
+          axios.get(`${API_BASE}/api/workerapplications/public/approved`, { params: { limit: 500 } }),
+        ]);
+
+        const reqItems =
+          requestsRes.status === 'fulfilled' && Array.isArray(requestsRes.value?.data?.items)
+            ? requestsRes.value.data.items
+            : [];
+
+        const wrkItems =
+          workersRes.status === 'fulfilled' && Array.isArray(workersRes.value?.data?.items)
+            ? workersRes.value.data.items
+            : [];
+
+        const serviceTypeCount = {};
+        const barangayCount = {};
+
+        reqItems.forEach((r) => {
+          const st = normalizeKey(r?.details?.service_type);
+          if (st) serviceTypeCount[st] = (serviceTypeCount[st] || 0) + 1;
+          const brgy = String(r?.info?.barangay || '').trim();
+          if (brgy) barangayCount[brgy] = (barangayCount[brgy] || 0) + 1;
+        });
+
+        const workerTypeCount = {};
+        wrkItems.forEach((w) => {
+          const arr = Array.isArray(w?.work?.service_types) ? w.work.service_types : [];
+          arr.forEach((t) => {
+            const k = normalizeKey(t);
+            if (k) workerTypeCount[k] = (workerTypeCount[k] || 0) + 1;
+          });
+        });
+
+        const nextWorkCards = baseWorks.map(({ key, title, Icon }) => {
+          const cnt = serviceTypeCount[key] || 0;
+          return {
+            title,
+            Icon,
+            primaryLabel: 'Requests',
+            primaryValue: String(cnt),
+            primaryDelta: '+0.00%',
+            secondaryLabel: 'Completion',
+            secondaryValue: '0%',
+            secondaryDelta: '+0.00%',
+          };
+        });
+
+        const nextWorkerCards = baseWorkers.map(({ key, title, Icon }) => {
+          const cnt = workerTypeCount[key] || 0;
+          return {
+            title,
+            Icon,
+            primaryLabel: 'Hires',
+            primaryValue: String(cnt),
+            primaryDelta: '+0.00%',
+            secondaryLabel: 'Rating',
+            secondaryValue: '0.0',
+            secondaryDelta: '+0.00%',
+          };
+        });
+
+        const barangayList = Object.keys(barangayCount).sort();
+        const nextBarangay = barangayList.length
+          ? barangayList.map((name) => ({
+              name,
+              requests: barangayCount[name],
+              completed: 0,
+            }))
+          : zeroBarangayData;
+
+        if (!cancelled) {
+          setWorkCards(nextWorkCards);
+          setWorkerCards(nextWorkerCards);
+          setBarangayRows(nextBarangay);
+        }
+      } catch {}
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const inDemandWorks = useMemo(() => workCards, [workCards]);
+  const inDemandWorkers = useMemo(() => workerCards, [workerCards]);
+  const barangayData = useMemo(() => barangayRows, [barangayRows]);
+
   return (
     <main className="p-6">
       <div className="mb-4">
@@ -148,7 +277,7 @@ export default function DashboardMenu() {
             >
               <div className="flex gap-4 snap-x snap-mandatory" data-card-list>
                 {inDemandWorkers.map(({ title, Icon, primaryLabel, primaryValue, primaryDelta, secondaryLabel, secondaryValue, secondaryDelta }) => (
-                  <div key={title} className="min-w-[302px] snap-start" data-card>
+                  <div key={title} className="min-w=[302px] snap-start" data-card>
                     <StatsCard
                       title={title}
                       Icon={Icon}
