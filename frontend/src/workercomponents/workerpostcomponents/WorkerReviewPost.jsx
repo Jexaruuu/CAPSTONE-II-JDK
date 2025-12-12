@@ -434,15 +434,21 @@ const WorkerReviewPost = ({ handleBack }) => {
       setTimeout(() => {
         setPayProcessing(false);
         setShowPaySuccess(true);
-        setTimeout(async () => {
-          setShowPaySuccess(false);
-          await handleConfirm(meta);
-        }, 1200);
       }, 1200);
     } catch (e) {
       setPayError('Payment confirmation failed.');
       setPayProcessing(false);
     }
+  };
+
+  const extFromPicData = (s = '') => {
+    const m = /^data:([^;]+);base64,/.exec(s || '');
+    const mime = (m ? m[1] : '').toLowerCase();
+    if (mime === 'image/png') return 'png';
+    if (mime === 'image/webp') return 'webp';
+    if (mime === 'image/gif') return 'gif';
+    if (mime === 'image/svg+xml') return 'svg';
+    return 'jpg';
   };
 
   const handleConfirm = async (payment = null) => {
@@ -561,6 +567,11 @@ const WorkerReviewPost = ({ handleBack }) => {
         setIsSubmitting(false);
         setSubmitError('Please upload a profile picture.');
         return;
+      }
+
+      if (!initialPayload.info.profilePictureName && initialPayload.info.profilePicture) {
+        const ext = extFromPicData(initialPayload.info.profilePicture);
+        initialPayload.info.profilePictureName = `profile-${Date.now()}.${ext}`;
       }
 
       const docsCandidatesMerged = []
@@ -789,7 +800,9 @@ const WorkerReviewPost = ({ handleBack }) => {
         email_address: normalized.email_address,
         worker_id: normalized.worker_id,
         metadata: normalized.metadata,
-        payment: payment || paymentMeta || null
+        payment: payment || paymentMeta || null,
+        profile_picture_data_url: normalized.metadata.profile_picture_data_url,
+        profile_picture_name: normalized.profile_picture_name || normalized.metadata.profile_picture_name || ''
       };
 
       const res = await axios.post(`${API_BASE}/api/workerapplications/submit`, submitBody, {
@@ -881,6 +894,11 @@ const WorkerReviewPost = ({ handleBack }) => {
   const canConfirmPayment = payMethod === 'qr'
     ? !!payFields.screenshotDataUrl
     : !!payFields.name && !!payFields.number;
+
+  const proceedAfterPaymentSuccess = async () => {
+    setShowPaySuccess(false);
+    await handleConfirm(paymentMeta);
+  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
@@ -1419,7 +1437,7 @@ const WorkerReviewPost = ({ handleBack }) => {
           className="fixed inset-0 z-[2147483647] flex items-center justify-center"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="relative w-[380px] max-w=[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBroken ? (
                 <img
@@ -1435,8 +1453,17 @@ const WorkerReviewPost = ({ handleBack }) => {
               )}
             </div>
             <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">Payment Successfully</div>
-              <div className="text-sm text-gray-600">Submitting your application…</div>
+              <div className="text-lg font-semibold text-gray-900">Payment Successful!</div>
+              <div className="text-sm text-gray-600">Your payment was received. You can now submit your request.</div>
+            </div>
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={proceedAfterPaymentSuccess}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+              >
+                Continue
+              </button>
             </div>
           </div>
         </div>

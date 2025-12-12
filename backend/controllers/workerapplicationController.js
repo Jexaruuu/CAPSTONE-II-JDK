@@ -154,8 +154,8 @@ exports.submitFullApplication = async (req, res) => {
     const last_name = pick(src, ['last_name', 'lastName', 'info.last_name', 'info.lastName', 'metadata.last_name', 'metadata.lastName']);
     const email_address = pick(src, ['email_address', 'email', 'info.email_address', 'info.email', 'metadata.email']);
     const contact_number = pick(src, ['contact_number', 'phone', 'mobile', 'info.contact_number', 'info.phone', 'info.mobile', 'metadata.contact_number', 'metadata.phone']);
-    const street = pick(src, ['street', 'info.street', 'metadata.street']);
-    const barangay = pick(src, ['barangay', 'info.barangay', 'metadata.barangay']);
+    const street = pick(src, ['street', 'info.street', 'metadata.street'], 'N/A');
+    const barangay = pick(src, ['barangay', 'info.barangay', 'metadata.barangay'], 'N/A');
     const date_of_birth = pick(src, ['date_of_birth', 'birthDate', 'info.date_of_birth', 'info.birthDate', 'metadata.date_of_birth']);
     const age = pick(src, ['age', 'info.age', 'metadata.age']);
     const auth_uid = pick(src, ['auth_uid', 'authUid', 'info.auth_uid', 'metadata.auth_uid']);
@@ -190,13 +190,13 @@ exports.submitFullApplication = async (req, res) => {
     const service_types = pick(src, ['service_types', 'details.service_types', 'details.serviceTypes', 'work.service_types', 'work.serviceTypes'], []);
     const service_task_raw = pick(src, ['service_task', 'details.service_task', 'details.serviceTask', 'work.service_task', 'work.serviceTask'], {});
     const years_experience = pick(src, ['years_experience', 'details.years_experience', 'details.yearsExperience', 'work.years_experience', 'work.yearsExperience']);
-    const tools_provided = pick(src, ['tools_provided', 'details.tools_provided', 'details.toolsProvided', 'work.tools_provided', 'work.toolsProvided', 'metadata.tools_provided', 'metadata.toolsProvided']);
+    const tools_provided = pick(src, ['tools_provided', 'details.tools_provided', 'details.toolsProvided', 'work.tools_provided', 'work.toolsProvided', 'metadata.tools_provided', 'metadata.toolsProvided'], 'No');
     const work_description = pick(src, ['work_description', 'service_description', 'details.work_description', 'details.service_description', 'work.service_description', 'work.serviceDescription']);
 
     const rate_type_raw = pick(src, ['rate_type', 'rateType', 'rate.rate_type', 'rate.rateType', 'pricing.rate_type', 'pricing.rateType']);
-    const rate_from = pick(src, ['rate_from', 'rateFrom', 'rate.rate_from', 'rate.rateFrom', 'pricing.rate_from', 'pricing.rateFrom']);
-    const rate_to = pick(src, ['rate_to', 'rateTo', 'rate.rate_to', 'rate.rateTo', 'pricing.rate_to', 'pricing.rateTo']);
-    const rate_value = pick(src, ['rate_value', 'rateValue', 'rate.rate_value', 'rate.rateValue', 'pricing.rate_value', 'pricing.rateValue']);
+    let rate_from = pick(src, ['rate_from', 'rateFrom', 'rate.rate_from', 'rate.rateFrom', 'pricing.rate_from', 'pricing.rateFrom']);
+    let rate_to = pick(src, ['rate_to', 'rateTo', 'rate.rate_to', 'rate.rateTo', 'pricing.rate_to', 'pricing.rateTo']);
+    let rate_value = pick(src, ['rate_value', 'rateValue', 'rate.rate_value', 'rate.rateValue', 'pricing.rate_value', 'pricing.rateValue']);
 
     let effectiveWorkerId = worker_id_in != null && String(worker_id_in).trim() !== '' ? Number(worker_id_in) : null;
     let effectiveAuthUid = null;
@@ -322,8 +322,8 @@ exports.submitFullApplication = async (req, res) => {
       first_name: first_name || metadata.first_name || null,
       last_name: last_name || metadata.last_name || null,
       contact_number: (contact_number ?? metadata.contact_number ?? '').toString(),
-      street: (street ?? metadata.street ?? '').toString(),
-      barangay: (barangay ?? metadata.barangay ?? '').toString(),
+      street: (street ?? metadata.street ?? 'N/A').toString() || 'N/A',
+      barangay: (barangay ?? metadata.barangay ?? 'N/A').toString() || 'N/A',
       date_of_birth: date_of_birth || null,
       age: age || null,
       profile_picture_url: profileUpload?.url || profileDirect || null,
@@ -337,7 +337,6 @@ exports.submitFullApplication = async (req, res) => {
     if (!infoRow.first_name) missingInfo.push('first_name');
     if (!infoRow.last_name) missingInfo.push('last_name');
     if (!infoRow.contact_number) missingInfo.push('contact_number');
-    if (infoRow.barangay === '') missingInfo.push('barangay');
     if (missingInfo.length) return res.status(400).json({ message: `Missing required worker_information fields: ${missingInfo.join(', ')}` });
 
     let infoIns;
@@ -391,17 +390,10 @@ exports.submitFullApplication = async (req, res) => {
       work_description: work_description || null
     };
 
-    const hasTasks =
-      Array.isArray(detailsRow.service_task)
-        ? detailsRow.service_task.length > 0
-        : Object.values(detailsRow.service_task || {}).some(arr => Array.isArray(arr) && arr.length > 0);
-
     const missingDetails = [];
     if (!detailsRow.service_types || !detailsRow.service_types.length) missingDetails.push('service_types');
-    if (detailsRow.years_experience === null || detailsRow.years_experience === undefined || String(detailsRow.years_experience) === '') missingDetails.push('years_experience');
-    if (!detailsRow.tools_provided) missingDetails.push('tools_provided');
+    if (!detailsRow.tools_provided) detailsRow.tools_provided = 'No';
     if (!detailsRow.work_description) missingDetails.push('work_description');
-    if (!hasTasks) missingDetails.push('service_task');
     if (missingDetails.length) return res.status(400).json({ message: `Missing required worker_work_information fields: ${missingDetails.join(', ')}` });
 
     await insertWorkerWorkInformation(detailsRow);
@@ -418,20 +410,26 @@ exports.submitFullApplication = async (req, res) => {
       return '';
     };
     const rateTypeDb = toLabelRateType(inferredRateType);
+    if (rateTypeDb === 'Hourly Rate') {
+      const rf = rate_from != null && rate_from !== '' ? Number(rate_from) : null;
+      const rt = rate_to != null && rate_to !== '' ? Number(rate_to) : null;
+      if (rf != null && rt == null) rate_to = rf;
+      if (rt != null && rf == null) rate_from = rt;
+    }
     const rateRow = {
       request_group_id,
       worker_id: effectiveWorkerId,
       auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
       email_address: infoRow.email_address,
       rate_type: rateTypeDb || null,
-      rate_from: rate_from ? Number(rate_from) : null,
-      rate_to: rate_to ? Number(rate_to) : null,
-      rate_value: rate_value ? Number(rate_value) : null
+      rate_from: rate_from !== undefined && rate_from !== null && String(rate_from) !== '' ? Number(rate_from) : null,
+      rate_to: rate_to !== undefined && rate_to !== null && String(rate_to) !== '' ? Number(rate_to) : null,
+      rate_value: rate_value !== undefined && rate_value !== null && String(rate_value) !== '' ? Number(rate_value) : null
     };
     const missingRate = [];
     if (!rateRow.rate_type) missingRate.push('rate_type');
-    if (rateRow.rate_type === 'Hourly Rate' && (!rateRow.rate_from || !rateRow.rate_to)) missingRate.push('rate_from/rate_to');
-    if (rateRow.rate_type === 'By the Job Rate' && !rateRow.rate_value) missingRate.push('rate_value');
+    if (rateRow.rate_type === 'Hourly Rate' && (rateRow.rate_from == null || rateRow.rate_to == null)) missingRate.push('rate_from/rate_to');
+    if (rateRow.rate_type === 'By the Job Rate' && rateRow.rate_value == null) missingRate.push('rate_value');
     if (missingRate.length) return res.status(400).json({ message: `Missing required worker_service_rate fields: ${missingRate.join(', ')}` });
 
     try {
@@ -1089,15 +1087,22 @@ exports.updateByGroup = async (req, res) => {
       if (s.includes('hour')) rate_type = 'Hourly Rate';
       else if (s.includes('job') || s.includes('fixed') || s.includes('flat')) rate_type = 'By the Job Rate';
       else rate_type = r.rate_type || '';
+      let rf = r.rate_from != null && r.rate_from !== '' ? Number(r.rate_from) : null;
+      let rt = r.rate_to != null && r.rate_to !== '' ? Number(r.rate_to) : null;
+      let rv = r.rate_value != null && r.rate_value !== '' ? Number(r.rate_value) : null;
+      if (rate_type === 'Hourly Rate') {
+        if (rf != null && rt == null) rt = rf;
+        if (rt != null && rf == null) rf = rt;
+      }
       const row = {
         request_group_id: gid,
         worker_id: worker_id || null,
         auth_uid: auth_uid || null,
         email_address: email || null,
         rate_type: rate_type || null,
-        rate_from: r.rate_from != null ? Number(r.rate_from) : null,
-        rate_to: r.rate_to != null ? Number(r.rate_to) : null,
-        rate_value: r.rate_value != null ? Number(r.rate_value) : null
+        rate_from: rf,
+        rate_to: rt,
+        rate_value: rv
       };
       const { data: existing } = await supabaseAdmin.from('worker_service_rate').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
       if (existing?.id) {
