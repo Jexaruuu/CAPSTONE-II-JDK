@@ -230,8 +230,10 @@ export default function ClientOnGoingRequest() {
   const workEndAt = progressR.work_completed_at || progressR.completed_at || null;
   const clientConfirmAt = progressR.client_confirmed_at || progressR.confirmed_done_at || null;
 
+  const scheduledAt = preferred_date || fx.preferred_date || detR.preferred_date || fx.approved_at || detR.approved_at || startedAt || fx.created_at || fx.requested_at || null;
+
   const steps = [
-    { key: 'scheduled', label: 'Scheduled', at: fx.approved_at || detR.approved_at || startedAt || fx.created_at || fx.requested_at || null },
+    { key: 'scheduled', label: 'Scheduled', at: scheduledAt },
     { key: 'enroute', label: 'On The Way', at: enrouteAt || null },
     { key: 'arrived', label: 'Arrived', at: arrivedAt || null },
     { key: 'inservice', label: 'In Service', at: workStartAt || null },
@@ -297,6 +299,11 @@ export default function ClientOnGoingRequest() {
     return `${f}${l}`.toUpperCase();
   })();
 
+  const hasWorkerAssigned = useMemo(() => {
+    const any = pick(workerObj, ['email_address','email','full_name','fullName','first_name','firstName','last_name','lastName','profile_picture_url','profile_picture']);
+    return Boolean(any);
+  }, [workerObj]);
+
   const Stepper = ({ steps, active }) => {
     return (
       <div className="w-full">
@@ -346,7 +353,7 @@ export default function ClientOnGoingRequest() {
       { k: 'work_start', label: 'Work Started', at: workStartAt },
       { k: 'arrived', label: 'Worker Arrived', at: arrivedAt },
       { k: 'enroute', label: 'Worker On The Way', at: enrouteAt },
-      { k: 'approved', label: 'Scheduled/Approved', at: steps[0].at }
+      { k: 'approved', label: 'Scheduled/Approved', at: scheduledAt }
     ].filter(x => !!x.at);
     if (!items.length) return null;
     return (
@@ -396,284 +403,293 @@ export default function ClientOnGoingRequest() {
   return (
     <>
       <ClientNavigation />
-      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
-        <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
-          <div className="mx-auto w-full max-w-[1420px] px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 grid place-items-center rounded-xl border border-blue-100 bg-white shadow-sm">
-                <img src="/jdklogo.png" alt="" className="h-6 w-6 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
-              </div>
-              <div className="text-2xl md:text-3xl font-semibold text-gray-900">Ongoing Service</div>
-            </div>
-
-            <div className="flex items-center gap-4 max-w-[55%]">
-              {(() => {
-                const workerRaw =
-                  fx.worker ||
-                  fx.accepted_worker ||
-                  fx.assigned_worker ||
-                  fx.assignee ||
-                  fx.provider ||
-                  fx.worker_info ||
-                  {};
-                const workerObj = workerRaw.info || workerRaw.worker || workerRaw || {};
-                const pick = (o, arr) => { for (const k of arr) { if (o?.[k]) return o[k]; } return null; };
-                const wf = pick(workerObj, ['first_name','firstName']) || '';
-                const wl = pick(workerObj, ['last_name','lastName']) || '';
-                const wname = pick(workerObj, ['full_name','fullName']) || `${wf} ${wl}`.trim();
-                const wemail = pick(workerObj, ['email_address','email']) || '';
-                const wphoto = pick(workerObj, ['profile_picture_url','profile_picture']) || '';
-                const initials = (() => {
-                  const f = String(wf || '').trim().slice(0,1);
-                  const l = String(wl || '').trim().slice(0,1);
-                  if (wname && !f && !l) {
-                    const parts = String(wname).trim().split(/\s+/);
-                    const a = (parts[0] || '').slice(0,1);
-                    const b = (parts[parts.length-1] || '').slice(0,1);
-                    return `${a}${b}`.toUpperCase();
-                  }
-                  return `${f}${l}`.toUpperCase();
-                })();
-                return (
-                  <>
-                    {wphoto ? (
-                      <img src={wphoto} alt="" className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover ring-2 ring-blue-100 flex-shrink-0" />
-                    ) : (
-                      <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-blue-50 text-[#008cfc] border border-blue-200 grid place-items-center text-sm font-semibold flex-shrink-0">
-                        {initials || 'WK'}
-                      </div>
-                    )}
-                    <div className="min-w-0 text-right">
-                      <div className="text-[11px] md:text-xs text-gray-600">Assigned Worker</div>
-                      <div className="text-sm md:text-base font-semibold text-gray-900 truncate">{wname || '—'}</div>
-                      <div className="text-[11px] md:text-xs text-[#008cfc] truncate">{wemail || ''}</div>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
+      {!hasWorkerAssigned ? (
+        <div className="min-h-screen bg-white flex items-center justify-center px-6">
+          <div className="text-center">
+            <img src="/Bluelogo.png" alt="JDK Homecare" className="mx-auto w-64 h-64 md:w-56 md:h-56 object-contain select-none pointer-events-none" />
+            <div className="mt-4 text-base md:text-lg font-semibold text-gray-500">There is no On-going request yet.</div>
           </div>
         </div>
+      ) : (
+        <div className="min-h-screen bg-white pb-24">
+          <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
+            <div className="mx-auto w-full max-w-[1420px] px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 grid place-items-center rounded-xl border border-blue-100 bg-white shadow-sm">
+                  <img src="/jdklogo.png" alt="" className="h-6 w-6 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+                </div>
+                <div className="text-2xl md:text-3xl font-semibold text-gray-900">Ongoing Service</div>
+              </div>
 
-        <div className="mx-auto w-full max-w-[1420px] px-6">
-          {bookingId ? (
-            <div className="mt-6 mb-2 text-sm md:text-base font-semibold text-gray-600">
-              Booking ID: <span className="text-[#008cfc]">{bookingId}</span>
-            </div>
-          ) : null}
-
-          <div className="mt-2 bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4">
-              <h3 className="text-lg md:text-xl font-semibold text-gray-900">Progress</h3>
-              <div className="text-xs md:text-sm px-2 py-1 rounded-lg bg-blue-50 text-[#008cfc] font-semibold">{stepIndex < steps.length - 1 ? `Step ${stepIndex + 1} of ${steps.length}` : 'Completed'}</div>
-            </div>
-            <div className="border-t border-gray-100" />
-            <div className="px-6 py-6">
-              <Stepper steps={steps} active={stepIndex} />
+              <div className="flex items-center gap-4 max-w-[55%]">
+                {(() => {
+                  const workerRaw =
+                    fx.worker ||
+                    fx.accepted_worker ||
+                    fx.assigned_worker ||
+                    fx.assignee ||
+                    fx.provider ||
+                    fx.worker_info ||
+                    {};
+                  const workerObj = workerRaw.info || workerRaw.worker || workerRaw || {};
+                  const pick = (o, arr) => { for (const k of arr) { if (o?.[k]) return o[k]; } return null; };
+                  const wf = pick(workerObj, ['first_name','firstName']) || '';
+                  const wl = pick(workerObj, ['last_name','lastName']) || '';
+                  const wname = pick(workerObj, ['full_name','fullName']) || `${wf} ${wl}`.trim();
+                  const wemail = pick(workerObj, ['email_address','email']) || '';
+                  const wphoto = pick(workerObj, ['profile_picture_url','profile_picture']) || '';
+                  const initials = (() => {
+                    const f = String(wf || '').trim().slice(0,1);
+                    const l = String(wl || '').trim().slice(0,1);
+                    if (wname && !f && !l) {
+                      const parts = String(wname).trim().split(/\s+/);
+                      const a = (parts[0] || '').slice(0,1);
+                      const b = (parts[parts.length-1] || '').slice(0,1);
+                      return `${a}${b}`.toUpperCase();
+                    }
+                    return `${f}${l}`.toUpperCase();
+                  })();
+                  return (
+                    <>
+                      {wphoto ? (
+                        <img src={wphoto} alt="" className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover ring-2 ring-blue-100 flex-shrink-0" />
+                      ) : (
+                        <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-blue-50 text-[#008cfc] border border-blue-200 grid place-items-center text-sm font-semibold flex-shrink-0">
+                          {initials || 'WK'}
+                        </div>
+                      )}
+                      <div className="min-w-0 text-right">
+                        <div className="text-[11px] md:text-xs text-gray-600">Assigned Worker</div>
+                        <div className="text-sm md:text-base font-semibold text-gray-900 truncate">{wname || '—'}</div>
+                        <div className="text-[11px] md:text-xs text-[#008cfc] truncate">{wemail || ''}</div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
           </div>
 
-          <div className="space-y-6 mt-6">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+          <div className="mx-auto w-full max-w-[1420px] px-6">
+            {bookingId ? (
+              <div className="mt-6 mb-2 text-sm md:text-base font-semibold text-gray-600">
+                Booking ID: <span className="text-[#008cfc]">{bookingId}</span>
+              </div>
+            ) : null}
+
+            <div className="mt-2 bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4">
-                <h3 className="text-lg md:text-xl font-semibold text-gray-900">Personal Information</h3>
+                <h3 className="text-lg md:text-xl font-semibold text-gray-900">Progress</h3>
+                <div className="text-xs md:text-sm px-2 py-1 rounded-lg bg-blue-50 text-[#008cfc] font-semibold">{stepIndex < steps.length - 1 ? `Step ${stepIndex + 1} of ${steps.length}` : 'Completed'}</div>
               </div>
               <div className="border-t border-gray-100" />
               <div className="px-6 py-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
-                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 text-base">
-                    <LabelValue label="First Name" value={first_name} />
-                    <LabelValue label="Last Name" value={last_name} />
-                    <LabelValue label="Contact Number" value={contactDisplay} />
-                    <LabelValue label="Email" value={email} />
-                    <LabelValue label="Address" value={barangay && street ? `${barangay}, ${street}` : barangay || street} />
-                    {additional_address ? <LabelValue label="Landmark" value={additional_address} /> : <div className="hidden md:block" />}
+                <Stepper steps={steps} active={stepIndex} />
+              </div>
+            </div>
+
+            <div className="space-y-6 mt-6">
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4">
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-900">Personal Information</h3>
+                </div>
+                <div className="border-t border-gray-100" />
+                <div className="px-6 py-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 text-base">
+                      <LabelValue label="First Name" value={first_name} />
+                      <LabelValue label="Last Name" value={last_name} />
+                      <LabelValue label="Contact Number" value={contactDisplay} />
+                      <LabelValue label="Email" value={email} />
+                      <LabelValue label="Address" value={barangay && street ? `${barangay}, ${street}` : barangay || street} />
+                      {additional_address ? <LabelValue label="Landmark" value={additional_address} /> : <div className="hidden md:block" />}
+                    </div>
+                    <div className="md:col-span-1 flex flex-col items-center">
+                      <div className="text-sm font-medium text-gray-700 mb-3">Client Picture</div>
+                      {profile_picture ? (
+                        <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
+                          <img src={profile_picture} alt="Profile" className="h-full w-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-32 h-32 md:w-40 md:h-40 rounded-full grid place-items-center bg-gray-50 text-gray-400 border border-dashed">
+                          <span className="text-sm">No Image</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="md:col-span-1 flex flex-col items-center">
-                    <div className="text-sm font-medium text-gray-700 mb-3">Client Picture</div>
-                    {profile_picture ? (
-                      <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
-                        <img src={profile_picture} alt="Profile" className="h-full w-full object-cover" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+                    <div className="flex items-center justify-between px-6 py-4">
+                      <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Request Details</h3>
+                    </div>
+                    <div className="border-t border-gray-100" />
+                    <div className="px-6 py-6">
+                      <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                        <LabelValue label="Service Type" value={service_type} />
+                        <LabelValue label="Service Task" value={service_task} />
+                        <LabelValue label="Preferred Date" value={formatDateMDY(preferred_date)} />
+                        <LabelValue label="Preferred Time" value={formatTime12h(preferred_time)} />
+                        <LabelValue label="Urgent" value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(is_urgent) ? 'Yes' : 'No'}</span>} />
+                        <LabelValue label="Tools Provided" value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(tools_provided) ? 'Yes' : 'No'}</span>} />
+                        <div className="md:col-span-2">
+                          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <span className="text-gray-700 font-semibold">Description:</span>
+                            <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">{service_description || '-'}</span>
+                          </div>
+                        </div>
+                        {review_image ? (
+                          <div className="md:col-span-2">
+                            <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
+                              <span className="text-gray-700 font-semibold">Request Image:</span>
+                              <div className="w-full">
+                                <div className="w-full h-64 rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50">
+                                  <img src={review_image} alt="" className="w-full h-full object-cover object-center" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+                    <div className="flex items-center justify-between px-6 py-4">
+                      <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Rate</h3>
+                    </div>
+                    <div className="border-t border-gray-100" />
+                    <div className="px-6 py-6">
+                      <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                        <LabelValue label="Rate Type" value={rate_type} />
+                        {rate_type === 'Hourly Rate' ? (
+                          <LabelValue label="Rate" value={rate_from && rate_to ? `₱${rate_from} - ₱${rate_to} per hour` : ''} />
+                        ) : (
+                          <LabelValue label="Rate" value={rate_value ? `₱${rate_value}` : ''} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Timeline />
+                </div>
+
+                <aside className="lg:col-span-1 flex flex-col">
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden flex flex-col">
+                    <div className="px-6 py-4 flex items-center justify-between">
+                      <div className="text-base font-semibold text-gray-900">Summary</div>
+                      <div className={`text-xs px-2 py-1 rounded-md ${stepIndex === steps.length - 1 ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-[#008cfc]'} font-semibold`}>
+                        {stepIndex < steps.length - 1 ? 'In Progress' : 'Completed'}
+                      </div>
+                    </div>
+                    <div className="border-t border-gray-100" />
+                    <div className="px-6 py-5 space-y-4 flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-medium text-gray-600">Client:</span>
+                        <span className="text-base font-semibold text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-medium text-gray-600">Service:</span>
+                        <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{service_type || '-'}</span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-medium text-gray-600">Task:</span>
+                        <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{service_task || '-'}</span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-medium text-gray-600">Schedule:</span>
+                        <span className="text-base font-semibold text-[#008cfc]">{preferred_date_display || '-'} • {formatTime12h(preferred_time) || '-'}</span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-medium text-gray-600">Urgent:</span>
+                        <span className="text-base font-semibold text-[#008cfc]">{toBoolStrict(is_urgent) ? 'Yes' : 'No'}</span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-medium text-gray-600">Tools:</span>
+                        <span className="text-base font-semibold text-[#008cfc]">{toBoolStrict(tools_provided) ? 'Yes' : 'No'}</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-medium text-gray-600">Rate:</span>
+                        {rate_type === 'Hourly Rate' ? (
+                          <div className="text-lg font-bold text-[#008cfc]">₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-semibold opacity-80">per hour</span></div>
+                        ) : rate_type === 'By the Job Rate' ? (
+                          <div className="text-lg font-bold text-[#008cfc]">₱{rate_value ?? 0} <span className="text-sm font-semibold opacity-80">per job</span></div>
+                        ) : (
+                          <div className="text-gray-500 text-sm">No rate provided</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="px-6 py-4 border-t border-gray-100">
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={handleMessageWorker}
+                          className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold bg-[#008cfc] text-white"
+                        >
+                          Message Worker
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+
+          {loading && (
+            <div role="dialog" aria-modal="true" aria-label="Loading request" tabIndex={-1} autoFocus onKeyDown={(e)=>{e.preventDefault();e.stopPropagation();}} onClick={(e)=>{e.preventDefault();e.stopPropagation();}} className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait">
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+              <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+                <div className="relative mx-auto w-40 h-40">
+                  <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
+                  <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {!logoBroken ? (
+                      <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
                     ) : (
-                      <div className="w-32 h-32 md:w-40 md:h-40 rounded-full grid place-items-center bg-gray-50 text-gray-400 border border-dashed">
-                        <span className="text-sm">No Image</span>
+                      <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                        <span className="font-bold text-[#008cfc]">JDK</span>
                       </div>
                     )}
                   </div>
                 </div>
+                <div className="mt-6 text-center space-y-1">
+                  <div className="text-lg font-semibold text-gray-900">Loading Request</div>
+                  <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
+                </div>
               </div>
             </div>
+          )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
-                  <div className="flex items-center justify-between px-6 py-4">
-                    <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Request Details</h3>
-                  </div>
-                  <div className="border-t border-gray-100" />
-                  <div className="px-6 py-6">
-                    <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                      <LabelValue label="Service Type" value={service_type} />
-                      <LabelValue label="Service Task" value={service_task} />
-                      <LabelValue label="Preferred Date" value={formatDateMDY(preferred_date)} />
-                      <LabelValue label="Preferred Time" value={formatTime12h(preferred_time)} />
-                      <LabelValue label="Urgent" value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(is_urgent) ? 'Yes' : 'No'}</span>} />
-                      <LabelValue label="Tools Provided" value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(tools_provided) ? 'Yes' : 'No'}</span>} />
-                      <div className="md:col-span-2">
-                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                          <span className="text-gray-700 font-semibold">Description:</span>
-                          <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">{service_description || '-'}</span>
-                        </div>
+          {leaving && (
+            <div role="dialog" aria-modal="true" aria-label="Please wait a moment" tabIndex={-1} autoFocus onKeyDown={(e)=>{e.preventDefault();e.stopPropagation();}} onClick={(e)=>{e.preventDefault();e.stopPropagation();}} className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait">
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+              <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+                <div className="relative mx-auto w-40 h-40">
+                  <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
+                  <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {!logoBroken ? (
+                      <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                    ) : (
+                      <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                        <span className="font-bold text-[#008cfc]">JDK</span>
                       </div>
-                      {review_image ? (
-                        <div className="md:col-span-2">
-                          <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
-                            <span className="text-gray-700 font-semibold">Request Image:</span>
-                            <div className="w-full">
-                              <div className="w-full h-64 rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50">
-                                <img src={review_image} alt="" className="w-full h-full object-cover object-center" />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
+                    )}
                   </div>
                 </div>
-
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
-                  <div className="flex items-center justify-between px-6 py-4">
-                    <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Rate</h3>
-                  </div>
-                  <div className="border-t border-gray-100" />
-                  <div className="px-6 py-6">
-                    <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                      <LabelValue label="Rate Type" value={rate_type} />
-                      {rate_type === 'Hourly Rate' ? (
-                        <LabelValue label="Rate" value={rate_from && rate_to ? `₱${rate_from} - ₱${rate_to} per hour` : ''} />
-                      ) : (
-                        <LabelValue label="Rate" value={rate_value ? `₱${rate_value}` : ''} />
-                      )}
-                    </div>
-                  </div>
+                <div className="mt-6 text-center space-y-1">
+                  <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
+                  <div className="text-sm text-gray-600 animate-pulse">Finalizing</div>
                 </div>
-
-                <Timeline />
               </div>
-
-              <aside className="lg:col-span-1 flex flex-col">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden flex flex-col">
-                  <div className="px-6 py-4 flex items-center justify-between">
-                    <div className="text-base font-semibold text-gray-900">Summary</div>
-                    <div className={`text-xs px-2 py-1 rounded-md ${stepIndex === steps.length - 1 ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-[#008cfc]'} font-semibold`}>
-                      {stepIndex < steps.length - 1 ? 'In Progress' : 'Completed'}
-                    </div>
-                  </div>
-                  <div className="border-t border-gray-100" />
-                  <div className="px-6 py-5 space-y-4 flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-medium text-gray-600">Client:</span>
-                      <span className="text-base font-semibold text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-medium text-gray-600">Service:</span>
-                      <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{service_type || '-'}</span>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-medium text-gray-600">Task:</span>
-                      <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{service_task || '-'}</span>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-medium text-gray-600">Schedule:</span>
-                      <span className="text-base font-semibold text-[#008cfc]">{preferred_date_display || '-'} • {formatTime12h(preferred_time) || '-'}</span>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-medium text-gray-600">Urgent:</span>
-                      <span className="text-base font-semibold text-[#008cfc]">{toBoolStrict(is_urgent) ? 'Yes' : 'No'}</span>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-medium text-gray-600">Tools:</span>
-                      <span className="text-base font-semibold text-[#008cfc]">{toBoolStrict(tools_provided) ? 'Yes' : 'No'}</span>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-sm font-medium text-gray-600">Rate:</span>
-                      {rate_type === 'Hourly Rate' ? (
-                        <div className="text-lg font-bold text-[#008cfc]">₱{rate_from ?? 0}–₱{rate_to ?? 0} <span className="text-sm font-semibold opacity-80">per hour</span></div>
-                      ) : rate_type === 'By the Job Rate' ? (
-                        <div className="text-lg font-bold text-[#008cfc]">₱{rate_value ?? 0} <span className="text-sm font-semibold opacity-80">per job</span></div>
-                      ) : (
-                        <div className="text-gray-500 text-sm">No rate provided</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="px-6 py-4 border-t border-gray-100">
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        type="button"
-                        onClick={handleMessageWorker}
-                        className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold bg-[#008cfc] text-white"
-                      >
-                        Message Worker
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </aside>
             </div>
-          </div>
+          )}
         </div>
-
-        {loading && (
-          <div role="dialog" aria-modal="true" aria-label="Loading request" tabIndex={-1} autoFocus onKeyDown={(e)=>{e.preventDefault();e.stopPropagation();}} onClick={(e)=>{e.preventDefault();e.stopPropagation();}} className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-              <div className="relative mx-auto w-40 h-40">
-                <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
-                <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {!logoBroken ? (
-                    <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
-                  ) : (
-                    <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
-                      <span className="font-bold text-[#008cfc]">JDK</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="mt-6 text-center space-y-1">
-                <div className="text-lg font-semibold text-gray-900">Loading Request</div>
-                <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {leaving && (
-          <div role="dialog" aria-modal="true" aria-label="Please wait a moment" tabIndex={-1} autoFocus onKeyDown={(e)=>{e.preventDefault();e.stopPropagation();}} onClick={(e)=>{e.preventDefault();e.stopPropagation();}} className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-              <div className="relative mx-auto w-40 h-40">
-                <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
-                <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {!logoBroken ? (
-                    <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
-                  ) : (
-                    <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
-                      <span className="font-bold text-[#008cfc]">JDK</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="mt-6 text-center space-y-1">
-                <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
-                <div className="text-sm text-gray-600 animate-pulse">Finalizing</div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
       <ClientFooter />
     </>
   );

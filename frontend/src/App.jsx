@@ -35,6 +35,7 @@ import WorkerCompletedWorks from './pages/workerpage/WorkerCompletedWorks';
 import WorkerFindAvailableClient from './pages/workerpage/WorkerFindAvailableClient';
 import WorkerViewApplication from './pages/workerpage/WorkerViewApplication';
 import WorkerEditApplication from './pages/workerpage/WorkerEditApplication';
+import WorkerOnGoingService from './pages/workerpage/WorkerOnGoingService';
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
 import AdminSignup from './pages/signuppage/AdminSignup';
@@ -79,6 +80,13 @@ const AdminOnlyRoute = ({ children }) => {
   const firstName = localStorage.getItem('first_name');
   const lastName = localStorage.getItem('last_name');
   return role === 'admin' && adminNo && firstName && lastName ? children : <Navigate to="/adminlogin" replace />;
+};
+
+const OngoingServiceRouter = () => {
+  const role = String(localStorage.getItem('role') || '').toLowerCase();
+  if (role === 'worker') return <WorkerOnGoingService />;
+  if (role === 'client') return <ClientOnGoingRequest />;
+  return <Navigate to="/login" replace />;
 };
 
 const App = () => {
@@ -331,9 +339,7 @@ const App = () => {
           path="/ongoing-service"
           element={
             <ProtectedRoute>
-              <ClientOnlyRoute>
-                <ClientOnGoingRequest />
-              </ClientOnlyRoute>
+              <OngoingServiceRouter />
             </ProtectedRoute>
           }
         />
