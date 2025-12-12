@@ -671,14 +671,14 @@ const st = Array.isArray(w.service_types)
         }
         if (typeof w.service_tasks === "string") {
           w.service_tasks
-            .split(/[,/]/)
+            .split([/,/])
             .map((s) => s.trim())
             .filter(Boolean)
             .forEach(addTask);
         }
         if (typeof w.serviceTasks === "string") {
           w.serviceTasks
-            .split(/[,/]/)
+            .split([/,/])
             .map((s) => s.trim())
             .filter(Boolean)
             .forEach(addTask);
@@ -1057,7 +1057,7 @@ age: ageValue ?? "-",
           <SectionCard
             title="Work Details"
             badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="inline-flex items.center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white text-gray-700 border-gray-200">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
                 Experience
               </span>
@@ -1413,7 +1413,7 @@ age: ageValue ?? "-",
                             className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] border border-gray-200 w-[180px] min-w-[180px]"
                             onClick={() => toggleSort("full_name")}
                           >
-                            <span className="inline-flex items-center gap-1">
+                            <span className="inline-flex.items-center gap-1">
                               Worker Name
                               <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                             </span>
@@ -1591,7 +1591,7 @@ age: ageValue ?? "-",
             aria-modal="true"
             aria-label="Worker application details"
             tabIndex={-1}
-            className="fixed inset-0 z-[2147483647] flex items-center justify.center p-4"
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
             <div className="relative w-full max-w-[960px] max-h-[80vh] rounded-2xl border border-gray-200 bg-white shadow-2xl flex flex-col overflow-hidden">
@@ -1619,7 +1619,7 @@ age: ageValue ?? "-",
                       />
                     </div>
                     <div className="space-y-1">
-                      // display worker full name
+                   
                                             <div className="text-lg sm:text-xl font-semibold text-gray-900">
                                               {`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim() || "-"}
                                             </div>
@@ -2027,7 +2027,7 @@ age: ageValue ?? "-",
                       onError={() => setLogoBrokenDecline(true)}
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full border border-[#0b82ff] flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-full border border-[#0b82ff] flex.items-center justify-center">
                       <span className="font-bold text-[#0b82ff]">JDK</span>
                     </div>
                   )}
