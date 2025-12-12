@@ -13,6 +13,7 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const [btnLoading, setBtnLoading] = useState(false);
   const [approvedTypes, setApprovedTypes] = useState([]);
   const [hasApproved, setHasApproved] = useState(false);
+  const [approvedApp, setApprovedApp] = useState(null);
 
   const base = request || {};
   const info = base.info || {};
@@ -198,12 +199,19 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   })();
   const yearsExp = Number.isFinite(d.years_experience) ? d.years_experience : null;
 
+  const canonRateType = (t) => {
+    const s = String(t || "").toLowerCase().replace(/\s+/g, " ").replace(/_/g, " ").trim();
+    if (!s) return "";
+    if (s.includes("hour") || s === "range" || s === "ranged") return "Hourly Rate";
+    if (s.includes("job") || s.includes("fixed") || s.includes("flat") || s.includes("project") || s.includes("task")) return "By the Job Rate";
+    if (s === "by the job rate") return "By the Job Rate";
+    return "";
+  };
+
   const rateTypeRaw = r.rate_type || r.rateType || d.rate_type || d.rateType || "";
   const rateType = (() => {
-    const s = String(rateTypeRaw).toLowerCase();
-    if (s.includes("hour") || s === "range" || s === "ranged") return "Hourly Rate";
-    if (/job|fixed|flat/.test(s)) return "By the Job Rate";
-    return rateTypeRaw || "";
+    const s = canonRateType(rateTypeRaw);
+    return s || rateTypeRaw || "";
   })();
 
   const peso = (n) => {
@@ -342,11 +350,24 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
         if (!stop) {
           setHasApproved(!!first);
           setApprovedTypes(list);
+          if (first) {
+            const rate = first.rate || first.pricing || {};
+            setApprovedApp({
+              service_type: src?.service_type || src?.category || "",
+              rate_type: rate?.rate_type || rate?.pricing_type || "",
+              rate_from: rate?.rate_from ?? null,
+              rate_to: rate?.rate_to ?? null,
+              rate_value: rate?.rate_value ?? null
+            });
+          } else {
+            setApprovedApp(null);
+          }
         }
       } catch {
         if (!stop) {
           setHasApproved(false);
           setApprovedTypes([]);
+          setApprovedApp(null);
         }
       }
     }
@@ -359,6 +380,40 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const workerTypesNorm = approvedTypes.map(normalizeKind);
   const serviceMatch = clientType && workerTypesNorm.includes(clientType);
   const canAccept = hasApproved && serviceMatch;
+
+  const wRateType = canonRateType(approvedApp?.rate_type || "");
+  const wFrom = approvedApp?.rate_from != null ? Number(approvedApp.rate_from) : null;
+  const wTo = approvedApp?.rate_to != null ? Number(approvedApp.rate_to) : null;
+  const wValue = approvedApp?.rate_value != null ? Number(approvedApp.rate_value) : null;
+
+  const reqFrom = rateFrom != null ? Number(rateFrom) : null;
+  const reqTo = rateTo != null ? Number(rateTo) : null;
+  const reqValue = rateValue != null ? Number(rateValue) : null;
+
+  const rateTypeMatchOk = !!wRateType && !!rateType && wRateType === rateType;
+  let rateValueMatchOk = false;
+  if (rateTypeMatchOk && wRateType === "Hourly Rate") {
+    const cmin = Number.isFinite(reqFrom) ? reqFrom : reqTo;
+    const cmax = Number.isFinite(reqTo) ? reqTo : reqFrom;
+    const wmin = Number.isFinite(wFrom) ? wFrom : wTo;
+    const wmax = Number.isFinite(wTo) ? wTo : wFrom;
+    if (Number.isFinite(cmin) && Number.isFinite(cmax) && Number.isFinite(wmin) && Number.isFinite(wmax)) {
+      rateValueMatchOk = wmax >= cmin && wmin <= cmax;
+    }
+  } else if (rateTypeMatchOk && wRateType === "By the Job Rate") {
+    if (Number.isFinite(reqValue) && Number.isFinite(wValue)) {
+      rateValueMatchOk = reqValue >= wValue;
+    }
+  }
+
+  const typeMatchOk = !!serviceMatch;
+  const matchCount = [typeMatchOk, rateTypeMatchOk, rateValueMatchOk].filter(Boolean).length;
+  const anyMatch = matchCount > 0;
+  const allThreeMatch = matchCount === 3;
+
+  const statusLabel = allThreeMatch ? "Match" : "Not Match";
+  const statusClasses = allThreeMatch ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200";
+  const progressWidth = `${Math.max(0, Math.min(100, Math.round((matchCount / 3) * 100)))}%`;
 
   const hasActiveApproved = async () => {
     try {
@@ -390,6 +445,16 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     if (typeof onApply === "function") onApply({ request: w });
     else window.location.href = "/worker/apply";
   };
+
+  const approvedServiceType = useMemo(() => {
+    const originals = approvedTypes || [];
+    if (!originals.length) return "";
+    if (clientType) {
+      const idx = workerTypesNorm.indexOf(clientType);
+      if (idx >= 0) return originals[idx] || "";
+    }
+    return originals[0] || "";
+  }, [approvedTypes, workerTypesNorm, clientType]);
 
   return (
     <div className={`fixed inset-0 z-[120] ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
@@ -451,7 +516,7 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                           );
                         })()}
                       </div>
-                      <div className="mt-2 flex items-center gap-1">
+                      <div className="mt-2 flex items中心 gap-1">
                         {[0,1,2,3,4].map((i) => (
                           <svg key={i} viewBox="0 0 24 24" className={`h-4 w-4 ${i < filled ? "text-yellow-400" : "text-gray-300"}`} fill="currentColor">
                             <path d="M12 .587l3.668 7.431L24 9.75l-6 5.85L19.335 24 12 19.897 4.665 24 6 15.6 0 9.75l8.332-1.732z" />
@@ -469,9 +534,9 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold text-gray-700">Service Type</div>
                       <div className="flex items-center gap-2">
-                        {clientType ? (
-                          <span className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border ${canAccept ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
-                            {canAccept ? 'Matched' : 'Not Matched'}
+                        {clientType && canAccept ? (
+                          <span className="inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200">
+                            Matched
                           </span>
                         ) : null}
                         <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
@@ -501,11 +566,11 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Gender</div>
                       <div className="text-sm text-[#008cfc]">{gender || "—"}</div>
                     </div>
-                    <div className="rounded-xl border border-gray-200 p-4 bg-white">
+                    <div className="rounded-xl border border-gray-200 p-4 bg白">
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Barangay</div>
                       <div className="text-sm text-[#008cfc]">{barangay || "—"}</div>
                     </div>
-                    <div className="rounded-xl border border-gray-200 p-4 bg-white">
+                    <div className="rounded-xl border border-gray-200 p-4 bg白">
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Street</div>
                       <div className="text-sm text-[#008cfc]">{street || "—"}</div>
                     </div>
@@ -534,6 +599,58 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                   <div className="mt-6">
                     <div className="text-sm font-semibold text-gray-700">Request Description</div>
                     <div className="mt-2 text-sm text-[#008cfc] leading-6 bg-gray-50/60 border border-gray-200 rounded-xl p-4">{workDescription}</div>
+                  </div>
+
+                  <div className="mt-8 border-t border-gray-200" />
+                  <div className="mt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-gray-700">Match With Your Approved Application</div>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border ${statusClasses}`}>{statusLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 rounded-xl border border-gray-200 bg-gradient-to-b from-gray-50/60 to-white p-4">
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        <span>{matchCount} of 3 criteria matched</span>
+                        <span className="font-medium">{progressWidth}</span>
+                      </div>
+                      <div className="mt-2 h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+                        <div className="h-2 bg-[#008cfc] rounded-full transition-all" style={{ width: progressWidth }} />
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${typeMatchOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>Service Type {typeMatchOk ? "✓" : "✗"}</div>
+                        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${rateTypeMatchOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>Rate Type {rateTypeMatchOk ? "✓" : "✗"}</div>
+                        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${rateValueMatchOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>Service Rate {rateValueMatchOk ? "✓" : "✗"}</div>
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="text-xs text-gray-500">Your Approved Application</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {approvedApp ? (() => {
+                            const t = approvedServiceType || approvedApp.service_type || "—";
+                            const rt = canonRateType(approvedApp.rate_type) || "—";
+                            let rv = "";
+                            if (rt === "Hourly Rate") {
+                              if (Number.isFinite(wFrom) && Number.isFinite(wTo)) rv = `${peso(wFrom)}–${peso(wTo)}/hr`;
+                              else if (Number.isFinite(wFrom)) rv = `${peso(wFrom)}/hr`;
+                              else if (Number.isFinite(wTo)) rv = `${peso(wTo)}/hr`;
+                            } else if (rt === "By the Job Rate") {
+                              if (Number.isFinite(wValue)) rv = `${peso(wValue)}`;
+                            }
+                            return (
+                              <span className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs bg-white border-gray-200 text-gray-700 shadow-sm">
+                                <span className="font-semibold">{t || "—"}</span>
+                                <span className="h-1 w-1 rounded-full bg-gray-300" />
+                                <span>{rt}</span>
+                                {rv ? (<><span className="h-1 w-1 rounded-full bg-gray-300" /><span>{rv}</span></>) : null}
+                              </span>
+                            );
+                          })() : <span className="text-xs text-gray-400">None</span>}
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="mt-8 border-t border-gray-200" />
@@ -571,13 +688,14 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                       </span>
                     </div>
                     <button onClick={onClose} className="hidden">Close</button>
-                    <button
-                      onClick={applyNow}
-                      disabled={checkingApply || !canAccept}
-                      className={`h-9 px-4 rounded-md text-sm inline-flex items-center justify-center ${checkingApply || !canAccept ? "bg-[#98cfff] text-white cursor-not-allowed" : "bg-[#008cfc] text-white hover:bg-[#0078d6]"}`}
+                    <a
+                      href="/workerpostapplication"
+                      onClick={(e) => { e.preventDefault(); applyNow(); }}
+                      aria-disabled={!canAccept}
+                      className={`h-9 px-4 rounded-md ${btnLoading ? "opacity-60 pointer-events-none" : ""} ${canAccept ? "bg-[#008cfc] text-white hover:bg-[#0078d6]" : "bg-gray-200 text-gray-500 pointer-events-none"} text-sm inline-flex items-center justify-center`}
                     >
-                      {checkingApply ? "Checking…" : (!hasApproved ? "Accept Request" : (!serviceMatch ? "Service Type Not Matched" : "Accept Request"))}
-                    </button>
+                      Apply Request
+                    </a>
                   </div>
                 </div>
               </div>
