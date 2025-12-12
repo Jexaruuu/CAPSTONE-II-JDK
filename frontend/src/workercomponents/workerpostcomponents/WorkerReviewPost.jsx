@@ -186,7 +186,17 @@ const WorkerReviewPost = ({ handleBack }) => {
   const email = s.email ?? savedInfo.email ?? '';
   const street = s.street ?? savedInfo.street ?? '';
   const barangay = s.barangay ?? savedInfo.barangay ?? '';
-  const profile_picture = s.profile_picture ?? savedInfo.profilePicture ?? null;
+
+  const profile_picture =
+    s.profile_picture ??
+    savedInfo.profilePicture ??
+    savedInfo.profile_picture ??
+    null;
+  const profile_picture_url_preview =
+    s.profile_picture_url ??
+    savedInfo.profilePictureUrl ??
+    savedInfo.profile_picture_url ??
+    '';
 
   const service_types = s.service_types ?? savedWork.service_types ?? savedWork.serviceTypesSelected ?? [];
   const service_task = s.service_task ?? savedWork.service_task ?? savedWork.serviceTaskSelected ?? {};
@@ -207,7 +217,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   const normalizeLocalPH10 = (v) => {
     let d = String(v || '').replace(/\D/g, '');
     if (d.startsWith('63')) d = d.slice(2);
-    if (d.startsWith('0')) d = d.slice(1);
+    if (d.startsWith('0')) d = d.slice[1];
     if (d.length > 10) d = d.slice(-10);
     if (d.length === 10 && d[0] === '9') return d;
     return '';
@@ -526,6 +536,7 @@ const WorkerReviewPost = ({ handleBack }) => {
           barangay: infoDraft.barangay || '',
           profilePicture: infoDraft.profilePicture || '',
           profilePictureName: infoDraft.profilePictureName || '',
+          profilePictureUrl: infoDraft.profilePictureUrl || infoDraft.profile_picture_url || '',
           birthDate: infoDraft.date_of_birth || '',
           age: infoDraft.age || computeAge(infoDraft.date_of_birth || '')
         },
@@ -551,26 +562,28 @@ const WorkerReviewPost = ({ handleBack }) => {
       };
 
       let profilePicData = '';
-      const picRaw = String(initialPayload.info.profilePicture || '');
+      let profilePicUrl = '';
+      const picRaw = String(initialPayload.info.profilePicture || profile_picture || '').trim();
       if (picRaw.startsWith('data:')) {
         profilePicData = picRaw;
       } else if (picRaw.startsWith('blob:')) {
         profilePicData = await blobToDataUrl(picRaw);
-      } else {
-        profilePicData = '';
       }
-      if (profilePicData) {
-        initialPayload.info.profilePicture = profilePicData;
+      if (!profilePicData) {
+        const urlCandidate =
+          initialPayload.info.profilePictureUrl ||
+          profile_picture_url_preview ||
+          '';
+        if (urlCandidate && /^https?:\/\//i.test(urlCandidate)) profilePicUrl = urlCandidate;
       }
-
-      if (!initialPayload.info.profilePicture) {
+      if (!profilePicData && !profilePicUrl) {
         setIsSubmitting(false);
         setSubmitError('Please upload a profile picture.');
         return;
       }
 
-      if (!initialPayload.info.profilePictureName && initialPayload.info.profilePicture) {
-        const ext = extFromPicData(initialPayload.info.profilePicture);
+      if (!initialPayload.info.profilePictureName && profilePicData) {
+        const ext = extFromPicData(profilePicData);
         initialPayload.info.profilePictureName = `profile-${Date.now()}.${ext}`;
       }
 
@@ -653,9 +666,7 @@ const WorkerReviewPost = ({ handleBack }) => {
       })();
 
       const emailVal =
-        (initialPayload.info.email ||
-          savedInfo.email ||
-          workerAuth.email ||
+        (savedInfo.email ||
           localStorage.getItem('worker_email') ||
           localStorage.getItem('email_address') ||
           localStorage.getItem('email') ||
@@ -670,22 +681,22 @@ const WorkerReviewPost = ({ handleBack }) => {
 
       const normalized = {
         worker_id: workerId || '',
-        first_name: (initialPayload.info.firstName || '').trim(),
-        last_name: (initialPayload.info.lastName || '').trim(),
+        first_name: (first_name || '').trim(),
+        last_name: (last_name || '').trim(),
         email_address: emailVal,
-        contact_number: (initialPayload.info.contactNumber || '').trim(),
-        barangay: (initialPayload.info.barangay || '').trim() || 'N/A',
-        street: (initialPayload.info.street || '').trim() || 'N/A',
-        date_of_birth: (initialPayload.info.birthDate || '').trim(),
-        age: initialPayload.info.age || null,
-        profile_picture: initialPayload.info.profilePicture || '',
+        contact_number: (contact_number || '').trim(),
+        barangay: (barangay || '').trim() || 'N/A',
+        street: (street || '').trim() || 'N/A',
+        date_of_birth: (date_of_birth || '').trim(),
+        age: age || null,
+        profile_picture: profilePicData || profilePicUrl,
         profile_picture_name: initialPayload.info.profilePictureName || '',
-        service_types: asStringArray(initialPayload.work.serviceTypes),
-        service_task: buildServiceTaskObject(initialPayload.work.serviceTask, initialPayload.work.serviceTypes),
-        years_experience: coerceYears(initialPayload.work.yearsExperience),
-        tools_provided: normalizeToolsProvided(initialPayload.work.toolsProvided),
-        service_description: (initialPayload.work.serviceDescription || '').trim(),
-        rate_type: (initialPayload.rate.rateType || '').trim(),
+        service_types: asStringArray(service_types),
+        service_task: buildServiceTaskObject(service_task, service_types),
+        years_experience: coerceYears(years_experience),
+        tools_provided: normalizeToolsProvided(tools_provided),
+        service_description: (service_description || '').trim(),
+        rate_type: (rate_type || '').trim(),
         rate_from: null,
         rate_to: null,
         rate_value: null,
@@ -699,22 +710,23 @@ const WorkerReviewPost = ({ handleBack }) => {
         metadata: {
           profile_picture_name: initialPayload.info.profilePictureName || '',
           auth_uid: localStorage.getItem('auth_uid') || workerAuth.auth_uid || '',
-          profile_picture_data_url: initialPayload.info.profilePicture || ''
+          profile_picture_data_url: profilePicData || '',
+          profile_picture_url: profilePicUrl || ''
         }
       };
 
       if (normalized.rate_type === 'Hourly Rate') {
         normalized.rate_from = (() => {
-          const n = Number(initialPayload.rate.rateFrom);
+          const n = Number(rate_from);
           return Number.isFinite(n) ? n : null;
         })();
         normalized.rate_to = (() => {
-          const n = Number(initialPayload.rate.rateTo);
+          const n = Number(rate_to);
           return Number.isFinite(n) ? n : null;
         })();
       } else if (normalized.rate_type === 'By the Job Rate') {
         normalized.rate_value = (() => {
-          const n = Number(initialPayload.rate.rateValue);
+          const n = Number(rate_value);
           return Number.isFinite(n) ? n : null;
         })();
       }
@@ -762,6 +774,8 @@ const WorkerReviewPost = ({ handleBack }) => {
         profilePictureName: normalized.profile_picture_name,
         profile_picture_data_url: normalized.metadata.profile_picture_data_url,
         profilePictureDataUrl: normalized.metadata.profile_picture_data_url,
+        profile_picture_url: normalized.metadata.profile_picture_url,
+        profilePictureUrl: normalized.metadata.profile_picture_url,
         date_of_birth: normalized.date_of_birth,
         age: normalized.age
       };
@@ -802,6 +816,7 @@ const WorkerReviewPost = ({ handleBack }) => {
         metadata: normalized.metadata,
         payment: payment || paymentMeta || null,
         profile_picture_data_url: normalized.metadata.profile_picture_data_url,
+        profile_picture_url: normalized.metadata.profile_picture_url,
         profile_picture_name: normalized.profile_picture_name || normalized.metadata.profile_picture_name || ''
       };
 
@@ -945,10 +960,10 @@ const WorkerReviewPost = ({ handleBack }) => {
                 </div>
                 <div className="md:col-span-1 flex flex-col items-center">
                   <div className="text-sm font-medium text-gray-700 mb-3">Worker Profile Picture</div>
-                  {profile_picture ? (
+                  {profile_picture || profile_picture_url_preview ? (
                     <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
                       <img
-                        src={profile_picture || fallbackProfile}
+                        src={profile_picture || profile_picture_url_preview || fallbackProfile}
                         alt="Profile"
                         className="h-full w-full object-cover"
                         onError={(e) => {

@@ -175,7 +175,8 @@ exports.submitFullApplication = async (req, res) => {
       'profilePictureDataUrl',
       'info.profile_picture_data_url',
       'info.profilePictureDataUrl',
-      'metadata.profile_picture_data_url'
+      'metadata.profile_picture_data_url',
+      'metadata.profilePictureDataUrl'
     ]);
     const profile_picture_name = pick(src, ['profile_picture_name', 'profilePictureName', 'info.profile_picture_name', 'info.profilePictureName', 'metadata.profile_picture_name']);
     const profile_picture_data_any = pick(src, [
@@ -330,7 +331,10 @@ exports.submitFullApplication = async (req, res) => {
       profile_picture_name: profileUpload?.name || profile_picture_name || null
     };
 
-    if (!infoRow.profile_picture_url) return res.status(400).json({ message: 'Missing profile picture for this application.' });
+    if (!infoRow.profile_picture_url) {
+      infoRow.profile_picture_url = fallbackProfile.profile_picture_url;
+      infoRow.profile_picture_name = fallbackProfile.profile_picture_name;
+    }
 
     const missingInfo = [];
     if (!infoRow.email_address) missingInfo.push('email_address');
@@ -419,7 +423,7 @@ exports.submitFullApplication = async (req, res) => {
     const rateRow = {
       request_group_id,
       worker_id: effectiveWorkerId,
-      auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
+      auth_uid: effectiveWorkerId ? effectiveAuthUid : auth_uid || metadata.auth_uid || null,
       email_address: infoRow.email_address,
       rate_type: rateTypeDb || null,
       rate_from: rate_from !== undefined && rate_from !== null && String(rate_from) !== '' ? Number(rate_from) : null,
@@ -985,6 +989,11 @@ exports.updateByGroup = async (req, res) => {
         } else if (/^https?:\/\//i.test(s)) {
           if (!/\/fallback-profile\.png$/i.test(s)) profile_picture_url = s;
         }
+      }
+
+      if (!profile_picture_url) {
+        profile_picture_url = fallbackProfile.profile_picture_url;
+        profile_picture_name = fallbackProfile.profile_picture_name;
       }
 
       const base = {
