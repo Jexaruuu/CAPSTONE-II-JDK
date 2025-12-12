@@ -534,11 +534,6 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold text-gray-700">Service Type</div>
                       <div className="flex items-center gap-2">
-                        {clientType && canAccept ? (
-                          <span className="inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200">
-                            Matched
-                          </span>
-                        ) : null}
                         <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
                           Request Done
                           <span className="ml-2 text-sm font-semibold text-[#008cfc]">{Number.isFinite(w.completed_jobs) ? w.completed_jobs : 0}</span>
