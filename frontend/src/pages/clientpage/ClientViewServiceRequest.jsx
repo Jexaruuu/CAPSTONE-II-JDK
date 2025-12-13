@@ -106,12 +106,12 @@ const ClientViewServiceRequest = () => {
       html.style.overflow = 'hidden';
       body.style.overflow = 'hidden';
     } else {
-      html.style.overflow = prevHtmlOverflow || '';
-      body.style.overflow = prevBodyOverflow || '';
+      html.style.overflow = '';
+      body.style.overflow = '';
     }
     return () => {
-      html.style.overflow = prevHtmlOverflow || '';
-      body.style.overflow = prevBodyOverflow || '';
+      html.style.overflow = '';
+      body.style.overflow = '';
     };
   }, [loading, showCancel, submittingCancel, leavingDone, showCancelSuccess]);
 
@@ -140,7 +140,7 @@ const ClientViewServiceRequest = () => {
   const s = location.state || {};
 
   const fx = row || {};
- const infoR = fx.info || {};
+  const infoR = fx.info || {};
   const detR = fx.details || {};
   const rateR = fx.rate || {};
 
