@@ -379,7 +379,6 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const clientType = normalizeKind(clientTypeRaw);
   const workerTypesNorm = approvedTypes.map(normalizeKind);
   const serviceMatch = clientType && workerTypesNorm.includes(clientType);
-  const canAccept = hasApproved && serviceMatch;
 
   const wRateType = canonRateType(approvedApp?.rate_type || "");
   const wFrom = approvedApp?.rate_from != null ? Number(approvedApp.rate_from) : null;
@@ -393,22 +392,25 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const rateTypeMatchOk = !!wRateType && !!rateType && wRateType === rateType;
   let rateValueMatchOk = false;
   if (rateTypeMatchOk && wRateType === "Hourly Rate") {
-    const cmin = Number.isFinite(reqFrom) ? reqFrom : reqTo;
-    const cmax = Number.isFinite(reqTo) ? reqTo : reqFrom;
-    const wmin = Number.isFinite(wFrom) ? wFrom : wTo;
-    const wmax = Number.isFinite(wTo) ? wTo : wFrom;
-    if (Number.isFinite(cmin) && Number.isFinite(cmax) && Number.isFinite(wmin) && Number.isFinite(wmax)) {
-      rateValueMatchOk = wmax >= cmin && wmin <= cmax;
-    }
+    const norm = (a, b) => {
+      const af = Number.isFinite(a);
+      const bf = Number.isFinite(b);
+      if (af && bf) return [a, b];
+      if (af && !bf) return [a, a];
+      if (!af && bf) return [b, b];
+      return null;
+    };
+    const c = norm(reqFrom, reqTo);
+    const wv = norm(wFrom, wTo);
+    if (c && wv) rateValueMatchOk = c[0] === wv[0] && c[1] === wv[1];
   } else if (rateTypeMatchOk && wRateType === "By the Job Rate") {
     if (Number.isFinite(reqValue) && Number.isFinite(wValue)) {
-      rateValueMatchOk = reqValue >= wValue;
+      rateValueMatchOk = reqValue === wValue;
     }
   }
 
   const typeMatchOk = !!serviceMatch;
   const matchCount = [typeMatchOk, rateTypeMatchOk, rateValueMatchOk].filter(Boolean).length;
-  const anyMatch = matchCount > 0;
   const allThreeMatch = matchCount === 3;
 
   const statusLabel = allThreeMatch ? "Match" : "Not Match";
@@ -438,7 +440,7 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
       setShowNoApproved(true);
       return;
     }
-    if (!serviceMatch) {
+    if (!allThreeMatch) {
       setShowTypeMismatch(true);
       return;
     }
@@ -455,6 +457,8 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     }
     return originals[0] || "";
   }, [approvedTypes, workerTypesNorm, clientType]);
+
+  const canAccept = hasApproved && allThreeMatch;
 
   return (
     <div className={`fixed inset-0 z-[120] ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
@@ -516,7 +520,7 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                           );
                         })()}
                       </div>
-                      <div className="mt-2 flex items中心 gap-1">
+                      <div className="mt-2 flex items-center gap-1">
                         {[0,1,2,3,4].map((i) => (
                           <svg key={i} viewBox="0 0 24 24" className={`h-4 w-4 ${i < filled ? "text-yellow-400" : "text-gray-300"}`} fill="currentColor">
                             <path d="M12 .587l3.668 7.431L24 9.75l-6 5.85L19.335 24 12 19.897 4.665 24 6 15.6 0 9.75l8.332-1.732z" />
@@ -561,11 +565,11 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Gender</div>
                       <div className="text-sm text-[#008cfc]">{gender || "—"}</div>
                     </div>
-                    <div className="rounded-xl border border-gray-200 p-4 bg白">
+                    <div className="rounded-xl border border-gray-200 p-4 bg-white">
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Barangay</div>
                       <div className="text-sm text-[#008cfc]">{barangay || "—"}</div>
                     </div>
-                    <div className="rounded-xl border border-gray-200 p-4 bg白">
+                    <div className="rounded-xl border border-gray-200 p-4 bg-white">
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Street</div>
                       <div className="text-sm text-[#008cfc]">{street || "—"}</div>
                     </div>

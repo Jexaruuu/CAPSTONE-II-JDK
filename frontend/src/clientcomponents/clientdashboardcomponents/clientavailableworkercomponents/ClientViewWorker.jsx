@@ -292,30 +292,34 @@ export default function ClientViewWorker({ open, onClose, worker }) {
         "";
       const cRateType = clientRateTypeToWorker(cRateTypeRaw);
       const rateTypeOk = !!cRateType && cRateType === rateType;
+
       let rateOk = false;
       if (rateType === "Hourly Rate") {
         const cf = Number(crMerged.rate_from);
         const ct = Number(crMerged.rate_to);
         const wf = Number(r.rate_from);
         const wt = Number(r.rate_to);
-        const cHas = Number.isFinite(cf) || Number.isFinite(ct);
-        const wHas = Number.isFinite(wf) || Number.isFinite(wt);
-        if (cHas && wHas) {
-          const cmin = Number.isFinite(cf) ? cf : ct;
-          const cmax = Number.isFinite(ct) ? ct : cf;
-          const wmin = Number.isFinite(wf) ? wf : wt;
-          const wmax = Number.isFinite(wt) ? wt : wf;
-          if (Number.isFinite(cmin) && Number.isFinite(cmax) && Number.isFinite(wmin) && Number.isFinite(wmax)) {
-            rateOk = wmax >= cmin && wmin <= cmax;
-          }
+        const norm = (a, b) => {
+          const af = Number.isFinite(a);
+          const bf = Number.isFinite(b);
+          if (af && bf) return [a, b];
+          if (af && !bf) return [a, a];
+          if (!af && bf) return [b, b];
+          return null;
+        };
+        const c = norm(cf, ct);
+        const w = norm(wf, wt);
+        if (c && w) {
+          rateOk = c[0] === w[0] && c[1] === w[1];
         }
       } else if (rateType === "By the Job Rate") {
         const cv = Number(crMerged.rate_value);
         const wv = Number(r.rate_value);
         if (Number.isFinite(cv) && Number.isFinite(wv)) {
-          rateOk = wv <= cv;
+          rateOk = wv === cv;
         }
       }
+
       if (typeOk || rateTypeOk || rateOk) {
         out.push({
           request_group_id: req.request_group_id || req.id || "",
@@ -337,10 +341,15 @@ export default function ClientViewWorker({ open, onClose, worker }) {
 
   const anyMatch = matchedRequests.length > 0;
   const allThreeMatch = matchedRequests.some(m => m.matches.service_type && m.matches.rate_type && m.matches.service_rate);
+  const allowBook = canBook && allThreeMatch;
 
   const handleBookClick = async (e) => {
     e.preventDefault();
     if (btnLoading) return;
+    if (!allThreeMatch) {
+      setShowNoApproved(true);
+      return;
+    }
     const clientEmail = getClientEmail();
     if (!clientEmail) {
       setShowNoApproved(true);
@@ -593,6 +602,12 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                   </div>
 
                   <div className="mt-6 flex items-center justify-end gap-3">
+                    <a
+                      href={`/clientmessages?to=${encodeURIComponent(emailAddress || "")}`}
+                      className="h-9 px-4 rounded-md border border-[#008cfc] text-[#008cfc] hover:bg-blue-50 text-sm inline-flex items-center justify-center"
+                    >
+                      Message
+                    </a>
                     <div className="items-center gap-2 mr-auto hidden">
                       <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
                         Works Done
@@ -603,10 +618,10 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                     <a
                       href="/clientpostrequest"
                       onClick={handleBookClick}
-                      aria-disabled={!canBook}
-                      className={`h-9 px-4 rounded-md ${btnLoading ? "opacity-60 pointer-events-none" : ""} ${canBook ? "bg-[#008cfc] text-white hover:bg-[#0078d6]" : "bg-gray-200 text-gray-500 pointer-events-none"} text-sm inline-flex items-center justify-center`}
+                      aria-disabled={!allowBook}
+                      className={`h-9 px-4 rounded-md ${btnLoading ? "opacity-60 pointer-events-none" : ""} ${allowBook ? "bg-[#008cfc] text-white hover:bg-[#0078d6]" : "bg-gray-200 text-gray-500 pointer-events-none"} text-sm inline-flex items-center justify-center`}
                     >
-                      {checkedTypes ? (canBook ? "Book Worker" : "Book Worker") : "Book Worker"}
+                      {checkedTypes ? (allowBook ? "Book Worker" : "Book Worker") : "Book Worker"}
                     </a>
                   </div>
                 </div>
@@ -626,7 +641,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
       {showNoApproved ? (
         <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowNoApproved(false)} />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483648]">
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border[#008cfc] bg-white shadow-2xl p-8 z-[2147483648]">
             <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBroken ? (
                 <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
