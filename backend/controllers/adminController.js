@@ -16,6 +16,131 @@ function gen6() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+function buildAdminNoEmail({ brandName, code, supportEmail, logoUrl }) {
+  const prettyCode = String(code || '')
+    .trim()
+    .split('')
+    .join(' ');
+  const subject = `Your ${brandName} Admin No.`;
+  const preheader = `Your Admin No. is ${code}. Use this to complete admin sign up.`;
+  const text =
+    `${brandName}\n\n` +
+    `Your Admin No. is: ${code}\n` +
+    `Use this Admin No. in the sign up form.\n\n` +
+    `If you didn't request this, you can ignore this email.\n` +
+    (supportEmail ? `\nNeed help? Contact ${supportEmail}\n` : '');
+
+  const logoCell = logoUrl
+    ? `<img src="${logoUrl}" alt="${brandName}" height="22" style="display:block;height:22px;max-height:22px;border:0;outline:none;text-decoration:none;" />`
+    : `<span style="font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:12px;font-weight:700;">${brandName}</span>`;
+
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <title>${subject}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    ${preheader}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;">
+    <tr>
+      <td align="center" style="padding:28px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;">
+          <tr>
+            <td style="padding:0 0 14px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="left" style="font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:16px;font-weight:700;">
+                    ${brandName}
+                  </td>
+                  <td align="right" style="font-family:Arial,Helvetica,sans-serif;color:#6b7280;font-size:12px;">
+                    Admin access
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:22px 22px 0 22px;">
+                    <div style="font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:20px;font-weight:700;line-height:1.25;">
+                      Your Admin Number
+                    </div>
+                    <div style="font-family:Arial,Helvetica,sans-serif;color:#6b7280;font-size:14px;line-height:1.6;padding-top:8px;">
+                      Use the code below to complete your admin sign up.
+                    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:18px 22px 0 22px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;">
+                      <tr>
+                        <td style="padding:12px 14px 0 14px;">
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td align="left" style="font-family:Arial,Helvetica,sans-serif;color:#6b7280;font-size:12px;">
+                                Admin No.
+                              </td>
+                              <td align="right">
+                                ${logoCell}
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding:10px 14px 16px 14px;">
+                          <div style="font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:28px;font-weight:800;letter-spacing:6px;">
+                            ${prettyCode}
+                          </div>
+                          <div style="font-family:Arial,Helvetica,sans-serif;color:#6b7280;font-size:12px;line-height:1.5;padding-top:8px;">
+                            If you didn’t request this, you can safely ignore this email.
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:18px 22px 22px 22px;">
+                    <div style="font-family:Arial,Helvetica,sans-serif;color:#6b7280;font-size:12px;line-height:1.6;">
+                      For your security, do not share this code with anyone.
+                      ${supportEmail ? `<br/>Need help? Contact <span style="color:#111827;">${supportEmail}</span>.` : ''}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:14px 6px 0 6px;">
+              <div style="font-family:Arial,Helvetica,sans-serif;color:#9ca3af;font-size:12px;line-height:1.6;text-align:center;">
+                © ${new Date().getFullYear()} ${brandName}. All rights reserved.
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return { subject, text, html };
+}
+
 exports.requestAdminNo = async (req, res) => {
   try {
     const { email } = req.body || {};
@@ -29,20 +154,19 @@ exports.requestAdminNo = async (req, res) => {
       code = gen6();
     }
 
+    const brandName = process.env.EMAIL_BRAND_NAME || 'JDK HOMECARE';
     const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@localhost';
-    const html = `
-      <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111">
-        <h2 style="margin:0 0 8px">Your Admin Number</h2>
-        <p>Here is your 6-digit Admin No.:</p>
-        <p style="font-size:22px;font-weight:700;letter-spacing:1px;margin:12px 0">${code}</p>
-        <p>Use this Admin No. in the sign up form.</p>
-      </div>
-    `;
+    const supportEmail = process.env.SUPPORT_EMAIL || '';
+    const logoUrl = String(process.env.EMAIL_LOGO_URL || '').trim();
+
+    const tpl = buildAdminNoEmail({ brandName, code, supportEmail, logoUrl });
+
     await mailTransport.sendMail({
-      from: `"JDK HOMECARE" <${fromAddr}>`,
+      from: `"${brandName}" <${fromAddr}>`,
       to,
-      subject: 'Your JDK HOMECARE Admin No.',
-      html,
+      subject: tpl.subject,
+      text: tpl.text,
+      html: tpl.html,
     });
 
     if (!req.session.verifiedEmails) req.session.verifiedEmails = {};
@@ -197,20 +321,19 @@ exports.sendAdminNoEmail = async (req, res) => {
       if (byEmail && !last_name) last_name = byEmail.last_name || '';
     } catch {}
 
+    const brandName = process.env.EMAIL_BRAND_NAME || 'JDK HOMECARE';
     const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@localhost';
-    const html = `
-      <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111">
-        <h2 style="margin:0 0 8px">Your Admin Number</h2>
-        <p>Hi ${[first_name, last_name].filter(Boolean).join(' ') || 'there'},</p>
-        <p>Here is your Admin No.:</p>
-        <p style="font-size:22px;font-weight:700;letter-spacing:1px;margin:12px 0">${adminNo}</p>
-      </div>
-    `;
+    const supportEmail = process.env.SUPPORT_EMAIL || '';
+    const logoUrl = String(process.env.EMAIL_LOGO_URL || '').trim();
+
+    const tpl = buildAdminNoEmail({ brandName, code: adminNo, supportEmail, logoUrl });
+
     await mailTransport.sendMail({
-      from: `"JDK HOMECARE" <${fromAddr}>`,
+      from: `"${brandName}" <${fromAddr}>`,
       to: email,
-      subject: 'Your JDK HOMECARE Admin No.',
-      html,
+      subject: tpl.subject,
+      text: tpl.text,
+      html: tpl.html,
     });
 
     return res.status(200).json({ ok: true });
