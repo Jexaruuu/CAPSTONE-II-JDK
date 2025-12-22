@@ -7,7 +7,7 @@ require("dotenv").config();
   process.env.SUPABASE_SERVICE_ROLE_KEY = strip(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
     const v = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const mask = v.length > 16 ? `${v.slice(0,6)}...${v.slice(-6)}` : "set";
+    const mask = v.length > 16 ? `${v.slice(0, 6)}...${v.slice(-6)}` : "set";
     console.log(`[boot] SRK loaded: ${mask}`);
   } else {
     console.error("[boot] Missing SUPABASE_SERVICE_ROLE_KEY");
@@ -24,7 +24,13 @@ const workerRoutes = require("./routes/workerRoutes");
 const loginRoutes = require("./routes/loginRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const authRoutes = require("./routes/authRoutes");
-const { resendSignupEmail, setDefaultRedirectBase, ensureStorageBucket, getSupabaseFromRequest, getSupabaseAdmin } = require("./supabaseClient");
+const {
+  resendSignupEmail,
+  setDefaultRedirectBase,
+  ensureStorageBucket,
+  getSupabaseFromRequest,
+  getSupabaseAdmin,
+} = require("./supabaseClient");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 
@@ -54,14 +60,17 @@ try {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const rawAllowed = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
-const escapeRegex = s => s.replace(/[-/\\^$+?.()|[\]{}]/g, "\\$&");
-const wcToReg = pat => new RegExp("^" + escapeRegex(pat.trim()).replace(/\*/g, ".*") + "$");
+const rawAllowed = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const escapeRegex = (s) => s.replace(/[-/\\^$+?.()|[\]{}]/g, "\\$&");
+const wcToReg = (pat) => new RegExp("^" + escapeRegex(pat.trim()).replace(/\*/g, ".*") + "$");
 const allowedRegexes = rawAllowed.map(wcToReg);
-const isLocal = origin =>
+const isLocal = (origin) =>
   /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
   /^https?:\/\/(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
-const isAllowed = origin => !origin || isLocal(origin) || allowedRegexes.some(rx => rx.test(origin));
+const isAllowed = (origin) => !origin || isLocal(origin) || allowedRegexes.some((rx) => rx.test(origin));
 const corsOrigin = (origin, cb) => (isAllowed(origin) ? cb(null, true) : cb(new Error("Not allowed by CORS")));
 
 app.use(cors({ origin: corsOrigin, credentials: true }));
@@ -93,8 +102,8 @@ app.use(
       httpOnly: true,
       sameSite: cookieSameSite,
       domain: process.env.COOKIEDOMAIN || process.env.COOKIE_DOMAIN || undefined,
-      maxAge: 1000 * 60 * 60 * 2
-    }
+      maxAge: 1000 * 60 * 60 * 2,
+    },
   })
 );
 
@@ -128,7 +137,7 @@ app.use((req, res, next) => {
 function parseCookie(str) {
   const out = {};
   if (!str) return out;
-  str.split(";").forEach(p => {
+  str.split(";").forEach((p) => {
     const i = p.indexOf("=");
     if (i > -1) out[p.slice(0, i).trim()] = p.slice(i + 1).trim();
   });
@@ -215,8 +224,8 @@ const nodemailerTransport = nodemailer.createTransport({
   secure: Number(process.env.SMTP_PORT || 587) === 465,
   auth: {
     user: process.env.SMTP_USER || "",
-    pass: process.env.SMTP_PASS || ""
-  }
+    pass: process.env.SMTP_PASS || "",
+  },
 });
 
 nodemailerTransport
@@ -224,9 +233,115 @@ nodemailerTransport
   .then(() => {
     console.log("SMTP connection verified");
   })
-  .catch(err => {
+  .catch((err) => {
     console.error("SMTP connection error", err);
   });
+
+function buildOtpEmail({ brandName, code, minutesValid, supportEmail }) {
+  const prettyCode = String(code || "")
+    .trim()
+    .split("")
+    .join(" ");
+  const preheader = `Your verification code is ${code}. Expires in ${minutesValid} minutes.`;
+  const subject = `Your ${brandName} verification code`;
+  const text =
+    `${brandName}\n\n` +
+    `Your verification code is: ${code}\n` +
+    `This code will expire in ${minutesValid} minutes.\n\n` +
+    `If you didn't request this, you can ignore this email.\n` +
+    (supportEmail ? `\nNeed help? Contact ${supportEmail}\n` : "");
+
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <title>${subject}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    ${preheader}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;">
+    <tr>
+      <td align="center" style="padding:28px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;">
+          <tr>
+            <td style="padding:0 0 14px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="left" style="font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:16px;font-weight:700;">
+                    ${brandName}
+                  </td>
+                  <td align="right" style="font-family:Arial,Helvetica,sans-serif;color:#6b7280;font-size:12px;">
+                    Security verification
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:22px 22px 0 22px;">
+                    <div style="font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:20px;font-weight:700;line-height:1.25;">
+                      Verify your email
+                    </div>
+                    <div style="font-family:Arial,Helvetica,sans-serif;color:#6b7280;font-size:14px;line-height:1.6;padding-top:8px;">
+                      Use the code below to finish signing in. This code expires in <b>${minutesValid} minutes</b>.
+                    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:18px 22px 0 22px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;">
+                      <tr>
+                        <td align="center" style="padding:16px 14px;">
+                          <div style="font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:28px;font-weight:800;letter-spacing:6px;">
+                            ${prettyCode}
+                          </div>
+                          <div style="font-family:Arial,Helvetica,sans-serif;color:#6b7280;font-size:12px;line-height:1.5;padding-top:8px;">
+                            If you didn’t request this code, you can safely ignore this email.
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:18px 22px 22px 22px;">
+                    <div style="font-family:Arial,Helvetica,sans-serif;color:#6b7280;font-size:12px;line-height:1.6;">
+                      For your security, never share this code with anyone.
+                      ${supportEmail ? `<br/>Need help? Contact <span style="color:#111827;">${supportEmail}</span>.` : ""}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:14px 6px 0 6px;">
+              <div style="font-family:Arial,Helvetica,sans-serif;color:#9ca3af;font-size:12px;line-height:1.6;text-align:center;">
+                © ${new Date().getFullYear()} ${brandName}. All rights reserved.
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+  return { subject, text, html };
+}
 
 const otpStore = new Map();
 const OTP_TTL_MS = 10 * 60 * 1000;
@@ -249,14 +364,22 @@ app.post("/api/auth/request-otp", async (req, res) => {
     const code = generateCode();
     const hash = hashOtp(email, code);
     otpStore.set(email, { hash, expiresAt: now + OTP_TTL_MS, attempts: 0, lastSentAt: now });
+
+    const brandName = process.env.EMAIL_BRAND_NAME || "JDK HOMECARE";
+    const minutesValid = Math.round(OTP_TTL_MS / 60000);
     const from = process.env.SMTP_FROM || process.env.SMTP_USER || "no-reply@localhost";
+    const supportEmail = process.env.SUPPORT_EMAIL || "";
+
+    const emailTpl = buildOtpEmail({ brandName, code, minutesValid, supportEmail });
+
     await nodemailerTransport.sendMail({
-      from: `"JDK HOMECARE" <${from}>`,
+      from: `"${brandName}" <${from}>`,
       to: email,
-      subject: "Your JDK HOMECARE verification code",
-      text: `Your verification code is ${code}. It expires in 10 minutes.`,
-      html: `<div style="font-family:Arial,sans-serif;font-size:16px;color:#333;"><p>Hi,</p><p>Your JDK HOMECARE verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${code}</p><p>This code will expire in <b>10 minutes</b>.</p><p>If you didn't request this, you can ignore this email.</p></div>`
+      subject: emailTpl.subject,
+      text: emailTpl.text,
+      html: emailTpl.html,
     });
+
     return res.status(200).json({ message: "OTP sent" });
   } catch (err) {
     console.error("OTP email send error", err);
