@@ -4,11 +4,10 @@ import WorkerInformation from '../../workercomponents/workerpostcomponents/Worke
 import WorkerWorkInformation from '../../workercomponents/workerpostcomponents/WorkerWorkInformation';
 import WorkerRequiredDocuments from '../../workercomponents/workerpostcomponents/WorkerRequiredDocuments';
 import WorkerRate from '../../workercomponents/workerpostcomponents/WorkerRate';
-import WorkerTermsAndAgreements from '../../workercomponents/workerpostcomponents/WorkerTermsAndAgreements';
 import WorkerReviewPost from '../../workercomponents/workerpostcomponents/WorkerReviewPost';
 import WorkerFooter from '../../workercomponents/WorkerFooter';
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 5;
 
 const WorkerPost = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -31,8 +30,7 @@ const WorkerPost = () => {
     2: 'Step 2: Describe Your Work',
     3: 'Step 3: Required Documents',
     4: 'Step 4: Set Your Price Rate',
-    5: 'Step 5: Terms & Agreements',
-    6: 'Step 6: Review Application',
+    5: 'Step 5: Review Application',
   };
 
   return (
@@ -89,15 +87,6 @@ const WorkerPost = () => {
             )}
 
             {currentStep === 5 && (
-              <WorkerTermsAndAgreements
-                description={description}
-                setDescription={setDescription}
-                handleNext={handleNext}
-                handleBack={handleBack}
-              />
-            )}
-
-            {currentStep === 6 && (
               <WorkerReviewPost
                 handleBack={handleBack}
               />

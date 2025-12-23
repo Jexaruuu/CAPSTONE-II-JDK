@@ -1,17 +1,16 @@
+// workerapplicationController.js
 const {
   uploadDataUrlToBucket,
   insertWorkerInformation,
   insertWorkerWorkInformation,
   insertWorkerRate,
   insertWorkerRequiredDocuments,
-  insertWorkerTermsAndAgreements,
   insertPendingApplication,
   newGroupId,
   findWorkerByEmail,
   findWorkerById,
   findWorkerByAuthUid,
-  updateWorkerInformationWorkerId,
-  insertWorkerPaymentFee
+  updateWorkerInformationWorkerId
 } = require('../models/workerapplicationModel');
 
 const { supabaseAdmin } = require('../supabaseClient');
@@ -21,7 +20,7 @@ const fallbackProfile = { profile_picture_url: '/fallback-profile.png', profile_
 function friendlyError(err) {
   const raw = err?.message || String(err);
   if (/wa-attachments/i.test(raw) && /not.*found|bucket/i.test(raw)) return 'Storage bucket "wa-attachments" is missing.';
-  if (/worker_information|worker_work_information|worker_service_rate|worker_required_documents|worker_agreements|worker_application_status/i.test(raw)) return `Database error: ${raw}`;
+  if (/worker_information|worker_work_information|worker_service_rate|worker_required_documents|worker_application_status|worker_cancel_application/i.test(raw)) return `Database error: ${raw}`;
   return raw;
 }
 
@@ -236,42 +235,6 @@ exports.submitFullApplication = async (req, res) => {
 
     const request_group_id = newGroupId();
 
-    const paymentIn = src.payment || src.pay || null;
-    let paymentRow = null;
-    let paymentInserted = false;
-    const isUuid = (s) =>
-      typeof s === 'string' &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
-
-    if (paymentIn && typeof paymentIn === 'object') {
-      const bucketPay = process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments';
-      let proofUrl = '';
-      const rawShot = String(paymentIn.screenshot || '').trim();
-      const shot = rawShot.startsWith('data:') ? rawShot : coerceDataUrl(rawShot, 'image/jpeg');
-      if (shot) {
-        try {
-          const up = await safeUploadDataUrl(bucketPay, shot, `${request_group_id}-payment`);
-          proofUrl = up?.url || '';
-        } catch {}
-      }
-      paymentRow = {
-        request_group_id,
-        worker_id: Number.isFinite(Number(effectiveWorkerId)) ? Number(effectiveWorkerId) : null,
-        auth_uid: isUuid(effectiveAuthUid || auth_uid) ? (effectiveWorkerId ? effectiveAuthUid : (auth_uid || null)) : null,
-        email_address: canonicalEmail || null,
-        payment: JSON.stringify({
-          method: paymentIn.method || '',
-          option: paymentIn.option || '',
-          amount: paymentIn.amount || null,
-          currency: paymentIn.currency || 'PHP'
-        }),
-        proof_of_payment: proofUrl,
-        reference_no: (paymentIn.reference || '').toString(),
-        gcash_name: (paymentIn.payer_name || '').toString(),
-        gcash_number: (paymentIn.payer_number || '').toString()
-      };
-    }
-
     try {
       const { data: existing } = await supabaseAdmin
         .from('worker_application_status')
@@ -283,7 +246,6 @@ exports.submitFullApplication = async (req, res) => {
       const rows = Array.isArray(existing) ? existing : [];
       const active = rows.filter(r => ['pending', 'approved'].includes(String(r.status || '').toLowerCase()));
       if (active.length > 0) {
-        if (paymentRow) { try { await insertWorkerPaymentFee(paymentRow); paymentInserted = true; } catch {} }
         return res.status(409).json({ message: 'You already have an active worker application.' });
       }
     } catch {}
@@ -571,23 +533,6 @@ exports.submitFullApplication = async (req, res) => {
       return res.status(400).json({ message: friendlyError(e) });
     }
 
-    const termsRow = {
-      request_group_id,
-      worker_id: effectiveWorkerId,
-      auth_uid: effectiveWorkerId ? effectiveAuthUid : auth_uid || metadata.auth_uid || null,
-      email_address: infoRow.email_address,
-      consent_background_checks: !!(metadata.agree_verify || src.agree_verify || src.agreements?.consent_background_checks),
-      consent_terms_privacy: !!(metadata.agree_tos || src.agree_tos || src.agreements?.consent_terms_privacy),
-      consent_data_privacy: !!(metadata.agree_privacy || src.agree_privacy || src.agreements?.consent_data_privacy),
-      created_at: new Date().toISOString()
-    };
-
-    try {
-      await insertWorkerTermsAndAgreements(termsRow);
-    } catch (e) {
-      return res.status(400).json({ message: friendlyError(e) });
-    }
-
     const pendingInfo = {
       first_name: infoRow.first_name,
       last_name: infoRow.last_name,
@@ -624,7 +569,6 @@ exports.submitFullApplication = async (req, res) => {
       const rows = Array.isArray(existing) ? existing : [];
       const active = rows.filter(r => ['pending', 'approved'].includes(String(r.status || '').toLowerCase()));
       if (active.length > 0) {
-        if (paymentRow && !paymentInserted) { try { await insertWorkerPaymentFee(paymentRow); paymentInserted = true; } catch {} }
         return res.status(409).json({ message: 'You already have an active worker application.' });
       }
     } catch {}
@@ -643,10 +587,6 @@ exports.submitFullApplication = async (req, res) => {
       });
     } catch (e) {
       return res.status(400).json({ message: friendlyError(e) });
-    }
-
-    if (paymentRow) {
-      try { await insertWorkerPaymentFee(paymentRow); } catch {}
     }
 
     return res.status(201).json({
