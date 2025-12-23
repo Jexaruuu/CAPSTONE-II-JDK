@@ -8,6 +8,7 @@ const CONFIRM_FLAG = 'clientRequestJustConfirmed';
 const IMAGE_CLEARED_FLAG = 'clientServiceImageCleared';
 const PRESERVE_IMAGE_FLAG = 'clientPreserveServiceImage';
 const IMAGE_CACHE_KEY = 'clientServiceImageCache';
+const IMAGE_REFRESH_FLAG = 'clientServiceImageRefreshOnDashboard';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }) => {
@@ -125,6 +126,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     const globalDesc = localStorage.getItem(GLOBAL_DESC_KEY) || '';
+    const forceRefresh = localStorage.getItem(IMAGE_REFRESH_FLAG) === '1';
     let hydratedImage = null;
     let hydratedImageName = '';
     if (saved) {
@@ -138,9 +140,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         setPreferredTime(data.preferredTime || '');
         setIsUrgent(data.isUrgent || '');
         setToolsProvided(data.toolsProvided || '');
-        const img = data.image || data.request_image_url || (Array.isArray(data.attachments) && data.attachments[0]) || null;
-        hydratedImage = img || null;
-        hydratedImageName = data.imageName || '';
+        if (!forceRefresh) {
+          const img = data.image || data.request_image_url || (Array.isArray(data.attachments) && data.attachments[0]) || null;
+          hydratedImage = img || null;
+          hydratedImageName = data.imageName || '';
+        }
         setServiceDescription(globalDesc || data.serviceDescription || '');
       } catch {
         if (globalDesc) setServiceDescription(globalDesc);
@@ -149,7 +153,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       const d = localStorage.getItem(GLOBAL_DESC_KEY) || '';
       if (d) setServiceDescription(d);
     }
-    if (!hydratedImage) {
+    if (!hydratedImage && !forceRefresh) {
       try {
         const cached = JSON.parse(localStorage.getItem(IMAGE_CACHE_KEY) || 'null');
         if (cached && cached.image) {
@@ -179,6 +183,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
   useEffect(() => {
     const clear = () => {
+      localStorage.setItem(IMAGE_REFRESH_FLAG, '1');
       localStorage.removeItem(GLOBAL_DESC_KEY);
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -195,7 +200,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         }
       }
       localStorage.removeItem(IMAGE_CACHE_KEY);
-      localStorage.setItem(IMAGE_CLEARED_FLAG, '1');
+      localStorage.removeItem(IMAGE_CLEARED_FLAG);
       setServiceDescription('');
       setImage(null);
       setImageName('');
@@ -250,21 +255,29 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
   useEffect(() => {
     const run = async () => {
-      if (image) return;
-      if (localStorage.getItem(IMAGE_CLEARED_FLAG) === '1') return;
+      const forceRefresh = localStorage.getItem(IMAGE_REFRESH_FLAG) === '1';
+      if (image && !forceRefresh) return;
+      if (!forceRefresh && localStorage.getItem(IMAGE_CLEARED_FLAG) === '1') return;
       const path = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : '';
       const isCreateFlow = path.includes('/clientpostrequest');
       if (isCreateFlow) return;
-      try {
-        const cached = JSON.parse(localStorage.getItem(IMAGE_CACHE_KEY) || 'null');
-        if (cached && cached.image) {
-          setImage(cached.image);
-          setImageName(cached.imageName || '');
-          setAttachments([cached.image]);
-          setRequestImageUrl(cached.image);
-          return;
-        }
-      } catch {}
+
+      if (forceRefresh) {
+        localStorage.removeItem(IMAGE_CACHE_KEY);
+        localStorage.removeItem(IMAGE_CLEARED_FLAG);
+      } else {
+        try {
+          const cached = JSON.parse(localStorage.getItem(IMAGE_CACHE_KEY) || 'null');
+          if (cached && cached.image) {
+            setImage(cached.image);
+            setImageName(cached.imageName || '');
+            setAttachments([cached.image]);
+            setRequestImageUrl(cached.image);
+            return;
+          }
+        } catch {}
+      }
+
       let email = localStorage.getItem('email_address') || localStorage.getItem('email') || '';
       if (!email) {
         try {
@@ -288,8 +301,15 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           setAttachments([src]);
           setRequestImageUrl(src);
           localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify({ image: src, imageName: row.image_name || '' }));
+        } else {
+          setImage(null);
+          setImageName('');
+          setAttachments([]);
+          setRequestImageUrl('');
+          localStorage.removeItem(IMAGE_CACHE_KEY);
         }
       } catch {}
+      if (forceRefresh) localStorage.removeItem(IMAGE_REFRESH_FLAG);
     };
     run();
   }, [image]);
@@ -318,6 +338,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       reader.readAsDataURL(file);
     }
     localStorage.removeItem(IMAGE_CLEARED_FLAG);
+    localStorage.removeItem(IMAGE_REFRESH_FLAG);
   };
 
   const handlePreferredDateChange = (value) => {
@@ -1002,7 +1023,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
               </div>
 
               <div className="lg:col-span-1">
-                <div className="text-xl md:text-2xl font-semibold mb-3 text-center">Upload Image</div>
+                <div className="text-xl md:text-2xl font-semibold mb-3 text-center">Request Image</div>
                 <p className="text-base text-gray-600 text-center mb-5">Upload an image to help describe the service request or what you need done.</p>
 
                 <div className="space-y-4">
@@ -1017,7 +1038,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     {image && (
                       <button
                         type="button"
-                        onClick={() => { setImage(null); setImageName(''); setAttachments([]); setRequestImageUrl(''); localStorage.removeItem(IMAGE_CACHE_KEY); }}
+                        onClick={() => { setImage(null); setImageName(''); setAttachments([]); setRequestImageUrl(''); localStorage.removeItem(IMAGE_CACHE_KEY); localStorage.removeItem(IMAGE_REFRESH_FLAG); }}
                         className="rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
                       >
                         Remove

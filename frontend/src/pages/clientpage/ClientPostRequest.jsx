@@ -4,10 +4,9 @@ import ClientInformation from '../../clientcomponents/requestcomponents/ClientIn
 import ClientServiceRequestDetails from '../../clientcomponents/requestcomponents/ClientServiceRequestDetails';
 import ClientServiceRate from '../../clientcomponents/requestcomponents/ClientServiceRate';
 import ClientReviewServiceRequest from '../../clientcomponents/requestcomponents/ClientReviewServiceRequest';
-import ClientTermsAndAgreements from '../../clientcomponents/requestcomponents/ClientTermsAndAgreements';
 import ClientFooter from '../../clientcomponents/ClientFooter';
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 const ClientPostRequest = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -26,8 +25,8 @@ const ClientPostRequest = () => {
     1: 'Step 1: Client Information',
     2: 'Step 2: Describe Your Request',
     3: 'Step 3: Set Your Price Rate',
-    4: 'Step 4: Terms & Agreements',
-    5: 'Step 5: Review & Submit',
+    4: 'Step 4: Review & Submit',
+   
   };
 
   return (
@@ -70,16 +69,8 @@ const ClientPostRequest = () => {
               />
             )}
 
+      
             {currentStep === 4 && (
-                          <ClientTermsAndAgreements
-                            description={description}
-                            setDescription={setDescription}
-                            handleNext={handleNext}
-                            handleBack={handleBack}
-                          />
-                        )}
-
-            {currentStep === 5 && (
               <ClientReviewServiceRequest
                 title={title}
                 setTitle={setTitle}

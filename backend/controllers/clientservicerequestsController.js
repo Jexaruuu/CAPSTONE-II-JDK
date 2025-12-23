@@ -1,3 +1,4 @@
+// BACKEND: clientservicerequestsController.js
 const {
   uploadDataUrlToBucket,
   insertClientInformation,
@@ -14,9 +15,7 @@ const {
   getCancelledReasonsByGroupIds,
   updateClientInformation,
   updateServiceRequestDetails,
-  updateServiceRate,
-  insertClientAgreements,
-  insertClientPaymentFee
+  updateServiceRate
 } = require('../models/clientservicerequestsModel');
 
 const { insertPendingRequest } = require('../models/clientservicerequeststatusModel');
@@ -39,13 +38,6 @@ function dateOnlyFrom(input) {
   if ((m = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(token))) return new Date(+m[3], +m[1] - 1, +m[2]);
   const d = new Date(raw);
   return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-function isExpiredPreferredDate(val) {
-  const d = dateOnlyFrom(val);
-  if (!d) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return d < today;
 }
 function parseHM24(val) {
   if (!val) return { h: 23, m: 59 };
@@ -384,24 +376,6 @@ exports.submitFullRequest = async (req, res) => {
       return res.status(400).json({ message: friendlyError(e) });
     }
 
-    const agreementsSrc = src.agreements || src.terms || {};
-    const agree_verify = toBoolStrict(pick(agreementsSrc, ['agree_verify', 'verify']));
-    const agree_tos = toBoolStrict(pick(agreementsSrc, ['agree_tos', 'tos']));
-    const agree_privacy = toBoolStrict(pick(agreementsSrc, ['agree_privacy', 'privacy']));
-    if (agree_verify || agree_tos || agree_privacy) {
-      try {
-        await insertClientAgreements({
-          request_group_id,
-          client_id: effectiveClientId,
-          auth_uid: effectiveAuthUid || auth_uid || null,
-          email_address: infoRow.email_address,
-          agree_verify,
-          agree_tos,
-          agree_privacy
-        });
-      } catch (e) {}
-    }
-
     const pendingInfo = {
       first_name: infoRow.first_name,
       last_name: infoRow.last_name,
@@ -445,39 +419,6 @@ exports.submitFullRequest = async (req, res) => {
       });
     } catch (e) {
       return res.status(400).json({ message: friendlyError(e) });
-    }
-
-    const pay = src.payment || null;
-    if (pay && typeof pay === 'object') {
-      let proofUrl = '';
-      const shot = String(pay.screenshot || '').trim();
-      if (shot.startsWith('data:')) {
-        try {
-          const up = await uploadDataUrlToBucket(process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments', shot, `${request_group_id}-payment`);
-          proofUrl = up?.url || '';
-        } catch {}
-      }
-      try {
-        await insertClientPaymentFee({
-          request_group_id,
-          client_id: Number.isFinite(Number(effectiveClientId)) ? Number(effectiveClientId) : null,
-          auth_uid: effectiveAuthUid || auth_uid || null,
-          email_address: infoRow.email_address,
-          payment: JSON.stringify({
-            method: pay.method || '',
-            option: pay.option || '',
-            amount: pay.amount || null,
-            currency: pay.currency || 'PHP',
-            reference: pay.reference || pay.reference_no || '',
-            payer_name: pay.payer_name || pay.gcash_name || '',
-            payer_number: pay.payer_number || pay.gcash_number || ''
-          }),
-            proof_of_payment: proofUrl,
-            reference_no: pay.reference || pay.reference_no || '',
-            gcash_name: pay.gcash_name || '',
-            gcash_number: pay.gcash_number || ''
-        });
-      } catch {}
     }
 
     return res.status(201).json({
