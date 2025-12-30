@@ -1,6 +1,7 @@
 const workerModel = require("../models/workerModel");
 const notifModel = require("../models/notificationsModel");
 const { supabase, supabaseAdmin, createConfirmedUser } = require("../supabaseClient");
+const bcrypt = require("bcryptjs");
 
 function parseCookie(str) {
   const out = {};
@@ -108,9 +109,7 @@ const registerWorker = async (req, res) => {
         try {
           const { data, listError } = await supabaseAdmin.auth.admin.listUsers();
           if (!listError && data && Array.isArray(data.users)) {
-            const existing = data.users.find(
-              (u) => String(u.email || "").trim().toLowerCase() === email
-            );
+            const existing = data.users.find((u) => String(u.email || "").trim().toLowerCase() === email);
             if (existing) authUser = existing;
           }
         } catch {}
@@ -124,13 +123,15 @@ const registerWorker = async (req, res) => {
       authUser = createdUser;
     }
 
+    const hashedPassword = await bcrypt.hash(String(password), 12);
+
     await workerModel.createWorker(
       authUser.id,
       first_name,
       last_name,
       sex,
       email,
-      password,
+      hashedPassword,
       !!is_agreed_to_terms,
       agreed_at
     );
@@ -189,7 +190,8 @@ const password = async (req, res) => {
     if (sign.error) return res.status(400).json({ message: "Current password is incorrect" });
     const uid = row?.auth_uid || s.auth_uid;
     await workerModel.updateAuthPassword(uid, new_password, { dbAuth: req.supabaseUser });
-    await workerModel.updatePassword(uid, new_password, { db: req.supabaseUser });
+    const hashedNew = await bcrypt.hash(String(new_password), 12);
+    await workerModel.updatePassword(uid, hashedNew, { db: req.supabaseUser });
     return res.status(200).json({ message: "Password updated" });
   } catch {
     return res.status(400).json({ message: "Failed to update password" });
@@ -214,7 +216,14 @@ const updateProfile = async (req, res) => {
     const dbPatch = {};
     if ("first_name" in patch) dbPatch.first_name = patch.first_name;
     if ("last_name" in patch) dbPatch.last_name = patch.last_name;
-    if ("phone" in patch) dbPatch.contact_number = patch.phone ? patch.phone : null;
+    if ("phone" in patch) {
+      if (patch.phone) {
+        const stored = workerModel.normalizePHContactForStore(patch.phone);
+        dbPatch.contact_number = stored || null;
+      } else {
+        dbPatch.contact_number = null;
+      }
+    }
     if ("facebook" in patch) dbPatch.social_facebook = patch.facebook ? workerModel.normalizeFacebook(patch.facebook) : null;
     if ("instagram" in patch) dbPatch.social_instagram = patch.instagram ? workerModel.normalizeInstagram(patch.instagram) : null;
     if ("date_of_birth" in patch) {
@@ -278,7 +287,12 @@ const publicSex = async (req, res) => {
       row = data && data[0] ? data[0] : null;
     }
     if (!row && email) {
-      const { data } = await supabaseAdmin.from("user_worker").select("sex, auth_uid, email_address").ilike("email_address", email).order("created_at", { ascending: false }).limit(1);
+      const { data } = await supabaseAdmin
+        .from("user_worker")
+        .select("sex, auth_uid, email_address")
+        .ilike("email_address", email)
+        .order("created_at", { ascending: false })
+        .limit(1);
       row = data && data[0] ? data[0] : null;
     }
 
@@ -287,6 +301,7 @@ const publicSex = async (req, res) => {
     return res.status(400).json({ sex: null });
   }
 };
+
 const listPublicReviews = async (req, res) => {
   try {
     const email = String(req.query.email || "").trim().toLowerCase();
@@ -299,6 +314,5 @@ const listPublicReviews = async (req, res) => {
     return res.status(200).json({ items: [], avg: 0, count: 0 });
   }
 };
-
 
 module.exports = { registerWorker, me, password, updateProfile, publicSex, listPublicReviews };

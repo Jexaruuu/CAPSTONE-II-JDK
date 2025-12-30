@@ -27,7 +27,7 @@ export default function ClientProfile() {
   const [showSaving, setShowSaving] = useState(false);
 
   const toYMD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-  const toMDY = (d) => `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`;
+  const toMDY = (d) => `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${String(d.getFullYear()%100).padStart(2,"0")}`;
   const computeAge = (iso) => { if(!iso) return null; const d=new Date(iso); if(isNaN(d)) return null; const t=new Date(); let a=t.getFullYear()-d.getFullYear(); const m=t.getMonth()-d.getMonth(); if(m<0||(m===0&&t.getDate()<d.getDate())) a--; return a>=0&&a<=120?a:null; };
 
   const { minDOB, maxDOB, minDOBDate, maxDOBDate, minDOBLabel, maxDOBLabel } = useMemo(() => {
@@ -260,7 +260,7 @@ export default function ClientProfile() {
                 {!editingDob && (<>
                   <div className="mt-2">{form.date_of_birth?
                     <div className="inline-flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 border border-gray-100"><span className="text-base text-gray-900 tracking-wide">{toMDY(new Date(form.date_of_birth))}</span></div>:
-                    <div className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 border border-gray-200 text-gray-400"><span className="text-sm">mm/dd/yyyy</span></div>}
+                    <div className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 border border-gray-200 text-gray-400"><span className="text-sm">mm/dd/yy</span></div>}
                   </div>
                   <div className="mt-3 flex items-center gap-3">
                     {!form.date_of_birth?
@@ -274,7 +274,7 @@ export default function ClientProfile() {
 
                 {editingDob && (<>
                   <div ref={dobInputRef} className="mt-2 flex items-center rounded-xl border border-gray-200 focus-within:ring-2 focus-within:ring-blue-500 h-11">
-                    <input type="text" value={form.date_of_birth?toMDY(new Date(form.date_of_birth)):""} onFocus={openCalendar} readOnly placeholder="mm/dd/yyyy" className="w-full px-4 rounded-l-xl focus:outline-none bg-white" inputMode="none"/>
+                    <input type="text" value={form.date_of_birth?toMDY(new Date(form.date_of_birth)):""} onFocus={openCalendar} readOnly placeholder="mm/dd/yy" className="w-full px-4 rounded-l-xl focus:outline-none bg-white" inputMode="none"/>
                     <button type="button" onClick={openCalendar} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open calendar">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" /><path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" /></svg>
                     </button>

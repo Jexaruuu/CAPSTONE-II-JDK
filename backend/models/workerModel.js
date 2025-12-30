@@ -5,6 +5,27 @@ function normalizeFacebook(url) { try { const raw=String(url).trim(); const src=
 function normalizeInstagram(url) { try { const raw=String(url).trim(); const src=/^https?:\/\//i.test(raw)?raw:"https://"+raw; const u=new URL(src); let host=u.hostname.toLowerCase(); if(host==="www.instagram.com"||host==="m.instagram.com") host="instagram.com"; const seg=u.pathname.split("/").filter(Boolean)[0]||""; if(!seg) return `https://${host}`; return `https://${host}/${stripTrailingSlash(seg)}` } catch { return String(url||"").trim() } }
 function computeAge(iso) { if (!iso) return null; const d=new Date(String(iso)); if (isNaN(d.getTime())) return null; const t=new Date(); let a=t.getFullYear()-d.getFullYear(); const m=t.getMonth()-d.getMonth(); if (m<0||(m===0&&t.getDate()<d.getDate())) a--; return a>=0&&a<=120?a:null }
 
+function normalizePHDigits10(input) {
+  const raw = String(input || "").trim();
+  if (!raw) return "";
+  const s = raw.replace(/[^\d+]/g, "");
+  let digits = s.replace(/\D/g, "");
+  if (s.startsWith("+63")) {
+    digits = digits.slice(2);
+  } else if (digits.startsWith("63") && digits.length >= 12) {
+    digits = digits.slice(2);
+  }
+  if (digits.startsWith("0") && digits.length === 11 && digits[1] === "9") digits = digits.slice(1);
+  if (digits.length >= 10) digits = digits.slice(digits.length - 10);
+  if (digits.length !== 10 || digits[0] !== "9") return "";
+  return digits;
+}
+
+function normalizePHContactForStore(input) {
+  const d = normalizePHDigits10(input);
+  return d ? `+63${d}` : "";
+}
+
 async function getAuthUserById(auth_uid) { try { const { data, error } = await supabaseAdmin.auth.admin.getUserById(auth_uid); if (error) return null; return data?.user || null } catch { return null } }
 
 const createWorker = async (auth_uid, firstName, lastName, sex, email, password, isAgreedToTerms, agreedAt) => {
@@ -43,12 +64,16 @@ const getWorkerAccountProfile = async ({ auth_uid, email }, opts = {}) => {
   const created_at = row?.created_at || user?.created_at || null;
   const dob = row?.date_of_birth || user?.user_metadata?.date_of_birth || null;
   const age = row?.age != null ? row.age : computeAge(dob);
+
+  const rawPhone = row?.contact_number ?? row?.phone ?? "";
+  const phoneDigits = normalizePHDigits10(rawPhone);
+
   return {
     first_name: row?.first_name || user?.user_metadata?.first_name || "",
     last_name: row?.last_name || user?.user_metadata?.last_name || "",
     email_address: row?.email_address || user?.email || email || "",
     sex: row?.sex || user?.user_metadata?.sex || "",
-    phone: row?.contact_number ?? row?.phone ?? "",
+    phone: phoneDigits || "",
     facebook: row?.social_facebook ?? row?.facebook ?? "",
     instagram: row?.social_instagram ?? row?.instagram ?? "",
     auth_uid: row?.auth_uid || auth_uid || "",
@@ -103,14 +128,18 @@ const updateAuthUserMeta = async (auth_uid, patch, opts = {}) => {
 };
 
 async function isContactNumberTakenAcrossAll(phone, excludeAuthUid) {
-  const p = String(phone || "").trim();
-  if (!p) return false;
+  const target = normalizePHDigits10(phone);
+  if (!target) return false;
   const q1 = supabaseAdmin.from("user_client").select("auth_uid,contact_number");
   const q2 = supabaseAdmin.from("user_worker").select("auth_uid,contact_number");
   const [{ data: c, error: ec }, { data: w, error: ew }] = await Promise.all([q1, q2]);
   if (ec) throw ec;
   if (ew) throw ew;
-  const hits = [...(c || []), ...(w || [])].filter((r) => String(r.contact_number || "") === p).map((r) => r.auth_uid).filter(Boolean);
+  const hits = [...(c || []), ...(w || [])]
+    .map((r) => ({ uid: r.auth_uid, d: normalizePHDigits10(r.contact_number || "") }))
+    .filter((x) => x.d && x.d === target)
+    .map((x) => x.uid)
+    .filter(Boolean);
   if (!hits.length) return false;
   if (!excludeAuthUid) return true;
   return hits.some((uid) => uid !== excludeAuthUid);
@@ -201,8 +230,8 @@ async function listPublicReviews({ email, auth_uid, request_group_id, limit = 20
   for (const t of tables) {
     try {
       const attempts = [];
-      if (au) uidCols.forEach(c => attempts.push({ col: c, op: "eq", val: au }));
-      if (workerEmail) emailCols.forEach(c => attempts.push({ col: c, op: "ilike", val: workerEmail }));
+      if (au) uidCols.forEach((c) => attempts.push({ col: c, op: "eq", val: au }));
+      if (workerEmail) emailCols.forEach((c) => attempts.push({ col: c, op: "ilike", val: workerEmail }));
 
       for (const a of attempts) {
         let q = supabaseAdmin.from(t).select("*").order("created_at", { ascending: false }).limit(Number(limit) || 20);
@@ -223,7 +252,6 @@ async function listPublicReviews({ email, auth_uid, request_group_id, limit = 20
   return { items: [], avg: 0, count: 0 };
 }
 
-
 module.exports = {
   createWorker,
   checkEmailExistence,
@@ -238,5 +266,6 @@ module.exports = {
   isSocialLinkTakenAcrossAll,
   normalizeFacebook,
   normalizeInstagram,
+  normalizePHContactForStore,
   listPublicReviews,
 };
