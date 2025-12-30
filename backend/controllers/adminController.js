@@ -1,6 +1,8 @@
+// adminController.js
 const { supabase, supabaseAdmin, createConfirmedUser } = require('../supabaseClient');
 const adminModel = require('../models/adminModel');
 const nodemailer = require('nodemailer');
+const bcrypt = require('bcryptjs');
 
 const mailTransport = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -220,6 +222,14 @@ exports.registerAdmin = async (req, res) => {
       return res.status(400).json({ message: msg || 'Failed to create auth user.' });
     }
 
+    let hashedPassword = null;
+    try {
+      hashedPassword = await bcrypt.hash(password, 10);
+    } catch {
+      try { await supabaseAdmin.auth.admin.deleteUser(user.id); } catch {}
+      return res.status(500).json({ message: 'Failed to secure password.' });
+    }
+
     const profile = {
       auth_uid: user.id,
       first_name,
@@ -229,7 +239,7 @@ exports.registerAdmin = async (req, res) => {
       admin_no: adminNo,
       role: 'admin',
       created_at: new Date().toISOString(),
-      password
+      password: hashedPassword
     };
 
     const inserted = await adminModel.createAdmin(profile);
@@ -277,15 +287,34 @@ exports.loginAdmin = async (req, res) => {
     const adminRow = await adminModel.getByAdminNo(adminNo);
     if (!adminRow) return res.status(401).json({ message: 'Invalid credentials.' });
 
+    if ((adminRow?.role || '').toLowerCase() !== 'admin') return res.status(403).json({ message: 'This login is for admins only.' });
+
     const loginEmail = adminRow.email_address;
+
+    let signedInUserId = null;
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email: loginEmail,
       password,
     });
-    if (error || !data?.user) return res.status(401).json({ message: 'Invalid credentials.' });
 
-    if ((adminRow?.role || '').toLowerCase() !== 'admin') return res.status(403).json({ message: 'This login is for admins only.' });
+    if (!error && data?.user) {
+      signedInUserId = data.user.id;
+    } else {
+      const hash = adminRow?.password;
+      if (hash) {
+        let ok = false;
+        try {
+          ok = await bcrypt.compare(password, String(hash));
+        } catch {
+          ok = false;
+        }
+        if (!ok) return res.status(401).json({ message: 'Invalid credentials.' });
+        signedInUserId = adminRow.auth_uid || null;
+      } else {
+        return res.status(401).json({ message: 'Invalid credentials.' });
+      }
+    }
 
     const user = {
       first_name: adminRow.first_name,
@@ -296,7 +325,7 @@ exports.loginAdmin = async (req, res) => {
     };
 
     req.session.user = {
-      id: adminRow.auth_uid || data.user.id,
+      id: adminRow.auth_uid || signedInUserId || adminRow.id || null,
       ...user,
       role: 'admin',
     };

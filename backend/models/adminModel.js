@@ -1,3 +1,4 @@
+// adminModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 
 const ADMIN_TABLE = 'user_admin';
