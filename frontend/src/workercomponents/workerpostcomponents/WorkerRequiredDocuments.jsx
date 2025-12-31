@@ -1,4 +1,3 @@
-// WorkerRequiredDocuments.jsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -134,7 +133,7 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
             {value && value.type === 'application/pdf' ? (
               <div className="flex flex-col items-center">
                 <div className="h-12 w-12 rounded-xl border border-blue-200 grid place-items-center bg-white shadow-sm">
-                  <svg viewBox="0 0 24 24" className="h-6 w-6 text-blue-600" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                  <svg viewBox="0 0 24 24" className="h-6 w-6 text-blue-600" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
                 </div>
                 <div className="mt-2 text-[11px] text-gray-700 max-w-[85%] truncate">{value.name}</div>
                 <div className="text-[10px] text-gray-500">{humanSize(value?.size || 0)}</div>
@@ -196,6 +195,72 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
   );
 }
 
+function uniq(arr) {
+  const out = [];
+  const seen = new Set();
+  (arr || []).forEach((x) => {
+    const v = String(x || '').trim();
+    if (!v) return;
+    const k = v.toLowerCase();
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push(v);
+  });
+  return out;
+}
+
+function normalizeServiceType(t) {
+  const v = String(t || '').trim();
+  if (!v) return '';
+  const k = v.toLowerCase();
+  if (k === 'carpentry') return 'Carpenter';
+  if (k === 'carpenter') return 'Carpenter';
+  if (k === 'plumber' || k === 'plumbing') return 'Plumber';
+  if (k === 'electrician' || k === 'electrical') return 'Electrician';
+  if (k === 'carwashing' || k === 'carwash' || k === 'carwasher' || k === 'car wash') return 'Carwasher';
+  if (k === 'laundry') return 'Laundry';
+  if (k === 'housekeeping') return 'Laundry';
+  return v;
+}
+
+function readSelectedServiceTypes() {
+  const tryParse = (key) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
+  const wwi = tryParse('workerWorkInformation');
+  const fromWWI = Array.isArray(wwi?.service_types) ? wwi.service_types : null;
+
+  const wi = tryParse('workerInformation');
+  const fromWI =
+    Array.isArray(wi?.service_types) ? wi.service_types
+      : Array.isArray(wi?.service_type) ? wi.service_type
+        : typeof wi?.service_type === 'string' ? wi.service_type.split(',').map((x) => x.trim()).filter(Boolean)
+          : null;
+
+  const fallbackStr =
+    localStorage.getItem('worker_service_types') ||
+    localStorage.getItem('workerServiceTypes') ||
+    localStorage.getItem('service_types') ||
+    '';
+
+  const fromFallback = fallbackStr
+    ? fallbackStr.split(',').map((x) => x.trim()).filter(Boolean)
+    : null;
+
+  return uniq([...(fromWWI || []), ...(fromWI || []), ...(fromFallback || [])].map(normalizeServiceType).filter(Boolean));
+}
+
+function safeStringify(v) {
+  try { return JSON.stringify(v); } catch { return ''; }
+}
+
 const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [primaryFront, setPrimaryFront] = useState(null);
   const [primaryBack, setPrimaryBack] = useState(null);
@@ -210,17 +275,63 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [meEmail, setMeEmail] = useState('');
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [tesdaCertFiles, setTesdaCertFiles] = useState({});
 
   const appU = useMemo(() => buildAppU(), []);
   const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
 
-  const uploadedCount = useMemo(
-    () =>
-      [primaryFront, primaryBack, secondaryId, nbi, address, medical, certs].filter(Boolean).length,
-    [primaryFront, primaryBack, secondaryId, nbi, address, medical, certs]
+  useEffect(() => {
+    setSelectedServices(readSelectedServiceTypes());
+    const onStorage = () => setSelectedServices(readSelectedServiceTypes());
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const certMap = useMemo(
+    () => ({
+      Carpenter: 'TESDA Carpentry NC II Certificate',
+      Plumber: 'TESDA Plumbing NC II Certificate',
+      Electrician: 'TESDA Electrical Installation and Maintenance NC II Certificate',
+      Carwasher: 'TESDA Automotive Servicing NC II Certificate',
+      Laundry: 'TESDA Housekeeping NC II Certificate',
+    }),
+    []
   );
 
-  const jumpTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {} };
+  const requiredCertTypes = useMemo(() => {
+    const types = uniq((selectedServices || []).map(normalizeServiceType)).filter(Boolean);
+    return types.filter((t) => !!certMap[t]);
+  }, [selectedServices, certMap]);
+
+  const requiredCertLabels = useMemo(() => {
+    return uniq(requiredCertTypes.map((t) => certMap[t]).filter(Boolean));
+  }, [requiredCertTypes, certMap]);
+
+  const showCerts = requiredCertTypes.length > 0;
+
+  useEffect(() => {
+    setTesdaCertFiles((prev) => {
+      const next = { ...(prev || {}) };
+      Object.keys(next).forEach((k) => {
+        if (!requiredCertTypes.includes(k)) delete next[k];
+      });
+      return next;
+    });
+    if (!showCerts) {
+      setCerts(null);
+    }
+  }, [requiredCertTypes, showCerts]);
+
+  const uploadedCount = useMemo(() => {
+    const base = [primaryFront, primaryBack, secondaryId, nbi, address, medical].filter(Boolean).length;
+    const certCount = requiredCertTypes.reduce((n, t) => n + (tesdaCertFiles?.[t] ? 1 : 0), 0);
+    return base + certCount;
+  }, [primaryFront, primaryBack, secondaryId, nbi, address, medical, requiredCertTypes, tesdaCertFiles]);
+
+  const totalRequired = useMemo(() => 6 + (showCerts ? requiredCertTypes.length : 0), [showCerts, requiredCertTypes]);
+
+  const jumpTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch { } };
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -236,17 +347,35 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
           if (em) {
             setMeEmail(em);
             const known = localStorage.getItem('workerEmail') || localStorage.getItem('email_address') || '';
-            if (!known) { try { localStorage.setItem('workerEmail', em); } catch {} }
+            if (!known) { try { localStorage.setItem('workerEmail', em); } catch { } }
           }
         }
-      } catch {}
+      } catch { }
     };
     run();
   }, [headersWithU]);
 
-  const isFormValid = !!primaryFront && !!primaryBack && !!secondaryId && !!nbi && !!address && !!medical && !!certs;
+  const hasAllTesdaCerts = useMemo(() => {
+    if (!showCerts) return true;
+    return requiredCertTypes.every((t) => !!tesdaCertFiles?.[t]);
+  }, [showCerts, requiredCertTypes, tesdaCertFiles]);
+
+  const isFormValid = !!primaryFront && !!primaryBack && !!secondaryId && !!nbi && !!address && !!medical && hasAllTesdaCerts;
 
   const proceed = async () => {
+    const tesdaCertsData = {};
+    const tesdaCertsMeta = {};
+    for (const t of requiredCertTypes) {
+      const f = tesdaCertFiles?.[t] || null;
+      tesdaCertsData[t] = await fileToDataUrl(f);
+      tesdaCertsMeta[t] = {
+        name: f?.name || '',
+        type: f?.type || '',
+        size: f?.size || 0,
+        label: certMap[t] || t
+      };
+    }
+
     const docsData = {
       primary_front: await fileToDataUrl(primaryFront),
       primary_back: await fileToDataUrl(primaryBack),
@@ -254,8 +383,9 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
       nbi: await fileToDataUrl(nbi),
       address: await fileToDataUrl(address),
       medical: await fileToDataUrl(medical),
-      certs: await fileToDataUrl(certs)
+      certs: showCerts ? safeStringify(tesdaCertsData) : await fileToDataUrl(certs)
     };
+
     const docsMeta = {
       primary_front_name: primaryFront?.name || '',
       primary_back_name: primaryBack?.name || '',
@@ -263,24 +393,27 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
       nbi_name: nbi?.name || '',
       address_name: address?.name || '',
       medical_name: medical?.name || '',
-      certs_name: certs?.name || '',
+      certs_name: showCerts ? safeStringify(Object.fromEntries(Object.entries(tesdaCertsMeta).map(([k, v]) => [k, v?.name || '']))) : (certs?.name || ''),
       primary_front_type: primaryFront?.type || '',
       primary_back_type: primaryBack?.type || '',
       secondary_id_type: secondaryId?.type || '',
       nbi_type: nbi?.type || '',
       address_type: address?.type || '',
       medical_type: medical?.type || '',
-      certs_type: certs?.type || '',
+      certs_type: showCerts ? 'application/json' : (certs?.type || ''),
       primary_front_size: primaryFront?.size || 0,
       primary_back_size: primaryBack?.size || 0,
       secondary_id_size: secondaryId?.size || 0,
       nbi_size: nbi?.size || 0,
       address_size: address?.size || 0,
       medical_size: medical?.size || 0,
-      certs_size: certs?.size || 0
+      certs_size: showCerts ? safeStringify(Object.fromEntries(Object.entries(tesdaCertsMeta).map(([k, v]) => [k, v?.size || 0]))) : (certs?.size || 0),
+      required_tesda_certificates: requiredCertLabels,
+      tesda_certificates_meta: tesdaCertsMeta
     };
-     try { localStorage.setItem('workerDocumentsData', JSON.stringify(docsData)); } catch {}
-    try { localStorage.setItem('workerDocuments', JSON.stringify(docsMeta)); } catch {}
+
+    try { localStorage.setItem('workerDocumentsData', JSON.stringify(docsData)); } catch { }
+    try { localStorage.setItem('workerDocuments', JSON.stringify(docsMeta)); } catch { }
 
     const canon = {
       primary_id_front: docsData.primary_front || '',
@@ -289,11 +422,19 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
       nbi_police_clearance: docsData.nbi || '',
       proof_of_address: docsData.address || '',
       medical_certificate: docsData.medical || '',
-      certificates: docsData.certs || ''
+      certificates: docsData.certs || '',
+      tesda_carpentry_certificate: tesdaCertsData.Carpenter || '',
+      tesda_electrician_certificate: tesdaCertsData.Electrician || '',
+      tesda_plumbing_certificate: tesdaCertsData.Plumber || '',
+      tesda_carwashing_certificate: tesdaCertsData.Carwasher || '',
+      tesda_laundry_certificate: tesdaCertsData.Laundry || ''
     };
-    try { localStorage.setItem('worker_required_documents', JSON.stringify(canon)); } catch {}
-    try { localStorage.setItem('workerRequiredDocuments', JSON.stringify(canon)); } catch {}
-    onCollect?.({ email_address: meEmail || '', ...docsMeta, ...docsData });
+
+    try { localStorage.setItem('worker_required_documents', JSON.stringify(canon)); } catch { }
+    try { localStorage.setItem('workerRequiredDocuments', JSON.stringify(canon)); } catch { }
+
+    const extra = showCerts ? { tesda_certificates: tesdaCertsData, tesda_certificates_meta: tesdaCertsMeta } : {};
+    onCollect?.({ email_address: meEmail || '', ...docsMeta, ...docsData, ...extra });
     handleNext?.();
   };
 
@@ -341,7 +482,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
               <h3 className="text-xl md:text-2xl font-semibold">Required Documents</h3>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-500">{uploadedCount}/7 uploaded</span>
+              <span className="text-xs text-gray-500">{uploadedCount}/{totalRequired} uploaded</span>
             </div>
           </div>
 
@@ -371,15 +512,46 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
                 <DocDrop label="Medical Certificate" required hint="Latest medical/fit-to-work certificate" value={medical} onChange={setMedical} />
                 {attempted && !medical && <p className="text-xs text-red-600 -mt-3">Please upload your Medical Certificate.</p>}
               </>
-              <div className="md:col-span-2">
-                <>
-                  <DocDrop label="Certificates" required hint="TESDA, Training Certificates, etc." value={certs} onChange={setCerts} />
-                  {attempted && !certs && <p className="text-xs text-red-600 -mt-3">Please upload your Certificates.</p>}
-                </>
-              </div>
+
+              {showCerts && (
+                <div className="md:col-span-2">
+                  <div className="mb-3 rounded-2xl border border-blue-100 bg-blue-50/40 px-4 py-3">
+                    <div className="text-sm font-semibold text-gray-900">TESDA Certificate Requirement</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      Based on your selected service type{requiredCertLabels.length === 1 ? '' : 's'}:
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {requiredCertLabels.map((c) => (
+                        <span key={c} className="inline-flex items-center rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-medium text-blue-700">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {requiredCertTypes.map((t) => {
+                      const label = certMap[t] || t;
+                      const file = tesdaCertFiles?.[t] || null;
+                      return (
+                        <div key={t}>
+                          <DocDrop
+                            label={label}
+                            required
+                            hint="Upload your TESDA certificate (PDF, JPG, or PNG)."
+                            value={file}
+                            onChange={(f) => setTesdaCertFiles((p) => ({ ...(p || {}), [t]: f }))}
+                          />
+                          {attempted && !file && <p className="text-xs text-red-600 -mt-3">Please upload your {label}.</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {attempted && !(primaryFront && primaryBack && secondaryId && nbi && address && medical && certs) && (
+            {attempted && !isFormValid && (
               <p className="text-xs text-red-600 mt-3">Please upload all required documents to continue.</p>
             )}
           </div>
@@ -387,7 +559,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
 
         <div className="flex flex-col sm:flex-row justify-between gap-3 mt-6">
           <button type="button" onClick={onBackClick} className="w-full sm:w-1/3 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Back : Work Information</button>
-          <button type="button" onClick={onNextClick} disabled={!(primaryFront && primaryBack && secondaryId && nbi && address && medical && certs)} aria-disabled={!(primaryFront && primaryBack && secondaryId && nbi && address && medical && certs)} className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${(primaryFront && primaryBack && secondaryId && nbi && address && medical && certs) ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}>Next : Set Your Price Rate</button>
+          <button type="button" onClick={onNextClick} disabled={!isFormValid} aria-disabled={!isFormValid} className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}>Next : Set Your Price Rate</button>
         </div>
       </div>
 

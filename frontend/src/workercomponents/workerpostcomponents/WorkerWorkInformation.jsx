@@ -421,19 +421,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                                 Clear {jobType}
                               </button>
                             </div>
-
-                            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
-                              {(options.filter((o) => !(serviceTask[jobType] || []).includes(o))).slice(0, 9).map((suggest) => (
-                                <button
-                                  key={suggest}
-                                  type="button"
-                                  onClick={() => addOrFillTask(jobType, suggest)}
-                                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-700 text-xs hover:bg-gray-50"
-                                >
-                                  {suggest}
-                                </button>
-                              ))}
-                            </div>
                           </div>
                         </div>
                       );

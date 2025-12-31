@@ -34,6 +34,7 @@ function dateOnlyFrom(input) {
   const d = new Date(raw);
   return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
+
 function toBoolStrict(v) {
   if (typeof v === 'boolean') return v;
   if (v === 1 || v === '1') return true;
@@ -52,6 +53,7 @@ function pick(obj, keys, alt = null) {
   }
   return alt;
 }
+
 function toArray(v) {
   if (!v) return [];
   if (Array.isArray(v)) return v;
@@ -60,7 +62,11 @@ function toArray(v) {
     Object.entries(v).forEach(([k, val]) => {
       if (!val) return;
       if (Array.isArray(val)) {
-        val.forEach(x => out.push({ kind: k, ...(x || {}) }));
+        val.forEach((x) => {
+          if (!x) return;
+          if (typeof x === 'string') out.push({ kind: k, url: x });
+          else if (typeof x === 'object') out.push({ kind: k, ...(x || {}) });
+        });
       } else if (typeof val === 'object') {
         out.push({ kind: k, ...(val || {}) });
       } else if (typeof val === 'string') {
@@ -72,6 +78,7 @@ function toArray(v) {
   if (typeof v === 'string') return [{ url: v }];
   return [];
 }
+
 function coerceDataUrl(v, mime) {
   const s = String(v || '').trim();
   if (!s) return '';
@@ -82,19 +89,21 @@ function coerceDataUrl(v, mime) {
 
 function normalizeDocs(arr) {
   const base = toArray(arr);
-  return base.map(x => {
-    const o = x || {};
-    const kind = o.kind || o.type || o.label || o.name || o.field || '';
-    const url = o.url || o.link || o.href || '';
-    const rawData =
-      o.data_url || o.dataUrl || o.dataURL || o.base64 || o.imageData || o.blobData || '';
-    const data_url = coerceDataUrl(rawData, (o.mime || o.mimetype || '').toString()) || (String(rawData || '').startsWith('data:') ? rawData : '');
-    const filename = o.filename || o.fileName || o.name || '';
-    const preferData = String(url || '').startsWith('data:') && !data_url ? url : data_url;
-    const final_url = preferData && preferData.startsWith('data:') ? '' : url;
-    const final_data_url = preferData && preferData.startsWith('data:') ? preferData : data_url;
-    return { kind, url: final_url, data_url: final_data_url, filename };
-  });
+  return base
+    .map((x) => {
+      const o = x || {};
+      const kind = o.kind || o.type || o.label || o.name || o.field || '';
+      const url = o.url || o.link || o.href || '';
+      const rawData = o.data_url || o.dataUrl || o.dataURL || o.base64 || o.imageData || o.blobData || '';
+      const data_url =
+        coerceDataUrl(rawData, (o.mime || o.mimetype || '').toString()) || (String(rawData || '').startsWith('data:') ? rawData : '');
+      const filename = o.filename || o.fileName || o.name || '';
+      const preferData = String(url || '').startsWith('data:') && !data_url ? url : data_url;
+      const final_url = preferData && preferData.startsWith('data:') ? '' : url;
+      const final_data_url = preferData && preferData.startsWith('data:') ? preferData : data_url;
+      return { kind, url: final_url, data_url: final_data_url, filename };
+    })
+    .filter((d) => (d.url && String(d.url).trim()) || (d.data_url && String(d.data_url).trim()));
 }
 
 function extFromMime(m) {
@@ -125,6 +134,52 @@ async function safeUploadDataUrl(bucket, dataUrl, path) {
   return { url: pub?.publicUrl || '', name: finalPath.split('/').pop() || null };
 }
 
+function mergeNormalizedDocs(...sources) {
+  const merged = [];
+  sources.forEach((src) => {
+    const items = normalizeDocs(src);
+    if (!items.length) return;
+    merged.push(...items);
+  });
+
+  const seen = new Set();
+  const out = [];
+  merged.forEach((d) => {
+    const k = String(d.kind || '').trim().toLowerCase();
+    const u = String(d.url || '').trim();
+    const du = String(d.data_url || '').trim();
+    const f = String(d.filename || '').trim();
+    const sig = [k, u || du, f].join('|');
+    if (!k || !(u || du) || seen.has(sig)) return;
+    seen.add(sig);
+    out.push(d);
+  });
+  return out;
+}
+
+async function insertWorkerRequiredDocumentsSafe(docCols) {
+  try {
+    return await insertWorkerRequiredDocuments(docCols);
+  } catch (e) {
+    const raw = String(e?.message || '');
+    if (/column .* does not exist/i.test(raw) || /has no field/i.test(raw)) {
+      const retry = { ...docCols };
+      Object.keys(retry).forEach((k) => {
+        if (/^tesda_.*_certificate$/i.test(k)) delete retry[k];
+      });
+      if (retry.certificates && typeof retry.certificates !== 'string') {
+        try {
+          retry.certificates = JSON.stringify(retry.certificates);
+        } catch {
+          retry.certificates = '';
+        }
+      }
+      return await insertWorkerRequiredDocuments(retry);
+    }
+    throw e;
+  }
+}
+
 exports.submitFullApplication = async (req, res) => {
   try {
     const src = req.body || {};
@@ -132,21 +187,6 @@ exports.submitFullApplication = async (req, res) => {
     const details = src.details || src.detail || src.work || {};
     const rate = src.rate || src.pricing || {};
     const metadata = src.metadata || {};
-    const docsIn = normalizeDocs(
-      src.documents ||
-      src.docs ||
-      src.attachments ||
-      src.required_documents ||
-      src.requiredDocuments ||
-      src.required_documents_object ||
-      src.worker_documents ||
-      src.workerDocuments ||
-      src.documentsData ||
-      details.required_documents ||
-      details.requiredDocuments ||
-      details.documents ||
-      {}
-    );
 
     const worker_id_in = pick(src, ['worker_id', 'workerId', 'info.worker_id', 'info.workerId']);
     const first_name = pick(src, ['first_name', 'firstName', 'info.first_name', 'info.firstName', 'metadata.first_name', 'metadata.firstName']);
@@ -244,10 +284,8 @@ exports.submitFullApplication = async (req, res) => {
         .order('created_at', { ascending: false })
         .limit(50);
       const rows = Array.isArray(existing) ? existing : [];
-      const active = rows.filter(r => ['pending', 'approved'].includes(String(r.status || '').toLowerCase()));
-      if (active.length > 0) {
-        return res.status(409).json({ message: 'You already have an active worker application.' });
-      }
+      const active = rows.filter((r) => ['pending', 'approved'].includes(String(r.status || '').toLowerCase()));
+      if (active.length > 0) return res.status(409).json({ message: 'You already have an active worker application.' });
     } catch {}
 
     let profileUpload = null;
@@ -280,7 +318,7 @@ exports.submitFullApplication = async (req, res) => {
     const infoRow = {
       request_group_id,
       worker_id: effectiveWorkerId,
-      auth_uid: effectiveWorkerId ? effectiveAuthUid : (auth_uid || metadata.auth_uid || null),
+      auth_uid: effectiveWorkerId ? effectiveAuthUid : auth_uid || metadata.auth_uid || null,
       email_address: canonicalEmail || metadata.email || null,
       first_name: first_name || metadata.first_name || null,
       last_name: last_name || metadata.last_name || null,
@@ -312,7 +350,9 @@ exports.submitFullApplication = async (req, res) => {
       return res.status(400).json({ message: friendlyError(e) });
     }
     if (infoIns?.id && effectiveWorkerId && !infoRow.worker_id) {
-      try { await updateWorkerInformationWorkerId(infoIns.id, effectiveWorkerId); } catch {}
+      try {
+        await updateWorkerInformationWorkerId(infoIns.id, effectiveWorkerId);
+      } catch {}
     }
 
     const normalizeTasks = (raw, types) => {
@@ -327,13 +367,13 @@ exports.submitFullApplication = async (req, res) => {
           const cat = String(it?.category || '').trim();
           const vals = Array.isArray(it?.tasks) ? it.tasks : [];
           if (!cat) return;
-          const clean = vals.map(v => String(v || '').trim()).filter(Boolean);
+          const clean = vals.map((v) => String(v || '').trim()).filter(Boolean);
           map[cat] = Array.from(new Set([...(map[cat] || []), ...clean]));
         });
       } else if (raw && typeof raw === 'object') {
         Object.entries(raw).forEach(([k, v]) => {
           const vals = Array.isArray(v) ? v : [v];
-          const clean = vals.map(x => String(x || '').trim()).filter(Boolean);
+          const clean = vals.map((x) => String(x || '').trim()).filter(Boolean);
           if (!clean.length) return;
           const cat = String(k || '').trim() || 'General';
           map[cat] = Array.from(new Set([...(map[cat] || []), ...clean]));
@@ -376,12 +416,14 @@ exports.submitFullApplication = async (req, res) => {
       return '';
     };
     const rateTypeDb = toLabelRateType(inferredRateType);
+
     if (rateTypeDb === 'Hourly Rate') {
       const rf = rate_from != null && rate_from !== '' ? Number(rate_from) : null;
       const rt = rate_to != null && rate_to !== '' ? Number(rate_to) : null;
       if (rf != null && rt == null) rate_to = rf;
       if (rt != null && rf == null) rate_from = rt;
     }
+
     const rateRow = {
       request_group_id,
       worker_id: effectiveWorkerId,
@@ -392,6 +434,7 @@ exports.submitFullApplication = async (req, res) => {
       rate_to: rate_to !== undefined && rate_to !== null && String(rate_to) !== '' ? Number(rate_to) : null,
       rate_value: rate_value !== undefined && rate_value !== null && String(rate_value) !== '' ? Number(rate_value) : null
     };
+
     const missingRate = [];
     if (!rateRow.rate_type) missingRate.push('rate_type');
     if (rateRow.rate_type === 'Hourly Rate' && (rateRow.rate_from == null || rateRow.rate_to == null)) missingRate.push('rate_from/rate_to');
@@ -403,11 +446,12 @@ exports.submitFullApplication = async (req, res) => {
     } catch (e) {
       const raw = String(e?.message || '');
       if (/rate_type.*check|rate_type_check/i.test(raw)) {
-        const fallbacks = rateRow.rate_type === 'Hourly Rate'
-          ? ['hourly', 'hourly_rate']
-          : rateRow.rate_type === 'By the Job Rate'
-          ? ['job', 'by_job_rate']
-          : [];
+        const fallbacks =
+          rateRow.rate_type === 'Hourly Rate'
+            ? ['hourly', 'hourly_rate']
+            : rateRow.rate_type === 'By the Job Rate'
+            ? ['job', 'by_job_rate']
+            : [];
         let inserted = false;
         for (const alt of fallbacks) {
           try {
@@ -423,6 +467,30 @@ exports.submitFullApplication = async (req, res) => {
     }
 
     const bucket = process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments';
+
+    const rawDocsA =
+      src.documents ||
+      src.docs ||
+      src.attachments ||
+      src.documentsData ||
+      details.documents ||
+      details.docs ||
+      details.attachments ||
+      null;
+
+    const rawDocsB =
+      src.required_documents ||
+      src.requiredDocuments ||
+      src.required_documents_object ||
+      src.worker_documents ||
+      src.workerDocuments ||
+      details.required_documents ||
+      details.requiredDocuments ||
+      details.required_documents_object ||
+      null;
+
+    const docsIn = mergeNormalizedDocs(rawDocsA, rawDocsB);
+
     const docCols = {
       request_group_id,
       worker_id: effectiveWorkerId,
@@ -434,14 +502,21 @@ exports.submitFullApplication = async (req, res) => {
       nbi_police_clearance: '',
       proof_of_address: '',
       medical_certificate: '',
-      certificates: ''
+      certificates: '',
+      tesda_carpentry_certificate: '',
+      tesda_electrician_certificate: '',
+      tesda_plumbing_certificate: '',
+      tesda_carwashing_certificate: '',
+      tesda_laundry_certificate: ''
     };
 
     let fallbackDocs = null;
     try {
       const { data: prevDocs } = await supabaseAdmin
         .from('worker_required_documents')
-        .select('primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates')
+        .select(
+          'primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates, tesda_carpentry_certificate, tesda_electrician_certificate, tesda_plumbing_certificate, tesda_carwashing_certificate, tesda_laundry_certificate'
+        )
         .ilike('email_address', infoRow.email_address)
         .order('id', { ascending: false })
         .limit(1)
@@ -450,7 +525,7 @@ exports.submitFullApplication = async (req, res) => {
     } catch {}
 
     if (fallbackDocs) {
-      Object.keys(docCols).forEach(k => {
+      Object.keys(docCols).forEach((k) => {
         if (k === 'request_group_id' || k === 'worker_id' || k === 'auth_uid' || k === 'email_address') return;
         if (!docCols[k]) docCols[k] = fallbackDocs[k] || '';
       });
@@ -459,12 +534,37 @@ exports.submitFullApplication = async (req, res) => {
     const aliasToKey = (raw, f) => {
       const r = String(raw || '').toLowerCase();
       const ff = String(f || '').toLowerCase();
+
+      const isCarp = /carpentry|carpenter/.test(r) || /carpentry|carpenter/.test(ff);
+      const isElec = /electric|electrician|eim|electrical\s*installation/.test(r) || /electric|electrician|eim|electrical\s*installation/.test(ff);
+      const isPlum = /plumb|plumbing|plumber/.test(r) || /plumb|plumbing|plumber/.test(ff);
+      const isCarwash = /carwash|carwashing|car\s*wash|carwasher|automotive/.test(r) || /carwash|carwashing|car\s*wash|carwasher|automotive/.test(ff);
+      const isLaundry = /laundry|housekeeping/.test(r) || /laundry|housekeeping/.test(ff);
+
+      if (/^tesda_carpentry_certificate$/.test(r) || /^tesda_carpentry_certificate$/.test(ff)) return 'tesda_carpentry_certificate';
+      if (/^tesda_electrician_certificate$/.test(r) || /^tesda_electrician_certificate$/.test(ff)) return 'tesda_electrician_certificate';
+      if (/^tesda_plumbing_certificate$/.test(r) || /^tesda_plumbing_certificate$/.test(ff)) return 'tesda_plumbing_certificate';
+      if (/^tesda_carwashing_certificate$/.test(r) || /^tesda_carwashing_certificate$/.test(ff)) return 'tesda_carwashing_certificate';
+      if (/^tesda_laundry_certificate$/.test(r) || /^tesda_laundry_certificate$/.test(ff)) return 'tesda_laundry_certificate';
+
+      if ((/tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(r) || /tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(ff)) && isCarp)
+        return 'tesda_carpentry_certificate';
+      if ((/tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(r) || /tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(ff)) && isElec)
+        return 'tesda_electrician_certificate';
+      if ((/tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(r) || /tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(ff)) && isPlum)
+        return 'tesda_plumbing_certificate';
+      if ((/tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(r) || /tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(ff)) && isCarwash)
+        return 'tesda_carwashing_certificate';
+      if ((/tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(r) || /tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(ff)) && isLaundry)
+        return 'tesda_laundry_certificate';
+
       if ((/primary/.test(r) && /(front|face)/.test(r)) || (/prim/.test(ff) && /(front|face)/.test(ff))) return 'primary_id_front';
       if ((/primary/.test(r) && /(back|rear|reverse)/.test(r)) || (/prim/.test(ff) && /(back|rear|reverse)/.test(ff))) return 'primary_id_back';
-      if ((/secondary|alternate|alt/.test(r)) || (/second|alt/.test(ff))) return 'secondary_id';
-      if ((/(nbi|police)/.test(r)) || (/(nbi|police)/.test(ff))) return 'nbi_police_clearance';
-      if ((/proof.*address|address.*proof|billing|bill/.test(r)) || (/address|billing|bill/.test(ff))) return 'proof_of_address';
-      if ((/medical|med\s*cert|health/.test(r)) || (/medical|medcert|health/.test(ff))) return 'medical_certificate';
+      if (/secondary|alternate|alt/.test(r) || /second|alt/.test(ff)) return 'secondary_id';
+      if (/(nbi|police)/.test(r) || /(nbi|police)/.test(ff)) return 'nbi_police_clearance';
+      if (/proof.*address|address.*proof|billing|bill/.test(r) || /address|billing|bill/.test(ff)) return 'proof_of_address';
+      if (/medical|med\s*cert|health/.test(r) || /medical|medcert|health/.test(ff)) return 'medical_certificate';
+
       if ((/certificate|certs?\b|tesda|ncii|nc2/.test(r)) || (/certificate|certs?\b|tesda|ncii|nc2/.test(ff))) return 'certificates';
       if (/(^primary_id_front$|^primary\-id\-front$)/.test(r)) return 'primary_id_front';
       if (/(^primary_id_back$|^primary\-id\-back$)/.test(r)) return 'primary_id_back';
@@ -475,33 +575,43 @@ exports.submitFullApplication = async (req, res) => {
       return null;
     };
 
+    const certList = [];
     for (let i = 0; i < docsIn.length; i++) {
       const d = docsIn[i] || {};
       const key = aliasToKey(d.kind, d.filename) || aliasToKey(d.filename, d.kind);
       if (!key) continue;
-      if (typeof d.url === 'string') {
-        if (/^https?:\/\//i.test(d.url)) {
-          docCols[key] = d.url;
-          continue;
+
+      const setVal = async (k, v) => {
+        if (!v) return;
+        if (typeof v === 'string' && /^https?:\/\//i.test(v)) {
+          if (k === 'certificates') certList.push(v);
+          else docCols[k] = v;
+          return;
         }
-        if (/^data:/i.test(d.url)) {
+        if (typeof v === 'string' && /^data:/i.test(v)) {
           try {
-            const up = await safeUploadDataUrl(bucket, d.url, `${request_group_id}-${key}`);
-            docCols[key] = up?.url || '';
-          } catch {
-            docCols[key] = docCols[key] || '';
-          }
-          continue;
+            const up = await safeUploadDataUrl(bucket, v, `${request_group_id}-${k}-${Date.now()}`);
+            const url = up?.url || '';
+            if (k === 'certificates') certList.push(url);
+            else docCols[k] = url;
+          } catch {}
         }
+      };
+
+      if (typeof d.url === 'string' && d.url) {
+        await setVal(key, d.url);
+        continue;
       }
       const maybeData = coerceDataUrl(d.data_url, 'image/jpeg');
-      if (maybeData) {
-        try {
-          const up = await safeUploadDataUrl(bucket, maybeData, `${request_group_id}-${key}`);
-          docCols[key] = up?.url || '';
-        } catch {
-          docCols[key] = docCols[key] || '';
-        }
+      if (maybeData) await setVal(key, maybeData);
+    }
+
+    if (certList.length) {
+      const uniq = Array.from(new Set(certList.map((x) => String(x || '').trim()).filter(Boolean)));
+      try {
+        docCols.certificates = JSON.stringify(uniq);
+      } catch {
+        docCols.certificates = '';
       }
     }
 
@@ -518,17 +628,40 @@ exports.submitFullApplication = async (req, res) => {
       trySet('proof_of_address', m.proof_of_address || m.proofOfAddress);
       trySet('medical_certificate', m.medical_certificate || m.medical_certificates || m.medicalCertificate);
       trySet('certificates', m.certificates);
+
+      trySet('tesda_carpentry_certificate', m.tesda_carpentry_certificate || m.tesdaCarpentryCertificate);
+      trySet('tesda_electrician_certificate', m.tesda_electrician_certificate || m.tesdaElectricianCertificate);
+      trySet('tesda_plumbing_certificate', m.tesda_plumbing_certificate || m.tesdaPlumbingCertificate);
+      trySet('tesda_carwashing_certificate', m.tesda_carwashing_certificate || m.tesdaCarwashingCertificate);
+      trySet('tesda_laundry_certificate', m.tesda_laundry_certificate || m.tesdaLaundryCertificate);
+    }
+
+    const tesdaUrls = {
+      carpentry: docCols.tesda_carpentry_certificate || '',
+      electrician: docCols.tesda_electrician_certificate || '',
+      plumbing: docCols.tesda_plumbing_certificate || '',
+      carwashing: docCols.tesda_carwashing_certificate || '',
+      laundry: docCols.tesda_laundry_certificate || ''
+    };
+    const hasAnyTesda = !!tesdaUrls.carpentry || !!tesdaUrls.electrician || !!tesdaUrls.plumbing || !!tesdaUrls.carwashing || !!tesdaUrls.laundry;
+
+    if (hasAnyTesda && !docCols.certificates) {
+      try {
+        docCols.certificates = JSON.stringify(tesdaUrls);
+      } catch {
+        docCols.certificates = '';
+      }
     }
 
     if (fallbackDocs) {
-      Object.keys(docCols).forEach(k => {
+      Object.keys(docCols).forEach((k) => {
         if (k === 'request_group_id' || k === 'worker_id' || k === 'auth_uid' || k === 'email_address') return;
         if (!docCols[k]) docCols[k] = fallbackDocs[k] || '';
       });
     }
 
     try {
-      await insertWorkerRequiredDocuments(docCols);
+      await insertWorkerRequiredDocumentsSafe(docCols);
     } catch (e) {
       return res.status(400).json({ message: friendlyError(e) });
     }
@@ -567,10 +700,8 @@ exports.submitFullApplication = async (req, res) => {
         .order('created_at', { ascending: false })
         .limit(50);
       const rows = Array.isArray(existing) ? existing : [];
-      const active = rows.filter(r => ['pending', 'approved'].includes(String(r.status || '').toLowerCase()));
-      if (active.length > 0) {
-        return res.status(409).json({ message: 'You already have an active worker application.' });
-      }
+      const active = rows.filter((r) => ['pending', 'approved'].includes(String(r.status || '').toLowerCase()));
+      if (active.length > 0) return res.status(409).json({ message: 'You already have an active worker application.' });
     } catch {}
 
     let pendingRow;
@@ -616,7 +747,7 @@ exports.listPublicApproved = async (req, res) => {
     const rows = Array.isArray(apps) ? apps : [];
     if (!rows.length) return res.status(200).json({ items: [] });
 
-    const gids = [...new Set(rows.map(r => r.request_group_id).filter(Boolean))];
+    const gids = [...new Set(rows.map((r) => r.request_group_id).filter(Boolean))];
 
     let latestMap = {};
     let canceledSet = new Set();
@@ -627,22 +758,23 @@ exports.listPublicApproved = async (req, res) => {
         .select('request_group_id,status,created_at')
         .in('request_group_id', gids)
         .order('created_at', { ascending: false });
-      (allStatus || []).forEach(r => {
+      (allStatus || []).forEach((r) => {
         const gid = r.request_group_id;
         if (!latestMap[gid]) latestMap[gid] = String(r.status || '').toLowerCase();
       });
 
-      const { data: canc } = await supabaseAdmin
-        .from('worker_cancel_application')
-        .select('request_group_id')
-        .in('request_group_id', gids);
-      (canc || []).forEach(r => { if (r?.request_group_id) canceledSet.add(r.request_group_id); });
+      const { data: canc } = await supabaseAdmin.from('worker_cancel_application').select('request_group_id').in('request_group_id', gids);
+      (canc || []).forEach((r) => {
+        if (r?.request_group_id) canceledSet.add(r.request_group_id);
+      });
     }
 
-    const approvedCurrentGids = gids.filter(gid => latestMap[gid] === 'approved' && !canceledSet.has(gid));
+    const approvedCurrentGids = gids.filter((gid) => latestMap[gid] === 'approved' && !canceledSet.has(gid));
     if (!approvedCurrentGids.length) return res.status(200).json({ items: [] });
 
-    let infoMap = {}, workMap = {}, rateMap = {};
+    let infoMap = {},
+      workMap = {},
+      rateMap = {};
     const targets = approvedCurrentGids;
 
     const [{ data: infos }, { data: works }, { data: rates }] = await Promise.all([
@@ -650,13 +782,19 @@ exports.listPublicApproved = async (req, res) => {
       supabaseAdmin.from('worker_work_information').select('*').in('request_group_id', targets),
       supabaseAdmin.from('worker_service_rate').select('*').in('request_group_id', targets)
     ]);
-    (infos || []).forEach(r => { if (r?.request_group_id) infoMap[r.request_group_id] = r; });
-    (works || []).forEach(r => { if (r?.request_group_id) workMap[r.request_group_id] = r; });
-    (rates || []).forEach(r => { if (r?.request_group_id) rateMap[r.request_group_id] = r; });
+    (infos || []).forEach((r) => {
+      if (r?.request_group_id) infoMap[r.request_group_id] = r;
+    });
+    (works || []).forEach((r) => {
+      if (r?.request_group_id) workMap[r.request_group_id] = r;
+    });
+    (rates || []).forEach((r) => {
+      if (r?.request_group_id) rateMap[r.request_group_id] = r;
+    });
 
     const items = rows
-      .filter(r => approvedCurrentGids.includes(r.request_group_id))
-      .map(r => {
+      .filter((r) => approvedCurrentGids.includes(r.request_group_id))
+      .map((r) => {
         const gid = r.request_group_id;
         const i = infoMap[gid] || r.info || {};
         const w = workMap[gid] || r.details || {};
@@ -698,15 +836,15 @@ exports.listApproved = async (req, res) => {
   }
 };
 
-function readAppUHeader(req){
-  const h=req.headers["x-app-u"];
-  if(!h) return {};
-  try{
-    const o=JSON.parse(decodeURIComponent(h));
-    const email=o.email||o.email_address||o.e||'';
-    const auth_uid=o.auth_uid||o.authUid||o.au||'';
+function readAppUHeader(req) {
+  const h = req.headers['x-app-u'];
+  if (!h) return {};
+  try {
+    const o = JSON.parse(decodeURIComponent(h));
+    const email = o.email || o.email_address || o.e || '';
+    const auth_uid = o.auth_uid || o.authUid || o.au || '';
     return { email, email_address: email, auth_uid };
-  }catch{
+  } catch {
     return {};
   }
 }
@@ -733,54 +871,69 @@ exports.listMine = async (req, res) => {
 
     const rows = Array.isArray(statusRows) ? statusRows : [];
     let base = rows;
-    const isCancelled = (r) => ['cancelled','canceled'].includes(String(r.status||'').toLowerCase());
-    const isExpired = (r) => String(r.status||'').toLowerCase() === 'expired';
-    const isCurrent = (r) => ['pending','approved','declined'].includes(String(r.status||'').toLowerCase());
-    const isActive = (r) => ['pending','approved'].includes(String(r.status||'').toLowerCase());
+    const isCancelled = (r) => ['cancelled', 'canceled'].includes(String(r.status || '').toLowerCase());
+    const isExpired = (r) => String(r.status || '').toLowerCase() === 'expired';
+    const isCurrent = (r) => ['pending', 'approved', 'declined'].includes(String(r.status || '').toLowerCase());
+    const isActive = (r) => ['pending', 'approved'].includes(String(r.status || '').toLowerCase());
 
     if (scope === 'cancelled') base = rows.filter(isCancelled);
     else if (scope === 'expired') base = rows.filter(isExpired);
     else if (scope === 'active') base = rows.filter(isActive);
     else base = rows.filter(isCurrent);
 
-    let targetGroups = base.map(r => r.request_group_id).filter(Boolean);
+    let targetGroups = base.map((r) => r.request_group_id).filter(Boolean);
     if (groupIdFilter) targetGroups = targetGroups.includes(groupIdFilter) ? [groupIdFilter] : [];
 
-    let infoMap = {}, detailsMap = {}, rateMap = {}, docsMap = {};
+    let infoMap = {},
+      detailsMap = {},
+      rateMap = {},
+      docsMap = {};
     if (targetGroups.length) {
       try {
         const { data: infos } = await supabaseAdmin
           .from('worker_information')
-          .select('request_group_id, worker_id, auth_uid, email_address, first_name, last_name, contact_number, street, barangay, date_of_birth, age, profile_picture_url, profile_picture_name')
+          .select(
+            'request_group_id, worker_id, auth_uid, email_address, first_name, last_name, contact_number, street, barangay, date_of_birth, age, profile_picture_url, profile_picture_name'
+          )
           .in('request_group_id', targetGroups);
-        (infos || []).forEach(r => { if (r?.request_group_id) infoMap[r.request_group_id] = r; });
+        (infos || []).forEach((r) => {
+          if (r?.request_group_id) infoMap[r.request_group_id] = r;
+        });
       } catch {}
       try {
         const { data: details } = await supabaseAdmin
           .from('worker_work_information')
           .select('request_group_id, auth_uid, service_types, service_task, years_experience, tools_provided, work_description, barangay, street, worker_id')
           .in('request_group_id', targetGroups);
-        (details || []).forEach(r => { if (r?.request_group_id) detailsMap[r.request_group_id] = r; });
+        (details || []).forEach((r) => {
+          if (r?.request_group_id) detailsMap[r.request_group_id] = r;
+        });
       } catch {}
       try {
         const { data: rates } = await supabaseAdmin
           .from('worker_service_rate')
           .select('request_group_id, auth_uid, rate_type, rate_from, rate_to, rate_value, worker_id')
           .in('request_group_id', targetGroups);
-        (rates || []).forEach(r => { if (r?.request_group_id) rateMap[r.request_group_id] = r; });
+        (rates || []).forEach((r) => {
+          if (r?.request_group_id) rateMap[r.request_group_id] = r;
+        });
       } catch {}
       try {
         const { data: docs } = await supabaseAdmin
           .from('worker_required_documents')
-          .select('request_group_id, primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates')
+          .select(
+            'request_group_id, primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates, tesda_carpentry_certificate, tesda_electrician_certificate, tesda_plumbing_certificate, tesda_carwashing_certificate, tesda_laundry_certificate'
+          )
           .in('request_group_id', targetGroups);
-        (docs || []).forEach(r => { if (r?.request_group_id) docsMap[r.request_group_id] = r; });
+        (docs || []).forEach((r) => {
+          if (r?.request_group_id) docsMap[r.request_group_id] = r;
+        });
       } catch {}
     }
 
     const items = (rows || [])
-      .filter(r => targetGroups.includes(r.request_group_id))
-      .map(r => {
+      .filter((r) => targetGroups.includes(r.request_group_id))
+      .map((r) => {
         const gid = r.request_group_id;
         const mergedInfo = infoMap[gid] || r.info || {};
         const mergedDetails = detailsMap[gid] || r.details || {};
@@ -817,11 +970,7 @@ exports.deleteApplication = async (req, res) => {
   try {
     const raw = String(req.params.id || '').trim();
     if (!raw) return res.status(400).json({ message: 'id is required' });
-    const { data: row, error } = await supabaseAdmin
-      .from('worker_application_status')
-      .select('id, status, request_group_id')
-      .eq('id', raw)
-      .maybeSingle();
+    const { data: row, error } = await supabaseAdmin.from('worker_application_status').select('id, status, request_group_id').eq('id', raw).maybeSingle();
     if (error) throw error;
     if (!row) return res.status(404).json({ message: 'Not found' });
     await supabaseAdmin.from('worker_application_status').delete().eq('id', raw);
@@ -866,9 +1015,8 @@ exports.cancel = async (req, res) => {
 
     const canceled_at = new Date().toISOString();
 
-    await supabaseAdmin
-      .from('worker_cancel_application')
-      .insert([{
+    await supabaseAdmin.from('worker_cancel_application').insert([
+      {
         request_group_id: found.request_group_id || request_group_id_in || null,
         worker_id: worker_id || found.worker_id || null,
         auth_uid: found.auth_uid || null,
@@ -876,12 +1024,10 @@ exports.cancel = async (req, res) => {
         reason_choice,
         reason_other,
         canceled_at
-      }]);
+      }
+    ]);
 
-    await supabaseAdmin
-      .from('worker_application_status')
-      .update({ status: 'cancelled', reason_choice, reason_other, decided_at: canceled_at })
-      .eq('id', found.id);
+    await supabaseAdmin.from('worker_application_status').update({ status: 'cancelled', reason_choice, reason_other, decided_at: canceled_at }).eq('id', found.id);
 
     return res.status(201).json({ message: 'Cancellation recorded', canceled_at, request_group_id: found.request_group_id, id: found.id });
   } catch (e) {
@@ -898,7 +1044,15 @@ exports.getByGroupFull = async (req, res) => {
       supabaseAdmin.from('worker_information').select('*').eq('request_group_id', gid).order('id', { ascending: false }).limit(1).maybeSingle(),
       supabaseAdmin.from('worker_work_information').select('*').eq('request_group_id', gid).order('id', { ascending: false }).limit(1).maybeSingle(),
       supabaseAdmin.from('worker_service_rate').select('*').eq('request_group_id', gid).order('id', { ascending: false }).limit(1).maybeSingle(),
-      supabaseAdmin.from('worker_required_documents').select('request_group_id, primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates').eq('request_group_id', gid).order('id', { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin
+        .from('worker_required_documents')
+        .select(
+          'request_group_id, primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates, tesda_carpentry_certificate, tesda_electrician_certificate, tesda_plumbing_certificate, tesda_carwashing_certificate, tesda_laundry_certificate'
+        )
+        .eq('request_group_id', gid)
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
       supabaseAdmin.from('worker_application_status').select('id, request_group_id, status, email_address, created_at, auth_uid').eq('request_group_id', gid).order('created_at', { ascending: false }).limit(1).maybeSingle()
     ]);
 
@@ -977,7 +1131,7 @@ exports.updateByGroup = async (req, res) => {
         request_group_id: gid,
         worker_id: worker_id || null,
         auth_uid: auth_uid || null,
-        email_address: (email || info.email_address || existing?.email_address || null),
+        email_address: email || info.email_address || existing?.email_address || null,
         first_name: (info.first_name !== undefined ? info.first_name : existing?.first_name) ?? null,
         last_name: (info.last_name !== undefined ? info.last_name : existing?.last_name) ?? null,
         contact_number: (info.contact_number !== undefined ? info.contact_number : existing?.contact_number) ?? null,
@@ -990,11 +1144,8 @@ exports.updateByGroup = async (req, res) => {
       };
 
       const { data: existId } = await supabaseAdmin.from('worker_information').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
-      if (existId?.id) {
-        await supabaseAdmin.from('worker_information').update(base).eq('id', existId.id);
-      } else {
-        await insertWorkerInformation(base);
-      }
+      if (existId?.id) await supabaseAdmin.from('worker_information').update(base).eq('id', existId.id);
+      else await insertWorkerInformation(base);
 
       return {
         profile_picture_url,
@@ -1017,7 +1168,7 @@ exports.updateByGroup = async (req, res) => {
         .limit(1)
         .maybeSingle();
 
-      let incomingTypes = Array.isArray(d.service_types) ? d.service_types : (d.service_type ? [d.service_type] : []);
+      let incomingTypes = Array.isArray(d.service_types) ? d.service_types : d.service_type ? [d.service_type] : [];
       let incomingTask = d.service_task;
 
       if (Array.isArray(incomingTask)) {
@@ -1028,24 +1179,25 @@ exports.updateByGroup = async (req, res) => {
         incomingTask = [{ category: incomingTypes[0], tasks: [] }];
       }
 
-      const service_types = incomingTypes && incomingTypes.length ? incomingTypes : (existing?.service_types || []);
-      const service_task = Array.isArray(incomingTask) && incomingTask.length ? incomingTask : (existing?.service_task || []);
+      const service_types = incomingTypes && incomingTypes.length ? incomingTypes : existing?.service_types || [];
+      const service_task = Array.isArray(incomingTask) && incomingTask.length ? incomingTask : existing?.service_task || [];
 
       const years_experience =
-        (d.years_experience !== undefined && d.years_experience !== null && String(d.years_experience) === '')
+        d.years_experience !== undefined && d.years_experience !== null && String(d.years_experience) === ''
           ? null
-          : ((d.years_experience !== undefined && d.years_experience !== null) ? d.years_experience : (existing?.years_experience ?? null));
+          : d.years_experience !== undefined && d.years_experience !== null
+          ? d.years_experience
+          : existing?.years_experience ?? null;
 
       const tools_in = d.tools_provided;
       const tools_provided =
         tools_in !== undefined && tools_in !== null && String(tools_in) !== ''
-          ? (['yes','y','true','t','1'].includes(String(tools_in).trim().toLowerCase()) ? 'Yes' : 'No')
-          : (existing?.tools_provided ?? null);
+          ? ['yes', 'y', 'true', 't', '1'].includes(String(tools_in).trim().toLowerCase())
+            ? 'Yes'
+            : 'No'
+          : existing?.tools_provided ?? null;
 
-      const work_description =
-        (d.work_description !== undefined && String(d.work_description).trim() !== '')
-          ? d.work_description
-          : (existing?.work_description ?? null);
+      const work_description = d.work_description !== undefined && String(d.work_description).trim() !== '' ? d.work_description : existing?.work_description ?? null;
 
       const row = {
         request_group_id: gid,
@@ -1060,11 +1212,8 @@ exports.updateByGroup = async (req, res) => {
       };
 
       const { data: existId } = await supabaseAdmin.from('worker_work_information').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
-      if (existId?.id) {
-        await supabaseAdmin.from('worker_work_information').update(row).eq('id', existId.id);
-      } else {
-        await insertWorkerWorkInformation(row);
-      }
+      if (existId?.id) await supabaseAdmin.from('worker_work_information').update(row).eq('id', existId.id);
+      else await insertWorkerWorkInformation(row);
       return row;
     };
 
@@ -1093,11 +1242,8 @@ exports.updateByGroup = async (req, res) => {
         rate_value: rv
       };
       const { data: existId } = await supabaseAdmin.from('worker_service_rate').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
-      if (existId?.id) {
-        await supabaseAdmin.from('worker_service_rate').update(row).eq('id', existId.id);
-      } else {
-        await insertWorkerRate(row);
-      }
+      if (existId?.id) await supabaseAdmin.from('worker_service_rate').update(row).eq('id', existId.id);
+      else await insertWorkerRate(row);
       return row;
     };
 
@@ -1116,61 +1262,100 @@ exports.updateByGroup = async (req, res) => {
         nbi_police_clearance: '',
         proof_of_address: '',
         medical_certificate: '',
-        certificates: ''
+        certificates: '',
+        tesda_carpentry_certificate: '',
+        tesda_electrician_certificate: '',
+        tesda_plumbing_certificate: '',
+        tesda_carwashing_certificate: '',
+        tesda_laundry_certificate: ''
       };
       const setUrl = async (k, v) => {
         if (!v) return;
-        if (typeof v === 'string' && /^https?:\/\//i.test(v)) {
-          shape[k] = v;
-        } else if (typeof v === 'string' && /^data:/i.test(v)) {
-          const up = await safeUploadDataUrl(bucket, v, `${gid}-${k}`);
+        if (typeof v === 'string' && /^https?:\/\//i.test(v)) shape[k] = v;
+        else if (typeof v === 'string' && /^data:/i.test(v)) {
+          const up = await safeUploadDataUrl(bucket, v, `${gid}-${k}-${Date.now()}`);
           shape[k] = up?.url || '';
         }
       };
+
       await setUrl('primary_id_front', docs.primary_id_front || docs.front || docs.primaryFront);
       await setUrl('primary_id_back', docs.primary_id_back || docs.back || docs.primaryBack);
       await setUrl('secondary_id', docs.secondary_id || docs.secondary || docs.alt);
       await setUrl('nbi_police_clearance', docs.nbi_police_clearance || docs.nbi || docs.police);
       await setUrl('proof_of_address', docs.proof_of_address || docs.address || docs.billing);
       await setUrl('medical_certificate', docs.medical_certificate || docs.medical);
-      await setUrl('certificates', docs.certificates);
+
+      await setUrl('tesda_carpentry_certificate', docs.tesda_carpentry_certificate || docs.tesdaCarpentryCertificate || docs.carpentry_certificate || docs.carpentry || docs.tesda_carpentry);
+      await setUrl(
+        'tesda_electrician_certificate',
+        docs.tesda_electrician_certificate || docs.tesdaElectricianCertificate || docs.electrician_certificate || docs.electrical_certificate || docs.electrician || docs.tesda_electrician
+      );
+      await setUrl('tesda_plumbing_certificate', docs.tesda_plumbing_certificate || docs.tesdaPlumbingCertificate || docs.plumbing_certificate || docs.plumbing || docs.tesda_plumbing);
+      await setUrl(
+        'tesda_carwashing_certificate',
+        docs.tesda_carwashing_certificate || docs.tesdaCarwashingCertificate || docs.carwashing_certificate || docs.carwash_certificate || docs.automotive_certificate || docs.carwashing || docs.tesda_carwashing
+      );
+      await setUrl('tesda_laundry_certificate', docs.tesda_laundry_certificate || docs.tesdaLaundryCertificate || docs.laundry_certificate || docs.housekeeping_certificate || docs.laundry || docs.tesda_laundry);
+
+      await setUrl('certificates', docs.certificates || docs.certs);
+
+      const hasAnyTesda =
+        !!shape.tesda_carpentry_certificate ||
+        !!shape.tesda_electrician_certificate ||
+        !!shape.tesda_plumbing_certificate ||
+        !!shape.tesda_carwashing_certificate ||
+        !!shape.tesda_laundry_certificate;
+
+      if (hasAnyTesda && !shape.certificates) {
+        try {
+          shape.certificates = JSON.stringify({
+            carpentry: shape.tesda_carpentry_certificate || '',
+            electrician: shape.tesda_electrician_certificate || '',
+            plumbing: shape.tesda_plumbing_certificate || '',
+            carwashing: shape.tesda_carwashing_certificate || '',
+            laundry: shape.tesda_laundry_certificate || ''
+          });
+        } catch {
+          shape.certificates = '';
+        }
+      }
 
       const { data: existId } = await supabaseAdmin.from('worker_required_documents').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
-      if (existId?.id) {
-        await supabaseAdmin.from('worker_required_documents').update(shape).eq('id', existId.id);
-      } else {
-        await insertWorkerRequiredDocuments(shape);
-      }
+      if (existId?.id) await supabaseAdmin.from('worker_required_documents').update(shape).eq('id', existId.id);
+      else await insertWorkerRequiredDocumentsSafe(shape);
       return shape;
     };
 
     const [infoRes, detailsRes, rateRes, docsRes] = await Promise.all([upsertInfo(), upsertDetails(), upsertRate(), upsertDocs()]);
 
     if (statusRow?.id) {
-      await supabaseAdmin.from('worker_application_status').update({
-        info: {
-          first_name: infoRes?.first_name || null,
-          last_name: infoRes?.last_name || null,
-          email_address: infoRes?.email_address || email || null,
-          contact_number: infoRes?.contact_number || null,
-          street: infoRes?.street || null,
-          barangay: infoRes?.barangay || null,
-          profile_picture_url: infoRes?.profile_picture_url || null
-        },
-        details: {
-          service_types: detailsRes?.service_types || [],
-          service_task: detailsRes?.service_task || [],
-          years_experience: detailsRes?.years_experience ?? null,
-          tools_provided: detailsRes?.tools_provided ?? null,
-          work_description: detailsRes?.work_description || null
-        },
-        rate: {
-          rate_type: rateRes?.rate_type || null,
-          rate_from: rateRes?.rate_from ?? null,
-          rate_to: rateRes?.rate_to ?? null,
-          rate_value: rateRes?.rate_value ?? null
-        }
-      }).eq('id', statusRow.id);
+      await supabaseAdmin
+        .from('worker_application_status')
+        .update({
+          info: {
+            first_name: infoRes?.first_name || null,
+            last_name: infoRes?.last_name || null,
+            email_address: infoRes?.email_address || email || null,
+            contact_number: infoRes?.contact_number || null,
+            street: infoRes?.street || null,
+            barangay: infoRes?.barangay || null,
+            profile_picture_url: infoRes?.profile_picture_url || null
+          },
+          details: {
+            service_types: detailsRes?.service_types || [],
+            service_task: detailsRes?.service_task || [],
+            years_experience: detailsRes?.years_experience ?? null,
+            tools_provided: detailsRes?.tools_provided ?? null,
+            work_description: detailsRes?.work_description || null
+          },
+          rate: {
+            rate_type: rateRes?.rate_type || null,
+            rate_from: rateRes?.rate_from ?? null,
+            rate_to: rateRes?.rate_to ?? null,
+            rate_value: rateRes?.rate_value ?? null
+          }
+        })
+        .eq('id', statusRow.id);
     }
 
     return res.status(200).json({ message: 'Updated', request_group_id: gid });

@@ -1,4 +1,3 @@
-// WorkerReviewPost.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -180,16 +179,8 @@ const WorkerReviewPost = ({ handleBack }) => {
   const street = s.street ?? savedInfo.street ?? '';
   const barangay = s.barangay ?? savedInfo.barangay ?? '';
 
-  const profile_picture =
-    s.profile_picture ??
-    savedInfo.profilePicture ??
-    savedInfo.profile_picture ??
-    null;
-  const profile_picture_url_preview =
-    s.profile_picture_url ??
-    savedInfo.profilePictureUrl ??
-    savedInfo.profile_picture_url ??
-    '';
+  const profile_picture = s.profile_picture ?? savedInfo.profilePicture ?? savedInfo.profile_picture ?? null;
+  const profile_picture_url_preview = s.profile_picture_url ?? savedInfo.profilePictureUrl ?? savedInfo.profile_picture_url ?? '';
 
   const service_types = s.service_types ?? savedWork.service_types ?? savedWork.serviceTypesSelected ?? [];
   const service_task = s.service_task ?? savedWork.service_task ?? savedWork.serviceTaskSelected ?? {};
@@ -210,7 +201,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   const normalizeLocalPH10 = (v) => {
     let d = String(v || '').replace(/\D/g, '');
     if (d.startsWith('63')) d = d.slice(2);
-    if (d.startsWith('0')) d = d.slice[1];
+    if (d.startsWith('0')) d = d.slice(1);
     if (d.length > 10) d = d.slice(-10);
     if (d.length === 10 && d[0] === '9') return d;
     return '';
@@ -231,81 +222,117 @@ const WorkerReviewPost = ({ handleBack }) => {
   };
 
   const normalizeDocsForSubmit = (arr) => {
-    const kindMap = (s = "") => {
-      const t = String(s).toLowerCase().replace(/\s+/g, " ").trim();
-      if ((/primary|main/.test(t)) && (/(front|face|id\s*front)/.test(t))) return "primary_id_front";
-      if ((/primary|main/.test(t)) && (/(back|rear|reverse|id\s*back)/.test(t))) return "primary_id_back";
-      if (/secondary|alternate|alt/.test(t)) return "secondary_id";
-      if (/(nbi|police)/.test(t)) return "nbi_police_clearance";
-      if (/proof.*address|address.*proof|billing|bill/.test(t)) return "proof_of_address";
-      if (/medical|med\s*cert|health/.test(t)) return "medical_certificate";
-      if (/certificate|certs?\b|tesda|ncii|nc2/.test(t)) return "certificates";
-      return "";
+    const kindMap = (s0 = '') => {
+      const t = String(s0).toLowerCase().replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+      const hasTesda = /tesda|nc|ncii|nc2/.test(t);
+      const isCert = /certificate|cert\b|certs\b/.test(t) || hasTesda;
+
+      const isCarp = /carpentry|carpenter/.test(t);
+      const isElec = /electric|electrician|eim|electrical installation/.test(t);
+      const isPlum = /plumb|plumbing|plumber/.test(t);
+      const isCarwash = /carwash|car washing|car wash|automotive/.test(t);
+      const isLaundry = /laundry|housekeeping/.test(t);
+
+      if (/^tesda carpentry certificate$/.test(t) || (hasTesda && isCert && isCarp)) return 'tesda_carpentry_certificate';
+      if (/^tesda electrician certificate$/.test(t) || (hasTesda && isCert && isElec)) return 'tesda_electrician_certificate';
+      if (/^tesda plumbing certificate$/.test(t) || (hasTesda && isCert && isPlum)) return 'tesda_plumbing_certificate';
+      if (/^tesda carwashing certificate$/.test(t) || /^tesda car washing certificate$/.test(t) || (hasTesda && isCert && isCarwash)) return 'tesda_carwashing_certificate';
+      if (/^tesda laundry certificate$/.test(t) || (hasTesda && isCert && isLaundry)) return 'tesda_laundry_certificate';
+
+      if ((/primary|main/.test(t) && /(front|face|id front)/.test(t)) || t === 'primary id front') return 'primary_id_front';
+      if ((/primary|main/.test(t) && /(back|rear|reverse|id back)/.test(t)) || t === 'primary id back') return 'primary_id_back';
+      if (/secondary|alternate|alt/.test(t) || t === 'secondary id') return 'secondary_id';
+      if (/(nbi|police)/.test(t)) return 'nbi_police_clearance';
+      if (/proof of address|address proof|billing|bill/.test(t)) return 'proof_of_address';
+      if (/medical|med cert|health/.test(t)) return 'medical_certificate';
+      if (/^tesda_.*_certificate$/.test(String(s0).toLowerCase())) return String(s0).toLowerCase();
+      if (isCert) return 'certificates';
+      return '';
     };
-    const extFromData = (s = "") => {
-      const m = /^data:([^;]+);base64,/.exec(s);
-      if (!m) return "bin";
+
+    const extFromData = (s1 = '') => {
+      const m = /^data:([^;]+);base64,/.exec(s1);
+      if (!m) return 'bin';
       const mime = m[1].toLowerCase();
-      if (mime === "image/jpeg") return "jpg";
-      if (mime === "image/png") return "png";
-      if (mime === "image/webp") return "webp";
-      if (mime === "image/gif") return "gif";
-      if (mime === "image/svg+xml") return "svg";
-      if (mime === "application/pdf") return "pdf";
-      return "bin";
+      if (mime === 'image/jpeg') return 'jpg';
+      if (mime === 'image/png') return 'png';
+      if (mime === 'image/webp') return 'webp';
+      if (mime === 'image/gif') return 'gif';
+      if (mime === 'image/svg+xml') return 'svg';
+      if (mime === 'application/pdf') return 'pdf';
+      return 'bin';
     };
+
     const pickDataUrl = (v) => {
-      const s1 = typeof v?.data_url === "string" ? v.data_url : "";
-      const s2 = typeof v?.dataUrl === "string" ? v.dataUrl : "";
-      const s3 = typeof v?.dataURL === "string" ? v.dataURL : "";
-      const s4 = typeof v?.imageData === "string" ? v.imageData : "";
-      const s5 = typeof v?.blobData === "string" ? v.blobData : "";
-      const b64 = typeof v?.base64 === "string" ? v.base64 : "";
-      if (s1.startsWith("data:")) return s1;
-      if (s2.startsWith("data:")) return s2;
-      if (s3.startsWith("data:")) return s3;
-      if (s4.startsWith("data:")) return s4;
-      if (s5.startsWith("data:")) return s5;
+      const s1 = typeof v?.data_url === 'string' ? v.data_url : '';
+      const s2 = typeof v?.dataUrl === 'string' ? v.dataUrl : '';
+      const s3 = typeof v?.dataURL === 'string' ? v.dataURL : '';
+      const s4 = typeof v?.imageData === 'string' ? v.imageData : '';
+      const s5 = typeof v?.blobData === 'string' ? v.blobData : '';
+      const b64 = typeof v?.base64 === 'string' ? v.base64 : '';
+      if (s1.startsWith('data:')) return s1;
+      if (s2.startsWith('data:')) return s2;
+      if (s3.startsWith('data:')) return s3;
+      if (s4.startsWith('data:')) return s4;
+      if (s5.startsWith('data:')) return s5;
       if (b64 && /^[A-Za-z0-9+/]+={0,2}$/.test(b64)) return `data:image/jpeg;base64,${b64}`;
-      return "";
+      return '';
     };
+
     const pull = (v) => {
-      if (!v) return { url: "", data_url: "", guess: "" };
-      if (typeof v === "string") {
-        return { url: /^https?:\/\//i.test(v) ? v : "", data_url: v.startsWith("data:") ? v : "", guess: "" };
-      }
-      const url = typeof v.url === "string" && /^https?:\/\//i.test(v.url) ? v.url : (typeof v.link === "string" && /^https?:\/\//i.test(v.link) ? v.link : (typeof v.href === "string" && /^https?:\/\//i.test(v.href) ? v.href : ""));
+      if (!v) return { url: '', data_url: '', guess: '' };
+      if (typeof v === 'string') return { url: /^https?:\/\//i.test(v) ? v : '', data_url: v.startsWith('data:') ? v : '', guess: '' };
+      const url =
+        typeof v.url === 'string' && /^https?:\/\//i.test(v.url)
+          ? v.url
+          : typeof v.link === 'string' && /^https?:\/\//i.test(v.link)
+          ? v.link
+          : typeof v.href === 'string' && /^https?:\/\//i.test(v.href)
+          ? v.href
+          : '';
       const data_url = pickDataUrl(v);
-      const guess = v.kind || v.type || v.label || v.name || v.field || v.filename || v.fileName || v.title || v.meta?.kind || v.meta?.label || v.meta?.name || "";
-      return { url, data_url, guess: String(guess || "") };
+      const guess = v.kind || v.type || v.label || v.name || v.field || v.filename || v.fileName || v.title || v.meta?.kind || v.meta?.label || v.meta?.name || '';
+      return { url, data_url, guess: String(guess || '') };
     };
+
     const pushDoc = (out, guessedKind, v) => {
       const { url, data_url, guess } = pull(v);
       if (!(url || data_url)) return;
       const k = kindMap(guessedKind || guess);
-      const ext = data_url ? extFromData(data_url) : ((url.split(".").pop() || "bin").split("?")[0]);
+      const ext = data_url ? extFromData(data_url) : ((url.split('.').pop() || 'bin').split('?')[0]);
       const filename = k ? `${k}.${ext}` : `document.${ext}`;
       out.push({ kind: k, url, data_url, filename });
     };
 
     const out = [];
-    if (arr && !Array.isArray(arr) && typeof arr === "object") {
-      pushDoc(out, "primary_id_front", arr.primary_id_front || arr.primary_front || arr.front);
-      pushDoc(out, "primary_id_back", arr.primary_id_back || arr.primary_back || arr.back);
-      pushDoc(out, "secondary_id", arr.secondary_id || arr.secondary || arr.alt);
-      pushDoc(out, "nbi_police_clearance", arr.nbi_police_clearance || arr.nbi || arr.police);
-      pushDoc(out, "proof_of_address", arr.proof_of_address || arr.address || arr.billing);
-      pushDoc(out, "medical_certificate", arr.medical_certificate || arr.medical);
-      pushDoc(out, "certificates", arr.certificates || arr.certs);
-      return out;
+    if (arr && !Array.isArray(arr) && typeof arr === 'object') {
+      pushDoc(out, 'primary_id_front', arr.primary_id_front || arr.primary_front || arr.front);
+      pushDoc(out, 'primary_id_back', arr.primary_id_back || arr.primary_back || arr.back);
+      pushDoc(out, 'secondary_id', arr.secondary_id || arr.secondary || arr.alt);
+      pushDoc(out, 'nbi_police_clearance', arr.nbi_police_clearance || arr.nbi || arr.police);
+      pushDoc(out, 'proof_of_address', arr.proof_of_address || arr.address || arr.billing);
+      pushDoc(out, 'medical_certificate', arr.medical_certificate || arr.medical);
+
+      pushDoc(out, 'tesda_carpentry_certificate', arr.tesda_carpentry_certificate || arr.tesdaCarpentryCertificate || arr.carpentry_certificate || arr.carpentry);
+      pushDoc(out, 'tesda_electrician_certificate', arr.tesda_electrician_certificate || arr.tesdaElectricianCertificate || arr.electrician_certificate || arr.electrical_certificate || arr.electrician);
+      pushDoc(out, 'tesda_plumbing_certificate', arr.tesda_plumbing_certificate || arr.tesdaPlumbingCertificate || arr.plumbing_certificate || arr.plumbing);
+      pushDoc(out, 'tesda_carwashing_certificate', arr.tesda_carwashing_certificate || arr.tesdaCarwashingCertificate || arr.carwashing_certificate || arr.carwash_certificate || arr.automotive_certificate || arr.carwashing);
+      pushDoc(out, 'tesda_laundry_certificate', arr.tesda_laundry_certificate || arr.tesdaLaundryCertificate || arr.laundry_certificate || arr.housekeeping_certificate || arr.laundry);
+
+      const certRaw = arr.certificates || arr.certs;
+      if (Array.isArray(certRaw)) certRaw.forEach((c) => pushDoc(out, 'certificates', c));
+      else pushDoc(out, 'certificates', certRaw);
+
+      return out.filter((d) => d.kind && (d.url || d.data_url));
     }
 
     (Array.isArray(arr) ? arr : []).forEach((d) => {
-      const guess = d?.kind || d?.type || d?.label || d?.name || d?.field || d?.filename || d?.fileName || d?.title || d?.meta?.kind || d?.meta?.label || d?.meta?.name || "";
+      const guess = d?.kind || d?.type || d?.label || d?.name || d?.field || d?.filename || d?.fileName || d?.title || d?.meta?.kind || d?.meta?.label || d?.meta?.name || '';
       pushDoc(out, guess, d);
     });
 
-    return out;
+    return out.filter((d) => d.kind && (d.url || d.data_url));
   };
 
   const contactLocal10 = normalizeLocalPH10(contact_number);
@@ -324,9 +351,7 @@ const WorkerReviewPost = ({ handleBack }) => {
     const isElement = React.isValidElement(value);
     const isEmpty =
       !isElement &&
-      (value === null ||
-        value === undefined ||
-        (typeof value === 'string' && value.trim() === ''));
+      (value === null || value === undefined || (typeof value === 'string' && value.trim() === ''));
     const display = isElement ? value : isEmpty ? emptyAs : value;
     const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
@@ -388,8 +413,8 @@ const WorkerReviewPost = ({ handleBack }) => {
     return out;
   };
 
-  const extFromPicData = (s = '') => {
-    const m = /^data:([^;]+);base64,/.exec(s || '');
+  const extFromPicData = (s0 = '') => {
+    const m = /^data:([^;]+);base64,/.exec(s0 || '');
     const mime = (m ? m[1] : '').toLowerCase();
     if (mime === 'image/png') return 'png';
     if (mime === 'image/webp') return 'webp';
@@ -404,54 +429,26 @@ const WorkerReviewPost = ({ handleBack }) => {
       setIsSubmitting(true);
 
       const infoDraft = (() => {
-        try {
-          return JSON.parse(localStorage.getItem('workerInformationForm') || '{}');
-        } catch {
-          return {};
-        }
+        try { return JSON.parse(localStorage.getItem('workerInformationForm') || '{}'); } catch { return {}; }
       })();
       const workDraft = (() => {
-        try {
-          return JSON.parse(localStorage.getItem('workerWorkInformation') || '{}');
-        } catch {
-          return {};
-        }
+        try { return JSON.parse(localStorage.getItem('workerWorkInformation') || '{}'); } catch { return {}; }
       })();
       const docsDraftA = (() => {
-        try {
-          return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]');
-        } catch {
-          return [];
-        }
+        try { return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]'); } catch { return []; }
       })();
       const docsDraftB = (() => {
-        try {
-          return JSON.parse(localStorage.getItem('workerDocuments') || '[]');
-        } catch {
-          return [];
-        }
+        try { return JSON.parse(localStorage.getItem('workerDocuments') || '[]'); } catch { return []; }
       })();
       const rateDraft = (() => {
-        try {
-          return JSON.parse(localStorage.getItem('workerRate') || '{}');
-        } catch {
-          return {};
-        }
+        try { return JSON.parse(localStorage.getItem('workerRate') || '{}'); } catch { return {}; }
       })();
       const agreeDraft = (() => {
-        try {
-          return JSON.parse(localStorage.getItem('workerAgreements') || '{}');
-        } catch {
-          return {};
-        }
+        try { return JSON.parse(localStorage.getItem('workerAgreements') || '{}'); } catch { return {}; }
       })();
 
       const workerAuth = (() => {
-        try {
-          return JSON.parse(localStorage.getItem('workerAuth') || '{}');
-        } catch {
-          return {};
-        }
+        try { return JSON.parse(localStorage.getItem('workerAuth') || '{}'); } catch { return {}; }
       })();
 
       const initialPayload = {
@@ -492,18 +489,14 @@ const WorkerReviewPost = ({ handleBack }) => {
       let profilePicData = '';
       let profilePicUrl = '';
       const picRaw = String(initialPayload.info.profilePicture || profile_picture || '').trim();
-      if (picRaw.startsWith('data:')) {
-        profilePicData = picRaw;
-      } else if (picRaw.startsWith('blob:')) {
-        profilePicData = await blobToDataUrl(picRaw);
-      }
+      if (picRaw.startsWith('data:')) profilePicData = picRaw;
+      else if (picRaw.startsWith('blob:')) profilePicData = await blobToDataUrl(picRaw);
+
       if (!profilePicData) {
-        const urlCandidate =
-          initialPayload.info.profilePictureUrl ||
-          profile_picture_url_preview ||
-          '';
+        const urlCandidate = initialPayload.info.profilePictureUrl || profile_picture_url_preview || '';
         if (urlCandidate && /^https?:\/\//i.test(urlCandidate)) profilePicUrl = urlCandidate;
       }
+
       if (!profilePicData && !profilePicUrl) {
         setIsSubmitting(false);
         setSubmitError('Please upload a profile picture.');
@@ -518,6 +511,7 @@ const WorkerReviewPost = ({ handleBack }) => {
       const docsCandidatesMerged = []
         .concat(Array.isArray(docsDraftA) ? docsDraftA : [])
         .concat(Array.isArray(docsDraftB) ? docsDraftB : []);
+
       const docsDraftProcessed = await Promise.all(
         (docsCandidatesMerged || []).map(async (d) => {
           if (!d) return d;
@@ -540,28 +534,59 @@ const WorkerReviewPost = ({ handleBack }) => {
         const objData = readJson('workerDocumentsData', '{}');
         const objMeta = readJson('workerDocuments', '{}');
 
+        const pickOne = (v) => {
+          if (Array.isArray(v)) return String(v.find(Boolean) || '');
+          if (v == null) return '';
+          return String(v);
+        };
+        const pickMany = (v) => {
+          if (Array.isArray(v)) return v.map((x) => String(x || '')).filter(Boolean);
+          if (v == null) return [];
+          const s1 = String(v);
+          return s1 ? [s1] : [];
+        };
+
         const mapAnyToCanon = (o) => {
           if (!o || typeof o !== 'object') return {};
           return {
-            primary_id_front: o.primary_id_front || o.primary_front || o.front || '',
-            primary_id_back: o.primary_id_back || o.primary_back || o.back || '',
-            secondary_id: o.secondary_id || o.secondary || o.alt || '',
-            nbi_police_clearance: o.nbi_police_clearance || o.nbi || o.police || '',
-            proof_of_address: o.proof_of_address || o.address || o.billing || '',
-            medical_certificate: o.medical_certificate || o.medical || '',
-            certificates: o.certificates || o.certs || ''
+            primary_id_front: pickOne(o.primary_id_front || o.primary_front || o.front || o.primaryIdFront),
+            primary_id_back: pickOne(o.primary_id_back || o.primary_back || o.back || o.primaryIdBack),
+            secondary_id: pickOne(o.secondary_id || o.secondary || o.alt || o.secondaryId),
+            nbi_police_clearance: pickOne(o.nbi_police_clearance || o.nbi || o.police || o.nbiPoliceClearance),
+            proof_of_address: pickOne(o.proof_of_address || o.address || o.billing || o.proofOfAddress),
+            medical_certificate: pickOne(o.medical_certificate || o.medical || o.medicalCertificate),
+            tesda_carpentry_certificate: pickOne(o.tesda_carpentry_certificate || o.tesdaCarpentryCertificate || o.carpentry_certificate || o.carpentry),
+            tesda_electrician_certificate: pickOne(o.tesda_electrician_certificate || o.tesdaElectricianCertificate || o.electrician_certificate || o.electrical_certificate || o.electrician),
+            tesda_plumbing_certificate: pickOne(o.tesda_plumbing_certificate || o.tesdaPlumbingCertificate || o.plumbing_certificate || o.plumbing),
+            tesda_carwashing_certificate: pickOne(o.tesda_carwashing_certificate || o.tesdaCarwashingCertificate || o.carwashing_certificate || o.carwash_certificate || o.automotive_certificate || o.carwashing),
+            tesda_laundry_certificate: pickOne(o.tesda_laundry_certificate || o.tesdaLaundryCertificate || o.laundry_certificate || o.housekeeping_certificate || o.laundry),
+            certificates: pickMany(o.certificates || o.certs)
           };
         };
 
         let base = Object.assign({}, mapAnyToCanon(objCanon), mapAnyToCanon(objCanonAlt));
-        if (!Object.values(base).some(Boolean)) {
-          base = mapAnyToCanon(objData);
-        }
-        if (!Object.values(base).some(Boolean)) {
-          base = mapAnyToCanon(objMeta);
-        }
 
-        const keys = ['primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate','certificates'];
+        const hasAny = (b) => {
+          const keys = [
+            'primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate',
+            'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate',
+            'certificates'
+          ];
+          return keys.some((k) => {
+            const v = b?.[k];
+            if (Array.isArray(v)) return v.some(Boolean);
+            return !!String(v || '').trim();
+          });
+        };
+
+        if (!hasAny(base)) base = mapAnyToCanon(objData);
+        if (!hasAny(base)) base = mapAnyToCanon(objMeta);
+
+        const keys = [
+          'primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate',
+          'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate'
+        ];
+
         for (const k of keys) {
           const v = base[k];
           if (typeof v === 'string' && v.startsWith('blob:')) {
@@ -569,12 +594,35 @@ const WorkerReviewPost = ({ handleBack }) => {
             if (du) base[k] = du;
           }
         }
+
+        if (Array.isArray(base.certificates)) {
+          const next = [];
+          for (const v of base.certificates) {
+            if (typeof v === 'string' && v.startsWith('blob:')) {
+              const du = await blobToDataUrl(v);
+              if (du) next.push(du);
+            } else if (v) next.push(v);
+          }
+          base.certificates = next;
+        }
+
         return base;
       })();
 
-      const documentsNormalized = Object.keys(docsObjPrepared || {}).some(k => (docsObjPrepared[k] || '').length)
-        ? normalizeDocsForSubmit(docsObjPrepared)
-        : normalizeDocsForSubmit(docsDraftProcessed);
+      const docsObjHasAny = (() => {
+        const keys = [
+          'primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate',
+          'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate',
+          'certificates'
+        ];
+        return keys.some((k) => {
+          const v = docsObjPrepared?.[k];
+          if (Array.isArray(v)) return v.some(Boolean);
+          return !!String(v || '').trim();
+        });
+      })();
+
+      const documentsNormalized = docsObjHasAny ? normalizeDocsForSubmit(docsObjPrepared) : normalizeDocsForSubmit(docsDraftProcessed);
 
       const docsObject = (() => {
         const out = {};
@@ -583,13 +631,42 @@ const WorkerReviewPost = ({ handleBack }) => {
           if (!k) return;
           const val = d?.data_url || d?.url || '';
           if (!val) return;
-          out[k] = val;
+          if (k === 'certificates') {
+            if (!Array.isArray(out[k])) out[k] = [];
+            out[k].push(val);
+          } else {
+            if (!out[k]) out[k] = val;
+          }
         });
+
         const srcObj = (savedDocsObj && typeof savedDocsObj === 'object') ? savedDocsObj : {};
-        ['primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate','certificates'].forEach((k) => {
-          const v = srcObj[k];
+        [
+          'primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate',
+          'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate'
+        ].forEach((k) => {
+          const v = srcObj[k] || srcObj[k.replace(/_([a-z])/g, (_, c) => c.toUpperCase())];
           if (typeof v === 'string' && v && !out[k]) out[k] = v;
         });
+
+        const srcCert = srcObj.certificates || srcObj.certs;
+        const srcCertArr = Array.isArray(srcCert) ? srcCert.map((x) => String(x || '')).filter(Boolean) : (srcCert ? [String(srcCert)] : []);
+        if (srcCertArr.length) {
+          if (!Array.isArray(out.certificates)) out.certificates = [];
+          out.certificates = out.certificates.concat(srcCertArr);
+        }
+
+        if (Array.isArray(out.certificates)) {
+          const seen = new Set();
+          out.certificates = out.certificates
+            .map((x) => String(x || '').trim())
+            .filter(Boolean)
+            .filter((x) => {
+              if (seen.has(x)) return false;
+              seen.add(x);
+              return true;
+            });
+        }
+
         return out;
       })();
 
