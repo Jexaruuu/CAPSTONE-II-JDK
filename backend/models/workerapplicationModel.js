@@ -1,3 +1,4 @@
+// workerapplicationModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 const crypto = require('crypto');
 
@@ -24,7 +25,7 @@ async function uploadDataUrlToBucket(bucket, dataUrl, baseName) {
   if (!parsed) return { url: null, name: null };
   const ext = safeExtFromMime(parsed.mime);
   const safeBase = sanitizeName(baseName || `file_${Date.now()}`);
-  const uniq = `${safeBase}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+  const uniq = `${safeBase}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const path = `${uniq}.${ext}`;
   const { error: upErr } = await supabaseAdmin.storage.from(bucket).upload(path, parsed.buffer, { contentType: parsed.mime, upsert: true });
   if (upErr) throw upErr;

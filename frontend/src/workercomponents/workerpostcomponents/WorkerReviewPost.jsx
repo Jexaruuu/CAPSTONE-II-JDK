@@ -247,7 +247,6 @@ const WorkerReviewPost = ({ handleBack }) => {
       if (/proof of address|address proof|billing|bill/.test(t)) return 'proof_of_address';
       if (/medical|med cert|health/.test(t)) return 'medical_certificate';
       if (/^tesda_.*_certificate$/.test(String(s0).toLowerCase())) return String(s0).toLowerCase();
-      if (isCert) return 'certificates';
       return '';
     };
 
@@ -300,8 +299,9 @@ const WorkerReviewPost = ({ handleBack }) => {
       const { url, data_url, guess } = pull(v);
       if (!(url || data_url)) return;
       const k = kindMap(guessedKind || guess);
+      if (!k) return;
       const ext = data_url ? extFromData(data_url) : ((url.split('.').pop() || 'bin').split('?')[0]);
-      const filename = k ? `${k}.${ext}` : `document.${ext}`;
+      const filename = `${k}.${ext}`;
       out.push({ kind: k, url, data_url, filename });
     };
 
@@ -319,10 +319,6 @@ const WorkerReviewPost = ({ handleBack }) => {
       pushDoc(out, 'tesda_plumbing_certificate', arr.tesda_plumbing_certificate || arr.tesdaPlumbingCertificate || arr.plumbing_certificate || arr.plumbing);
       pushDoc(out, 'tesda_carwashing_certificate', arr.tesda_carwashing_certificate || arr.tesdaCarwashingCertificate || arr.carwashing_certificate || arr.carwash_certificate || arr.automotive_certificate || arr.carwashing);
       pushDoc(out, 'tesda_laundry_certificate', arr.tesda_laundry_certificate || arr.tesdaLaundryCertificate || arr.laundry_certificate || arr.housekeeping_certificate || arr.laundry);
-
-      const certRaw = arr.certificates || arr.certs;
-      if (Array.isArray(certRaw)) certRaw.forEach((c) => pushDoc(out, 'certificates', c));
-      else pushDoc(out, 'certificates', certRaw);
 
       return out.filter((d) => d.kind && (d.url || d.data_url));
     }
@@ -451,6 +447,15 @@ const WorkerReviewPost = ({ handleBack }) => {
         try { return JSON.parse(localStorage.getItem('workerAuth') || '{}'); } catch { return {}; }
       })();
 
+      const authUidVal =
+        (localStorage.getItem('auth_uid') ||
+          localStorage.getItem('worker_auth_uid') ||
+          workerAuth.auth_uid ||
+          workerAuth.authUid ||
+          workerAuth.uid ||
+          workerAuth.id ||
+          '')?.toString() || '';
+
       const initialPayload = {
         info: {
           firstName: infoDraft.firstName || '',
@@ -539,12 +544,6 @@ const WorkerReviewPost = ({ handleBack }) => {
           if (v == null) return '';
           return String(v);
         };
-        const pickMany = (v) => {
-          if (Array.isArray(v)) return v.map((x) => String(x || '')).filter(Boolean);
-          if (v == null) return [];
-          const s1 = String(v);
-          return s1 ? [s1] : [];
-        };
 
         const mapAnyToCanon = (o) => {
           if (!o || typeof o !== 'object') return {};
@@ -559,8 +558,7 @@ const WorkerReviewPost = ({ handleBack }) => {
             tesda_electrician_certificate: pickOne(o.tesda_electrician_certificate || o.tesdaElectricianCertificate || o.electrician_certificate || o.electrical_certificate || o.electrician),
             tesda_plumbing_certificate: pickOne(o.tesda_plumbing_certificate || o.tesdaPlumbingCertificate || o.plumbing_certificate || o.plumbing),
             tesda_carwashing_certificate: pickOne(o.tesda_carwashing_certificate || o.tesdaCarwashingCertificate || o.carwashing_certificate || o.carwash_certificate || o.automotive_certificate || o.carwashing),
-            tesda_laundry_certificate: pickOne(o.tesda_laundry_certificate || o.tesdaLaundryCertificate || o.laundry_certificate || o.housekeeping_certificate || o.laundry),
-            certificates: pickMany(o.certificates || o.certs)
+            tesda_laundry_certificate: pickOne(o.tesda_laundry_certificate || o.tesdaLaundryCertificate || o.laundry_certificate || o.housekeeping_certificate || o.laundry)
           };
         };
 
@@ -569,14 +567,9 @@ const WorkerReviewPost = ({ handleBack }) => {
         const hasAny = (b) => {
           const keys = [
             'primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate',
-            'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate',
-            'certificates'
+            'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate'
           ];
-          return keys.some((k) => {
-            const v = b?.[k];
-            if (Array.isArray(v)) return v.some(Boolean);
-            return !!String(v || '').trim();
-          });
+          return keys.some((k) => !!String(b?.[k] || '').trim());
         };
 
         if (!hasAny(base)) base = mapAnyToCanon(objData);
@@ -595,31 +588,15 @@ const WorkerReviewPost = ({ handleBack }) => {
           }
         }
 
-        if (Array.isArray(base.certificates)) {
-          const next = [];
-          for (const v of base.certificates) {
-            if (typeof v === 'string' && v.startsWith('blob:')) {
-              const du = await blobToDataUrl(v);
-              if (du) next.push(du);
-            } else if (v) next.push(v);
-          }
-          base.certificates = next;
-        }
-
         return base;
       })();
 
       const docsObjHasAny = (() => {
         const keys = [
           'primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate',
-          'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate',
-          'certificates'
+          'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate'
         ];
-        return keys.some((k) => {
-          const v = docsObjPrepared?.[k];
-          if (Array.isArray(v)) return v.some(Boolean);
-          return !!String(v || '').trim();
-        });
+        return keys.some((k) => !!String(docsObjPrepared?.[k] || '').trim());
       })();
 
       const documentsNormalized = docsObjHasAny ? normalizeDocsForSubmit(docsObjPrepared) : normalizeDocsForSubmit(docsDraftProcessed);
@@ -631,12 +608,7 @@ const WorkerReviewPost = ({ handleBack }) => {
           if (!k) return;
           const val = d?.data_url || d?.url || '';
           if (!val) return;
-          if (k === 'certificates') {
-            if (!Array.isArray(out[k])) out[k] = [];
-            out[k].push(val);
-          } else {
-            if (!out[k]) out[k] = val;
-          }
+          if (!out[k]) out[k] = val;
         });
 
         const srcObj = (savedDocsObj && typeof savedDocsObj === 'object') ? savedDocsObj : {};
@@ -648,24 +620,15 @@ const WorkerReviewPost = ({ handleBack }) => {
           if (typeof v === 'string' && v && !out[k]) out[k] = v;
         });
 
-        const srcCert = srcObj.certificates || srcObj.certs;
-        const srcCertArr = Array.isArray(srcCert) ? srcCert.map((x) => String(x || '')).filter(Boolean) : (srcCert ? [String(srcCert)] : []);
-        if (srcCertArr.length) {
-          if (!Array.isArray(out.certificates)) out.certificates = [];
-          out.certificates = out.certificates.concat(srcCertArr);
-        }
-
-        if (Array.isArray(out.certificates)) {
-          const seen = new Set();
-          out.certificates = out.certificates
-            .map((x) => String(x || '').trim())
-            .filter(Boolean)
-            .filter((x) => {
-              if (seen.has(x)) return false;
-              seen.add(x);
-              return true;
-            });
-        }
+        const certPack = {
+          tesda_carpentry_certificate: out.tesda_carpentry_certificate || '',
+          tesda_electrician_certificate: out.tesda_electrician_certificate || '',
+          tesda_plumbing_certificate: out.tesda_plumbing_certificate || '',
+          tesda_carwashing_certificate: out.tesda_carwashing_certificate || '',
+          tesda_laundry_certificate: out.tesda_laundry_certificate || ''
+        };
+        const hasAnyCert = Object.values(certPack).some((v) => !!String(v || '').trim());
+        if (hasAnyCert && !out.certificates) out.certificates = JSON.stringify(certPack);
 
         return out;
       })();
@@ -714,7 +677,7 @@ const WorkerReviewPost = ({ handleBack }) => {
         },
         metadata: {
           profile_picture_name: initialPayload.info.profilePictureName || '',
-          auth_uid: localStorage.getItem('auth_uid') || workerAuth.auth_uid || '',
+          auth_uid: authUidVal,
           profile_picture_data_url: profilePicData || '',
           profile_picture_url: profilePicUrl || ''
         }
@@ -809,25 +772,35 @@ const WorkerReviewPost = ({ handleBack }) => {
         rateValue: normalized.rate_value
       };
 
-      const submitBody = {
-        info: infoPayload,
-        details: workPayload,
-        rate: ratePayload,
-        documents: normalized.documents,
-        required_documents: normalized.required_documents_object,
-        agreements: normalized.agreements,
-        email_address: normalized.email_address,
+      const requiredDocsPayload = {
+        ...normalized.required_documents_object,
         worker_id: normalized.worker_id,
-        metadata: normalized.metadata,
-        profile_picture_data_url: normalized.metadata.profile_picture_data_url,
-        profile_picture_url: normalized.metadata.profile_picture_url,
-        profile_picture_name: normalized.profile_picture_name || normalized.metadata.profile_picture_name || ''
+        email_address: normalized.email_address,
+        auth_uid: normalized.metadata.auth_uid
       };
 
-      const res = await axios.post(`${API_BASE}/api/workerapplications/submit`, submitBody, {
-        withCredentials: true,
-        headers: { 'Content-Type': 'application/json', ...headersWithU }
-      });
+      const res = await axios.post(
+        `${API_BASE}/api/workerapplications/submit`,
+        {
+          info: infoPayload,
+          details: workPayload,
+          rate: ratePayload,
+          documents: normalized.documents,
+          required_documents: requiredDocsPayload,
+          agreements: normalized.agreements,
+          email_address: normalized.email_address,
+          worker_id: normalized.worker_id,
+          auth_uid: normalized.metadata.auth_uid,
+          metadata: normalized.metadata,
+          profile_picture_data_url: normalized.metadata.profile_picture_data_url,
+          profile_picture_url: normalized.metadata.profile_picture_url,
+          profile_picture_name: normalized.profile_picture_name || normalized.metadata.profile_picture_name || ''
+        },
+        {
+          withCredentials: true,
+          headers: { 'Content-Type': 'application/json', ...headersWithU }
+        }
+      );
 
       setApplicationGroupId(res?.data?.application?.request_group_id || res?.data?.request_group_id || null);
       setShowSuccess(true);

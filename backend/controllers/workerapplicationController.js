@@ -20,7 +20,8 @@ const fallbackProfile = { profile_picture_url: '/fallback-profile.png', profile_
 function friendlyError(err) {
   const raw = err?.message || String(err);
   if (/wa-attachments/i.test(raw) && /not.*found|bucket/i.test(raw)) return 'Storage bucket "wa-attachments" is missing.';
-  if (/worker_information|worker_work_information|worker_service_rate|worker_required_documents|worker_application_status|worker_cancel_application/i.test(raw)) return `Database error: ${raw}`;
+  if (/worker_information|worker_work_information|worker_service_rate|worker_required_documents|worker_application_status|worker_cancel_application/i.test(raw))
+    return `Database error: ${raw}`;
   return raw;
 }
 
@@ -167,17 +168,36 @@ async function insertWorkerRequiredDocumentsSafe(docCols) {
       Object.keys(retry).forEach((k) => {
         if (/^tesda_.*_certificate$/i.test(k)) delete retry[k];
       });
-      if (retry.certificates && typeof retry.certificates !== 'string') {
-        try {
-          retry.certificates = JSON.stringify(retry.certificates);
-        } catch {
-          retry.certificates = '';
-        }
-      }
       return await insertWorkerRequiredDocuments(retry);
     }
     throw e;
   }
+}
+
+function unwrapDocValue(v) {
+  if (!v) return '';
+  if (Array.isArray(v)) return unwrapDocValue(v.find(Boolean));
+  if (typeof v === 'object') {
+    const o = v || {};
+    return (
+      unwrapDocValue(o.url || o.link || o.href) ||
+      unwrapDocValue(o.data_url || o.dataUrl || o.dataURL) ||
+      unwrapDocValue(o.base64 ? coerceDataUrl(o.base64, o.mime || o.mimetype || 'image/jpeg') : '') ||
+      ''
+    );
+  }
+  return String(v || '').trim();
+}
+
+function mergePlainObjects(...objs) {
+  const out = {};
+  objs.forEach((o) => {
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return;
+    Object.keys(o).forEach((k) => {
+      if (out[k] === undefined) out[k] = o[k];
+    });
+  });
+  return out;
 }
 
 exports.submitFullApplication = async (req, res) => {
@@ -502,7 +522,6 @@ exports.submitFullApplication = async (req, res) => {
       nbi_police_clearance: '',
       proof_of_address: '',
       medical_certificate: '',
-      certificates: '',
       tesda_carpentry_certificate: '',
       tesda_electrician_certificate: '',
       tesda_plumbing_certificate: '',
@@ -515,7 +534,7 @@ exports.submitFullApplication = async (req, res) => {
       const { data: prevDocs } = await supabaseAdmin
         .from('worker_required_documents')
         .select(
-          'primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates, tesda_carpentry_certificate, tesda_electrician_certificate, tesda_plumbing_certificate, tesda_carwashing_certificate, tesda_laundry_certificate'
+          'primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, tesda_carpentry_certificate, tesda_electrician_certificate, tesda_plumbing_certificate, tesda_carwashing_certificate, tesda_laundry_certificate'
         )
         .ilike('email_address', infoRow.email_address)
         .order('id', { ascending: false })
@@ -536,16 +555,30 @@ exports.submitFullApplication = async (req, res) => {
       const ff = String(f || '').toLowerCase();
 
       const isCarp = /carpentry|carpenter/.test(r) || /carpentry|carpenter/.test(ff);
-      const isElec = /electric|electrician|eim|electrical\s*installation/.test(r) || /electric|electrician|eim|electrical\s*installation/.test(ff);
+      const isElec =
+        /electric|electrician|eim|electrical\s*installation|electrical\s*installation\s*and\s*maintenance|installation\s*and\s*maintenance/.test(r) ||
+        /electric|electrician|eim|electrical\s*installation|electrical\s*installation\s*and\s*maintenance|installation\s*and\s*maintenance/.test(ff);
       const isPlum = /plumb|plumbing|plumber/.test(r) || /plumb|plumbing|plumber/.test(ff);
       const isCarwash = /carwash|carwashing|car\s*wash|carwasher|automotive/.test(r) || /carwash|carwashing|car\s*wash|carwasher|automotive/.test(ff);
       const isLaundry = /laundry|housekeeping/.test(r) || /laundry|housekeeping/.test(ff);
 
       if (/^tesda_carpentry_certificate$/.test(r) || /^tesda_carpentry_certificate$/.test(ff)) return 'tesda_carpentry_certificate';
+
       if (/^tesda_electrician_certificate$/.test(r) || /^tesda_electrician_certificate$/.test(ff)) return 'tesda_electrician_certificate';
+      if (/^tesda_electrical_certificate$/.test(r) || /^tesda_electrical_certificate$/.test(ff)) return 'tesda_electrician_certificate';
+      if (/^tesda_eim_certificate$/.test(r) || /^tesda_eim_certificate$/.test(ff)) return 'tesda_electrician_certificate';
+      if (/^tesda_electrical_installation.*certificate$/.test(r) || /^tesda_electrical_installation.*certificate$/.test(ff)) return 'tesda_electrician_certificate';
+
       if (/^tesda_plumbing_certificate$/.test(r) || /^tesda_plumbing_certificate$/.test(ff)) return 'tesda_plumbing_certificate';
+      if (/^tesda_plumber_certificate$/.test(r) || /^tesda_plumber_certificate$/.test(ff)) return 'tesda_plumbing_certificate';
+
       if (/^tesda_carwashing_certificate$/.test(r) || /^tesda_carwashing_certificate$/.test(ff)) return 'tesda_carwashing_certificate';
+      if (/^tesda_car_washing_certificate$/.test(r) || /^tesda_car_washing_certificate$/.test(ff)) return 'tesda_carwashing_certificate';
+      if (/^tesda_carwash_certificate$/.test(r) || /^tesda_carwash_certificate$/.test(ff)) return 'tesda_carwashing_certificate';
+      if (/^tesda_automotive_certificate$/.test(r) || /^tesda_automotive_certificate$/.test(ff)) return 'tesda_carwashing_certificate';
+
       if (/^tesda_laundry_certificate$/.test(r) || /^tesda_laundry_certificate$/.test(ff)) return 'tesda_laundry_certificate';
+      if (/^tesda_housekeeping_certificate$/.test(r) || /^tesda_housekeeping_certificate$/.test(ff)) return 'tesda_laundry_certificate';
 
       if ((/tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(r) || /tesda|nc|ncii|nc2|certificate|cert\b|certs\b/.test(ff)) && isCarp)
         return 'tesda_carpentry_certificate';
@@ -565,92 +598,126 @@ exports.submitFullApplication = async (req, res) => {
       if (/proof.*address|address.*proof|billing|bill/.test(r) || /address|billing|bill/.test(ff)) return 'proof_of_address';
       if (/medical|med\s*cert|health/.test(r) || /medical|medcert|health/.test(ff)) return 'medical_certificate';
 
-      if ((/certificate|certs?\b|tesda|ncii|nc2/.test(r)) || (/certificate|certs?\b|tesda|ncii|nc2/.test(ff))) return 'certificates';
-      if (/(^primary_id_front$|^primary\-id\-front$)/.test(r)) return 'primary_id_front';
+      if ((/(^primary_id_front$|^primary\-id\-front$)/.test(r))) return 'primary_id_front';
       if (/(^primary_id_back$|^primary\-id\-back$)/.test(r)) return 'primary_id_back';
       if (/(^nbi_police_clearance$|^nbi\-police\-clearance$)/.test(r)) return 'nbi_police_clearance';
       if (/(^proof_of_address$|^proof\-of\-address$)/.test(r)) return 'proof_of_address';
       if (/(^medical_certificate$|^medical_certificates$|^medical\-certificate$)/.test(r)) return 'medical_certificate';
-      if (/^certificates?$/.test(r)) return 'certificates';
       return null;
     };
 
-    const certList = [];
+    const setVal = async (k, v, force = false) => {
+      if (!k) return;
+      if (!force && docCols[k]) return;
+      const raw = unwrapDocValue(v);
+      if (!raw) return;
+      if (/^https?:\/\//i.test(raw)) {
+        docCols[k] = raw;
+        return;
+      }
+      const du = coerceDataUrl(raw, 'image/jpeg') || (raw.startsWith('data:') ? raw : '');
+      if (du && /^data:/i.test(du)) {
+        try {
+          const up = await safeUploadDataUrl(bucket, du, `${request_group_id}-${k}-${Date.now()}`);
+          const url = up?.url || '';
+          if (url) docCols[k] = url;
+        } catch {}
+      }
+    };
+
+    const docObjMerged = mergePlainObjects(
+      src.required_documents,
+      src.requiredDocuments,
+      src.required_documents_object,
+      src.worker_documents,
+      src.workerDocuments,
+      details.required_documents,
+      details.requiredDocuments,
+      details.required_documents_object,
+      rawDocsB && typeof rawDocsB === 'object' && !Array.isArray(rawDocsB) ? rawDocsB : null
+    );
+
+    await setVal('tesda_carpentry_certificate', docObjMerged.tesda_carpentry_certificate || docObjMerged.tesdaCarpentryCertificate || docObjMerged.carpentry_certificate || docObjMerged.carpentry);
+    await setVal(
+      'tesda_electrician_certificate',
+      docObjMerged.tesda_electrician_certificate ||
+        docObjMerged.tesdaElectricianCertificate ||
+        docObjMerged.electrician_certificate ||
+        docObjMerged.electrical_certificate ||
+        docObjMerged.tesda_electrical_certificate ||
+        docObjMerged.tesdaElectricalCertificate ||
+        docObjMerged.tesda_eim_certificate ||
+        docObjMerged.tesdaEimCertificate ||
+        docObjMerged.eim_certificate ||
+        docObjMerged.eim ||
+        docObjMerged.electrical_installation_certificate ||
+        docObjMerged.electricalInstallationCertificate
+    );
+    await setVal(
+      'tesda_plumbing_certificate',
+      docObjMerged.tesda_plumbing_certificate ||
+        docObjMerged.tesdaPlumbingCertificate ||
+        docObjMerged.plumbing_certificate ||
+        docObjMerged.plumber_certificate ||
+        docObjMerged.plumbing ||
+        docObjMerged.tesda_plumber_certificate ||
+        docObjMerged.tesdaPlumberCertificate
+    );
+    await setVal(
+      'tesda_carwashing_certificate',
+      docObjMerged.tesda_carwashing_certificate ||
+        docObjMerged.tesdaCarwashingCertificate ||
+        docObjMerged.carwashing_certificate ||
+        docObjMerged.carwash_certificate ||
+        docObjMerged.tesda_car_washing_certificate ||
+        docObjMerged.tesdaCarWashingCertificate ||
+        docObjMerged.automotive_certificate ||
+        docObjMerged.automotive ||
+        docObjMerged.carwashing ||
+        docObjMerged.carwash
+    );
+    await setVal(
+      'tesda_laundry_certificate',
+      docObjMerged.tesda_laundry_certificate ||
+        docObjMerged.tesdaLaundryCertificate ||
+        docObjMerged.laundry_certificate ||
+        docObjMerged.housekeeping_certificate ||
+        docObjMerged.tesda_housekeeping_certificate ||
+        docObjMerged.tesdaHousekeepingCertificate ||
+        docObjMerged.laundry ||
+        docObjMerged.housekeeping
+    );
+
     for (let i = 0; i < docsIn.length; i++) {
       const d = docsIn[i] || {};
       const key = aliasToKey(d.kind, d.filename) || aliasToKey(d.filename, d.kind);
       if (!key) continue;
 
-      const setVal = async (k, v) => {
-        if (!v) return;
-        if (typeof v === 'string' && /^https?:\/\//i.test(v)) {
-          if (k === 'certificates') certList.push(v);
-          else docCols[k] = v;
-          return;
-        }
-        if (typeof v === 'string' && /^data:/i.test(v)) {
-          try {
-            const up = await safeUploadDataUrl(bucket, v, `${request_group_id}-${k}-${Date.now()}`);
-            const url = up?.url || '';
-            if (k === 'certificates') certList.push(url);
-            else docCols[k] = url;
-          } catch {}
-        }
-      };
-
       if (typeof d.url === 'string' && d.url) {
-        await setVal(key, d.url);
+        await setVal(key, d.url, true);
         continue;
       }
       const maybeData = coerceDataUrl(d.data_url, 'image/jpeg');
-      if (maybeData) await setVal(key, maybeData);
-    }
-
-    if (certList.length) {
-      const uniq = Array.from(new Set(certList.map((x) => String(x || '').trim()).filter(Boolean)));
-      try {
-        docCols.certificates = JSON.stringify(uniq);
-      } catch {
-        docCols.certificates = '';
-      }
+      if (maybeData) await setVal(key, maybeData, true);
     }
 
     if (typeof metadata === 'object') {
       const m = metadata || {};
-      const trySet = (k, v) => {
-        if (!v) return;
-        if (typeof v === 'string' && /^https?:\/\//i.test(v)) docCols[k] = v;
+      const trySet = async (k, v) => {
+        await setVal(k, v, false);
       };
-      trySet('primary_id_front', m.primary_id_front || m.primaryIdFront);
-      trySet('primary_id_back', m.primary_id_back || m.primaryIdBack);
-      trySet('secondary_id', m.secondary_id || m.secondaryId);
-      trySet('nbi_police_clearance', m.nbi_police_clearance || m.nbiPoliceClearance);
-      trySet('proof_of_address', m.proof_of_address || m.proofOfAddress);
-      trySet('medical_certificate', m.medical_certificate || m.medical_certificates || m.medicalCertificate);
-      trySet('certificates', m.certificates);
+      await trySet('primary_id_front', m.primary_id_front || m.primaryIdFront);
+      await trySet('primary_id_back', m.primary_id_back || m.primaryIdBack);
+      await trySet('secondary_id', m.secondary_id || m.secondaryId);
+      await trySet('nbi_police_clearance', m.nbi_police_clearance || m.nbiPoliceClearance);
+      await trySet('proof_of_address', m.proof_of_address || m.proofOfAddress);
+      await trySet('medical_certificate', m.medical_certificate || m.medical_certificates || m.medicalCertificate);
 
-      trySet('tesda_carpentry_certificate', m.tesda_carpentry_certificate || m.tesdaCarpentryCertificate);
-      trySet('tesda_electrician_certificate', m.tesda_electrician_certificate || m.tesdaElectricianCertificate);
-      trySet('tesda_plumbing_certificate', m.tesda_plumbing_certificate || m.tesdaPlumbingCertificate);
-      trySet('tesda_carwashing_certificate', m.tesda_carwashing_certificate || m.tesdaCarwashingCertificate);
-      trySet('tesda_laundry_certificate', m.tesda_laundry_certificate || m.tesdaLaundryCertificate);
-    }
-
-    const tesdaUrls = {
-      carpentry: docCols.tesda_carpentry_certificate || '',
-      electrician: docCols.tesda_electrician_certificate || '',
-      plumbing: docCols.tesda_plumbing_certificate || '',
-      carwashing: docCols.tesda_carwashing_certificate || '',
-      laundry: docCols.tesda_laundry_certificate || ''
-    };
-    const hasAnyTesda = !!tesdaUrls.carpentry || !!tesdaUrls.electrician || !!tesdaUrls.plumbing || !!tesdaUrls.carwashing || !!tesdaUrls.laundry;
-
-    if (hasAnyTesda && !docCols.certificates) {
-      try {
-        docCols.certificates = JSON.stringify(tesdaUrls);
-      } catch {
-        docCols.certificates = '';
-      }
+      await trySet('tesda_carpentry_certificate', m.tesda_carpentry_certificate || m.tesdaCarpentryCertificate);
+      await trySet('tesda_electrician_certificate', m.tesda_electrician_certificate || m.tesdaElectricianCertificate || m.tesda_electrical_certificate || m.tesdaElectricalCertificate);
+      await trySet('tesda_plumbing_certificate', m.tesda_plumbing_certificate || m.tesdaPlumbingCertificate);
+      await trySet('tesda_carwashing_certificate', m.tesda_carwashing_certificate || m.tesdaCarwashingCertificate);
+      await trySet('tesda_laundry_certificate', m.tesda_laundry_certificate || m.tesdaLaundryCertificate || m.tesda_housekeeping_certificate || m.tesdaHousekeepingCertificate);
     }
 
     if (fallbackDocs) {
@@ -922,7 +989,7 @@ exports.listMine = async (req, res) => {
         const { data: docs } = await supabaseAdmin
           .from('worker_required_documents')
           .select(
-            'request_group_id, primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates, tesda_carpentry_certificate, tesda_electrician_certificate, tesda_plumbing_certificate, tesda_carwashing_certificate, tesda_laundry_certificate'
+            'request_group_id, primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, tesda_carpentry_certificate, tesda_electrician_certificate, tesda_plumbing_certificate, tesda_carwashing_certificate, tesda_laundry_certificate'
           )
           .in('request_group_id', targetGroups);
         (docs || []).forEach((r) => {
@@ -1047,7 +1114,7 @@ exports.getByGroupFull = async (req, res) => {
       supabaseAdmin
         .from('worker_required_documents')
         .select(
-          'request_group_id, primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, certificates, tesda_carpentry_certificate, tesda_electrician_certificate, tesda_plumbing_certificate, tesda_carwashing_certificate, tesda_laundry_certificate'
+          'request_group_id, primary_id_front, primary_id_back, secondary_id, nbi_police_clearance, proof_of_address, medical_certificate, tesda_carpentry_certificate, tesda_electrician_certificate, tesda_plumbing_certificate, tesda_carwashing_certificate, tesda_laundry_certificate'
         )
         .eq('request_group_id', gid)
         .order('id', { ascending: false })
@@ -1262,7 +1329,6 @@ exports.updateByGroup = async (req, res) => {
         nbi_police_clearance: '',
         proof_of_address: '',
         medical_certificate: '',
-        certificates: '',
         tesda_carpentry_certificate: '',
         tesda_electrician_certificate: '',
         tesda_plumbing_certificate: '',
@@ -1271,10 +1337,18 @@ exports.updateByGroup = async (req, res) => {
       };
       const setUrl = async (k, v) => {
         if (!v) return;
-        if (typeof v === 'string' && /^https?:\/\//i.test(v)) shape[k] = v;
-        else if (typeof v === 'string' && /^data:/i.test(v)) {
-          const up = await safeUploadDataUrl(bucket, v, `${gid}-${k}-${Date.now()}`);
+        const raw = unwrapDocValue(v);
+        if (!raw) return;
+        if (typeof raw === 'string' && /^https?:\/\//i.test(raw)) shape[k] = raw;
+        else if (typeof raw === 'string' && /^data:/i.test(raw)) {
+          const up = await safeUploadDataUrl(bucket, raw, `${gid}-${k}-${Date.now()}`);
           shape[k] = up?.url || '';
+        } else {
+          const du = coerceDataUrl(raw, 'image/jpeg');
+          if (du && /^data:/i.test(du)) {
+            const up = await safeUploadDataUrl(bucket, du, `${gid}-${k}-${Date.now()}`);
+            shape[k] = up?.url || '';
+          }
         }
       };
 
@@ -1288,37 +1362,39 @@ exports.updateByGroup = async (req, res) => {
       await setUrl('tesda_carpentry_certificate', docs.tesda_carpentry_certificate || docs.tesdaCarpentryCertificate || docs.carpentry_certificate || docs.carpentry || docs.tesda_carpentry);
       await setUrl(
         'tesda_electrician_certificate',
-        docs.tesda_electrician_certificate || docs.tesdaElectricianCertificate || docs.electrician_certificate || docs.electrical_certificate || docs.electrician || docs.tesda_electrician
+        docs.tesda_electrician_certificate ||
+          docs.tesdaElectricianCertificate ||
+          docs.electrician_certificate ||
+          docs.electrical_certificate ||
+          docs.electrician ||
+          docs.tesda_electrician ||
+          docs.tesda_electrical_certificate ||
+          docs.tesdaElectricalCertificate ||
+          docs.eim_certificate ||
+          docs.tesda_eim_certificate
       );
-      await setUrl('tesda_plumbing_certificate', docs.tesda_plumbing_certificate || docs.tesdaPlumbingCertificate || docs.plumbing_certificate || docs.plumbing || docs.tesda_plumbing);
+      await setUrl('tesda_plumbing_certificate', docs.tesda_plumbing_certificate || docs.tesdaPlumbingCertificate || docs.plumbing_certificate || docs.plumbing || docs.tesda_plumbing || docs.plumber_certificate);
       await setUrl(
         'tesda_carwashing_certificate',
-        docs.tesda_carwashing_certificate || docs.tesdaCarwashingCertificate || docs.carwashing_certificate || docs.carwash_certificate || docs.automotive_certificate || docs.carwashing || docs.tesda_carwashing
+        docs.tesda_carwashing_certificate ||
+          docs.tesdaCarwashingCertificate ||
+          docs.carwashing_certificate ||
+          docs.carwash_certificate ||
+          docs.automotive_certificate ||
+          docs.carwashing ||
+          docs.tesda_carwashing ||
+          docs.tesda_car_washing_certificate
       );
-      await setUrl('tesda_laundry_certificate', docs.tesda_laundry_certificate || docs.tesdaLaundryCertificate || docs.laundry_certificate || docs.housekeeping_certificate || docs.laundry || docs.tesda_laundry);
-
-      await setUrl('certificates', docs.certificates || docs.certs);
-
-      const hasAnyTesda =
-        !!shape.tesda_carpentry_certificate ||
-        !!shape.tesda_electrician_certificate ||
-        !!shape.tesda_plumbing_certificate ||
-        !!shape.tesda_carwashing_certificate ||
-        !!shape.tesda_laundry_certificate;
-
-      if (hasAnyTesda && !shape.certificates) {
-        try {
-          shape.certificates = JSON.stringify({
-            carpentry: shape.tesda_carpentry_certificate || '',
-            electrician: shape.tesda_electrician_certificate || '',
-            plumbing: shape.tesda_plumbing_certificate || '',
-            carwashing: shape.tesda_carwashing_certificate || '',
-            laundry: shape.tesda_laundry_certificate || ''
-          });
-        } catch {
-          shape.certificates = '';
-        }
-      }
+      await setUrl(
+        'tesda_laundry_certificate',
+        docs.tesda_laundry_certificate ||
+          docs.tesdaLaundryCertificate ||
+          docs.laundry_certificate ||
+          docs.housekeeping_certificate ||
+          docs.laundry ||
+          docs.tesda_laundry ||
+          docs.tesda_housekeeping_certificate
+      );
 
       const { data: existId } = await supabaseAdmin.from('worker_required_documents').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
       if (existId?.id) await supabaseAdmin.from('worker_required_documents').update(shape).eq('id', existId.id);
