@@ -620,15 +620,7 @@ const WorkerReviewPost = ({ handleBack }) => {
           if (typeof v === 'string' && v && !out[k]) out[k] = v;
         });
 
-        const certPack = {
-          tesda_carpentry_certificate: out.tesda_carpentry_certificate || '',
-          tesda_electrician_certificate: out.tesda_electrician_certificate || '',
-          tesda_plumbing_certificate: out.tesda_plumbing_certificate || '',
-          tesda_carwashing_certificate: out.tesda_carwashing_certificate || '',
-          tesda_laundry_certificate: out.tesda_laundry_certificate || ''
-        };
-        const hasAnyCert = Object.values(certPack).some((v) => !!String(v || '').trim());
-        if (hasAnyCert && !out.certificates) out.certificates = JSON.stringify(certPack);
+        if ('certificates' in out) delete out.certificates;
 
         return out;
       })();
@@ -778,6 +770,8 @@ const WorkerReviewPost = ({ handleBack }) => {
         email_address: normalized.email_address,
         auth_uid: normalized.metadata.auth_uid
       };
+
+      if ('certificates' in requiredDocsPayload) delete requiredDocsPayload.certificates;
 
       const res = await axios.post(
         `${API_BASE}/api/workerapplications/submit`,
