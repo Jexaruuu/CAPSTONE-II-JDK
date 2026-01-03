@@ -62,7 +62,7 @@ function computeAge(iso) {
 }
 
 const registerWorker = async (req, res) => {
-  const { first_name, last_name, sex, email_address, password, is_agreed_to_terms } = req.body;
+  const { first_name, last_name, sex, email_address, password, is_agreed_to_terms, is_agreed_to_policy_nda } = req.body;
   try {
     const rawEmail = String(email_address || "").trim();
     const email = rawEmail.toLowerCase();
@@ -90,6 +90,8 @@ const registerWorker = async (req, res) => {
     }
 
     const agreed_at = is_agreed_to_terms ? new Date().toISOString() : null;
+    const policy_nda_agreed_at = is_agreed_to_policy_nda ? new Date().toISOString() : null;
+
     let authUser = null;
 
     const { user: createdUser, error: authError } = await createConfirmedUser(email, password, {
@@ -99,13 +101,12 @@ const registerWorker = async (req, res) => {
       role: "worker",
       is_agreed_to_terms: !!is_agreed_to_terms,
       agreed_at,
+      is_agreed_to_policy_nda: !!is_agreed_to_policy_nda,
+      policy_nda_agreed_at,
     });
 
     if (authError) {
-      if (
-        authError.status === 422 ||
-        (authError.message && authError.message.toLowerCase().includes("already"))
-      ) {
+      if (authError.status === 422 || (authError.message && authError.message.toLowerCase().includes("already"))) {
         try {
           const { data, listError } = await supabaseAdmin.auth.admin.listUsers();
           if (!listError && data && Array.isArray(data.users)) {
@@ -135,6 +136,17 @@ const registerWorker = async (req, res) => {
       !!is_agreed_to_terms,
       agreed_at
     );
+
+    try {
+      await workerModel.upsertWorkerAgreements(
+        authUser.id,
+        email,
+        !!is_agreed_to_policy_nda,
+        !!is_agreed_to_policy_nda,
+        policy_nda_agreed_at,
+        { db: req.supabaseUser }
+      );
+    } catch {}
 
     if (req.session?.verifiedEmails) {
       const src = req.session.verifiedEmails;

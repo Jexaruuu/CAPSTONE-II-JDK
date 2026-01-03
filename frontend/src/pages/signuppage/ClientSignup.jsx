@@ -3,6 +3,53 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import SignupFooter from '../../signupcomponents/SignupFooter';
 
+const CLIENT_POLICY_AGREEMENT_TEXT = `JDK HOMECARE Client Policy Agreement
+
+This Client Policy works together with the Worker Policy to keep services safe, trackable, and supported. By using JDK HOMECARE as a client, you agree to the rules below when interacting with workers on the platform.
+
+1. Acceptable Use (Client)
+- Provide accurate information when creating requests (service type, location details, and job expectations).
+- Use the platform only for legitimate home service and maintenance needs.
+- Communicate respectfully and do not abuse, harass, scam, or attempt to harm workers or other users.
+
+2. Off-Platform Transactions Are Not Allowed (Client)
+- You must not request, offer, or accept any payment arrangement outside JDK HOMECARE for services found, arranged, or coordinated through the platform, including cash-only deals, bank transfers, or e-wallet payments intended to bypass JDK HOMECARE.
+- You must not use or request personal contact details (phone, social media, external chat apps) for the purpose of moving the booking, agreement, or payment off-platform.
+- Keep bookings, agreements, and payments inside JDK HOMECARE so support can assist with records, disputes, and safety issues. If a worker asks you to pay outside the platform, do not proceed and report it through JDK HOMECARE.
+
+3. Account Responsibilities
+- You are responsible for maintaining the confidentiality of your account.
+- You agree not to share your login credentials with others.
+- You agree to notify us if you suspect unauthorized access to your account.
+
+4. Platform Integrity
+- No attempts to bypass security, disrupt services, or misuse platform features.
+- No uploading of harmful or illegal content.
+- We may suspend or terminate accounts that violate policies or threaten platform safety.
+`;
+
+const CLIENT_NDA_AGREEMENT_TEXT = `JDK HOMECARE Non-Disclosure Agreement (NDA)
+
+This agreement protects confidential information shared through or related to the platform, including business, operational, and user-related information.
+
+1. Confidential Information
+- Non-public platform details, processes, pricing, and internal operations.
+- Any non-public information disclosed by JDK HOMECARE or its users.
+- Personal or sensitive information encountered during service coordination.
+
+2. Obligations
+- You agree not to disclose confidential information to any third party.
+- You agree to use confidential information only for platform-related purposes.
+- You agree to take reasonable steps to protect confidentiality (e.g., not sharing screenshots, data exports, or private messages).
+
+3. Exceptions
+- Information that is publicly available through no fault of your own.
+- Information required to be disclosed by law or valid legal process.
+
+4. Duration
+Your confidentiality obligations continue even after you stop using the platform, to the extent allowed by applicable law.
+`;
+
 const ClientSignUpPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -15,6 +62,7 @@ const ClientSignUpPage = () => {
   const [confirm_password, setConfirmPassword] = useState('');
   const [is_email_opt_in, setIsEmailOptIn] = useState(false);
   const [is_agreed_to_terms, setIsAgreedToTerms] = useState(false);
+  const [is_agreed_to_policy_nda, setIsAgreedToPolicyNda] = useState(false);
   const [error_message, setErrorMessage] = useState('');
 
   const [showPassword, setShowPassword] = useState(false);
@@ -31,6 +79,15 @@ const ClientSignUpPage = () => {
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [canResendAt, setCanResendAt] = useState(0);
+
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [privacyRead, setPrivacyRead] = useState(false);
+
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [policyRead, setPolicyRead] = useState(false);
+
+  const [ndaOpen, setNdaOpen] = useState(false);
+  const [ndaRead, setNdaRead] = useState(false);
 
   const now = () => Date.now();
 
@@ -50,6 +107,8 @@ const ClientSignUpPage = () => {
 
   const canResendOtp = now() >= canResendAt;
 
+  const policyNdaReady = policyRead && ndaRead;
+
   const isFormValid =
     first_name.trim() !== '' &&
     last_name.trim() !== '' &&
@@ -61,7 +120,8 @@ const ClientSignUpPage = () => {
     passwordRules.num &&
     passwordRules.special &&
     passwordRules.match &&
-    is_agreed_to_terms;
+    is_agreed_to_terms &&
+    is_agreed_to_policy_nda;
 
   const checkEmailAvailable = async () => {
     try {
@@ -137,12 +197,14 @@ const ClientSignUpPage = () => {
           email_address: email,
           password,
           is_agreed_to_terms,
+          is_agreed_to_policy_nda,
+          policy_agreement: CLIENT_POLICY_AGREEMENT_TEXT,
+          nda_agreement: CLIENT_NDA_AGREEMENT_TEXT,
         },
         { withCredentials: true }
       );
       if (response.status === 201) {
-        const uid =
-          response?.data?.data?.auth_uid || response?.data?.auth_uid;
+        const uid = response?.data?.data?.auth_uid || response?.data?.auth_uid;
         localStorage.setItem('first_name', first_name);
         localStorage.setItem('last_name', last_name);
         localStorage.setItem('sex', sex);
@@ -155,14 +217,10 @@ const ClientSignUpPage = () => {
       const status = error?.response?.status;
       const msg = error?.response?.data?.message;
       if (status === 429) {
-        setErrorMessage(
-          'Too many verification emails were sent. Please wait a minute and try again.'
-        );
+        setErrorMessage('Too many verification emails were sent. Please wait a minute and try again.');
         setCanResend(true);
       } else if (status === 409) {
-        setErrorMessage(
-          'This email already started signup. You can resend the verification email.'
-        );
+        setErrorMessage('This email already started signup. You can resend the verification email.');
         setCanResend(true);
       } else if (status === 502) {
         setErrorMessage('Email delivery failed. Check SMTP settings in Supabase.');
@@ -194,15 +252,15 @@ const ClientSignUpPage = () => {
       return;
     }
 
-    if (
-      !passwordRules.len ||
-      !passwordRules.upper ||
-      !passwordRules.num ||
-      !passwordRules.special
-    ) {
+    if (!passwordRules.len || !passwordRules.upper || !passwordRules.num || !passwordRules.special) {
       setErrorMessage(
         'Password must be at least 8 characters and include a capital letter, a number, and a special character'
       );
+      return;
+    }
+
+    if (!is_agreed_to_terms || !is_agreed_to_policy_nda) {
+      setErrorMessage('Please agree to the required policies to continue.');
       return;
     }
 
@@ -232,17 +290,65 @@ const ClientSignUpPage = () => {
     }
   };
 
+  const openPrivacy = (e) => {
+    e?.preventDefault?.();
+    setPrivacyOpen(true);
+  };
+
+  const agreePrivacy = () => {
+    setPrivacyRead(true);
+    setIsAgreedToTerms(true);
+    setPrivacyOpen(false);
+  };
+
+  const toggleAgreeTerms = () => {
+    setIsAgreedToTerms((v) => {
+      const next = !v;
+      if (!next) setPrivacyRead(false);
+      return next;
+    });
+  };
+
+  const openPolicy = (e) => {
+    e?.preventDefault?.();
+    setPolicyOpen(true);
+  };
+
+  const agreePolicy = () => {
+    setPolicyRead(true);
+    setPolicyOpen(false);
+    if (ndaRead) setIsAgreedToPolicyNda(true);
+  };
+
+  const openNda = (e) => {
+    e?.preventDefault?.();
+    setNdaOpen(true);
+  };
+
+  const agreeNda = () => {
+    setNdaRead(true);
+    setNdaOpen(false);
+    if (policyRead) setIsAgreedToPolicyNda(true);
+  };
+
+  const handlePolicyNdaCheckbox = () => {
+    if (!policyNdaReady) return;
+    if (is_agreed_to_policy_nda) {
+      setIsAgreedToPolicyNda(false);
+      setPolicyRead(false);
+      setNdaRead(false);
+      return;
+    }
+    setIsAgreedToPolicyNda(true);
+  };
+
   return (
     <div className="relative min-h-screen flex flex-col bg-white overflow-hidden">
       <div className="bg-white z-50">
         <div className="max-w-[1540px] mx-auto flex justify-between items-center px-6 py-4 h-[90px]">
           <div className="flex items-center space-x-6">
             <Link to="/">
-              <img
-                src="/jdklogo.png"
-                alt="Logo"
-                className="h-48 w-48 object-contain"
-              />
+              <img src="/jdklogo.png" alt="Logo" className="h-48 w-48 object-contain" />
             </Link>
           </div>
           <div className="flex items-center space-x-6">
@@ -264,7 +370,9 @@ const ClientSignUpPage = () => {
           <div className="space-y-4 mt-4">
             <div className="flex space-x-4">
               <div className="w-full">
-                <label htmlFor="first_name" className="block text-sm font-semibold mb-1">First Name</label>
+                <label htmlFor="first_name" className="block text-sm font-semibold mb-1">
+                  First Name
+                </label>
                 <input
                   id="first_name"
                   type="text"
@@ -276,7 +384,9 @@ const ClientSignUpPage = () => {
                 />
               </div>
               <div className="w-full">
-                <label htmlFor="last_name" className="block text-sm font-semibold mb-1">Last Name</label>
+                <label htmlFor="last_name" className="block text-sm font-semibold mb-1">
+                  Last Name
+                </label>
                 <input
                   id="last_name"
                   type="text"
@@ -290,7 +400,9 @@ const ClientSignUpPage = () => {
             </div>
 
             <div>
-              <label htmlFor="sex" className="block text-sm font-semibold mb-1">Sex</label>
+              <label htmlFor="sex" className="block text-sm font-semibold mb-1">
+                Sex
+              </label>
               <select
                 id="sex"
                 value={sex}
@@ -305,7 +417,9 @@ const ClientSignUpPage = () => {
             </div>
 
             <div>
-              <label htmlFor="email_address" className="block text-sm font-semibold mb-1">Email Address</label>
+              <label htmlFor="email_address" className="block text-sm font-semibold mb-1">
+                Email Address
+              </label>
               <input
                 id="email_address"
                 type="email"
@@ -316,9 +430,7 @@ const ClientSignUpPage = () => {
                 autoComplete="email"
               />
               {email_address && !isGmailEmail(email_address) && (
-                <p className="text-xs text-red-600 mt-1">
-                  Email must be a Gmail address.
-                </p>
+                <p className="text-xs text-red-600 mt-1">Email must be a Gmail address.</p>
               )}
             </div>
 
@@ -366,16 +478,26 @@ const ClientSignUpPage = () => {
                   />
                 </div>
                 <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <li className={passwordRules.len ? 'text-emerald-600' : 'text-gray-500'}>At least 8 characters</li>
-                  <li className={passwordRules.upper ? 'text-emerald-600' : 'text-gray-500'}>One uppercase letter</li>
-                  <li className={passwordRules.num ? 'text-emerald-600' : 'text-gray-500'}>One number</li>
-                  <li className={passwordRules.special ? 'text-emerald-600' : 'text-gray-500'}>One special character</li>
+                  <li className={passwordRules.len ? 'text-emerald-600' : 'text-gray-500'}>
+                    At least 8 characters
+                  </li>
+                  <li className={passwordRules.upper ? 'text-emerald-600' : 'text-gray-500'}>
+                    One uppercase letter
+                  </li>
+                  <li className={passwordRules.num ? 'text-emerald-600' : 'text-gray-500'}>
+                    One number
+                  </li>
+                  <li className={passwordRules.special ? 'text-emerald-600' : 'text-gray-500'}>
+                    One special character
+                  </li>
                 </ul>
               </div>
             </div>
 
             <div>
-              <label htmlFor="confirm_password" className="block text-sm font-semibold mb-1">Confirm Password</label>
+              <label htmlFor="confirm_password" className="block text-sm font-semibold mb-1">
+                Confirm Password
+              </label>
               <div className="relative">
                 <input
                   id="confirm_password"
@@ -402,7 +524,12 @@ const ClientSignUpPage = () => {
                   </button>
                 )}
               </div>
-              {confirm_password && (!passwordRules.match || !passwordRules.len || !passwordRules.upper || !passwordRules.num || !passwordRules.special) ? (
+              {confirm_password &&
+              (!passwordRules.match ||
+                !passwordRules.len ||
+                !passwordRules.upper ||
+                !passwordRules.num ||
+                !passwordRules.special) ? (
                 <p className="text-xs text-red-600 mt-1">
                   {!passwordRules.match
                     ? 'Passwords do not match'
@@ -412,26 +539,88 @@ const ClientSignUpPage = () => {
             </div>
           </div>
 
-          <div className="flex items-center mt-4">
+          <label htmlFor="agree_terms" className="mt-4 flex items-start gap-3 select-none cursor-pointer">
             <input
+              id="agree_terms"
               type="checkbox"
               checked={is_agreed_to_terms}
-              onChange={() => setIsAgreedToTerms(!is_agreed_to_terms)}
-              className="form-checkbox text-[#008cfc] -mt-6"
+              onChange={toggleAgreeTerms}
+              disabled={!privacyRead}
+              className={[
+                'mt-0.5 h-4 w-4 min-h-4 min-w-4 shrink-0 rounded border-gray-300 accent-[#008cfc] focus:outline-none focus:ring-2 focus:ring-[#008cfc] focus:ring-offset-2',
+                !privacyRead ? 'opacity-50 cursor-not-allowed' : '',
+              ].join(' ')}
             />
-            <span className="ml-2 text-sm">
-              I agree to JDK HOMECARE’s{' '}
-              <Link to="#" className="text-[#008cfc] underline">Terms of Service</Link>{' '}
-              and{' '}
-              <Link to="#" className="text-[#008cfc] underline">Privacy Policy</Link>.
+            <span className="text-sm leading-5 text-gray-800">
+              JDK HOMECARE’s{' '}
+              <Link
+                to="#"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openPrivacy(e);
+                }}
+                className="text-[#008cfc] underline"
+              >
+                Privacy Policy
+              </Link>
+              .
+              {!privacyRead && (
+                <span className="block text-xs text-gray-500 mt-1">
+                  Please read the Privacy Policy to enable this checkbox.
+                </span>
+              )}
             </span>
-          </div>
+          </label>
+
+          <label htmlFor="agree_policy_nda" className="mt-2 flex items-start gap-3 select-none cursor-pointer">
+            <input
+              id="agree_policy_nda"
+              type="checkbox"
+              checked={is_agreed_to_policy_nda}
+              onChange={handlePolicyNdaCheckbox}
+              disabled={!policyNdaReady}
+              className={[
+                'mt-0.5 h-4 w-4 min-h-4 min-w-4 shrink-0 rounded border-gray-300 accent-[#008cfc] focus:outline-none focus:ring-2 focus:ring-[#008cfc] focus:ring-offset-2',
+                !policyNdaReady ? 'opacity-50 cursor-not-allowed' : '',
+              ].join(' ')}
+            />
+            <span className="text-sm leading-5 text-gray-800">
+              JDK HOMECARE’s{' '}
+              <Link
+                to="#"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openPolicy(e);
+                }}
+                className="text-[#008cfc] underline"
+              >
+                Policy Agreement
+              </Link>{' '}
+              and{' '}
+              <Link
+                to="#"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openNda(e);
+                }}
+                className="text-[#008cfc] underline"
+              >
+                Non-Disclosure Agreement
+              </Link>
+              .
+              {!policyNdaReady && (
+                <span className="block text-xs text-gray-500 mt-1">
+                  Please read and agree to both links to enable this checkbox.
+                </span>
+              )}
+            </span>
+          </label>
 
           <div className="text-center mt-4">
             <button
               disabled={!isFormValid || loading}
               className={`py-2 px-6 rounded-md w-full ${
-                (!isFormValid || loading)
+                !isFormValid || loading
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-white border-2 transition border-[#008cfc] hover:bg-[#008cfc] text-[#008cfc] hover:text-white'
               }`}
@@ -441,25 +630,12 @@ const ClientSignUpPage = () => {
             </button>
           </div>
 
-          {info_message && (
-            <div className="text-[#008cfc] text-center mt-4">
-              {info_message}
-            </div>
-          )}
-
-          {error_message && (
-            <div className="text-red-500 text-center mt-4">
-              {error_message}
-            </div>
-          )}
+          {info_message && <div className="text-[#008cfc] text-center mt-4">{info_message}</div>}
+          {error_message && <div className="text-red-500 text-center mt-4">{error_message}</div>}
 
           {canResend && (
             <div className="text-center mt-2">
-              <button
-                type="button"
-                onClick={handleResend}
-                className="text-[#008cfc] underline"
-              >
+              <button type="button" onClick={handleResend} className="text-[#008cfc] underline">
                 Resend verification email
               </button>
             </div>
@@ -467,7 +643,9 @@ const ClientSignUpPage = () => {
 
           <div className="text-center mt-4">
             <span>Already have an account? </span>
-            <Link to="/login" className="text-[#008cfc] underline">Log In</Link>
+            <Link to="/login" className="text-[#008cfc] underline">
+              Log In
+            </Link>
           </div>
         </div>
       </div>
@@ -481,7 +659,7 @@ const ClientSignUpPage = () => {
             </p>
             <input
               value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0,6))}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="123456"
               className="w-full p-3 border-2 rounded-md border-gray-300 text-center tracking-widest text-lg"
             />
@@ -489,20 +667,18 @@ const ClientSignUpPage = () => {
             {otpError && <div className="text-red-600 text-center mt-3">{otpError}</div>}
 
             <div className="flex items-center justify-between mt-4">
-              <button
-                onClick={() => setOtpOpen(false)}
-                className="px-4 py-2 rounded-md border border-gray-300"
-                disabled={otpVerifying}
-              >
+              <button onClick={() => setOtpOpen(false)} className="px-4 py-2 rounded-md border border-gray-300" disabled={otpVerifying}>
                 Cancel
               </button>
               <div className="flex items-center gap-3">
                 <button
                   onClick={requestOtp}
                   disabled={!canResendOtp || otpSending}
-                  className={`px-4 py-2 rounded-md border ${!canResendOtp || otpSending ? 'opacity-50 cursor-not-allowed' : 'border-[#008cfc] text-[#008cfc]'}`}
+                  className={`px-4 py-2 rounded-md border ${
+                    !canResendOtp || otpSending ? 'opacity-50 cursor-not-allowed' : 'border-[#008cfc] text-[#008cfc]'
+                  }`}
                 >
-                  {otpSending ? 'Sending…' : (canResendOtp ? 'Resend code' : 'Wait…')}
+                  {otpSending ? 'Sending…' : canResendOtp ? 'Resend code' : 'Wait…'}
                 </button>
                 <button
                   onClick={verifyOtp}
@@ -512,6 +688,188 @@ const ClientSignUpPage = () => {
                   {otpVerifying ? 'Verifying…' : 'Verify'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {privacyOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-2xl rounded-lg shadow-lg p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold">Privacy Policy</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Please read the policy below. Click “I Agree” to enable and check the checkbox.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 max-h-[55vh] overflow-auto border border-gray-200 rounded-md p-4 text-sm text-gray-800 leading-6">
+              <p className="font-semibold">JDK HOMECARE Privacy Policy</p>
+              <p className="mt-2">
+                This Privacy Policy explains how JDK HOMECARE collects, uses, stores, and protects your information when you use our platform.
+              </p>
+
+              <p className="mt-4 font-semibold">1. Information We Collect</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Account information (name, email, sex) you provide during registration.</li>
+                <li>Service-related information you submit when requesting or providing services.</li>
+                <li>Device and usage data (basic logs, timestamps) to help secure and improve the platform.</li>
+              </ul>
+
+              <p className="mt-4 font-semibold">2. How We Use Your Information</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>To create and manage your account.</li>
+                <li>To provide core features (service requests, matching, notifications).</li>
+                <li>To improve security, prevent fraud, and comply with legal obligations.</li>
+                <li>To communicate important updates related to your account and transactions.</li>
+              </ul>
+
+              <p className="mt-4 font-semibold">3. Data Sharing</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>We may share limited information with workers/clients only as necessary to fulfill a service request (e.g., name and request details).</li>
+                <li>We do not sell your personal information. We may share information when required by law or to protect our users and platform.</li>
+              </ul>
+
+              <p className="mt-4 font-semibold">4. Data Retention</p>
+              <p className="mt-2">We keep information only as long as needed to operate the service and meet legal and security requirements.</p>
+
+              <p className="mt-4 font-semibold">5. Security</p>
+              <p className="mt-2">
+                We use reasonable safeguards to protect your information. No method of transmission or storage is 100% secure, but we work to protect your data.
+              </p>
+
+              <p className="mt-4 font-semibold">6. Updates to this Policy</p>
+              <p className="mt-2">
+                We may update this policy from time to time. Continued use of the platform means you accept the updated policy.
+              </p>
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-3">
+              <button type="button" onClick={() => setPrivacyOpen(false)} className="px-4 py-2 rounded-md border border-gray-300">
+                Cancel
+              </button>
+              <button type="button" onClick={agreePrivacy} className="px-4 py-2 rounded-md bg-[#008cfc] text-white">
+                I Agree
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {policyOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-2xl rounded-lg shadow-lg p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold">Policy Agreement</h3>
+                <p className="text-sm text-gray-600 mt-1">Please read the policy below. Click “I Agree” to continue.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 max-h-[55vh] overflow-auto border border-gray-200 rounded-md p-4 text-sm text-gray-800 leading-6">
+              <p className="font-semibold">JDK HOMECARE Client Policy Agreement</p>
+              <p className="mt-2">
+                This Client Policy works together with the Worker Policy to keep services safe, trackable, and supported. By using JDK HOMECARE as a client, you agree to the rules below when interacting with workers on the platform.
+              </p>
+
+              <p className="mt-4 font-semibold">1. Acceptable Use (Client)</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Provide accurate information when creating requests (service type, location details, and job expectations).</li>
+                <li>Use the platform only for legitimate home service and maintenance needs.</li>
+                <li>Communicate respectfully and do not abuse, harass, scam, or attempt to harm workers or other users.</li>
+              </ul>
+
+              <p className="mt-4 font-semibold">2. Off-Platform Transactions Are Not Allowed (Client)</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>
+                  You must not request, offer, or accept any payment arrangement outside JDK HOMECARE for services found, arranged, or coordinated through the platform, including cash-only deals, bank transfers, or e-wallet payments intended to bypass JDK HOMECARE.
+                </li>
+                <li>
+                  You must not use or request personal contact details (phone, social media, external chat apps) for the purpose of moving the booking, agreement, or payment off-platform.
+                </li>
+                <li>
+                  Keep bookings, agreements, and payments inside JDK HOMECARE so support can assist with records, disputes, and safety issues. If a worker asks you to pay outside the platform, do not proceed and report it through JDK HOMECARE.
+                </li>
+              </ul>
+
+              <p className="mt-4 font-semibold">3. Account Responsibilities</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>You are responsible for maintaining the confidentiality of your account.</li>
+                <li>You agree not to share your login credentials with others.</li>
+                <li>You agree to notify us if you suspect unauthorized access to your account.</li>
+              </ul>
+
+              <p className="mt-4 font-semibold">4. Platform Integrity</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>No attempts to bypass security, disrupt services, or misuse platform features.</li>
+                <li>No uploading of harmful or illegal content.</li>
+                <li>We may suspend or terminate accounts that violate policies or threaten platform safety.</li>
+              </ul>
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-3">
+              <button type="button" onClick={() => setPolicyOpen(false)} className="px-4 py-2 rounded-md border border-gray-300">
+                Cancel
+              </button>
+              <button type="button" onClick={agreePolicy} className="px-4 py-2 rounded-md bg-[#008cfc] text-white">
+                I Agree
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ndaOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-2xl rounded-lg shadow-lg p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold">Non-Disclosure Agreement</h3>
+                <p className="text-sm text-gray-600 mt-1">Please read the agreement below. Click “I Agree” to continue.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 max-h-[55vh] overflow-auto border border-gray-200 rounded-md p-4 text-sm text-gray-800 leading-6">
+              <p className="font-semibold">JDK HOMECARE Non-Disclosure Agreement (NDA)</p>
+              <p className="mt-2">
+                This agreement protects confidential information shared through or related to the platform, including business, operational, and user-related information.
+              </p>
+
+              <p className="mt-4 font-semibold">1. Confidential Information</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Non-public platform details, processes, pricing, and internal operations.</li>
+                <li>Any non-public information disclosed by JDK HOMECARE or its users.</li>
+                <li>Personal or sensitive information encountered during service coordination.</li>
+              </ul>
+
+              <p className="mt-4 font-semibold">2. Obligations</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>You agree not to disclose confidential information to any third party.</li>
+                <li>You agree to use confidential information only for platform-related purposes.</li>
+                <li>You agree to take reasonable steps to protect confidentiality (e.g., not sharing screenshots, data exports, or private messages).</li>
+              </ul>
+
+              <p className="mt-4 font-semibold">3. Exceptions</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Information that is publicly available through no fault of your own.</li>
+                <li>Information required to be disclosed by law or valid legal process.</li>
+              </ul>
+
+              <p className="mt-4 font-semibold">4. Duration</p>
+              <p className="mt-2">
+                Your confidentiality obligations continue even after you stop using the platform, to the extent allowed by applicable law.
+              </p>
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-3">
+              <button type="button" onClick={() => setNdaOpen(false)} className="px-4 py-2 rounded-md border border-gray-300">
+                Cancel
+              </button>
+              <button type="button" onClick={agreeNda} className="px-4 py-2 rounded-md bg-[#008cfc] text-white">
+                I Agree
+              </button>
             </div>
           </div>
         </div>

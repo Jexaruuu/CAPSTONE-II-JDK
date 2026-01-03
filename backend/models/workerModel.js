@@ -210,6 +210,21 @@ async function isSocialLinkTakenAcrossAll(kind, value, excludeAuthUid) {
   return hitAuthUid !== excludeAuthUid;
 }
 
+const upsertWorkerAgreements = async (auth_uid, email_address, policy_agreement, nda_agreement, agreed_at, opts = {}) => {
+  const db = opts.db || supabaseAdmin;
+  const row = {
+    auth_uid,
+    email_address: String(email_address || "").trim().toLowerCase() || null,
+    policy_agreement: !!policy_agreement,
+    nda_agreement: !!nda_agreement,
+    agreed_at: agreed_at || null,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await db.from("worker_agreements").upsert([row], { onConflict: "auth_uid" }).select("*").limit(1);
+  if (error) throw error;
+  return data && data[0] ? data[0] : null;
+};
+
 async function listPublicReviews({ email, auth_uid, request_group_id, limit = 20 }) {
   const e = String(email || "").trim().toLowerCase();
   const au = String(auth_uid || "").trim();
@@ -267,5 +282,6 @@ module.exports = {
   normalizeFacebook,
   normalizeInstagram,
   normalizePHContactForStore,
+  upsertWorkerAgreements,
   listPublicReviews,
 };

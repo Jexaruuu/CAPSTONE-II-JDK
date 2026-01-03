@@ -46,7 +46,54 @@ function computeAge(v){
   return a>=0&&a<=120?a:null;
 }
 
-const registerClient=async(req,res)=>{const{first_name,last_name,sex,email_address,password,is_agreed_to_terms}=req.body;try{const rawEmail=String(email_address||"").trim();const email=rawEmail.toLowerCase();if(!first_name||!last_name||!sex||!email||!password)return res.status(400).json({message:"Missing required fields"});const map=req.session?.verifiedEmails||{};let verified=false;for(const key of Object.keys(map)){if(String(key||"").trim().toLowerCase()===email&&map[key]===true){verified=true;break}}if(!verified)return res.status(400).json({message:"Please verify your email with the 6-digit code before creating an account."});const exists=await clientModel.checkEmailExistenceAcrossAllUsers(email);if(exists.length>0)return res.status(400).json({message:"Email already in use"});const agreed_at=is_agreed_to_terms?new Date().toISOString():null;let authUser=null;const{user:createdUser,error:authError}=await createConfirmedUser(email,password,{first_name,last_name,sex,role:"client",is_agreed_to_terms:!!is_agreed_to_terms,agreed_at});if(authError){if(authError.status===422||(authError.message&&authError.message.toLowerCase().includes("already"))){try{const{data,listError}=await supabaseAdmin.auth.admin.listUsers();if(!listError&&data&&Array.isArray(data.users)){const existing=data.users.find(u=>String(u.email||"").trim().toLowerCase()===email);if(existing)authUser=existing}}catch{}}if(!authUser)return res.status(authError.status||400).json({message:authError.message||"Signup failed",code:authError.code||undefined})}else{authUser=createdUser}const hashedPassword=await bcrypt.hash(String(password),12);await clientModel.createClient(authUser.id,first_name,last_name,sex,email,hashedPassword,!!is_agreed_to_terms,agreed_at);if(req.session?.verifiedEmails){const src=req.session.verifiedEmails;const next={};Object.keys(src).forEach(k=>{if(String(k||"").trim().toLowerCase()!==email)next[k]=src[k]});req.session.verifiedEmails=next}return res.status(201).json({message:"Client registered successfully",data:{first_name,last_name,sex,is_agreed_to_terms:!!is_agreed_to_terms,agreed_at,auth_uid:authUser.id}})}catch(e){return res.status(400).json({message:e?.message||"Internal server error"})}};
+const FALLBACK_POLICY=`JDK HOMECARE Client Policy Agreement
+
+This Client Policy works together with the Worker Policy to keep services safe, trackable, and supported. By using JDK HOMECARE as a client, you agree to the rules below when interacting with workers on the platform.
+
+1. Acceptable Use (Client)
+- Provide accurate information when creating requests (service type, location details, and job expectations).
+- Use the platform only for legitimate home service and maintenance needs.
+- Communicate respectfully and do not abuse, harass, scam, or attempt to harm workers or other users.
+
+2. Off-Platform Transactions Are Not Allowed (Client)
+- You must not request, offer, or accept any payment arrangement outside JDK HOMECARE for services found, arranged, or coordinated through the platform.
+- You must not use or request personal contact details for the purpose of moving bookings or payments off-platform.
+- Keep bookings, agreements, and payments inside JDK HOMECARE so support can assist with records, disputes, and safety issues.
+
+3. Account Responsibilities
+- You are responsible for maintaining the confidentiality of your account.
+- Do not share your login credentials.
+- Notify us if you suspect unauthorized access to your account.
+
+4. Platform Integrity
+- No attempts to bypass security, disrupt services, or misuse platform features.
+- No uploading of harmful or illegal content.
+- We may suspend or terminate accounts that violate policies or threaten platform safety.
+`;
+
+const FALLBACK_NDA=`JDK HOMECARE Non-Disclosure Agreement (NDA)
+
+This agreement protects confidential information shared through or related to the platform, including business, operational, and user-related information.
+
+1. Confidential Information
+- Non-public platform details, processes, pricing, and internal operations.
+- Any non-public information disclosed by JDK HOMECARE or its users.
+- Personal or sensitive information encountered during service coordination.
+
+2. Obligations
+- Do not disclose confidential information to any third party.
+- Use confidential information only for platform-related purposes.
+- Take reasonable steps to protect confidentiality.
+
+3. Exceptions
+- Information that is publicly available through no fault of your own.
+- Information required to be disclosed by law or valid legal process.
+
+4. Duration
+Confidentiality obligations continue even after you stop using the platform, to the extent allowed by applicable law.
+`;
+
+const registerClient=async(req,res)=>{const{first_name,last_name,sex,email_address,password,is_agreed_to_terms,is_agreed_to_policy_nda,policy_agreement,nda_agreement}=req.body;try{const rawEmail=String(email_address||"").trim();const email=rawEmail.toLowerCase();if(!first_name||!last_name||!sex||!email||!password)return res.status(400).json({message:"Missing required fields"});const map=req.session?.verifiedEmails||{};let verified=false;for(const key of Object.keys(map)){if(String(key||"").trim().toLowerCase()===email&&map[key]===true){verified=true;break}}if(!verified)return res.status(400).json({message:"Please verify your email with the 6-digit code before creating an account."});const exists=await clientModel.checkEmailExistenceAcrossAllUsers(email);if(exists.length>0)return res.status(400).json({message:"Email already in use"});const agreed_at=is_agreed_to_terms?new Date().toISOString():null;const policy_nda_agreed_at=is_agreed_to_policy_nda?new Date().toISOString():null;let authUser=null;const{user:createdUser,error:authError}=await createConfirmedUser(email,password,{first_name,last_name,sex,role:"client",is_agreed_to_terms:!!is_agreed_to_terms,agreed_at,is_agreed_to_policy_nda:!!is_agreed_to_policy_nda,policy_nda_agreed_at});if(authError){if(authError.status===422||(authError.message&&authError.message.toLowerCase().includes("already"))){try{const{data,listError}=await supabaseAdmin.auth.admin.listUsers();if(!listError&&data&&Array.isArray(data.users)){const existing=data.users.find(u=>String(u.email||"").trim().toLowerCase()===email);if(existing)authUser=existing}}catch{}}if(!authUser)return res.status(authError.status||400).json({message:authError.message||"Signup failed",code:authError.code||undefined})}else{authUser=createdUser}const hashedPassword=await bcrypt.hash(String(password),12);await clientModel.createClient(authUser.id,first_name,last_name,sex,email,hashedPassword,!!is_agreed_to_terms,agreed_at);try{await clientModel.upsertClientAgreements(authUser.id,email,!!is_agreed_to_policy_nda,!!is_agreed_to_policy_nda,policy_nda_agreed_at,{db:req.supabaseUser})}catch{}if(req.session?.verifiedEmails){const src=req.session.verifiedEmails;const next={};Object.keys(src).forEach(k=>{if(String(k||"").trim().toLowerCase()!==email)next[k]=src[k]});req.session.verifiedEmails=next}return res.status(201).json({message:"Client registered successfully",data:{first_name,last_name,sex,is_agreed_to_terms:!!is_agreed_to_terms,agreed_at,auth_uid:authUser.id}})}catch(e){return res.status(400).json({message:e?.message||"Internal server error"})}};
 
 const me=async(req,res)=>{try{const s=sess(req);if(s.role!=="client"||(!s.auth_uid&&!s.email))return res.status(401).json({message:"Unauthorized"});const payload=await clientModel.getClientAccountProfile({auth_uid:s.auth_uid,email:s.email},{db:req.supabaseUser});return res.status(200).json(payload)}catch{return res.status(400).json({message:"Failed to load profile"})}};
 

@@ -61,10 +61,29 @@ function normalizePHContactForStore(input){
 
 async function getAuthUserById(auth_uid){try{const{data,error}=await supabaseAdmin.auth.admin.getUserById(auth_uid);if(error)return null;return data?.user||null}catch{return null}}
 
-const createClient=async(auth_uid,firstName,lastName,sex,email,password,isAgreedToTerms,agreedAt)=>{const{data,error}=await supabaseAdmin.from("user_client").insert([{auth_uid,first_name:firstName,last_name:lastName,sex,email_address:String(email||"").trim().toLowerCase(),password,is_agreed_to_terms:isAgreedToTerms,agreed_at:agreedAt,contact_number:null,social_facebook:null,social_instagram:null,created_at:new Date().toISOString(),client_profile_picture:null}]);if(error)throw error;return data};
-const checkEmailExistence=async(email)=>{const e=String(email||"").trim().toLowerCase();const{data,error}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e);if(error)throw error;return data};
-const checkEmailExistenceAcrossAllUsers=async(email)=>{const e=String(email||"").trim().toLowerCase();const{data:cd,error:ce}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e);if(ce)throw ce;const{data:wd,error:we}=await supabaseAdmin.from("user_worker").select("*").ilike("email_address",e);if(we)throw we;return[...(cd||[]),...(wd||[])];
+const createClient=async(auth_uid,firstName,lastName,sex,email,password,isAgreedToTerms,agreedAt)=>{
+  const { data, error } = await supabaseAdmin
+    .from("user_client")
+    .insert([{
+      auth_uid,
+      first_name:firstName,
+      last_name:lastName,
+      sex,
+      email_address:String(email||"").trim().toLowerCase(),
+      password,
+      is_agreed_to_terms:isAgreedToTerms,
+      agreed_at:agreedAt,
+      contact_number:null,
+      social_facebook:null,
+      social_instagram:null,
+      created_at:new Date().toISOString()
+    }]);
+  if(error) throw error;
+  return data;
 };
+
+const checkEmailExistence=async(email)=>{const e=String(email||"").trim().toLowerCase();const{data,error}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e);if(error)throw error;return data};
+const checkEmailExistenceAcrossAllUsers=async(email)=>{const e=String(email||"").trim().toLowerCase();const{data:cd,error:ce}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e);if(ce)throw ce;const{data:wd,error:we}=await supabaseAdmin.from("user_worker").select("*").ilike("email_address",e);if(we)throw we;return[...(cd||[]),...(wd||[])];};
 const getByAuthUid=async(auth_uid,opts={})=>{const db=opts.db||supabaseAdmin;const{data,error}=await db.from("user_client").select("*").eq("auth_uid",auth_uid).limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
 const getByEmail=async(email,opts={})=>{const db=opts.db||supabaseAdmin;const e=String(email||"").trim().toLowerCase();if(!e)return null;const{data,error}=await db.from("user_client").select("*").ilike("email_address",e).limit(1);if(error)throw error;return data&&data[0]?data[0]:null};
 
@@ -144,4 +163,19 @@ async function isContactNumberTakenAcrossAll(phone,excludeAuthUid){
 function buildVariants(kind,canon){try{const u=new URL(canon);const path=u.pathname+(u.search||"");if(kind==="facebook"){const hosts=["facebook.com","www.facebook.com","m.facebook.com","fb.com","www.fb.com"];return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x,x.endsWith("/")?x:x+"/"])}else{const hosts=["instagram.com","www.instagram.com","m.instagram.com"];return hosts.map(h=>`https://${h}${path}`).flatMap(x=>[x,x.endsWith("/")?x:x+"/"])}}catch{return[canon,canon.endsWith("/")?canon:canon+"/"]}}
 async function isSocialLinkTakenAcrossAll(kind,value,excludeAuthUid){const raw=String(value||"").trim();if(!raw)return false;const canon=kind==="facebook"?normalizeFacebook(raw):normalizeInstagram(raw);const col1=kind==="facebook"?"social_facebook":"social_instagram";const legacy1=kind==="facebook"?"facebook":"instagram";function buildOr(cols,pats){const segs=[];for(const col of cols)for(const p of pats)segs.push(`${col}.ilike.*${p}*`);return segs.join(",")}let hitAuthUid=null;try{const variants=buildVariants(kind,canon);const orStr=buildOr([col1,legacy1],variants)||`${col1}.is.null`;const q1=supabaseAdmin.from("user_client").select(`auth_uid, ${col1}, ${legacy1}`).or(orStr);const q2=supabaseAdmin.from("user_worker").select(`auth_uid, ${col1}, ${legacy1}`).or(orStr);const[{data:c,error:ec},{data:w,error:ew}]=await Promise.all([q1,q2]);if(ec||ew)throw ec||ew;const all=[...(c||[]),...(w||[])];for(const r of all){const vals=[r[col1],r[legacy1]].filter(Boolean).map(String);if(vals.some(v=>(kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break}}}catch{const q1=supabaseAdmin.from("user_client").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);const q2=supabaseAdmin.from("user_worker").select(`auth_uid, ${col1}, ${legacy1}`).limit(1000);const[{data:c2},{data:w2}]=await Promise.all([q1,q2]);const all=[...(c2||[]),...(w2||[])];for(const r of all){const vals=[r[col1],r[legacy1]].filter(Boolean).map(String);if(vals.some(v=>(kind==="facebook"?normalizeFacebook(v):normalizeInstagram(v)).toLowerCase()===canon.toLowerCase())){hitAuthUid=r.auth_uid||null;break}}}if(!hitAuthUid)return false;if(!excludeAuthUid)return true;return hitAuthUid!==excludeAuthUid}
 
-module.exports={createClient,checkEmailExistence,checkEmailExistenceAcrossAllUsers,getByAuthUid,getByEmail,getClientAccountProfile,updatePassword,updateAuthPassword,updateClientProfile,updateAuthUserMeta,isContactNumberTakenAcrossAll,isSocialLinkTakenAcrossAll,normalizeFacebook,normalizeInstagram,normalizePHContactForStore};
+const upsertClientAgreements=async(auth_uid,email_address,policy_agreement,nda_agreement,agreed_at,opts={})=>{
+  const db=opts.db||supabaseAdmin;
+  const row={
+    auth_uid,
+    email_address:String(email_address||"").trim().toLowerCase()||null,
+    policy_agreement:!!policy_agreement,
+    nda_agreement:!!nda_agreement,
+    agreed_at:agreed_at||null,
+    updated_at:new Date().toISOString()
+  };
+  const { data, error } = await db.from("client_agreements").upsert([row],{onConflict:"auth_uid"}).select("*").limit(1);
+  if(error) throw error;
+  return data&&data[0]?data[0]:null;
+};
+
+module.exports={createClient,checkEmailExistence,checkEmailExistenceAcrossAllUsers,getByAuthUid,getByEmail,getClientAccountProfile,updatePassword,updateAuthPassword,updateClientProfile,updateAuthUserMeta,isContactNumberTakenAcrossAll,isSocialLinkTakenAcrossAll,normalizeFacebook,normalizeInstagram,normalizePHContactForStore,upsertClientAgreements};
