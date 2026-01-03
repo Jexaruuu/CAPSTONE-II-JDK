@@ -82,8 +82,6 @@ const getClientAccountProfile=async({auth_uid,email},opts={})=>{
   const rawPhone=row?.contact_number??row?.phone??"";
   const phoneDigits=normalizePHDigits10(rawPhone);
 
-  const profile_picture_url=row?.client_profile_picture||row?.profile_picture_url||user?.user_metadata?.client_profile_picture||null;
-
   return{
     first_name:row?.first_name||user?.user_metadata?.first_name||"",
     last_name:row?.last_name||user?.user_metadata?.last_name||"",
@@ -96,7 +94,7 @@ const getClientAccountProfile=async({auth_uid,email},opts={})=>{
     created_at,
     date_of_birth:dobYMD||"",
     age,
-    profile_picture_url
+    profile_picture_url:null
   }
 };
 

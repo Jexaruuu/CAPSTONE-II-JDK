@@ -1,5 +1,4 @@
-// ClientNavigation.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
@@ -89,18 +88,13 @@ const ClientNavigation = () => {
   const initialFirst = typeof window !== 'undefined' ? (localStorage.getItem('first_name') || '') : '';
   const initialLast = typeof window !== 'undefined' ? (localStorage.getItem('last_name') || '') : '';
   const initialSex = typeof window !== 'undefined' ? (localStorage.getItem('sex') || '') : '';
-  const initialPf = typeof window !== 'undefined' ? (localStorage.getItem('clientProfilePictureUrl') || '') : '';
 
   const [fullName, setFullName] = useState(`${initialFirst} ${initialLast}`.trim());
   const [prefix, setPrefix] = useState(initialSex === 'Male' ? 'Mr.' : initialSex === 'Female' ? 'Ms.' : '');
-  const [pfUrl, setPfUrl] = useState(initialPf);
-  const [pfReady, setPfReady] = useState(Boolean(initialPf));
-  const [pfBroken, setPfBroken] = useState(false);
   const [initials, setInitials] = useState(
     `${(initialFirst || '').trim().slice(0, 1)}${(initialLast || '').trim().slice(0, 1)}`.toUpperCase() || ''
   );
 
-  function preload(src) { return new Promise((resolve, reject) => { if (!src) return reject(new Error('empty')); const img = new Image(); img.onload = () => resolve(true); img.onerror = reject; img.src = src; }); }
   function buildAppU() { try { const a = JSON.parse(localStorage.getItem('clientAuth') || '{}'); const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || ''; const e = a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || ''; return encodeURIComponent(JSON.stringify({ r: 'client', e, au })); } catch {} return ''; }
   function setAppUCookie(val) { try { document.cookie = `app_u=${val}; Path=/; SameSite=Lax`; } catch {} }
 
@@ -121,35 +115,21 @@ const ClientNavigation = () => {
 
   useEffect(() => {
     const init = async () => {
-      const initialPfLocal = localStorage.getItem('clientProfilePictureUrl') || '';
-      if (initialPfLocal) { try { await preload(initialPfLocal); setPfUrl(initialPfLocal); setPfReady(true); setPfBroken(false); } catch { setPfReady(true); setPfBroken(true); } } else { setPfReady(true); setPfBroken(true); }
       const appU = buildAppU();
       try {
         const { data } = await axios.get(`${API_BASE}/api/account/me`, { withCredentials: true, headers: appU ? { 'x-app-u': appU } : {} });
         const f = data?.first_name || localStorage.getItem('first_name') || '';
         const l = data?.last_name || localStorage.getItem('last_name') || '';
         const sx = data?.sex || localStorage.getItem('sex') || '';
-        const pfu = data?.profile_picture_url || localStorage.getItem('clientProfilePictureUrl') || '';
         if (sx === 'Male') setPrefix('Mr.'); else if (sx === 'Female') setPrefix('Ms.'); else setPrefix('');
         setFullName(`${f} ${l}`.trim());
         setInitials(`${(f || '').trim().slice(0, 1)}${(l || '').trim().slice(0, 1)}`.toUpperCase() || '');
-        if (pfu) { try { await preload(pfu); setPfUrl(pfu); setPfReady(true); setPfBroken(false); } catch { setPfReady(true); setPfBroken(true); } } else { setPfReady(true); setPfBroken(true); }
         localStorage.setItem('first_name', f);
         localStorage.setItem('last_name', l);
         if (sx) localStorage.setItem('sex', sx);
-        if (pfu) localStorage.setItem('clientProfilePictureUrl', pfu);
-      } catch { setPfReady(true); if (!initialPf) setPfBroken(true); }
+      } catch {}
     };
     init();
-
-    const onPf = async (e) => {
-      const u = e?.detail?.url ?? '';
-      if (u) {
-        try { await preload(u); localStorage.setItem('clientProfilePictureUrl', u); setPfUrl(u); setPfReady(true); setPfBroken(false); } catch { setPfReady(true); setPfBroken(true); setPfUrl(''); localStorage.removeItem('clientProfilePictureUrl'); }
-      } else { setPfBroken(true); setPfUrl(''); setPfReady(true); localStorage.removeItem('clientProfilePictureUrl'); }
-    };
-    window.addEventListener('client-profile-picture-updated', onPf);
-    return () => { window.removeEventListener('client-profile-picture-updated', onPf); };
   }, []);
 
   useEffect(() => {
@@ -159,24 +139,24 @@ const ClientNavigation = () => {
         const appU = buildAppU();
         if (!appU) return;
         const { data } = await axios.get(`${API_BASE}/api/account/me`, { withCredentials:true, headers:{ 'x-app-u': appU } });
-        const pfu = data?.profile_picture_url || '';
         const f = data?.first_name || localStorage.getItem('first_name') || '';
         const l = data?.last_name || localStorage.getItem('last_name') || '';
+        const sx = data?.sex || localStorage.getItem('sex') || '';
+        if (sx === 'Male') setPrefix('Mr.'); else if (sx === 'Female') setPrefix('Ms.'); else setPrefix('');
         setInitials(`${(f || '').trim().slice(0, 1)}${(l || '').trim().slice(0, 1)}`.toUpperCase() || '');
-        if (pfu) { try { await preload(pfu); localStorage.setItem('clientProfilePictureUrl', pfu); setPfUrl(pfu); setPfReady(true); setPfBroken(false); } catch { setPfReady(true); setPfBroken(true); setPfUrl(''); localStorage.removeItem('clientProfilePictureUrl'); } }
+        setFullName(`${f} ${l}`.trim());
       } catch {}
     };
     const onStorage = (e) => {
-      if (e.key === 'clientProfilePictureUrl') {
-        const u = e.newValue || '';
-        if (u) preload(u).then(()=>{ setPfUrl(u); setPfReady(true); setPfBroken(false); }).catch(()=>{ setPfBroken(true); setPfReady(true); setPfUrl('');});
-        else { setPfBroken(true); setPfReady(true); setPfUrl(''); }
-      }
       if (e.key === 'first_name' || e.key === 'last_name') {
         const f = localStorage.getItem('first_name') || '';
         const l = localStorage.getItem('last_name') || '';
         setInitials(`${(f || '').trim().slice(0, 1)}${(l || '').trim().slice(0, 1)}`.toUpperCase() || '');
         setFullName(`${f} ${l}`.trim());
+      }
+      if (e.key === 'sex') {
+        const sx = localStorage.getItem('sex') || '';
+        if (sx === 'Male') setPrefix('Mr.'); else if (sx === 'Female') setPrefix('Ms.'); else setPrefix('');
       }
     };
     window.addEventListener('focus', onFocus);
@@ -187,10 +167,6 @@ const ClientNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isFindWorker = location.pathname === '/find-a-worker';
-
-  const handleLogout = async () => {
-    try { await axios.post(`${API_BASE}/api/login/logout`, {}, { withCredentials: true }); localStorage.clear(); goTop(); navigate('/', { replace: true }); window.location.reload(); } catch {}
-  };
 
   const clearPostDrafts = () => { try { localStorage.removeItem('clientInformationForm'); localStorage.removeItem('clientServiceRequestDetails'); localStorage.removeItem('clientServiceRate'); } catch {} };
 
@@ -367,23 +343,11 @@ const ClientNavigation = () => {
             </div>
 
             <div className="cursor-pointer relative" onClick={handleProfileDropdown}>
-              {pfReady ? (
-                pfUrl && !pfBroken ? (
-                  <img src={pfUrl} alt="User Profile" className="h-8 w-8 rounded-full object-cover" loading="eager" decoding="sync" onError={() => { setPfBroken(true); setPfUrl(''); }} />
-                ) : (
-                  <ProfileCircle />
-                )
-              ) : (<div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />)}
+              <ProfileCircle />
               {showProfileDropdown && (
                 <div ref={profileDropdownRef} className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
                   <div className="px-4 py-3 border-b flex items-center space-x-3">
-                    {pfReady ? (
-                      pfUrl && !pfBroken ? (
-                        <img src={pfUrl} alt="Profile Icon" className="h-8 w-8 rounded-full object-cover" loading="eager" decoding="sync" onError={() => { setPfBroken(true); setPfUrl(''); }} />
-                      ) : (
-                        <ProfileCircle />
-                      )
-                    ) : (<div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />)}
+                    <ProfileCircle />
                     <div>
                       <p className="font-semibold text-sm">{prefix} {fullName}</p>
                       <p className="text-xs text-gray-600">Client</p>
