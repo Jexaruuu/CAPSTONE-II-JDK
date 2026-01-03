@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+// ClientNavigation.jsx
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const FALLBACK_DP = '/Bluelogo.png';
 
 const ClientNavigation = () => {
   const [selectedOption, setSelectedOption] = useState('Worker');
@@ -95,7 +97,48 @@ const ClientNavigation = () => {
     `${(initialFirst || '').trim().slice(0, 1)}${(initialLast || '').trim().slice(0, 1)}`.toUpperCase() || ''
   );
 
-  function buildAppU() { try { const a = JSON.parse(localStorage.getItem('clientAuth') || '{}'); const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || ''; const e = a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || ''; return encodeURIComponent(JSON.stringify({ r: 'client', e, au })); } catch {} return ''; }
+  const pickDp = (data) => {
+    const ls =
+      localStorage.getItem('client_profile_picture') ||
+      localStorage.getItem('client_profile_picture_url') ||
+      localStorage.getItem('clientProfilePictureUrl') ||
+      localStorage.getItem('profile_picture_url') ||
+      localStorage.getItem('profile_picture') ||
+      '';
+
+    const v =
+      data?.client_profile_picture ||
+      data?.client_profile_picture_url ||
+      data?.clientProfilePictureUrl ||
+      data?.profile_picture_url ||
+      data?.profile_picture ||
+      data?.avatar_url ||
+      ls ||
+      '';
+
+    return String(v || '').trim();
+  };
+
+  const [profilePic, setProfilePic] = useState(() => {
+    const v =
+      localStorage.getItem('client_profile_picture') ||
+      localStorage.getItem('client_profile_picture_url') ||
+      localStorage.getItem('clientProfilePictureUrl') ||
+      localStorage.getItem('profile_picture_url') ||
+      localStorage.getItem('profile_picture') ||
+      '';
+    return (String(v || '').trim() || FALLBACK_DP);
+  });
+
+  function buildAppU() {
+    try {
+      const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
+      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
+      const e = a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+      return encodeURIComponent(JSON.stringify({ r: 'client', e, au }));
+    } catch {}
+    return '';
+  }
   function setAppUCookie(val) { try { document.cookie = `app_u=${val}; Path=/; SameSite=Lax`; } catch {} }
 
   async function ensureSession() {
@@ -107,6 +150,14 @@ const ClientNavigation = () => {
       const email = data?.email_address || '';
       if (uid) localStorage.setItem('auth_uid', uid);
       if (email) { localStorage.setItem('email_address', email); localStorage.setItem('email', email); localStorage.setItem('client_email', email); }
+      const dp = pickDp(data);
+      if (dp) {
+        localStorage.setItem('client_profile_picture', dp);
+        localStorage.setItem('client_profile_picture_url', dp);
+        setProfilePic(dp);
+      } else {
+        setProfilePic(FALLBACK_DP);
+      }
       const appU2 = encodeURIComponent(JSON.stringify({ r: 'client', e: email || '', au: uid || '' }));
       setAppUCookie(appU2);
       return Boolean(data);
@@ -127,6 +178,15 @@ const ClientNavigation = () => {
         localStorage.setItem('first_name', f);
         localStorage.setItem('last_name', l);
         if (sx) localStorage.setItem('sex', sx);
+
+        const dp = pickDp(data);
+        if (dp) {
+          localStorage.setItem('client_profile_picture', dp);
+          localStorage.setItem('client_profile_picture_url', dp);
+          setProfilePic(dp);
+        } else {
+          setProfilePic(FALLBACK_DP);
+        }
       } catch {}
     };
     init();
@@ -145,6 +205,15 @@ const ClientNavigation = () => {
         if (sx === 'Male') setPrefix('Mr.'); else if (sx === 'Female') setPrefix('Ms.'); else setPrefix('');
         setInitials(`${(f || '').trim().slice(0, 1)}${(l || '').trim().slice(0, 1)}`.toUpperCase() || '');
         setFullName(`${f} ${l}`.trim());
+
+        const dp = pickDp(data);
+        if (dp) {
+          localStorage.setItem('client_profile_picture', dp);
+          localStorage.setItem('client_profile_picture_url', dp);
+          setProfilePic(dp);
+        } else {
+          setProfilePic(FALLBACK_DP);
+        }
       } catch {}
     };
     const onStorage = (e) => {
@@ -157,6 +226,22 @@ const ClientNavigation = () => {
       if (e.key === 'sex') {
         const sx = localStorage.getItem('sex') || '';
         if (sx === 'Male') setPrefix('Mr.'); else if (sx === 'Female') setPrefix('Ms.'); else setPrefix('');
+      }
+      if (
+        e.key === 'client_profile_picture' ||
+        e.key === 'client_profile_picture_url' ||
+        e.key === 'clientProfilePictureUrl' ||
+        e.key === 'profile_picture_url' ||
+        e.key === 'profile_picture'
+      ) {
+        const v =
+          localStorage.getItem('client_profile_picture') ||
+          localStorage.getItem('client_profile_picture_url') ||
+          localStorage.getItem('clientProfilePictureUrl') ||
+          localStorage.getItem('profile_picture_url') ||
+          localStorage.getItem('profile_picture') ||
+          '';
+        setProfilePic(String(v || '').trim() || FALLBACK_DP);
       }
     };
     window.addEventListener('focus', onFocus);
@@ -176,6 +261,7 @@ const ClientNavigation = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+  const [dpBroken, setDpBroken] = useState(false);
 
   const beginRoute = (to) => {
     if (navLoading) return;
@@ -207,11 +293,19 @@ const ClientNavigation = () => {
     };
   }, [navLoading]);
 
-  const ProfileCircle = ({ size = 8 }) => (
-    <div className={`h-${size} w-${size} rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-semibold text-xs uppercase`}>
-      {initials || ''}
-    </div>
-  );
+  const ProfileCircle = ({ size = 8 }) => {
+    const src = (dpBroken ? FALLBACK_DP : (profilePic || FALLBACK_DP)) || FALLBACK_DP;
+    return (
+      <div className={`h-${size} w-${size} rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center`}>
+        <img
+          src={src}
+          alt="Profile"
+          className="h-full w-full object-cover"
+          onError={() => { setDpBroken(true); setProfilePic(FALLBACK_DP); }}
+        />
+      </div>
+    );
+  };
 
   return (
     <>

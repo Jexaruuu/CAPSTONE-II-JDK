@@ -1,8 +1,10 @@
+// WorkerNavigation.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const AVATAR_PLACEHOLDER = '/Bluelogo.png';
 
 const WorkerNavigation = () => {
   const [selectedOption, setSelectedOption] = useState('Worker');
@@ -66,14 +68,17 @@ const WorkerNavigation = () => {
     setShowSubDropdown(false);
   };
 
-  useEffect(() => { document.addEventListener('mousedown', handleClickOutside); return () => { document.removeEventListener('mousedown', handleClickOutside); }; }, []);
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => { document.removeEventListener('mousedown', handleClickOutside); };
+  }, []);
 
   const [fullName, setFullName] = useState('');
   const [prefix, setPrefix] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem('workerAvatarUrl') || '/Clienticon.png');
-  const [avatarBroken, setAvatarBroken] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem('workerAvatarUrl') || AVATAR_PLACEHOLDER);
+  const [dpBroken, setDpBroken] = useState(false);
   const [initials, setInitials] = useState(
-    `${(localStorage.getItem('first_name') || '').trim().slice(0,1)}${(localStorage.getItem('last_name') || '').trim().slice(0,1)}`.toUpperCase() || ''
+    `${(localStorage.getItem('first_name') || '').trim().slice(0, 1)}${(localStorage.getItem('last_name') || '').trim().slice(0, 1)}`.toUpperCase() || ''
   );
 
   useEffect(() => {
@@ -83,29 +88,35 @@ const WorkerNavigation = () => {
     if (sex === 'Male') setPrefix('Mr.');
     else if (sex === 'Female') setPrefix('Ms.');
     else setPrefix('');
-    setFullName(`${fName} ${lName}`);
-    setInitials(`${(fName || '').trim().slice(0,1)}${(lName || '').trim().slice(0,1)}`.toUpperCase() || '');
+    setFullName(`${fName} ${lName}`.trim());
+    setInitials(`${(fName || '').trim().slice(0, 1)}${(lName || '').trim().slice(0, 1)}`.toUpperCase() || '');
+
     const onAvatar = (e) => {
       const url = e?.detail?.url || '';
-      setAvatarBroken(false);
-      setAvatarUrl(url || '/Clienticon.png');
+      setDpBroken(false);
+      setAvatarUrl(String(url || '').trim() || AVATAR_PLACEHOLDER);
     };
+
     const onStorage = (e) => {
       if (e.key === 'first_name' || e.key === 'last_name') {
         const f = localStorage.getItem('first_name') || '';
         const l = localStorage.getItem('last_name') || '';
         setFullName(`${f} ${l}`.trim());
-        setInitials(`${(f || '').trim().slice(0,1)}${(l || '').trim().slice(0,1)}`.toUpperCase() || '');
+        setInitials(`${(f || '').trim().slice(0, 1)}${(l || '').trim().slice(0, 1)}`.toUpperCase() || '');
       }
       if (e.key === 'workerAvatarUrl') {
         const u = localStorage.getItem('workerAvatarUrl') || '';
-        setAvatarBroken(false);
-        setAvatarUrl(u || '/Clienticon.png');
+        setDpBroken(false);
+        setAvatarUrl(String(u || '').trim() || AVATAR_PLACEHOLDER);
       }
     };
+
     window.addEventListener('worker-avatar-updated', onAvatar);
     window.addEventListener('storage', onStorage);
-    return () => { window.removeEventListener('worker-avatar-updated', onAvatar); window.removeEventListener('storage', onStorage); };
+    return () => {
+      window.removeEventListener('worker-avatar-updated', onAvatar);
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
 
   const navigate = useNavigate();
@@ -136,15 +147,21 @@ const WorkerNavigation = () => {
   };
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [navLoading, setNavLoading] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
+
+  const beginRoute = (to) => {
+    if (navLoading) return;
+    setNavLoading(true);
+    setTimeout(() => { navigate(to, { replace: true }); }, 2000);
+  };
+
   const goSearch = () => {
     const q = searchQuery.trim();
     goTop();
     beginRoute(`/find-a-client${q ? `?search=${encodeURIComponent(q)}` : ''}`);
   };
   const onSearchKeyDown = (e) => { if (e.key === 'Enter') goSearch(); };
-
-  const [navLoading, setNavLoading] = useState(false);
-  const [logoBroken, setLogoBroken] = useState(false);
 
   useEffect(() => {
     if (!navLoading) return;
@@ -164,20 +181,18 @@ const WorkerNavigation = () => {
   }, [navLoading]);
 
   const ProfileCircle = ({ size = 8 }) => {
-    const cls = size === 8 ? 'h-8 w-8' : size === 10 ? 'h-10 w-10' : 'h-8 w-8';
+    const cls = size === 10 ? 'h-10 w-10' : 'h-8 w-8';
+    const src = (dpBroken ? AVATAR_PLACEHOLDER : (avatarUrl || AVATAR_PLACEHOLDER)) || AVATAR_PLACEHOLDER;
     return (
-      <div className={`${cls} rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-semibold text-xs uppercase`}>
-        {initials || ''}
+      <div className={`${cls} rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center`}>
+        <img
+          src={src}
+          alt="Profile"
+          className="h-full w-full object-cover"
+          onError={() => { setDpBroken(true); setAvatarUrl(AVATAR_PLACEHOLDER); }}
+        />
       </div>
     );
-  };
-
-  const shouldShowImage = avatarUrl && avatarUrl !== '/Clienticon.png' && !avatarBroken;
-
-  const beginRoute = (to) => {
-    if (navLoading) return;
-    setNavLoading(true);
-    setTimeout(() => { navigate(to, { replace: true }); }, 2000);
   };
 
   return (
@@ -340,29 +355,11 @@ const WorkerNavigation = () => {
             </div>
 
             <div className="cursor-pointer relative" onClick={handleProfileDropdown}>
-              {shouldShowImage ? (
-                <img
-                  src={avatarUrl}
-                  alt="User Profile"
-                  className="h-8 w-8 rounded-full object-cover"
-                  onError={() => { setAvatarBroken(true); setAvatarUrl(''); }}
-                />
-              ) : (
-                <ProfileCircle />
-              )}
+              <ProfileCircle />
               {showProfileDropdown && (
                 <div ref={profileDropdownRef} className="absolute top-full right-0 mt-4 w-60 bg-white border rounded-md shadow-md">
                   <div className="px-4 py-3 border-b flex items-center space-x-3">
-                    {shouldShowImage ? (
-                      <img
-                        src={avatarUrl}
-                        alt="Profile Icon"
-                        className="h-8 w-8 rounded-full object-cover"
-                        onError={() => { setAvatarBroken(true); setAvatarUrl(''); }}
-                      />
-                    ) : (
-                      <ProfileCircle />
-                    )}
+                    <ProfileCircle />
                     <div>
                       <p className="font-semibold text-sm">{prefix} {fullName}</p>
                       <p className="text-xs text-gray-600">Worker</p>

@@ -1,9 +1,11 @@
+// WorkerProfile.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const AVATAR_PLACEHOLDER = "/Bluelogo.png";
 
 export default function WorkerProfile() {
   const dpRef = useRef(null);
@@ -21,6 +23,7 @@ export default function WorkerProfile() {
   const [dpCoords, setDpCoords] = useState({ top: 0, left: 0, width: 300 });
   const [monthOpen, setMonthOpen] = useState(false), [yearOpen, setYearOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [avatarPlaceholderBroken, setAvatarPlaceholderBroken] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [showSaving, setShowSaving] = useState(false);
@@ -236,6 +239,8 @@ export default function WorkerProfile() {
     </div>
   , document.body) : null;
 
+  const initials = useMemo(()=>{ const a=(form.first_name||"").trim().slice(0,1).toUpperCase(); const b=(form.last_name||"").trim().slice(0,1).toUpperCase(); return (a||b)?`${a}${b}`:""; },[form.first_name,form.last_name]);
+
   return (
     <main className="min-h-[65vh] pb-24 md:pb-10">
       <div className="mx-auto max-w-5xl">
@@ -254,7 +259,13 @@ export default function WorkerProfile() {
           <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
             <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex items-center justify-center">
               <div className="h-24 w-24 rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center">
-                {avatarUrl ? (<img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" onError={()=>setAvatarUrl(null)}/>) : (<div className="h-full w-full flex items-center justify-center text-3xl font-semibold text-blue-600">{(((form.first_name||"").trim().slice(0,1)+(form.last_name||"").trim().slice(0,1))||"?").toUpperCase()}</div>)}
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" onError={()=>setAvatarUrl(null)} />
+                ) : !avatarPlaceholderBroken ? (
+                  <img src={AVATAR_PLACEHOLDER} alt="Avatar" className="h-full w-full object-cover" onError={()=>setAvatarPlaceholderBroken(true)} />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-3xl font-semibold text-blue-600">{(initials||"?").toUpperCase()}</div>
+                )}
               </div>
             </div>
 

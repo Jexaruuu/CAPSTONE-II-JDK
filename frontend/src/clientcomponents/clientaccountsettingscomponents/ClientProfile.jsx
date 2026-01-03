@@ -1,9 +1,11 @@
+// ClientProfile.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const FALLBACK_DP = "/Bluelogo.png";
 
 export default function ClientProfile() {
   const dpRef = useRef(null);
@@ -24,6 +26,37 @@ export default function ClientProfile() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [showSaving, setShowSaving] = useState(false);
+  const [profilePic, setProfilePic] = useState(() => {
+    const v =
+      localStorage.getItem("client_profile_picture") ||
+      localStorage.getItem("client_profile_picture_url") ||
+      localStorage.getItem("clientProfilePictureUrl") ||
+      localStorage.getItem("profile_picture_url") ||
+      localStorage.getItem("profile_picture") ||
+      "";
+    return String(v || "").trim() || FALLBACK_DP;
+  });
+  const [dpBroken, setDpBroken] = useState(false);
+
+  const pickDp = (data) => {
+    const ls =
+      localStorage.getItem("client_profile_picture") ||
+      localStorage.getItem("client_profile_picture_url") ||
+      localStorage.getItem("clientProfilePictureUrl") ||
+      localStorage.getItem("profile_picture_url") ||
+      localStorage.getItem("profile_picture") ||
+      "";
+    const v =
+      data?.client_profile_picture ||
+      data?.client_profile_picture_url ||
+      data?.clientProfilePictureUrl ||
+      data?.profile_picture_url ||
+      data?.profile_picture ||
+      data?.avatar_url ||
+      ls ||
+      "";
+    return String(v || "").trim();
+  };
 
   const toYMD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   const toMDY = (d) => `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${String(d.getFullYear()%100).padStart(2,"0")}`;
@@ -47,7 +80,17 @@ export default function ClientProfile() {
         localStorage.setItem("email_address",f.email||""); localStorage.setItem("client_email",f.email||""); localStorage.setItem("email",f.email||""); localStorage.setItem("client_phone",f.phone||"");
         if(data?.created_at){ const t=new Date(data.created_at); setCreatedAt(t.toLocaleString("en-PH",{timeZone:"Asia/Manila",dateStyle:"long",timeStyle:"short"})); }
         setDpView(dob?new Date(dob):new Date(maxDOBDate));
-      }catch{ const t=new Date(); setCreatedAt(t.toLocaleString("en-PH",{timeZone:"Asia/Manila",dateStyle:"long",timeStyle:"short"})); setDpView(new Date(maxDOBDate)); } };
+        const dp = pickDp(data);
+        if (dp) {
+          localStorage.setItem("client_profile_picture", dp);
+          localStorage.setItem("client_profile_picture_url", dp);
+          setProfilePic(dp);
+          setDpBroken(false);
+        } else {
+          setProfilePic(FALLBACK_DP);
+          setDpBroken(false);
+        }
+      }catch{ const t=new Date(); setCreatedAt(t.toLocaleString("en-PH",{timeZone:"Asia/Manila",dateStyle:"long",timeStyle:"short"})); setDpView(new Date(maxDOBDate)); setProfilePic(FALLBACK_DP); setDpBroken(false); } };
     init();
   }, [appU]);
 
@@ -179,6 +222,8 @@ export default function ClientProfile() {
     </div>
   , document.body) : null;
 
+  const avatarSrc = ((dpBroken ? FALLBACK_DP : (profilePic || FALLBACK_DP)) || FALLBACK_DP);
+
   return (
     <main className="min-h-[65vh] pb-24 md:pb-10">
       <div className="mx-auto max-w-5xl">
@@ -197,7 +242,12 @@ export default function ClientProfile() {
           <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
             <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex flex-col items-center justify-center gap-3">
               <div className="h-24 w-24 rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center">
-                <div className="h-full w-full flex items-center justify-center text-3xl font-semibold text-blue-600">{(initials||"?").toUpperCase()}</div>
+                <img
+                  src={avatarSrc}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                  onError={() => { setDpBroken(true); setProfilePic(FALLBACK_DP); }}
+                />
               </div>
             </div>
 
