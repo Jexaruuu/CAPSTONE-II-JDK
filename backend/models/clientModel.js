@@ -61,7 +61,7 @@ function normalizePHContactForStore(input){
 
 async function getAuthUserById(auth_uid){try{const{data,error}=await supabaseAdmin.auth.admin.getUserById(auth_uid);if(error)return null;return data?.user||null}catch{return null}}
 
-const createClient=async(auth_uid,firstName,lastName,sex,email,password,isAgreedToTerms,agreedAt)=>{const{data,error}=await supabaseAdmin.from("user_client").insert([{auth_uid,first_name:firstName,last_name:lastName,sex,email_address:String(email||"").trim().toLowerCase(),password,is_agreed_to_terms:isAgreedToTerms,agreed_at:agreedAt,contact_number:null,social_facebook:null,social_instagram:null,created_at:new Date().toISOString()}]);if(error)throw error;return data};
+const createClient=async(auth_uid,firstName,lastName,sex,email,password,isAgreedToTerms,agreedAt)=>{const{data,error}=await supabaseAdmin.from("user_client").insert([{auth_uid,first_name:firstName,last_name:lastName,sex,email_address:String(email||"").trim().toLowerCase(),password,is_agreed_to_terms:isAgreedToTerms,agreed_at:agreedAt,contact_number:null,social_facebook:null,social_instagram:null,created_at:new Date().toISOString(),client_profile_picture:null}]);if(error)throw error;return data};
 const checkEmailExistence=async(email)=>{const e=String(email||"").trim().toLowerCase();const{data,error}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e);if(error)throw error;return data};
 const checkEmailExistenceAcrossAllUsers=async(email)=>{const e=String(email||"").trim().toLowerCase();const{data:cd,error:ce}=await supabaseAdmin.from("user_client").select("*").ilike("email_address",e);if(ce)throw ce;const{data:wd,error:we}=await supabaseAdmin.from("user_worker").select("*").ilike("email_address",e);if(we)throw we;return[...(cd||[]),...(wd||[])];
 };
@@ -82,6 +82,8 @@ const getClientAccountProfile=async({auth_uid,email},opts={})=>{
   const rawPhone=row?.contact_number??row?.phone??"";
   const phoneDigits=normalizePHDigits10(rawPhone);
 
+  const profile_picture_url=row?.client_profile_picture||row?.profile_picture_url||user?.user_metadata?.client_profile_picture||null;
+
   return{
     first_name:row?.first_name||user?.user_metadata?.first_name||"",
     last_name:row?.last_name||user?.user_metadata?.last_name||"",
@@ -93,7 +95,8 @@ const getClientAccountProfile=async({auth_uid,email},opts={})=>{
     auth_uid:row?.auth_uid||(user?.id??""),
     created_at,
     date_of_birth:dobYMD||"",
-    age
+    age,
+    profile_picture_url
   }
 };
 

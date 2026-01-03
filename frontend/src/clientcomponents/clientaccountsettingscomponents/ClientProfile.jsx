@@ -22,6 +22,8 @@ export default function ClientProfile() {
   const [dpCoords, setDpCoords] = useState({ top: 0, left: 0, width: 300 });
   const [monthOpen, setMonthOpen] = useState(false), [yearOpen, setYearOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [avatarBaseUrl, setAvatarBaseUrl] = useState(null);
+  const [avatarError, setAvatarError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [showSaving, setShowSaving] = useState(false);
@@ -43,7 +45,13 @@ export default function ClientProfile() {
   useEffect(() => {
     const init=async()=>{ try{ const {data}=await axios.get(`${API_BASE}/api/clients/me`,{withCredentials:true,headers:headersWithU});
         const dob=data?.date_of_birth?String(data.date_of_birth).slice(0,10):"", f={ first_name:data?.first_name||"", last_name:data?.last_name||"", email:data?.email_address||"", phone:data?.phone||"", facebook:data?.facebook||"", instagram:data?.instagram||"", date_of_birth:dob };
-        setForm(f); setBase(f); setAvatarUrl(data?.profile_picture||null);
+        setForm(f); setBase(f);
+        const pfu=data?.profile_picture_url||null;
+        setAvatarUrl(pfu);
+        setAvatarBaseUrl(pfu);
+        setAvatarError("");
+        if(pfu) localStorage.setItem("clientProfilePictureUrl", pfu); else localStorage.removeItem("clientProfilePictureUrl");
+        window.dispatchEvent(new CustomEvent("client-profile-picture-updated",{ detail:{ url: pfu || "" } }));
         localStorage.setItem("first_name",f.first_name); localStorage.setItem("last_name",f.last_name); if(data?.sex) localStorage.setItem("sex",data.sex);
         localStorage.setItem("email_address",f.email||""); localStorage.setItem("client_email",f.email||""); localStorage.setItem("email",f.email||""); localStorage.setItem("client_phone",f.phone||"");
         if(data?.created_at){ const t=new Date(data.created_at); setCreatedAt(t.toLocaleString("en-PH",{timeZone:"Asia/Manila",dateStyle:"long",timeStyle:"short"})); }
@@ -73,7 +81,9 @@ export default function ClientProfile() {
   const dobDirty=useMemo(()=>!!base&&String(base.date_of_birth||"")!==String(form.date_of_birth||""),[base,form.date_of_birth]);
   const socialDirty=facebookDirty||instagramDirty;
 
-  const canSaveProfile=(phoneDirty||dobDirty)&&!savingProfile&&(!phoneDirty||(isPhoneValid&&!phoneTaken&&phoneEditCommitted))&&(!dobDirty||(((form.date_of_birth===""||(form.date_of_birth&&form.date_of_birth>=minDOB&&form.date_of_birth<=maxDOB))&&dobEditCommitted)));
+  const avatarDirty = useMemo(()=>String(avatarUrl||"")!==String(avatarBaseUrl||""),[avatarUrl,avatarBaseUrl]);
+
+  const canSaveProfile=(phoneDirty||dobDirty||avatarDirty)&&!savingProfile&&(!phoneDirty||(isPhoneValid&&!phoneTaken&&phoneEditCommitted))&&(!dobDirty||(((form.date_of_birth===""||(form.date_of_birth&&form.date_of_birth>=minDOB&&form.date_of_birth<=maxDOB))&&dobEditCommitted)))&&(!avatarDirty||!avatarError);
   const canSaveSocial=socialDirty&&!savingSocial&&facebookValid&&instagramValid&&!facebookTaken&&!instagramTaken;
 
   const age=useMemo(()=>computeAge(form.date_of_birth),[form.date_of_birth]);
@@ -84,17 +94,35 @@ export default function ClientProfile() {
 
   const onSaveProfile=async()=>{ if(!canSaveProfile) return; setShowSaving(true); setSavingProfile(true); setSaving(true); setSaved(false);
     try{
-      if(phoneDirty||dobDirty){
-        const payload={}; if(phoneDirty) payload.phone=form.phone||""; if(dobDirty) payload.date_of_birth=form.date_of_birth||null;
-        const {data}=await axios.post(`${API_BASE}/api/clients/profile${urlQS}`,payload,{withCredentials:true,headers:{ "Content-Type":"application/json",...headersWithU }});
-        setBase((b)=>({ ...(b||{}), first_name:data?.first_name||form.first_name, last_name:data?.last_name||form.last_name, email:data?.email_address||form.email, phone:phoneDirty?(data?.phone??payload.phone??""):(b?.phone??form.phone), facebook:b?.facebook??form.facebook, instagram:b?.instagram??form.instagram, date_of_birth:dobDirty?(data?.date_of_birth?String(data.date_of_birth).slice(0,10):payload.date_of_birth||""):(b?.date_of_birth??form.date_of_birth) }));
-        setPhoneTaken(false);
-        if(phoneDirty&&form.phone) await axios.post(`${API_BASE}/api/notifications`,{title:"Contact number updated",message:"Your contact number has been updated.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
-        if(phoneDirty&&!form.phone) await axios.post(`${API_BASE}/api/notifications`,{title:"Contact number removed",message:"Your contact number has been removed.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
-        if(dobDirty) await axios.post(`${API_BASE}/api/notifications`,{title:"Birthdate updated",message:"Your birthdate has been updated.",type:"Profile"},{withCredentials:true,headers:headersWithU}).catch(()=>{});
+      const payload={};
+      if(phoneDirty) payload.phone=form.phone||"";
+      if(dobDirty) payload.date_of_birth=form.date_of_birth||null;
+
+      if(avatarDirty){
+        if(!avatarUrl){
+          payload.profile_picture_remove=true;
+        }else if(String(avatarUrl||"").startsWith("data:")){
+          payload.profile_picture_data_url=avatarUrl;
+        }
       }
+
+      const {data}=await axios.post(`${API_BASE}/api/clients/profile${urlQS}`,payload,{withCredentials:true,headers:{ "Content-Type":"application/json",...headersWithU }});
+
+      const nextPf=data?.profile_picture_url||null;
+      setAvatarUrl(nextPf);
+      setAvatarBaseUrl(nextPf);
+      setAvatarError("");
+      if(nextPf) localStorage.setItem("clientProfilePictureUrl", nextPf); else localStorage.removeItem("clientProfilePictureUrl");
+      window.dispatchEvent(new CustomEvent("client-profile-picture-updated",{ detail:{ url: nextPf || "" } }));
+
+      setBase((b)=>({ ...(b||{}), first_name:data?.first_name||form.first_name, last_name:data?.last_name||form.last_name, email:data?.email_address||form.email, phone:phoneDirty?(data?.phone??payload.phone??""):(b?.phone??form.phone), facebook:b?.facebook??form.facebook, instagram:b?.instagram??form.instagram, date_of_birth:dobDirty?(data?.date_of_birth?String(data.date_of_birth).slice(0,10):payload.date_of_birth||""):(b?.date_of_birth??form.date_of_birth) }));
+      setPhoneTaken(false);
       setSaved(true); setSavedProfile(true); setShowSuccess(true); setTimeout(()=>{ setSaved(false); setSavedProfile(false); },1500);
-    }catch(e){ const msg=(e?.response?.data?.message||e?.message||"").toLowerCase(); if(msg.includes("contact number already in use")){ setPhoneTaken(true); setEditingPhone(true); setPhoneEditCommitted(false); } }
+    }catch(e){
+      const msg=(e?.response?.data?.message||e?.message||"").toLowerCase();
+      if(msg.includes("contact number already in use")){ setPhoneTaken(true); setEditingPhone(true); setPhoneEditCommitted(false); }
+      if(msg.includes("profile picture")) setAvatarError(e?.response?.data?.message||"Failed to update profile picture");
+    }
     setSavingProfile(false); setSaving(false); setShowSaving(false);
   };
 
@@ -127,9 +155,36 @@ export default function ClientProfile() {
   const openCalendar=()=>{ if(!editingDob) setEditingDob(true); setDpView(form.date_of_birth?new Date(form.date_of_birth):new Date(maxDOBDate)); setDobEditCommitted(false); if(dobInputRef.current){ const r=dobInputRef.current.getBoundingClientRect(); setDpCoords({ top:r.bottom+8, left:Math.max(8, r.left), width:300 }); } setDpOpen(true); setMonthOpen(false); setYearOpen(false); };
   const setMonthYear=(m,y)=>{ const next=new Date(y,m,1), minStart=new Date(minDOBDate.getFullYear(),minDOBDate.getMonth(),1), maxStart=new Date(maxDOBDate.getFullYear(),maxDOBDate.getMonth(),1); setDpView(next<minStart?minStart:next>maxStart?maxStart:next); };
 
-  const onPickAvatar=()=>{};
-  const onFileChange=()=>{};
-  const onRemoveAvatar=()=>{};
+  const onPickAvatar=()=>{ setAvatarError(""); if(fileRef.current) fileRef.current.click(); };
+
+  const onFileChange=async(e)=>{
+    const f=e?.target?.files?.[0]||null;
+    if(!f) return;
+    setAvatarError("");
+    const allowed=new Set(["image/jpeg","image/png","image/webp"]);
+    if(!allowed.has(f.type)){
+      setAvatarError("Only JPG, PNG, or WEBP is allowed.");
+      try{ e.target.value=""; }catch{}
+      return;
+    }
+    const maxBytes=5*1024*1024;
+    if(f.size>maxBytes){
+      setAvatarError("Profile picture must be 5MB or less.");
+      try{ e.target.value=""; }catch{}
+      return;
+    }
+    const readAsDataUrl=(file)=>new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(String(r.result||"")); r.onerror=reject; r.readAsDataURL(file); });
+    try{
+      const dataUrl=await readAsDataUrl(f);
+      setAvatarUrl(dataUrl);
+      setAvatarError("");
+    }catch{
+      setAvatarError("Failed to read image.");
+    }
+    try{ e.target.value=""; }catch{}
+  };
+
+  const onRemoveAvatar=()=>{ setAvatarError(""); setAvatarUrl(null); };
 
   const initials = useMemo(()=>{ const a=(form.first_name||"").trim().slice(0,1).toUpperCase(); const b=(form.last_name||"").trim().slice(0,1).toUpperCase(); return (a||b)?`${a}${b}`:""; },[form.first_name,form.last_name]);
 
@@ -201,13 +256,26 @@ export default function ClientProfile() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex items-center justify-center">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex flex-col items-center justify-center gap-3">
               <div className="h-24 w-24 rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" onError={()=>setAvatarUrl(null)} />
+                  <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" onError={()=>{ if(String(avatarUrl||"").startsWith("data:")) setAvatarError("Preview failed."); setAvatarUrl(null); }} />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center text-3xl font-semibold text-blue-600">{(initials||"?").toUpperCase()}</div>
                 )}
+              </div>
+
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onFileChange} />
+
+              <div className="w-full flex flex-col gap-2">
+                <button type="button" onClick={onPickAvatar} className="w-full inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-3.5 py-2 text-sm font-medium hover:bg-blue-50">
+                  {avatarUrl ? "Change photo" : "+ Upload photo"}
+                </button>
+                <button type="button" onClick={onRemoveAvatar} disabled={!avatarUrl} className={`w-full inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-medium ${avatarUrl ? "border-red-500 text-red-600 hover:bg-red-50" : "border-gray-200 text-gray-400 cursor-not-allowed"}`}>
+                  Remove
+                </button>
+                {avatarError ? <div className="text-xs text-red-600">{avatarError}</div> : null}
+                {avatarDirty && !avatarError ? <div className="text-[11px] text-gray-500">Photo change pending. Click Confirm to save.</div> : null}
               </div>
             </div>
 
