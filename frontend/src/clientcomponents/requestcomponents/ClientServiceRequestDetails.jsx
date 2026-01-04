@@ -11,6 +11,8 @@ const IMAGE_CACHE_KEY = 'clientServiceImageCache';
 const IMAGE_REFRESH_FLAG = 'clientServiceImageRefreshOnDashboard';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
+const NIGHT_TIME_FEE = 200;
+
 const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }) => {
   const [serviceType, setServiceType] = useState('');
   const [serviceDescription, setServiceDescription] = useState('');
@@ -57,6 +59,91 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     Laundry: ['Dry Cleaning', 'Ironing', 'Wash & Fold', 'Steam Pressing', 'Stain Removal Treatment', 'Curtains & Upholstery Cleaning', 'Delicate Fabric Care', 'Shoe & Leather Cleaning', 'Express Same-Day Laundry', 'Eco-Friendly Washing']
   };
   const sortedServiceTypes = serviceTypes.sort();
+
+  const serviceTaskRates = {
+    Carpentry: {
+      'General Carpentry': 1000,
+      'Furniture Repair': 900,
+      'Wood Polishing': 1200,
+      'Door & Window Fitting': 1500,
+      'Custom Furniture Design': 2000,
+      'Modular Kitchen Installation': 6000,
+      'Flooring & Decking': 3500,
+      'Cabinet & Wardrobe Fixing': 1200,
+      'Wall Paneling & False Ceiling': 4000,
+      'Wood Restoration & Refinishing': 2500
+    },
+    'Electrical Works': {
+      'Wiring Repair': 1000,
+      'Appliance Installation': 800,
+      'Lighting Fixtures': 700,
+      'Circuit Breaker & Fuse Repair': 1200,
+      'CCTV & Security System Setup': 2500,
+      'Fan & Exhaust Installation': 700,
+      'Inverter & Battery Setup': 1800,
+      'Switchboard & Socket Repair': 800,
+      'Electrical Safety Inspection': 1500,
+      'Smart Home Automation': 3000
+    },
+    Plumbing: {
+      'Leak Fixing': 900,
+      'Pipe Installation': 1500,
+      'Bathroom Fittings': 1200,
+      'Drain Cleaning & Unclogging': 1800,
+      'Water Tank Installation': 2500,
+      'Gas Pipeline Installation': 3500,
+      'Septic Tank & Sewer Repair': 4500,
+      'Water Heater Installation': 2000,
+      'Toilet & Sink Repair': 1000,
+      'Kitchen Plumbing Solutions': 1800
+    },
+    'Car Washing': {
+      'Exterior Wash': 350,
+      'Interior Cleaning': 700,
+      'Wax & Polish': 1200,
+      'Underbody Cleaning': 500,
+      'Engine Bay Cleaning': 900,
+      'Headlight Restoration': 1500,
+      'Ceramic Coating': 12000,
+      'Tire & Rim Cleaning': 400,
+      'Vacuum & Odor Removal': 700,
+      'Paint Protection Film Application': 15000
+    },
+    Laundry: {
+      'Dry Cleaning': '₱150/kg',
+      'Ironing': '₱120/kg',
+      'Wash & Fold': '₱60/kg',
+      'Steam Pressing': '₱150/kg',
+      'Stain Removal Treatment': '₱200/kg',
+      'Curtains & Upholstery Cleaning': '₱400–₱800',
+      'Delicate Fabric Care': '₱100/kg',
+      'Shoe & Leather Cleaning': '₱250/pair',
+      'Express Same-Day Laundry': '₱80/kg',
+      'Eco-Friendly Washing': '₱70/kg'
+    }
+  };
+
+  const formatRate = (v) => {
+    if (v === null || v === undefined || v === '') return '';
+    if (typeof v === 'string') return v.trim().startsWith('₱') ? v : `₱${v}`;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '';
+    return `₱${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 }).format(n)}`;
+  };
+
+  const withPerUnitLabel = (rateStr) => {
+    if (!rateStr) return '';
+    return `per unit ${rateStr}`;
+  };
+
+  const shouldShowPerUnit = (type) => type === 'Car Washing' || type === 'Plumbing' || type === 'Carpentry' || type === 'Electrical Works';
+
+  const getSelectedTaskRate = () => {
+    if (!serviceType || !serviceTask) return '';
+    const v = serviceTaskRates?.[serviceType]?.[serviceTask];
+    const r = formatRate(v);
+    return shouldShowPerUnit(serviceType) ? withPerUnitLabel(r) : r;
+  };
 
   const toggleDropdown = () => setShowDropdown(!showDropdown);
 
@@ -492,7 +579,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
   const isGreenTime = (t) => {
     const [hh, mm] = t.split(':').map((x) => parseInt(x, 10));
-    if (hh >= 1 && hh <= 5) return true;
+    if (hh >= 20) return true;
+    if (hh >= 0 && hh <= 5) return true;
     if (hh === 6 && (mm === 0 || mm === 30)) return true;
     return false;
   };
@@ -503,7 +591,18 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     return false;
   };
 
-  const PopList = ({ items, value, onSelect, disabledLabel, emptyLabel='No options', fullWidth=false, title='Select', clearable=false, onClear, clearText='Clear' }) => {
+  const isNightTimeForFee = (t) => {
+    if (!t) return false;
+    const [hh, mm] = String(t).split(':').map((x) => parseInt(x, 10));
+    if (!Number.isFinite(hh) || !Number.isFinite(mm)) return false;
+    if (hh >= 20) return true;
+    if (hh >= 0 && hh <= 5) return true;
+    if (hh === 6 && (mm === 0 || mm === 30)) return true;
+    return false;
+  };
+  const preferredTimeFeeLabel = preferredTime && isNightTimeForFee(preferredTime) ? `+ fee ${formatRate(NIGHT_TIME_FEE)}` : '';
+
+  const PopList = ({ items, value, onSelect, disabledLabel, emptyLabel='No options', fullWidth=false, title='Select', clearable=false, onClear, clearText='Clear', rightLabel }) => {
     const isTimeString = (s) => /^\d{1,2}:\d{2}$/.test(String(s || ''));
     const timeMode = Array.isArray(items) && items.length > 0 && items.every(isTimeString);
     return (
@@ -518,6 +617,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
               : timeMode
                 ? `hover:bg-blue-50 ${isGreenTime(it) ? 'text-green-600' : isRedTime(it) ? 'text-red-600' : 'text-gray-700'}`
                 : 'hover:bg-blue-50 text-gray-700';
+            const right = !timeMode && typeof rightLabel === 'function' ? (rightLabel(it) || '') : '';
             return (
               <button
                 key={it}
@@ -526,11 +626,17 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                 onClick={() => !disabled && onSelect(it)}
                 className={[
                   'text-left py-2 px-3 rounded-lg text-sm',
+                  right ? 'flex items-center justify-between gap-3' : '',
                   colorClass,
                   isSel && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
                 ].join(' ')}
               >
-                {timeMode ? to12h(it) : it}
+                <span className="truncate">{timeMode ? to12h(it) : it}</span>
+                {right ? (
+                  <span className={`shrink-0 text-xs font-semibold ${isSel && !disabled ? 'text-white/90' : 'text-[#008cfc]'}`}>
+                    {right}
+                  </span>
+                ) : null}
               </button>
             );
           }) : (
@@ -651,7 +757,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
                         disabled={!serviceType}
                       >
-                        {serviceTask || 'Select Service Task'}
+                        {serviceTask ? (
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="truncate">{serviceTask}</span>
+                            <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{getSelectedTaskRate()}</span>
+                          </div>
+                        ) : (
+                          <span>Select Service Task</span>
+                        )}
                       </button>
                       <button
                         type="button"
@@ -677,6 +790,10 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         title="Select Service Task"
                         clearable
                         onClear={() => { setServiceTask(''); setTaskOpen(false); }}
+                        rightLabel={(it) => {
+                          const rr = formatRate(serviceTaskRates?.[serviceType]?.[it]);
+                          return shouldShowPerUnit(serviceType) ? withPerUnitLabel(rr) : rr;
+                        }}
                       />
                     )}
                   </div>
@@ -829,16 +946,24 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                   <div className="relative" ref={ptRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Time</label>
                     <div className={`flex items-center rounded-xl border ${attempted && !preferredTime ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
-                      <input
-                        type="text"
-                        value={preferredTime ? to12h(preferredTime) : ''}
+                      <button
+                        type="button"
+                        onClick={openPT}
                         onFocus={openPT}
-                        readOnly
-                        placeholder="hh:mm AM/PM"
-                        className="w-full px-4 py-3 rounded-l-xl focus:outline-none"
-                        required
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
                         aria-invalid={attempted && !preferredTime}
-                      />
+                      >
+                        {preferredTime ? (
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="truncate">{to12h(preferredTime)}</span>
+                            {preferredTimeFeeLabel ? (
+                              <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{preferredTimeFeeLabel}</span>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span>hh:mm AM/PM</span>
+                        )}
+                      </button>
                       <button
                         type="button"
                         onClick={openPT}
