@@ -47,16 +47,77 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     return new Date(y, m - 1, d);
   };
   const [todayStr, setTodayStr] = useState(getTodayLocalDateString());
-  useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); }, []);
-  const jumpTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {} };
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, []);
+  const jumpTop = () => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
+  };
 
   const serviceTypes = ['Carpentry', 'Electrical Works', 'Plumbing', 'Car Washing', 'Laundry'];
   const serviceTasks = {
-    Carpentry: ['General Carpentry', 'Furniture Repair', 'Wood Polishing', 'Door & Window Fitting', 'Custom Furniture Design', 'Modular Kitchen Installation', 'Flooring & Decking', 'Cabinet & Wardrobe Fixing', 'Wall Paneling & False Ceiling', 'Wood Restoration & Refinishing'],
-    'Electrical Works': ['Wiring Repair', 'Appliance Installation', 'Lighting Fixtures', 'Circuit Breaker & Fuse Repair', 'CCTV & Security System Setup', 'Fan & Exhaust Installation', 'Inverter & Battery Setup', 'Switchboard & Socket Repair', 'Electrical Safety Inspection', 'Smart Home Automation'],
-    Plumbing: ['Leak Fixing', 'Pipe Installation', 'Bathroom Fittings', 'Drain Cleaning & Unclogging', 'Water Tank Installation', 'Gas Pipeline Installation', 'Septic Tank & Sewer Repair', 'Water Heater Installation', 'Toilet & Sink Repair', 'Kitchen Plumbing Solutions'],
-    'Car Washing': ['Exterior Wash', 'Interior Cleaning', 'Wax & Polish', 'Underbody Cleaning', 'Engine Bay Cleaning', 'Headlight Restoration', 'Ceramic Coating', 'Tire & Rim Cleaning', 'Vacuum & Odor Removal', 'Paint Protection Film Application'],
-    Laundry: ['Dry Cleaning', 'Ironing', 'Wash & Fold', 'Steam Pressing', 'Stain Removal Treatment', 'Curtains & Upholstery Cleaning', 'Delicate Fabric Care', 'Shoe & Leather Cleaning', 'Express Same-Day Laundry', 'Eco-Friendly Washing']
+    Carpentry: [
+      'General Carpentry',
+      'Furniture Repair',
+      'Wood Polishing',
+      'Door & Window Fitting',
+      'Custom Furniture Design',
+      'Modular Kitchen Installation',
+      'Flooring & Decking',
+      'Cabinet & Wardrobe Fixing',
+      'Wall Paneling & False Ceiling',
+      'Wood Restoration & Refinishing'
+    ],
+    'Electrical Works': [
+      'Wiring Repair',
+      'Appliance Installation',
+      'Lighting Fixtures',
+      'Circuit Breaker & Fuse Repair',
+      'CCTV & Security System Setup',
+      'Fan & Exhaust Installation',
+      'Inverter & Battery Setup',
+      'Switchboard & Socket Repair',
+      'Electrical Safety Inspection',
+      'Smart Home Automation'
+    ],
+    Plumbing: [
+      'Leak Fixing',
+      'Pipe Installation',
+      'Bathroom Fittings',
+      'Drain Cleaning & Unclogging',
+      'Water Tank Installation',
+      'Gas Pipeline Installation',
+      'Septic Tank & Sewer Repair',
+      'Water Heater Installation',
+      'Toilet & Sink Repair',
+      'Kitchen Plumbing Solutions'
+    ],
+    'Car Washing': [
+      'Exterior Wash',
+      'Interior Cleaning',
+      'Wax & Polish',
+      'Underbody Cleaning',
+      'Engine Bay Cleaning',
+      'Headlight Restoration',
+      'Ceramic Coating',
+      'Tire & Rim Cleaning',
+      'Vacuum & Odor Removal',
+      'Paint Protection Film Application'
+    ],
+    Laundry: [
+      'Dry Cleaning',
+      'Ironing',
+      'Wash & Fold',
+      'Steam Pressing',
+      'Stain Removal Treatment',
+      'Curtains & Upholstery Cleaning',
+      'Delicate Fabric Care',
+      'Shoe & Leather Cleaning',
+      'Express Same-Day Laundry',
+      'Eco-Friendly Washing'
+    ]
   };
   const sortedServiceTypes = serviceTypes.sort();
 
@@ -110,16 +171,16 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       'Paint Protection Film Application': 15000
     },
     Laundry: {
-      'Dry Cleaning': '₱150/kg',
-      'Ironing': '₱120/kg',
-      'Wash & Fold': '₱60/kg',
-      'Steam Pressing': '₱150/kg',
-      'Stain Removal Treatment': '₱200/kg',
+      'Dry Cleaning': '₱130/kg',
+      Ironing: '₱100/kg',
+      'Wash & Fold': '₱50/kg',
+      'Steam Pressing': '₱130/kg',
+      'Stain Removal Treatment': '₱180/kg',
       'Curtains & Upholstery Cleaning': '₱400–₱800',
-      'Delicate Fabric Care': '₱100/kg',
+      'Delicate Fabric Care': '₱90/kg',
       'Shoe & Leather Cleaning': '₱250/pair',
-      'Express Same-Day Laundry': '₱80/kg',
-      'Eco-Friendly Washing': '₱70/kg'
+      'Express Same-Day Laundry': '₱70/kg',
+      'Eco-Friendly Washing': '₱60/kg'
     }
   };
 
@@ -136,7 +197,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     return `per unit ${rateStr}`;
   };
 
-  const shouldShowPerUnit = (type) => type === 'Car Washing' || type === 'Plumbing' || type === 'Carpentry' || type === 'Electrical Works';
+  const shouldShowPerUnit = (type) =>
+    type === 'Car Washing' || type === 'Plumbing' || type === 'Carpentry' || type === 'Electrical Works';
 
   const getSelectedTaskRate = () => {
     if (!serviceType || !serviceTask) return '';
@@ -170,12 +232,18 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     if (taskRef.current && !taskRef.current.contains(t)) setTaskOpen(false);
     if (toolsRef.current && !toolsRef.current.contains(t)) setToolsOpen(false);
     if (urgentRef.current && !urgentRef.current.contains(t)) setUrgentOpen(false);
-    if (pdRef.current && !pdRef.current.contains(t)) { setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }
+    if (pdRef.current && !pdRef.current.contains(t)) {
+      setPdOpen(false);
+      setPdMonthOpen(false);
+      setPdYearOpen(false);
+    }
     if (ptRef.current && !ptRef.current.contains(t)) setPtOpen(false);
   };
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
-    return () => { document.removeEventListener('mousedown', handleClickOutside); };
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -260,7 +328,19 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
   useEffect(() => {
     if (!hydrated) return;
-    const payload = { serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, serviceDescription, image, imageName, attachments: image ? [image] : [], request_image_url: requestImageUrl };
+    const payload = {
+      serviceType,
+      serviceTask,
+      preferredDate,
+      preferredTime,
+      isUrgent,
+      toolsProvided,
+      serviceDescription,
+      image,
+      imageName,
+      attachments: image ? [image] : [],
+      request_image_url: requestImageUrl
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     localStorage.setItem(GLOBAL_DESC_KEY, serviceDescription || '');
     if (image) {
@@ -316,8 +396,16 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     };
     const originalPush = history.pushState;
     const originalReplace = history.replaceState;
-    history.pushState = function () { const r = originalPush.apply(this, arguments); window.dispatchEvent(new Event('pushstate')); return r; };
-    history.replaceState = function () { const r = originalReplace.apply(this, arguments); window.dispatchEvent(new Event('replacestate')); return r; };
+    history.pushState = function () {
+      const r = originalPush.apply(this, arguments);
+      window.dispatchEvent(new Event('pushstate'));
+      return r;
+    };
+    history.replaceState = function () {
+      const r = originalReplace.apply(this, arguments);
+      window.dispatchEvent(new Event('replacestate'));
+      return r;
+    };
     window.addEventListener('pushstate', onNavCheck);
     window.addEventListener('replacestate', onNavCheck);
     window.addEventListener('popstate', onNavCheck);
@@ -345,7 +433,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       const forceRefresh = localStorage.getItem(IMAGE_REFRESH_FLAG) === '1';
       if (image && !forceRefresh) return;
       if (!forceRefresh && localStorage.getItem(IMAGE_CLEARED_FLAG) === '1') return;
-      const path = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : '';
+      const path =
+        typeof window !== 'undefined' && window.location && window.location.pathname ? window.location.pathname : '';
       const isCreateFlow = path.includes('/clientpostrequest');
       if (isCreateFlow) return;
 
@@ -377,11 +466,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       }
       if (!email) return;
       try {
-        const res = await fetch(`${API_BASE}/api/clientservicerequests/details?email=${encodeURIComponent(email)}&limit=1`, { credentials: 'include' });
+        const res = await fetch(
+          `${API_BASE}/api/clientservicerequests/details?email=${encodeURIComponent(email)}&limit=1`,
+          { credentials: 'include' }
+        );
         if (!res.ok) return;
         const j = await res.json();
         const row = Array.isArray(j.items) && j.items.length ? j.items[0] : null;
-        const src = row && (row.request_image_url || row.image_url) ? (row.request_image_url || row.image_url) : null;
+        const src = row && (row.request_image_url || row.image_url) ? row.request_image_url || row.image_url : null;
         if (src) {
           setImage(src);
           setImageName(row.image_name || '');
@@ -401,8 +493,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     run();
   }, [image]);
 
-  const handleServiceTypeChange = (val) => { setServiceType(val); setServiceTask(''); };
-  const handleUrgentChange = (value) => { setIsUrgent(value); };
+  const handleServiceTypeChange = (val) => {
+    setServiceType(val);
+    setServiceTask('');
+  };
+  const handleUrgentChange = (value) => {
+    setIsUrgent(value);
+  };
 
   const handleImageChange = async (e) => {
     const file = e.target.files && e.target.files[0];
@@ -429,7 +526,10 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   };
 
   const handlePreferredDateChange = (value) => {
-    if (!value) { setPreferredDate(''); return; }
+    if (!value) {
+      setPreferredDate('');
+      return;
+    }
     setPreferredDate(value < todayStr ? todayStr : value);
   };
 
@@ -448,10 +548,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
   useEffect(() => {
     if (!isLoadingNext) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
-    return () => { window.removeEventListener('popstate', onPopState, true); };
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+    };
   }, [isLoadingNext]);
 
   useEffect(() => {
@@ -459,7 +563,10 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       document.body.style.overflow = prev;
@@ -469,10 +576,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
   useEffect(() => {
     if (!isLoadingBack) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
-    return () => { window.removeEventListener('popstate', onPopState, true); };
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+    };
   }, [isLoadingBack]);
 
   useEffect(() => {
@@ -480,7 +591,10 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       document.body.style.overflow = prev;
@@ -494,7 +608,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       jumpTop();
       localStorage.setItem(PRESERVE_IMAGE_FLAG, '1');
       setIsLoadingNext(true);
-      setTimeout(() => { handleNext(); }, 2000);
+      setTimeout(() => {
+        handleNext();
+      }, 2000);
     }
   };
 
@@ -502,7 +618,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     localStorage.setItem(PRESERVE_IMAGE_FLAG, '1');
     jumpTop();
     setIsLoadingBack(true);
-    setTimeout(() => { handleBack(); }, 2000);
+    setTimeout(() => {
+      handleBack();
+    }, 2000);
   };
 
   const toYMD = (d) => {
@@ -521,10 +639,24 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
   const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
   const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, 1);
-  const isSameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const isSameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
   const [pdView, setPdView] = useState(new Date());
-  const monthsList = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const monthsList = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
+  ];
   const yearsList = (() => {
     const ys = [];
     const start = fromYMDLocal(todayStr).getFullYear();
@@ -600,54 +732,79 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     if (hh === 6 && (mm === 0 || mm === 30)) return true;
     return false;
   };
-  const preferredTimeFeeLabel = preferredTime && isNightTimeForFee(preferredTime) ? `+ fee ${formatRate(NIGHT_TIME_FEE)}` : '';
+  const preferredTimeFeeLabel =
+    preferredTime && isNightTimeForFee(preferredTime) ? `+ fee ${formatRate(NIGHT_TIME_FEE)}` : '';
 
-  const PopList = ({ items, value, onSelect, disabledLabel, emptyLabel='No options', fullWidth=false, title='Select', clearable=false, onClear, clearText='Clear', rightLabel }) => {
+  const PopList = ({
+    items,
+    value,
+    onSelect,
+    disabledLabel,
+    emptyLabel = 'No options',
+    fullWidth = false,
+    title = 'Select',
+    clearable = false,
+    onClear,
+    clearText = 'Clear',
+    rightLabel
+  }) => {
     const isTimeString = (s) => /^\d{1,2}:\d{2}$/.test(String(s || ''));
     const timeMode = Array.isArray(items) && items.length > 0 && items.every(isTimeString);
     return (
-      <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
+      <div
+        className={`absolute z-50 mt-2 ${
+          fullWidth ? 'left-0 right-0 w-full' : 'w-80'
+        } rounded-xl border border-gray-200 bg-white shadow-xl p-3`}
+      >
         <div className="text-sm font-semibold text-gray-800 px-2 pb-2">{title}</div>
         <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
-          {items && items.length ? items.map((it) => {
-            const isSel = value === it;
-            const disabled = disabledLabel && disabledLabel(it);
-            const colorClass = disabled
-              ? 'text-gray-300 cursor-not-allowed'
-              : timeMode
-                ? `hover:bg-blue-50 ${isGreenTime(it) ? 'text-green-600' : isRedTime(it) ? 'text-red-600' : 'text-gray-700'}`
-                : 'hover:bg-blue-50 text-gray-700';
-            const right = !timeMode && typeof rightLabel === 'function' ? (rightLabel(it) || '') : '';
-            return (
-              <button
-                key={it}
-                type="button"
-                disabled={disabled}
-                onClick={() => !disabled && onSelect(it)}
-                className={[
-                  'text-left py-2 px-3 rounded-lg text-sm',
-                  right ? 'flex items-center justify-between gap-3' : '',
-                  colorClass,
-                  isSel && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
-                ].join(' ')}
-              >
-                <span className="truncate">{timeMode ? to12h(it) : it}</span>
-                {right ? (
-                  <span className={`shrink-0 text-xs font-semibold ${isSel && !disabled ? 'text-white/90' : 'text-[#008cfc]'}`}>
-                    {right}
-                  </span>
-                ) : null}
-              </button>
-            );
-          }) : (
+          {items && items.length ? (
+            items.map((it) => {
+              const isSel = value === it;
+              const disabled = disabledLabel && disabledLabel(it);
+              const colorClass = disabled
+                ? 'text-gray-300 cursor-not-allowed'
+                : timeMode
+                  ? `hover:bg-blue-50 ${isGreenTime(it) ? 'text-green-600' : isRedTime(it) ? 'text-red-600' : 'text-gray-700'}`
+                  : 'hover:bg-blue-50 text-gray-700';
+              const right = !timeMode && typeof rightLabel === 'function' ? rightLabel(it) || '' : '';
+              return (
+                <button
+                  key={it}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => !disabled && onSelect(it)}
+                  className={[
+                    'text-left py-2 px-3 rounded-lg text-sm',
+                    right ? 'flex items-center justify-between gap-3' : '',
+                    colorClass,
+                    isSel && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
+                  ].join(' ')}
+                >
+                  <span className="truncate">{timeMode ? to12h(it) : it}</span>
+                  {right ? (
+                    <span className={`shrink-0 text-xs font-semibold ${isSel && !disabled ? 'text-white/90' : 'text-[#008cfc]'}`}>
+                      {right}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })
+          ) : (
             <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
           )}
         </div>
         <div className="flex items-center justify-between mt-3 px-2">
-          <span className="text-xs text-gray-400">{(items && items.length ? items.length : 0)} result{(items && items.length === 1) ? '' : 's'}</span>
+          <span className="text-xs text-gray-400">
+            {items && items.length ? items.length : 0} result{items && items.length === 1 ? '' : 's'}
+          </span>
           {clearable ? (
-            <button type="button" onClick={onClear} className="text-xs text-gray-500 hover:text-gray-700">{clearText}</button>
-          ) : <span />}
+            <button type="button" onClick={onClear} className="text-xs text-gray-500 hover:text-gray-700">
+              {clearText}
+            </button>
+          ) : (
+            <span />
+          )}
         </div>
       </div>
     );
@@ -658,7 +815,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+            <img
+              src="/jdklogo.png"
+              alt=""
+              className="h-8 w-8 object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
             <div className="text-2xl md:text-3xl font-semibold text-gray-900">Please fill in your request details</div>
           </div>
           <div className="flex items-center gap-2">
@@ -691,33 +855,35 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="relative" ref={stRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Service Type</label>
-                    <select
-                      value={serviceType}
-                      onChange={(e)=>handleServiceTypeChange(e.target.value)}
-                      className="hidden"
-                      aria-hidden="true"
-                      tabIndex={-1}
-                    >
+                    <select value={serviceType} onChange={(e) => handleServiceTypeChange(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
                       <option value=""></option>
-                      {sortedServiceTypes.map((t)=> <option key={t} value={t}>{t}</option>)}
+                      {sortedServiceTypes.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
                     </select>
 
-                    <div className={`flex items-center rounded-xl border ${attempted && !serviceType ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
-                      <button
-                        type="button"
-                        onClick={() => setStOpen((s)=>!s)}
-                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
-                      >
+                    <div
+                      className={`flex items-center rounded-xl border ${
+                        attempted && !serviceType ? 'border-red-500' : 'border-gray-300'
+                      } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
+                    >
+                      <button type="button" onClick={() => setStOpen((s) => !s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
                         {serviceType || 'Select Service Type'}
                       </button>
                       <button
                         type="button"
-                        onClick={() => setStOpen((s)=>!s)}
+                        onClick={() => setStOpen((s) => !s)}
                         className="px-3 pr-4 text-gray-600 hover:text-gray-800"
                         aria-label="Open service type options"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                          <path
+                            fillRule="evenodd"
+                            d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                            clipRule="evenodd"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -727,11 +893,17 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       <PopList
                         items={sortedServiceTypes}
                         value={serviceType}
-                        onSelect={(v)=>{ handleServiceTypeChange(v); setStOpen(false); }}
+                        onSelect={(v) => {
+                          handleServiceTypeChange(v);
+                          setStOpen(false);
+                        }}
                         fullWidth
                         title="Select Service Type"
                         clearable
-                        onClear={() => { handleServiceTypeChange(''); setStOpen(false); }}
+                        onClear={() => {
+                          handleServiceTypeChange('');
+                          setStOpen(false);
+                        }}
                       />
                     )}
                   </div>
@@ -740,20 +912,28 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     <label className="block text-sm font-medium text-gray-700 mb-2">Service Task</label>
                     <select
                       value={serviceTask}
-                      onChange={(e)=>setServiceTask(e.target.value)}
+                      onChange={(e) => setServiceTask(e.target.value)}
                       className="hidden"
                       aria-hidden="true"
                       tabIndex={-1}
                       disabled={!serviceType}
                     >
                       <option value=""></option>
-                      {serviceType && serviceTasks[serviceType].map((t)=> <option key={t} value={t}>{t}</option>)}
+                      {serviceType && serviceTasks[serviceType].map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
                     </select>
 
-                    <div className={`flex items-center rounded-xl border ${attempted && !serviceTask ? 'border-red-500' : 'border-gray-300'} ${!serviceType ? 'opacity-60 cursor-not-allowed' : ''} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
+                    <div
+                      className={`flex items-center rounded-xl border ${
+                        attempted && !serviceTask ? 'border-red-500' : 'border-gray-300'
+                      } ${!serviceType ? 'opacity-60 cursor-not-allowed' : ''} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
+                    >
                       <button
                         type="button"
-                        onClick={() => serviceType && setTaskOpen((s)=>!s)}
+                        onClick={() => serviceType && setTaskOpen((s) => !s)}
                         className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
                         disabled={!serviceType}
                       >
@@ -768,13 +948,17 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       </button>
                       <button
                         type="button"
-                        onClick={() => serviceType && setTaskOpen((s)=>!s)}
+                        onClick={() => serviceType && setTaskOpen((s) => !s)}
                         className="px-3 pr-4 text-gray-600 hover:text-gray-800"
                         aria-label="Open service task options"
                         disabled={!serviceType}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                          <path
+                            fillRule="evenodd"
+                            d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                            clipRule="evenodd"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -784,12 +968,18 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       <PopList
                         items={serviceTasks[serviceType] || []}
                         value={serviceTask}
-                        onSelect={(v)=>{ setServiceTask(v); setTaskOpen(false); }}
+                        onSelect={(v) => {
+                          setServiceTask(v);
+                          setTaskOpen(false);
+                        }}
                         emptyLabel="Select a service type first"
                         fullWidth
                         title="Select Service Task"
                         clearable
-                        onClear={() => { setServiceTask(''); setTaskOpen(false); }}
+                        onClear={() => {
+                          setServiceTask('');
+                          setTaskOpen(false);
+                        }}
                         rightLabel={(it) => {
                           const rr = formatRate(serviceTaskRates?.[serviceType]?.[it]);
                           return shouldShowPerUnit(serviceType) ? withPerUnitLabel(rr) : rr;
@@ -800,7 +990,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
                   <div className="relative" ref={pdRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Date</label>
-                    <div className={`flex items-center rounded-xl border ${attempted && (!preferredDate || isPastDate) ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
+                    <div
+                      className={`flex items-center rounded-xl border ${
+                        attempted && (!preferredDate || isPastDate) ? 'border-red-500' : 'border-gray-300'
+                      } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
+                    >
                       <input
                         type="text"
                         value={preferredDate ? toMDY(fromYMDLocal(preferredDate)) : ''}
@@ -811,19 +1005,16 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         required
                         aria-invalid={attempted && (!preferredDate || isPastDate)}
                       />
-                      <button
-                        type="button"
-                        onClick={openPD}
-                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                        aria-label="Open calendar"
-                      >
+                      <button type="button" onClick={openPD} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open calendar">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 01-1-1z" />
                           <path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" />
                         </svg>
                       </button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Earliest: <span className="font-medium">{toMDY(fromYMDLocal(todayStr))}</span></p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Earliest: <span className="font-medium">{toMDY(fromYMDLocal(todayStr))}</span>
+                    </p>
                     {attempted && !preferredDate && <p className="text-xs text-red-600 mt-1">Please choose a date.</p>}
                     {attempted && isPastDate && <p className="text-xs text-red-600 mt-1">Date cannot be in the past.</p>}
 
@@ -835,12 +1026,17 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                             onClick={() => canPrevPD() && setPdView(addMonths(pdView, -1))}
                             className={`p-2 rounded-lg hover:bg-gray-100 ${canPrevPD() ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
                             aria-label="Previous month"
-                          >‹</button>
+                          >
+                            ‹
+                          </button>
                           <div className="relative flex items-center gap-2">
                             <div className="relative">
                               <button
                                 type="button"
-                                onClick={() => { setPdMonthOpen((v)=>!v); setPdYearOpen(false); }}
+                                onClick={() => {
+                                  setPdMonthOpen((v) => !v);
+                                  setPdYearOpen(false);
+                                }}
                                 className="min-w-[120px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
                               >
                                 {monthsList[pdView.getMonth()]}
@@ -848,13 +1044,18 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                               </button>
                               {pdMonthOpen ? (
                                 <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                  {monthsList.map((m,i)=>(
+                                  {monthsList.map((m, i) => (
                                     <button
                                       key={m}
                                       type="button"
-                                      onClick={()=>{ setPDMonthYear(i,pdView.getFullYear()); setPdMonthOpen(false); }}
-                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${i===pdView.getMonth()?"bg-blue-100":""}`}
-                                    >{m}</button>
+                                      onClick={() => {
+                                        setPDMonthYear(i, pdView.getFullYear());
+                                        setPdMonthOpen(false);
+                                      }}
+                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${i === pdView.getMonth() ? 'bg-blue-100' : ''}`}
+                                    >
+                                      {m}
+                                    </button>
                                   ))}
                                 </div>
                               ) : null}
@@ -862,7 +1063,10 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                             <div className="relative">
                               <button
                                 type="button"
-                                onClick={() => { setPdYearOpen((v)=>!v); setPdMonthOpen(false); }}
+                                onClick={() => {
+                                  setPdYearOpen((v) => !v);
+                                  setPdMonthOpen(false);
+                                }}
                                 className="min-w-[90px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
                               >
                                 {pdView.getFullYear()}
@@ -870,13 +1074,18 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                               </button>
                               {pdYearOpen ? (
                                 <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                  {yearsList.map((y)=>(
+                                  {yearsList.map((y) => (
                                     <button
                                       key={y}
                                       type="button"
-                                      onClick={()=>{ setPDMonthYear(pdView.getMonth(),y); setPdYearOpen(false); }}
-                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${y===pdView.getFullYear()?"bg-blue-100":""}`}
-                                    >{y}</button>
+                                      onClick={() => {
+                                        setPDMonthYear(pdView.getMonth(), y);
+                                        setPdYearOpen(false);
+                                      }}
+                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${y === pdView.getFullYear() ? 'bg-blue-100' : ''}`}
+                                    >
+                                      {y}
+                                    </button>
                                   ))}
                                 </div>
                               ) : null}
@@ -887,11 +1096,17 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                             onClick={() => canNextPD() && setPdView(addMonths(pdView, 1))}
                             className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
                             aria-label="Next month"
-                          >›</button>
+                          >
+                            ›
+                          </button>
                         </div>
 
                         <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
-                          {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d) => <div key={d} className="py-1">{d}</div>)}
+                          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+                            <div key={d} className="py-1">
+                              {d}
+                            </div>
+                          ))}
                         </div>
 
                         {(() => {
@@ -918,7 +1133,12 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                                     key={`d-${dayNum}`}
                                     type="button"
                                     disabled={disabled}
-                                    onClick={() => { handlePreferredDateChange(toYMD(d)); setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }}
+                                    onClick={() => {
+                                      handlePreferredDateChange(toYMD(d));
+                                      setPdOpen(false);
+                                      setPdMonthOpen(false);
+                                      setPdYearOpen(false);
+                                    }}
                                     className={[
                                       'py-2 rounded-lg transition text-sm w-9 h-9 mx-auto',
                                       disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700',
@@ -930,14 +1150,37 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                                 );
                               }
                             }
-                            cells.push(<div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">{row}</div>);
+                            cells.push(
+                              <div key={`r-${r}`} className="grid grid-cols-7 gap-1 px-2">
+                                {row}
+                              </div>
+                            );
                           }
                           return <div className="mt-1">{cells}</div>;
                         })()}
 
                         <div className="flex items-center justify-between mt-3 px-2">
-                          <button type="button" onClick={() => { setPreferredDate(''); setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
-                          <button type="button" onClick={() => { setPdView(fromYMDLocal(todayStr)); }} className="text-xs text-blue-600 hover:text-blue-700">Jump to today</button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreferredDate('');
+                              setPdOpen(false);
+                              setPdMonthOpen(false);
+                              setPdYearOpen(false);
+                            }}
+                            className="text-xs text-gray-500 hover:text-gray-700"
+                          >
+                            Clear
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPdView(fromYMDLocal(todayStr));
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-700"
+                          >
+                            Jump to today
+                          </button>
                         </div>
                       </div>
                     )}
@@ -945,7 +1188,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
                   <div className="relative" ref={ptRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Time</label>
-                    <div className={`flex items-center rounded-xl border ${attempted && !preferredTime ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
+                    <div
+                      className={`flex items-center rounded-xl border ${
+                        attempted && !preferredTime ? 'border-red-500' : 'border-gray-300'
+                      } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
+                    >
                       <button
                         type="button"
                         onClick={openPT}
@@ -964,14 +1211,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                           <span>hh:mm AM/PM</span>
                         )}
                       </button>
-                      <button
-                        type="button"
-                        onClick={openPT}
-                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                        aria-label="Open time options"
-                      >
+                      <button type="button" onClick={openPT} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open time options">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-12.5a.75.75 0 00-1.5 0V10c0 .199.079.39.22.53l2.75 2.75a.75.75 0 101.06-1.06l-2.53-2.53V5.5z" clipRule="evenodd" />
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-12.5a.75.75 0 00-1.5 0V10c0 .199.079.39.22.53l2.75 2.75a.75.75 0 101.06-1.06l-2.53-2.53V5.5z"
+                            clipRule="evenodd"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -995,7 +1241,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                                   setPreferredTime(t);
                                   setPtOpen(false);
                                 }}
-                                className={`py-2 rounded-lg text-sm ${disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 '}${disabled ? '' : (isGreenTime(t) ? 'text-green-600' : isRedTime(t) ? 'text-red-600' : 'text-gray-700')} ${preferredTime === t && !disabled ? ' bg-blue-600 text-white hover:bg-blue-600' : ''}`}
+                                className={`py-2 rounded-lg text-sm ${
+                                  disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 '
+                                }${
+                                  disabled ? '' : isGreenTime(t) ? 'text-green-600' : isRedTime(t) ? 'text-red-600' : 'text-gray-700'
+                                } ${preferredTime === t && !disabled ? ' bg-blue-600 text-white hover:bg-blue-600' : ''}`}
                               >
                                 {to12h(t)}
                               </button>
@@ -1005,7 +1255,16 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         <div className="flex items-center justify-between mt-3 px-2">
                           <span className="text-xs text-gray-400">{timeSlots.length} results</span>
                           <div className="flex items-center gap-3">
-                            <button type="button" onClick={() => { setPreferredTime(''); setPtOpen(false); }} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPreferredTime('');
+                                setPtOpen(false);
+                              }}
+                              className="text-xs text-gray-500 hover:text-gray-700"
+                            >
+                              Clear
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
@@ -1013,10 +1272,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                                 const mins = n.getMinutes();
                                 let up = mins % 30 === 0 ? mins : mins + (30 - (mins % 30));
                                 let h = n.getHours();
-                                if (up === 60) { h = h + 1; up = 0; }
-                                const cand = `${String(h).padStart(2,'0')}:${String(up).padStart(2,'0')}`;
+                                if (up === 60) {
+                                  h = h + 1;
+                                  up = 0;
+                                }
+                                const cand = `${String(h).padStart(2, '0')}:${String(up).padStart(2, '0')}`;
                                 if (preferredDate === todayStr) {
-                                  const next = timeSlots.find(tt => tt >= cand);
+                                  const next = timeSlots.find((tt) => tt >= cand);
                                   if (next) setPreferredTime(next);
                                   else setPreferredTime('');
                                 } else {
@@ -1036,34 +1298,26 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
                   <div className="relative" ref={toolsRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Tools Provided?</label>
-                    <select
-                      value={toolsProvided}
-                      onChange={(e)=>setToolsProvided(e.target.value)}
-                      className="hidden"
-                      aria-hidden="true"
-                      tabIndex={-1}
-                    >
+                    <select value={toolsProvided} onChange={(e) => setToolsProvided(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
                       <option value=""></option>
                       <option value="Yes">Yes</option>
                       <option value="No">No</option>
                     </select>
 
-                    <div className={`flex items-center rounded-xl border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
-                      <button
-                        type="button"
-                        onClick={() => setToolsOpen((s)=>!s)}
-                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
-                      >
+                    <div
+                      className={`flex items-center rounded-xl border ${
+                        attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'
+                      } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
+                    >
+                      <button type="button" onClick={() => setToolsOpen((s) => !s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
                         {toolsProvided || 'Select Yes or No'}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setToolsOpen((s)=>!s)}
-                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                        aria-label="Open tools provided options"
-                      >
+                      <button type="button" onClick={() => setToolsOpen((s) => !s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open tools provided options">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" />
+                          <path
+                            fillRule="evenodd"
+                            d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -1072,47 +1326,45 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
                     {toolsOpen && (
                       <PopList
-                        items={['Yes','No']}
+                        items={['Yes', 'No']}
                         value={toolsProvided}
-                        onSelect={(v)=>{ setToolsProvided(v); setToolsOpen(false); }}
+                        onSelect={(v) => {
+                          setToolsProvided(v);
+                          setToolsOpen(false);
+                        }}
                         fullWidth
                         title="Select Tools Provided"
                         clearable
-                        onClear={() => { setToolsProvided(''); setToolsOpen(false); }}
+                        onClear={() => {
+                          setToolsProvided('');
+                          setToolsOpen(false);
+                        }}
                       />
                     )}
                   </div>
 
                   <div className="relative" ref={urgentRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Is The Request Urgent?</label>
-                    <select
-                      value={isUrgent}
-                      onChange={(e)=>handleUrgentChange(e.target.value)}
-                      className="hidden"
-                      aria-hidden="true"
-                      tabIndex={-1}
-                    >
+                    <select value={isUrgent} onChange={(e) => handleUrgentChange(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
                       <option value=""></option>
                       <option value="Yes">Yes</option>
                       <option value="No">No</option>
                     </select>
 
-                    <div className={`flex items-center rounded-xl border ${attempted && !isUrgent ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
-                      <button
-                        type="button"
-                        onClick={() => setUrgentOpen((s)=>!s)}
-                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
-                      >
+                    <div
+                      className={`flex items-center rounded-xl border ${
+                        attempted && !isUrgent ? 'border-red-500' : 'border-gray-300'
+                      } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
+                    >
+                      <button type="button" onClick={() => setUrgentOpen((s) => !s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
                         {isUrgent || 'Select Yes or No'}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setUrgentOpen((s)=>!s)}
-                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                        aria-label="Open urgent options"
-                      >
+                      <button type="button" onClick={() => setUrgentOpen((s) => !s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open urgent options">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" />
+                          <path
+                            fillRule="evenodd"
+                            d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -1121,13 +1373,19 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
                     {urgentOpen && (
                       <PopList
-                        items={['Yes','No']}
+                        items={['Yes', 'No']}
                         value={isUrgent}
-                        onSelect={(v)=>{ handleUrgentChange(v); setUrgentOpen(false); }}
+                        onSelect={(v) => {
+                          handleUrgentChange(v);
+                          setUrgentOpen(false);
+                        }}
                         fullWidth
                         title="Select Urgency"
                         clearable
-                        onClear={() => { handleUrgentChange(''); setUrgentOpen(false); }}
+                        onClear={() => {
+                          handleUrgentChange('');
+                          setUrgentOpen(false);
+                        }}
                       />
                     )}
                   </div>
@@ -1138,7 +1396,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       value={serviceDescription}
                       onChange={(e) => setServiceDescription(e.target.value)}
                       placeholder="Describe the service you need"
-                      className={`w-full px-4 py-3 border ${attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40`}
+                      className={`w-full px-4 py-3 border ${
+                        attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'
+                      } rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40`}
                       required
                       aria-invalid={attempted && !serviceDescription.trim()}
                     />
@@ -1163,7 +1423,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     {image && (
                       <button
                         type="button"
-                        onClick={() => { setImage(null); setImageName(''); setAttachments([]); setRequestImageUrl(''); localStorage.removeItem(IMAGE_CACHE_KEY); localStorage.removeItem(IMAGE_REFRESH_FLAG); }}
+                        onClick={() => {
+                          setImage(null);
+                          setImageName('');
+                          setAttachments([]);
+                          setRequestImageUrl('');
+                          localStorage.removeItem(IMAGE_CACHE_KEY);
+                          localStorage.removeItem(IMAGE_REFRESH_FLAG);
+                        }}
                         className="rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
                       >
                         Remove
@@ -1190,7 +1457,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                   {requestImageUrl && <input type="hidden" name="request_image_url" value={requestImageUrl} readOnly />}
                 </div>
               </div>
-
             </div>
           </div>
         </div>
@@ -1204,11 +1470,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
             Back : Personal Information
           </button>
 
-        <button
+          <button
             type="button"
             onClick={onNextClick}
             disabled={!isFormValid}
-            className={`sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-[#0077d6]' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'} focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40`}
+            className={`sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${
+              isFormValid ? 'bg-[#008cfc] text-white hover:bg-[#0077d6]' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
+            } focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40`}
             aria-disabled={!isFormValid}
           >
             Next : Service Rate
@@ -1223,8 +1491,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           aria-label="Loading next step"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -1260,8 +1534,14 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           aria-label="Back to Step 1"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />

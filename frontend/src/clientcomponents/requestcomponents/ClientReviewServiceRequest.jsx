@@ -169,6 +169,10 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     rate_value = savedRate.rateValue,
     payment_method: payment_method_state,
     units: units_state,
+    quantity_unit: quantity_unit_state,
+    billable_units: billable_units_state,
+    minimum_quantity: minimum_quantity_state,
+    minimum_applied: minimum_applied_state,
     base_rate_raw: base_rate_raw_state,
     base_rate_numeric: base_rate_numeric_state,
     subtotal: subtotal_state,
@@ -289,6 +293,54 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     return toUnit(savedRate?.units);
   }, [units_state, savedRate]);
 
+  const isLaundry = useMemo(() => String(service_type || '').trim() === 'Laundry', [service_type]);
+
+  const quantityUnit = useMemo(() => {
+    const v = quantity_unit_state !== undefined ? quantity_unit_state : savedRate?.quantity_unit;
+    const s2 = String(v || '').trim().toLowerCase();
+    if (!s2) return isLaundry ? 'kg' : 'unit';
+    if (s2 === 'kilogram' || s2 === 'kilograms') return 'kg';
+    return s2;
+  }, [quantity_unit_state, savedRate, isLaundry]);
+
+  const minimumQty = useMemo(() => {
+    const v = minimum_quantity_state !== undefined ? minimum_quantity_state : savedRate?.minimum_quantity;
+    const n = Number(v);
+    if (Number.isFinite(n) && n > 0) return Math.max(1, Math.floor(n));
+    if (isLaundry && quantityUnit === 'kg') return 8;
+    return null;
+  }, [minimum_quantity_state, savedRate, isLaundry, quantityUnit]);
+
+  const minimumApplied = useMemo(() => {
+    const v = minimum_applied_state !== undefined ? minimum_applied_state : savedRate?.minimum_applied;
+    return !!v;
+  }, [minimum_applied_state, savedRate]);
+
+  const billableUnits = useMemo(() => {
+    const v = billable_units_state !== undefined ? billable_units_state : savedRate?.billable_units;
+    const n = Number(v);
+    if (Number.isFinite(n) && n >= 1) return Math.max(1, Math.floor(n));
+    if (isLaundry && quantityUnit === 'kg') {
+      const min = Number(minimumQty);
+      const minSafe = Number.isFinite(min) && min > 0 ? min : 8;
+      return Math.max(minSafe, rateUnits);
+    }
+    return rateUnits;
+  }, [billable_units_state, savedRate, isLaundry, quantityUnit, minimumQty, rateUnits]);
+
+  const unitDisplayLabel = useMemo(() => {
+    if (isLaundry) {
+      if (quantityUnit === 'kg') return 'kg';
+      if (quantityUnit === 'pc') return rateUnits === 1 ? 'pc' : 'pcs';
+      if (quantityUnit === 'pair') return rateUnits === 1 ? 'pair' : 'pairs';
+      if (quantityUnit === 'load') return rateUnits === 1 ? 'load' : 'loads';
+      if (quantityUnit === 'bag') return rateUnits === 1 ? 'bag' : 'bags';
+      if (quantityUnit) return rateUnits === 1 ? quantityUnit : `${quantityUnit}s`;
+      return 'items';
+    }
+    return rateUnits === 1 ? 'unit' : 'units';
+  }, [isLaundry, quantityUnit, rateUnits]);
+
   const baseRateRaw = useMemo(() => {
     const v = base_rate_raw_state !== undefined ? base_rate_raw_state : savedRate?.base_rate_raw;
     return v ?? '';
@@ -363,8 +415,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     const isElement = React.isValidElement(value);
     const mapped = typeof value === 'boolean' ? yesNo(value) : value;
     const isEmpty =
-      !isElement &&
-      (mapped === null || mapped === undefined || (typeof mapped === 'string' && mapped.trim() === ''));
+      !isElement && (mapped === null || mapped === undefined || (typeof mapped === 'string' && mapped.trim() === ''));
     const display = isElement ? value : isEmpty ? emptyAs : mapped;
     const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
@@ -623,6 +674,10 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           subtotal: rateDraft.subtotal ?? null,
           preferred_time_fee: rateDraft.preferred_time_fee ?? null,
           total: rateDraft.total ?? null,
+          quantity_unit: rateDraft.quantity_unit ?? null,
+          billable_units: rateDraft.billable_units ?? null,
+          minimum_quantity: rateDraft.minimum_quantity ?? null,
+          minimum_applied: !!rateDraft.minimum_applied,
           payment_method: paymentMethod
         },
         details: {
@@ -749,6 +804,10 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         subtotal: normalized.metadata.subtotal,
         preferred_time_fee: normalized.metadata.preferred_time_fee,
         total: normalized.metadata.total,
+        quantity_unit: normalized.metadata.quantity_unit,
+        billable_units: normalized.metadata.billable_units,
+        minimum_quantity: normalized.metadata.minimum_quantity,
+        minimum_applied: normalized.metadata.minimum_applied,
         payment_method: paymentMethod
       };
 
@@ -913,33 +972,51 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                 </div>
                 <div className="border-t border-gray-100" />
                 <div className="px-6 py-6">
-                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
-                    <LabelValue label="Service Type" value={service_type} />
-                    <LabelValue label="Service Task" value={service_task} />
-                    <LabelValue label="Preferred Date" value={preferred_date_display} />
-                    <LabelValue label="Preferred Time" value={preferred_time_display} />
-                    <LabelValue
-                      label="Urgent"
-                      value={<span className="text-[15px] md:text-base font-semibold text-[#008cfc]">{toBoolStrict(is_urgent) ? 'Yes' : 'No'}</span>}
-                    />
-                    <LabelValue
-                      label="Tools Provided"
-                      value={
-                        <span className="text-[15px] md:text-base font-semibold text-[#008cfc]">
-                          {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
-                        </span>
-                      }
-                    />
-                    <div className="md:col-span-2">
+                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6 items-start ${review_image ? '' : 'md:grid-cols-1'}`}>
+                    <div className="space-y-5">
+                      <LabelValue label="Service Type" value={service_type} />
+                      <LabelValue label="Service Task" value={service_task} />
+                      <LabelValue label="Preferred Date" value={preferred_date_display} />
+                      <LabelValue label="Preferred Time" value={preferred_time_display} />
+                      <LabelValue
+                        label="Urgent"
+                        value={<span className="text-[15px] md:text-base font-semibold text-[#008cfc]">{toBoolStrict(is_urgent) ? 'Yes' : 'No'}</span>}
+                      />
+                      <LabelValue
+                        label="Tools Provided"
+                        value={
+                          <span className="text-[15px] md:text-base font-semibold text-[#008cfc]">
+                            {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
+                          </span>
+                        }
+                      />
+
+                      {isLaundry ? (
+                        <LabelValue
+                          label="Laundry Quantity"
+                          value={
+                            <span className="text-[15px] md:text-base font-semibold text-[#008cfc]">
+                              {rateUnits} {unitDisplayLabel}
+                              {quantityUnit === 'kg' && minimumApplied && Number.isFinite(Number(billableUnits)) && billableUnits !== rateUnits ? (
+                                <span className="ml-2 text-xs font-semibold text-gray-600">
+                                  (billed as {billableUnits} kg{minimumQty ? ` • min ${minimumQty}kg` : ''})
+                                </span>
+                              ) : null}
+                            </span>
+                          }
+                        />
+                      ) : null}
+
                       <LabelValue label="Description" value={service_description || '-'} />
                     </div>
+
                     {review_image ? (
-                      <div className="md:col-span-2">
-                        <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
-                          <span className="text-gray-700 font-semibold">Request Image:</span>
-                          <div className="w-full">
-                            <div className="w-full h-64 rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50">
-                              <img src={review_image} alt="" className="w-full h-full object-cover" />
+                      <div className="md:pl-2">
+                        <div className="flex flex-col gap-2">
+                          <div className="text-gray-700 font-semibold">Request Image:</div>
+                          <div className="w-full rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50 border border-gray-200">
+                            <div className="w-full h-[260px] sm:h-[300px]">
+                              <img src={review_image} alt="" className="h-full w-full object-cover" />
                             </div>
                           </div>
                         </div>
@@ -973,10 +1050,15 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                             </div>
 
                             <div className="rounded-xl border border-gray-200 bg-white p-4">
-                              <div className="text-xs text-gray-500 font-medium">Units</div>
+                              <div className="text-xs text-gray-500 font-medium">{isLaundry ? 'Quantity' : 'Units'}</div>
                               <div className="mt-1 text-base font-semibold text-gray-900">
-                                {rateUnits} unit{rateUnits === 1 ? '' : 's'}
+                                {rateUnits} {unitDisplayLabel}
                               </div>
+                              {isLaundry && quantityUnit === 'kg' && minimumApplied && Number.isFinite(Number(billableUnits)) && billableUnits !== rateUnits ? (
+                                <div className="mt-1 text-xs text-gray-500 font-semibold">
+                                  billed as {billableUnits} kg{minimumQty ? ` • min ${minimumQty}kg` : ''}
+                                </div>
+                              ) : null}
                             </div>
 
                             <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -1061,25 +1143,38 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     </div>
 
                     {rateTypeNormalized === 'Service Task Rate' ? (
-                      <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm font-semibold text-gray-900">Total</div>
-                          <div className="text-2xl font-bold text-gray-900">{peso(total)}</div>
-                        </div>
-                        <div className="mt-3 grid grid-cols-2 gap-3">
-                          <div className="rounded-xl bg-white border border-gray-100 px-3 py-2">
-                            <div className="text-[11px] text-gray-500 font-medium">Units</div>
-                            <div className="text-sm font-semibold text-gray-900">{rateUnits}</div>
+                      <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                          <div className="px-4 pt-4 pb-2 text-[11px] tracking-wider text-gray-500 font-semibold">TOTAL</div>
+                          <div className="px-4 pb-4 flex items-center justify-between gap-3">
+                            <div className="text-base font-semibold text-gray-900">Total</div>
+                            <div className="text-2xl font-bold text-gray-900">{peso(total)}</div>
                           </div>
-                          <div className="rounded-xl bg-white border border-gray-100 px-3 py-2">
-                            <div className="text-[11px] text-gray-500 font-medium">Fee</div>
-                            <div className={`text-sm font-semibold ${preferredTimeFee > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                              {preferredTimeFee > 0 ? `+ ${peso(preferredTimeFee)}` : '—'}
+
+                          <div className="px-4 pb-4 -mt-1">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="rounded-xl bg-white border border-gray-200 px-3 py-2">
+                                <div className="text-[11px] text-gray-500 font-medium">{isLaundry ? 'Quantity' : 'Units'}</div>
+                                <div className="text-sm font-semibold text-gray-900">
+                                  {rateUnits} {unitDisplayLabel}
+                                </div>
+                                {isLaundry && quantityUnit === 'kg' && minimumApplied && Number.isFinite(Number(billableUnits)) && billableUnits !== rateUnits ? (
+                                  <div className="mt-1 text-[11px] font-semibold text-gray-500">billed as {billableUnits} kg</div>
+                                ) : null}
+                              </div>
+
+                              <div className="rounded-xl bg-white border border-gray-200 px-3 py-2">
+                                <div className="text-[11px] text-gray-500 font-medium">Fee</div>
+                                <div className={`text-sm font-semibold ${preferredTimeFee > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                                  {preferredTimeFee > 0 ? `+ ${peso(preferredTimeFee)}` : '—'}
+                                </div>
+                              </div>
+
+                              <div className="col-span-2 rounded-xl bg-white border border-gray-200 px-3 py-2">
+                                <div className="text-[11px] text-gray-500 font-medium">Base rate</div>
+                                <div className="text-sm font-semibold text-gray-900">{baseRateDisplay || '—'}</div>
+                              </div>
                             </div>
-                          </div>
-                          <div className="col-span-2 rounded-xl bg-white border border-gray-100 px-3 py-2">
-                            <div className="text-[11px] text-gray-500 font-medium">Base rate</div>
-                            <div className="text-sm font-semibold text-gray-900">{baseRateDisplay || '—'}</div>
                           </div>
                         </div>
                       </div>
@@ -1122,7 +1217,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
 
                       {rateTypeNormalized === 'Service Task Rate' ? (
                         <div className="mt-3 text-xs text-gray-500">
-                          Total is based on your selected task rate × units, plus preferred time fee (if applicable).
+                          Total is based on your selected task rate × {isLaundry ? 'quantity' : 'units'}, plus preferred time fee (if applicable).
                         </div>
                       ) : null}
                     </div>
@@ -1355,17 +1450,12 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           tabIndex={-1}
           autoFocus
           onKeyDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
+            if (e.key === 'Escape') handleGoDashboard();
           }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+          <div className="relative w-[420px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBroken ? (
                 <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
@@ -1376,21 +1466,23 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
               )}
             </div>
 
-            <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">Request Submitted!</div>
-              <div className="text-sm text-gray-600">
-                Please wait for admin approval within <span className="font-medium">1–2 hours</span>.
-              </div>
-              <div className="text-xs text-gray-500">The details below will remain on this page for your reference.</div>
+            <div className="mt-6 text-center">
+              <div className="text-xl font-semibold text-gray-900">Request Submitted</div>
+              <div className="mt-1 text-sm text-gray-600">Your service request has been successfully submitted.</div>
+              {requestGroupId ? (
+                <div className="mt-3 text-xs text-gray-500">
+                  Reference: <span className="font-semibold text-gray-800">{String(requestGroupId)}</span>
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-6">
               <button
                 type="button"
                 onClick={handleGoDashboard}
-                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                className="w-full h-[48px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
               >
-                Go back to Dashboard
+                Go to Dashboard
               </button>
             </div>
           </div>

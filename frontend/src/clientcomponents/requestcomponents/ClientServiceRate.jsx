@@ -1,9 +1,11 @@
+// ClientServiceRate.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const STORAGE_KEY = 'clientServiceRate';
 const DETAILS_KEY = 'clientServiceRequestDetails';
 const NIGHT_TIME_FEE = 200;
+const MIN_LAUNDRY_KG = 8;
 
 const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const [rateType, setRateType] = useState('');
@@ -84,16 +86,16 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         'Paint Protection Film Application': 15000
       },
       Laundry: {
-        'Dry Cleaning': '₱150/kg',
-        Ironing: '₱120/kg',
-        'Wash & Fold': '₱60/kg',
-        'Steam Pressing': '₱150/kg',
-        'Stain Removal Treatment': '₱200/kg',
-        'Curtains & Upholstery Cleaning': '₱400–₱800',
-        'Delicate Fabric Care': '₱100/kg',
-        'Shoe & Leather Cleaning': '₱250/pair',
-        'Express Same-Day Laundry': '₱80/kg',
-        'Eco-Friendly Washing': '₱70/kg'
+        'Wash & Fold': '₱50/kg',
+        Ironing: '₱100/kg',
+        'Dry Cleaning': '₱130/kg',
+        'Steam Pressing': '₱130/kg',
+        'Stain Removal Treatment': '₱180/kg',
+        'Delicate Fabric Care': '₱90/kg',
+        'Eco-Friendly Washing': '₱60/kg',
+        'Express Same-Day Laundry': '₱70/kg',
+        'Curtains & Upholstery Cleaning': '₱600/pc',
+        'Shoe & Leather Cleaning': '₱250/pair'
       }
     }),
     []
@@ -138,6 +140,8 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
     return false;
   };
 
+  const isLaundry = serviceType === 'Laundry';
+
   const baseRateRaw = useMemo(() => {
     if (!serviceType || !serviceTask) return '';
     const v = serviceTaskRates?.[serviceType]?.[serviceTask];
@@ -145,20 +149,50 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   }, [serviceType, serviceTask, serviceTaskRates]);
 
   const baseRateNum = useMemo(() => parseNumericRate(baseRateRaw), [baseRateRaw]);
+
   const baseRateDisplay = useMemo(() => {
     const r = formatRate(baseRateRaw);
     if (!r) return '';
     return shouldShowPerUnit(serviceType) ? withPerUnitLabel(r) : r;
   }, [baseRateRaw, serviceType]);
 
+  const quantityUnit = useMemo(() => {
+    if (!isLaundry) return 'unit';
+    const s = String(baseRateRaw || '').toLowerCase();
+    if (s.includes('/pair') || s.includes('pair')) return 'pair';
+    if (s.includes('/pc') || s.includes('/piece') || s.includes('piece')) return 'pc';
+    if (s.includes('/load') || s.includes('load')) return 'load';
+    if (s.includes('/bag') || s.includes('bag')) return 'bag';
+    if (s.includes('/kg') || s.includes('kg')) return 'kg';
+    return 'item';
+  }, [isLaundry, baseRateRaw]);
+
+  const unitLabel = useMemo(() => {
+    const n = Math.max(1, Number(units) || 1);
+    if (quantityUnit === 'kg') return 'kg';
+    if (quantityUnit === 'pc') return n === 1 ? 'pc' : 'pcs';
+    return n === 1 ? quantityUnit : `${quantityUnit}s`;
+  }, [quantityUnit, units]);
+
+  const inputUnitsSafe = useMemo(() => Math.max(1, Number(units) || 1), [units]);
+
+  const billableUnits = useMemo(() => {
+    if (isLaundry && quantityUnit === 'kg') return Math.max(MIN_LAUNDRY_KG, inputUnitsSafe);
+    return inputUnitsSafe;
+  }, [isLaundry, quantityUnit, inputUnitsSafe]);
+
+  const minApplied = useMemo(
+    () => isLaundry && quantityUnit === 'kg' && inputUnitsSafe < MIN_LAUNDRY_KG,
+    [isLaundry, quantityUnit, inputUnitsSafe]
+  );
+
   const nightFeeApplies = useMemo(() => !!preferredTime && isNightTimeForFee(preferredTime), [preferredTime]);
   const nightFee = nightFeeApplies ? NIGHT_TIME_FEE : 0;
 
   const computedSubtotal = useMemo(() => {
     if (!Number.isFinite(baseRateNum) || baseRateNum <= 0) return 0;
-    const u = Math.max(1, Number(units) || 1);
-    return baseRateNum * u;
-  }, [baseRateNum, units]);
+    return baseRateNum * billableUnits;
+  }, [baseRateNum, billableUnits]);
 
   const computedTotal = useMemo(() => computedSubtotal + nightFee, [computedSubtotal, nightFee]);
 
@@ -192,7 +226,6 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
       } catch {}
     }
     setHydrated(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -214,7 +247,11 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
       serviceType,
       serviceTask,
       preferredTime,
-      units: Math.max(1, Number(units) || 1),
+      units: inputUnitsSafe,
+      quantity_unit: quantityUnit,
+      billable_units: billableUnits,
+      minimum_quantity: isLaundry && quantityUnit === 'kg' ? MIN_LAUNDRY_KG : null,
+      minimum_applied: !!minApplied,
       base_rate_raw: baseRateRaw,
       base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
       subtotal: Number.isFinite(computedSubtotal) ? computedSubtotal : 0,
@@ -222,7 +259,23 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
       total: Number.isFinite(computedTotal) ? computedTotal : 0
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [hydrated, serviceType, serviceTask, preferredTime, units, baseRateRaw, baseRateNum, computedSubtotal, nightFee, computedTotal]);
+  }, [
+    hydrated,
+    serviceType,
+    serviceTask,
+    preferredTime,
+    units,
+    baseRateRaw,
+    baseRateNum,
+    computedSubtotal,
+    nightFee,
+    computedTotal,
+    quantityUnit,
+    inputUnitsSafe,
+    billableUnits,
+    minApplied,
+    isLaundry
+  ]);
 
   useEffect(() => {
     if (!isLoadingNext) return;
@@ -294,7 +347,11 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         rate_value: rateValue,
         service_type: serviceType,
         service_task: serviceTask,
-        units: Math.max(1, Number(units) || 1),
+        units: inputUnitsSafe,
+        quantity_unit: quantityUnit,
+        billable_units: billableUnits,
+        minimum_quantity: isLaundry && quantityUnit === 'kg' ? MIN_LAUNDRY_KG : null,
+        minimum_applied: !!minApplied,
         base_rate_raw: baseRateRaw,
         base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
         subtotal: computedSubtotal,
@@ -344,19 +401,14 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
             <h3 className="text-xl md:text-2xl font-semibold text-gray-900">Service Request Price Rate</h3>
-            <span
-              style={{ display: 'none' }}
-              className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200"
-            >
+            <span style={{ display: 'none' }} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Rate
             </span>
           </div>
 
           <div className="px-6 py-6">
-            <p className="text-base text-gray-600 mb-6">
-              Your rate is automatically based on the service type and task you selected in the previous step.
-            </p>
+            <p className="text-base text-gray-600 mb-6">Your rate is automatically based on the service type and task you selected in the previous step.</p>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
@@ -377,9 +429,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                       <div className={`rounded-xl border px-4 py-3 ${attempted && !serviceTask ? 'border-red-500' : 'border-gray-300'}`}>
                         <div className="flex items-center justify-between gap-3">
                           <span className="truncate text-gray-900">{serviceTask || 'Not selected'}</span>
-                          {baseRateDisplay ? (
-                            <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{baseRateDisplay}</span>
-                          ) : null}
+                          {baseRateDisplay ? <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{baseRateDisplay}</span> : null}
                         </div>
                       </div>
                       {attempted && !serviceTask && <p className="text-xs text-red-600 mt-1">Please go back and select a service task.</p>}
@@ -387,10 +437,8 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
 
                     <div className="md:col-span-2">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm font-medium text-gray-700">How many units?</div>
-                        {attempted && hasDetails && !(Number.isFinite(baseRateNum) && baseRateNum > 0) ? (
-                          <span className="text-xs text-red-600">Rate not available for this task</span>
-                        ) : null}
+                        <div className="text-sm font-medium text-gray-700">{isLaundry ? `How many ${quantityUnit === 'kg' ? 'kg' : unitLabel}?` : 'How many units?'}</div>
+                        {attempted && hasDetails && !(Number.isFinite(baseRateNum) && baseRateNum > 0) ? <span className="text-xs text-red-600">Rate not available for this task</span> : null}
                       </div>
 
                       <div className={`rounded-2xl border p-4 ${attempted && !isFormValid ? 'border-red-200 bg-red-50/40' : 'border-gray-200 bg-gray-50/40'}`}>
@@ -405,8 +453,8 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                               −
                             </button>
                             <div className="min-w-[90px] text-center">
-                              <div className="text-2xl font-semibold text-gray-900">{Math.max(1, Number(units) || 1)}</div>
-                              <div className="text-xs text-gray-500">unit{(Math.max(1, Number(units) || 1) === 1) ? '' : 's'}</div>
+                              <div className="text-2xl font-semibold text-gray-900">{inputUnitsSafe}</div>
+                              <div className="text-xs text-gray-500">{unitLabel}</div>
                             </div>
                             <button
                               type="button"
@@ -425,24 +473,30 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                             </div>
                             <div className="flex items-center justify-between mt-1">
                               <span className="text-sm text-gray-600">Preferred time fee</span>
-                              <span className={`text-sm font-semibold ${nightFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                                {nightFeeApplies ? `+ ${peso(nightFee)}` : '—'}
-                              </span>
+                              <span className={`text-sm font-semibold ${nightFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>{nightFeeApplies ? `+ ${peso(nightFee)}` : '—'}</span>
                             </div>
                             <div className="h-px bg-gray-200 my-3" />
                             <div className="flex items-center justify-between">
                               <span className="text-base font-semibold text-gray-900">Total</span>
                               <span className="text-base font-semibold text-gray-900">{peso(computedTotal)}</span>
                             </div>
+                            {isLaundry && quantityUnit === 'kg' ? (
+                              <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
+                                <div className="text-xs text-gray-700">
+                                  Minimum charge is <span className="font-semibold">8kg</span>.
+                                  {minApplied ? (
+                                    <span className="ml-1">
+                                      You entered <span className="font-semibold">{inputUnitsSafe}kg</span>, billed as <span className="font-semibold">8kg</span>.
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       </div>
 
-                      {attempted && !isFormValid ? (
-                        <p className="text-xs text-red-600 mt-2">
-                          Please ensure your service type/task is selected and the task has a valid rate.
-                        </p>
-                      ) : null}
+                      {attempted && !isFormValid ? <p className="text-xs text-red-600 mt-2">Please ensure your service type/task is selected and the task has a valid rate.</p> : null}
                     </div>
                   </div>
                 </div>
@@ -457,18 +511,24 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                       <span className="text-sm font-semibold text-gray-900">{baseRateDisplay || '—'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-gray-600">Units</span>
-                      <span className="text-sm font-semibold text-gray-900">{Math.max(1, Number(units) || 1)}</span>
+                      <span className="text-sm text-gray-600">{isLaundry ? 'Quantity' : 'Units'}</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {inputUnitsSafe} {unitLabel}
+                      </span>
                     </div>
+                    {isLaundry && quantityUnit === 'kg' ? (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-gray-600">Billable kg</span>
+                        <span className={`text-sm font-semibold ${minApplied ? 'text-[#008cfc]' : 'text-gray-900'}`}>{billableUnits} kg</span>
+                      </div>
+                    ) : null}
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm text-gray-600">Subtotal</span>
                       <span className="text-sm font-semibold text-gray-900">{peso(computedSubtotal)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm text-gray-600">Preferred time fee</span>
-                      <span className={`text-sm font-semibold ${nightFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                        {nightFeeApplies ? `+ ${peso(nightFee)}` : '—'}
-                      </span>
+                      <span className={`text-sm font-semibold ${nightFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>{nightFeeApplies ? `+ ${peso(nightFee)}` : '—'}</span>
                     </div>
                     <div className="h-px bg-gray-200 my-2" />
                     <div className="flex items-center justify-between gap-3">
@@ -527,25 +587,11 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
-              <div
-                className="absolute inset-0 animate-spin rounded-full"
-                style={{
-                  borderWidth: '10px',
-                  borderStyle: 'solid',
-                  borderColor: '#008cfc22',
-                  borderTopColor: '#008cfc',
-                  borderRadius: '9999px'
-                }}
-              />
+              <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
@@ -575,25 +621,11 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
-              <div
-                className="absolute inset-0 animate-spin rounded-full"
-                style={{
-                  borderWidth: '10px',
-                  borderStyle: 'solid',
-                  borderColor: '#008cfc22',
-                  borderTopColor: '#008cfc',
-                  borderRadius: '9999px'
-                }}
-              />
+              <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
