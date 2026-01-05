@@ -7,6 +7,9 @@ const DETAILS_KEY = 'clientServiceRequestDetails';
 const NIGHT_TIME_FEE = 200;
 const MIN_LAUNDRY_KG = 8;
 
+const INCLUDED_WORKERS = 2;
+const EXTRA_WORKER_FEE = 150;
+
 const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const [rateType, setRateType] = useState('');
   const [rateFrom, setRateFrom] = useState('');
@@ -22,6 +25,10 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const [serviceTask, setServiceTask] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
   const [units, setUnits] = useState(1);
+
+  const [workersNeeded, setWorkersNeeded] = useState(1);
+  const [extraWorkerCount, setExtraWorkerCount] = useState(0);
+  const [extraWorkersFeeTotal, setExtraWorkersFeeTotal] = useState(0);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -194,7 +201,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
     return baseRateNum * billableUnits;
   }, [baseRateNum, billableUnits]);
 
-  const computedTotal = useMemo(() => computedSubtotal + nightFee, [computedSubtotal, nightFee]);
+  const computedTotal = useMemo(() => computedSubtotal + nightFee + (Number(extraWorkersFeeTotal) || 0), [computedSubtotal, nightFee, extraWorkersFeeTotal]);
 
   const hasDetails = !!serviceType && !!serviceTask;
   const isFormValid = hasDetails && Number.isFinite(baseRateNum) && baseRateNum > 0 && (Number(units) || 0) >= 1;
@@ -207,6 +214,18 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         setServiceType(d.serviceType || '');
         setServiceTask(d.serviceTask || '');
         setPreferredTime(d.preferredTime || '');
+        const wn = Number(d.workersNeeded);
+        const safeWN = Number.isFinite(wn) && wn >= 1 ? wn : 1;
+        setWorkersNeeded(safeWN);
+
+        const ec = Number(d.extra_worker_count);
+        const ef = Number(d.extra_workers_fee);
+
+        if (Number.isFinite(ec) && ec >= 0) setExtraWorkerCount(ec);
+        else setExtraWorkerCount(Math.max(0, safeWN - INCLUDED_WORKERS));
+
+        if (Number.isFinite(ef) && ef >= 0) setExtraWorkersFeeTotal(ef);
+        else setExtraWorkersFeeTotal(Math.max(0, safeWN - INCLUDED_WORKERS) * EXTRA_WORKER_FEE);
       } catch {}
     }
 
@@ -223,6 +242,15 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         if (!serviceType && (data.serviceType || '')) setServiceType(data.serviceType || '');
         if (!serviceTask && (data.serviceTask || '')) setServiceTask(data.serviceTask || '');
         if (!preferredTime && (data.preferredTime || '')) setPreferredTime(data.preferredTime || '');
+
+        const wn2 = Number(data.workersNeeded);
+        const safeWN2 = Number.isFinite(wn2) && wn2 >= 1 ? wn2 : null;
+        if (safeWN2 !== null) setWorkersNeeded(safeWN2);
+
+        const ec2 = Number(data.extra_worker_count);
+        const ef2 = Number(data.extra_workers_fee);
+        if (Number.isFinite(ec2) && ec2 >= 0) setExtraWorkerCount(ec2);
+        if (Number.isFinite(ef2) && ef2 >= 0) setExtraWorkersFeeTotal(ef2);
       } catch {}
     }
     setHydrated(true);
@@ -256,6 +284,9 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
       base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
       subtotal: Number.isFinite(computedSubtotal) ? computedSubtotal : 0,
       preferred_time_fee: nightFee,
+      workersNeeded,
+      extra_worker_count: Number.isFinite(Number(extraWorkerCount)) ? Number(extraWorkerCount) : 0,
+      extra_workers_fee: Number.isFinite(Number(extraWorkersFeeTotal)) ? Number(extraWorkersFeeTotal) : 0,
       total: Number.isFinite(computedTotal) ? computedTotal : 0
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -274,7 +305,10 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
     inputUnitsSafe,
     billableUnits,
     minApplied,
-    isLaundry
+    isLaundry,
+    workersNeeded,
+    extraWorkerCount,
+    extraWorkersFeeTotal
   ]);
 
   useEffect(() => {
@@ -356,6 +390,9 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
         subtotal: computedSubtotal,
         preferred_time_fee: nightFee,
+        workers_needed: workersNeeded,
+        extra_worker_count: Number(extraWorkerCount) || 0,
+        extra_workers_fee: Number(extraWorkersFeeTotal) || 0,
         total: computedTotal
       };
 
@@ -379,6 +416,8 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const incUnits = () => setUnits((u) => Math.min(999, (Number(u) || 1) + 1));
 
   const peso = (n) => `₱${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 }).format(Number(n) || 0)}`;
+
+  const workersFeeApplies = (Number(extraWorkersFeeTotal) || 0) > 0;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
@@ -435,6 +474,20 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                       {attempted && !serviceTask && <p className="text-xs text-red-600 mt-1">Please go back and select a service task.</p>}
                     </div>
 
+                    <div>
+                      <div className="text-sm font-medium text-gray-700 mb-2">Workers Needed</div>
+                      <div className="rounded-xl border px-4 py-3 border-gray-300">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="truncate text-gray-900">
+                            {Math.max(1, Number(workersNeeded) || 1)} worker{Math.max(1, Number(workersNeeded) || 1) === 1 ? '' : 's'}
+                          </span>
+                          {workersFeeApplies ? (
+                            <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{`+ fee ${peso(extraWorkersFeeTotal)}`}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="md:col-span-2">
                       <div className="flex items-center justify-between mb-2">
                         <div className="text-sm font-medium text-gray-700">{isLaundry ? `How many ${quantityUnit === 'kg' ? 'kg' : unitLabel}?` : 'How many units?'}</div>
@@ -475,6 +528,10 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                               <span className="text-sm text-gray-600">Preferred time fee</span>
                               <span className={`text-sm font-semibold ${nightFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>{nightFeeApplies ? `+ ${peso(nightFee)}` : '—'}</span>
                             </div>
+                            <div className="flex items-center justify-between mt-1">
+                              <span className="text-sm text-gray-600">Extra workers fee</span>
+                              <span className={`text-sm font-semibold ${workersFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>{workersFeeApplies ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}</span>
+                            </div>
                             <div className="h-px bg-gray-200 my-3" />
                             <div className="flex items-center justify-between">
                               <span className="text-base font-semibold text-gray-900">Total</span>
@@ -509,6 +566,16 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm text-gray-600">Base rate</span>
                       <span className="text-sm font-semibold text-gray-900">{baseRateDisplay || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-gray-600">Workers</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {Math.max(1, Number(workersNeeded) || 1)} worker{Math.max(1, Number(workersNeeded) || 1) === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-gray-600">Extra workers fee</span>
+                      <span className={`text-sm font-semibold ${workersFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>{workersFeeApplies ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm text-gray-600">{isLaundry ? 'Quantity' : 'Units'}</span>

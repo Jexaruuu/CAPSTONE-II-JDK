@@ -1,4 +1,3 @@
-// frontend/src/pages/client/ClientServiceRequestDetails.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { compressImageFileToDataURL } from '../../utils/imageCompression';
 
@@ -13,6 +12,10 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const NIGHT_TIME_FEE = 200;
 
+const INCLUDED_WORKERS = 2;
+const EXTRA_WORKER_FEE = 150;
+const MAX_WORKERS = 6;
+
 const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }) => {
   const [serviceType, setServiceType] = useState('');
   const [serviceDescription, setServiceDescription] = useState('');
@@ -21,6 +24,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const [preferredTime, setPreferredTime] = useState('');
   const [isUrgent, setIsUrgent] = useState('');
   const [toolsProvided, setToolsProvided] = useState('');
+  const [workersNeeded, setWorkersNeeded] = useState(1);
   const [image, setImage] = useState(null);
   const [imageName, setImageName] = useState('');
   const [attachments, setAttachments] = useState([]);
@@ -34,6 +38,12 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const [logoBroken, setLogoBroken] = useState(false);
   const fileRef = useRef(null);
 
+  const clampInt = (v, min, max) => {
+    const n = parseInt(String(v), 10);
+    if (!Number.isFinite(n)) return min;
+    return Math.min(max, Math.max(min, n));
+  };
+
   const getTodayLocalDateString = () => {
     const now = new Date();
     const y = now.getFullYear();
@@ -41,15 +51,19 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const d = String(now.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   };
+
   const fromYMDLocal = (s) => {
     if (!s) return new Date();
     const [y, m, d] = s.split('-').map((n) => parseInt(n, 10));
     return new Date(y, m - 1, d);
   };
+
   const [todayStr, setTodayStr] = useState(getTodayLocalDateString());
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
+
   const jumpTop = () => {
     try {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -119,6 +133,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       'Eco-Friendly Washing'
     ]
   };
+
   const sortedServiceTypes = serviceTypes.sort();
 
   const serviceTaskRates = {
@@ -215,6 +230,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const urgentRef = useRef(null);
   const pdRef = useRef(null);
   const ptRef = useRef(null);
+  const workersRef = useRef(null);
 
   const [stOpen, setStOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
@@ -224,6 +240,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const [ptOpen, setPtOpen] = useState(false);
   const [pdMonthOpen, setPdMonthOpen] = useState(false);
   const [pdYearOpen, setPdYearOpen] = useState(false);
+  const [workersOpen, setWorkersOpen] = useState(false);
 
   const handleClickOutside = (event) => {
     const t = event.target;
@@ -238,7 +255,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       setPdYearOpen(false);
     }
     if (ptRef.current && !ptRef.current.contains(t)) setPtOpen(false);
+    if (workersRef.current && !workersRef.current.contains(t)) setWorkersOpen(false);
   };
+
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
@@ -295,8 +314,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         setPreferredTime(data.preferredTime || '');
         setIsUrgent(data.isUrgent || '');
         setToolsProvided(data.toolsProvided || '');
+        setWorkersNeeded(clampInt(data.workersNeeded ?? data.workers_needed ?? 1, 1, MAX_WORKERS));
         if (!forceRefresh) {
-          const img = data.image || data.request_image_url || (Array.isArray(data.attachments) && data.attachments[0]) || null;
+          const img =
+            data.image ||
+            data.request_image_url ||
+            (Array.isArray(data.attachments) && data.attachments[0]) ||
+            null;
           hydratedImage = img || null;
           hydratedImageName = data.imageName || '';
         }
@@ -326,6 +350,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     setHydrated(true);
   }, []);
 
+  const workersNeededSafe = clampInt(workersNeeded, 1, MAX_WORKERS);
+  const extraWorkerCount = Math.max(0, workersNeededSafe - INCLUDED_WORKERS);
+  const extraWorkersFeeTotal = extraWorkerCount * EXTRA_WORKER_FEE;
+  const workersFeeLabel = extraWorkerCount > 0 ? `+ fee ${formatRate(extraWorkersFeeTotal)}` : '';
+
   useEffect(() => {
     if (!hydrated) return;
     const payload = {
@@ -335,6 +364,17 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       preferredTime,
       isUrgent,
       toolsProvided,
+      workersNeeded: workersNeededSafe,
+      workers_needed: workersNeededSafe,
+      worker_needed: workersNeededSafe,
+      number_of_workers: workersNeededSafe,
+      num_workers: workersNeededSafe,
+      manpower: workersNeededSafe,
+      included_workers: INCLUDED_WORKERS,
+      extra_worker_fee_per_worker: EXTRA_WORKER_FEE,
+      max_workers: MAX_WORKERS,
+      extra_worker_count: extraWorkerCount,
+      extra_workers_fee: extraWorkersFeeTotal,
       serviceDescription,
       image,
       imageName,
@@ -346,7 +386,22 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     if (image) {
       localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify({ image, imageName }));
     }
-  }, [hydrated, serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, serviceDescription, image, imageName, requestImageUrl]);
+  }, [
+    hydrated,
+    serviceType,
+    serviceTask,
+    preferredDate,
+    preferredTime,
+    isUrgent,
+    toolsProvided,
+    workersNeededSafe,
+    extraWorkerCount,
+    extraWorkersFeeTotal,
+    serviceDescription,
+    image,
+    imageName,
+    requestImageUrl
+  ]);
 
   useEffect(() => {
     const clear = () => {
@@ -374,9 +429,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       setAttachments([]);
       setRequestImageUrl('');
     };
+
     const onNavCheck = () => {
       if (window.location.pathname === '/clientdashboard' || window.location.pathname.startsWith('/clientdashboard')) clear();
     };
+
     const onClick = (e) => {
       const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
       if (a) {
@@ -384,38 +441,46 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         if (href === '/clientdashboard' || href?.startsWith('/clientdashboard')) clear();
       }
     };
+
     const onStorage = (e) => {
       if (e && e.key === CONFIRM_FLAG && e.newValue === '1') {
         clear();
         localStorage.removeItem(CONFIRM_FLAG);
       }
     };
+
     const onCustomConfirmed = () => {
       clear();
       localStorage.removeItem(CONFIRM_FLAG);
     };
+
     const originalPush = history.pushState;
     const originalReplace = history.replaceState;
+
     history.pushState = function () {
       const r = originalPush.apply(this, arguments);
       window.dispatchEvent(new Event('pushstate'));
       return r;
     };
+
     history.replaceState = function () {
       const r = originalReplace.apply(this, arguments);
       window.dispatchEvent(new Event('replacestate'));
       return r;
     };
+
     window.addEventListener('pushstate', onNavCheck);
     window.addEventListener('replacestate', onNavCheck);
     window.addEventListener('popstate', onNavCheck);
     document.addEventListener('click', onClick, true);
     window.addEventListener('storage', onStorage);
     window.addEventListener('client-request-confirmed', onCustomConfirmed);
+
     if (localStorage.getItem(CONFIRM_FLAG) === '1') {
       clear();
       localStorage.removeItem(CONFIRM_FLAG);
     }
+
     return () => {
       window.removeEventListener('pushstate', onNavCheck);
       window.removeEventListener('replacestate', onNavCheck);
@@ -433,6 +498,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       const forceRefresh = localStorage.getItem(IMAGE_REFRESH_FLAG) === '1';
       if (image && !forceRefresh) return;
       if (!forceRefresh && localStorage.getItem(IMAGE_CLEARED_FLAG) === '1') return;
+
       const path =
         typeof window !== 'undefined' && window.location && window.location.pathname ? window.location.pathname : '';
       const isCreateFlow = path.includes('/clientpostrequest');
@@ -465,6 +531,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         } catch {}
       }
       if (!email) return;
+
       try {
         const res = await fetch(
           `${API_BASE}/api/clientservicerequests/details?email=${encodeURIComponent(email)}&limit=1`,
@@ -488,6 +555,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
           localStorage.removeItem(IMAGE_CACHE_KEY);
         }
       } catch {}
+
       if (forceRefresh) localStorage.removeItem(IMAGE_REFRESH_FLAG);
     };
     run();
@@ -497,6 +565,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     setServiceType(val);
     setServiceTask('');
   };
+
   const handleUrgentChange = (value) => {
     setIsUrgent(value);
   };
@@ -534,6 +603,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   };
 
   const isPreferredDateValid = preferredDate && preferredDate >= todayStr;
+
   const isFormValid =
     serviceType &&
     serviceTask &&
@@ -541,6 +611,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     preferredTime &&
     isUrgent &&
     toolsProvided &&
+    workersNeededSafe >= 1 &&
     serviceDescription.trim() &&
     !!image;
 
@@ -629,6 +700,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const da = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${da}`;
   };
+
   const toMDY = (d) => {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const da = String(d.getDate()).padStart(2, '0');
@@ -657,15 +729,18 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     'November',
     'December'
   ];
+
   const yearsList = (() => {
     const ys = [];
     const start = fromYMDLocal(todayStr).getFullYear();
     for (let y = start; y <= start + 5; y++) ys.push(y);
     return ys;
   })();
+
   const inRangePD = (date) => date >= fromYMDLocal(todayStr);
   const canPrevPD = () => addMonths(startOfMonth(pdView), -1) >= startOfMonth(fromYMDLocal(todayStr));
   const canNextPD = () => true;
+
   const openPD = () => {
     if (preferredDate) setPdView(fromYMDLocal(preferredDate));
     else setPdView(fromYMDLocal(todayStr));
@@ -673,6 +748,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     setPdMonthOpen(false);
     setPdYearOpen(false);
   };
+
   const setPDMonthYear = (m, y) => {
     const next = new Date(y, m, 1);
     const minStart = startOfMonth(fromYMDLocal(todayStr));
@@ -680,6 +756,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   };
 
   const openPT = () => setPtOpen((s) => !s);
+
   const to12h = (hhmm) => {
     if (!hhmm) return '';
     const [h, m] = hhmm.split(':').map((x) => parseInt(x, 10));
@@ -687,6 +764,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const hr = h % 12 === 0 ? 12 : h % 12;
     return `${hr}:${String(m).padStart(2, '0')} ${ampm}`;
   };
+
   const timeSlots = (() => {
     const slots = [];
     for (let h = 0; h < 24; h++) {
@@ -703,6 +781,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     const mm = String(n.getMinutes()).padStart(2, '0');
     return `${hh}:${mm}`;
   };
+
   useEffect(() => {
     if (preferredDate === todayStr && preferredTime && preferredTime < getNowHHMM()) {
       setPreferredTime('');
@@ -716,6 +795,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     if (hh === 6 && (mm === 0 || mm === 30)) return true;
     return false;
   };
+
   const isRedTime = (t) => {
     const [hh, mm] = t.split(':').map((x) => parseInt(x, 10));
     if (hh >= 20 && hh <= 23) return true;
@@ -732,6 +812,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     if (hh === 6 && (mm === 0 || mm === 30)) return true;
     return false;
   };
+
   const preferredTimeFeeLabel =
     preferredTime && isNightTimeForFee(preferredTime) ? `+ fee ${formatRate(NIGHT_TIME_FEE)}` : '';
 
@@ -783,7 +864,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                 >
                   <span className="truncate">{timeMode ? to12h(it) : it}</span>
                   {right ? (
-                    <span className={`shrink-0 text-xs font-semibold ${isSel && !disabled ? 'text-white/90' : 'text-[#008cfc]'}`}>
+                    <span
+                      className={`shrink-0 text-xs font-semibold ${
+                        isSel && !disabled ? 'text-white/90' : 'text-[#008cfc]'
+                      }`}
+                    >
                       {right}
                     </span>
                   ) : null}
@@ -809,6 +894,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       </div>
     );
   };
+
+  const workerOptions = Array.from({ length: MAX_WORKERS }, (_, i) => i + 1);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
@@ -855,7 +942,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="relative" ref={stRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Service Type</label>
-                    <select value={serviceType} onChange={(e) => handleServiceTypeChange(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
+                    <select
+                      value={serviceType}
+                      onChange={(e) => handleServiceTypeChange(e.target.value)}
+                      className="hidden"
+                      aria-hidden="true"
+                      tabIndex={-1}
+                    >
                       <option value=""></option>
                       {sortedServiceTypes.map((t) => (
                         <option key={t} value={t}>
@@ -869,7 +962,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         attempted && !serviceType ? 'border-red-500' : 'border-gray-300'
                       } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
                     >
-                      <button type="button" onClick={() => setStOpen((s) => !s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
+                      <button
+                        type="button"
+                        onClick={() => setStOpen((s) => !s)}
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
+                      >
                         {serviceType || 'Select Service Type'}
                       </button>
                       <button
@@ -1005,7 +1102,12 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         required
                         aria-invalid={attempted && (!preferredDate || isPastDate)}
                       />
-                      <button type="button" onClick={openPD} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open calendar">
+                      <button
+                        type="button"
+                        onClick={openPD}
+                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                        aria-label="Open calendar"
+                      >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 01-1-1z" />
                           <path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" />
@@ -1024,7 +1126,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                           <button
                             type="button"
                             onClick={() => canPrevPD() && setPdView(addMonths(pdView, -1))}
-                            className={`p-2 rounded-lg hover:bg-gray-100 ${canPrevPD() ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
+                            className={`p-2 rounded-lg hover:bg-gray-100 ${
+                              canPrevPD() ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'
+                            }`}
                             aria-label="Previous month"
                           >
                             ‹
@@ -1052,7 +1156,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                                         setPDMonthYear(i, pdView.getFullYear());
                                         setPdMonthOpen(false);
                                       }}
-                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${i === pdView.getMonth() ? 'bg-blue-100' : ''}`}
+                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${
+                                        i === pdView.getMonth() ? 'bg-blue-100' : ''
+                                      }`}
                                     >
                                       {m}
                                     </button>
@@ -1082,7 +1188,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                                         setPDMonthYear(pdView.getMonth(), y);
                                         setPdYearOpen(false);
                                       }}
-                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${y === pdView.getFullYear() ? 'bg-blue-100' : ''}`}
+                                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${
+                                        y === pdView.getFullYear() ? 'bg-blue-100' : ''
+                                      }`}
                                     >
                                       {y}
                                     </button>
@@ -1211,7 +1319,12 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                           <span>hh:mm AM/PM</span>
                         )}
                       </button>
-                      <button type="button" onClick={openPT} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open time options">
+                      <button
+                        type="button"
+                        onClick={openPT}
+                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                        aria-label="Open time options"
+                      >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path
                             fillRule="evenodd"
@@ -1244,7 +1357,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                                 className={`py-2 rounded-lg text-sm ${
                                   disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 '
                                 }${
-                                  disabled ? '' : isGreenTime(t) ? 'text-green-600' : isRedTime(t) ? 'text-red-600' : 'text-gray-700'
+                                  disabled
+                                    ? ''
+                                    : isGreenTime(t)
+                                      ? 'text-green-600'
+                                      : isRedTime(t)
+                                        ? 'text-red-600'
+                                        : 'text-gray-700'
                                 } ${preferredTime === t && !disabled ? ' bg-blue-600 text-white hover:bg-blue-600' : ''}`}
                               >
                                 {to12h(t)}
@@ -1296,9 +1415,111 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                     )}
                   </div>
 
+                  <div className="relative" ref={workersRef}>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Number of Workers Needed</label>
+                    <select
+                      value={workersNeededSafe}
+                      onChange={(e) => setWorkersNeeded(clampInt(e.target.value, 1, MAX_WORKERS))}
+                      className="hidden"
+                      aria-hidden="true"
+                      tabIndex={-1}
+                    >
+                      {workerOptions.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+
+                    <div
+                      className={`flex items-center rounded-xl border ${
+                        attempted && !workersNeededSafe ? 'border-red-500' : 'border-gray-300'
+                      } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setWorkersOpen((s) => !s)}
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="truncate">
+                            {workersNeededSafe} worker{workersNeededSafe === 1 ? '' : 's'}
+                          </span>
+                          {workersFeeLabel ? (
+                            <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{workersFeeLabel}</span>
+                          ) : null}
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWorkersOpen((s) => !s)}
+                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                        aria-label="Open workers options"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path
+                            fillRule="evenodd"
+                            d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-gray-500 mt-1">
+                      Up to <span className="font-medium">{INCLUDED_WORKERS}</span> workers included. Extra worker fee is{' '}
+                      <span className="font-medium">{formatRate(EXTRA_WORKER_FEE)}</span> per added worker.
+                    </p>
+
+                    <div className="mt-2 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs text-gray-700">Selected workers</span>
+                        <span className="text-xs font-semibold text-[#008cfc]">
+                          {workersNeededSafe} {workersNeededSafe === 1 ? 'worker' : 'workers'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 mt-1">
+                        <span className="text-xs text-gray-700">Extra workers fee</span>
+                        <span className={`text-xs font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                          {extraWorkersFeeTotal > 0 ? `+ ${formatRate(extraWorkersFeeTotal)}` : '—'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {workersOpen && (
+                      <PopList
+                        items={workerOptions.map((n) => n)}
+                        value={workersNeededSafe}
+                        onSelect={(v) => {
+                          setWorkersNeeded(clampInt(v, 1, MAX_WORKERS));
+                          setWorkersOpen(false);
+                        }}
+                        fullWidth
+                        title="Select Number of Workers"
+                        clearable
+                        onClear={() => {
+                          setWorkersNeeded(1);
+                          setWorkersOpen(false);
+                        }}
+                        rightLabel={(it) => {
+                          const n = clampInt(it, 1, MAX_WORKERS);
+                          const extra = Math.max(0, n - INCLUDED_WORKERS);
+                          const fee = extra * EXTRA_WORKER_FEE;
+                          return extra > 0 ? `+ fee ${formatRate(fee)}` : '';
+                        }}
+                      />
+                    )}
+                  </div>
+
                   <div className="relative" ref={toolsRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Tools Provided?</label>
-                    <select value={toolsProvided} onChange={(e) => setToolsProvided(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
+                    <select
+                      value={toolsProvided}
+                      onChange={(e) => setToolsProvided(e.target.value)}
+                      className="hidden"
+                      aria-hidden="true"
+                      tabIndex={-1}
+                    >
                       <option value=""></option>
                       <option value="Yes">Yes</option>
                       <option value="No">No</option>
@@ -1309,10 +1530,19 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'
                       } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
                     >
-                      <button type="button" onClick={() => setToolsOpen((s) => !s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
+                      <button
+                        type="button"
+                        onClick={() => setToolsOpen((s) => !s)}
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
+                      >
                         {toolsProvided || 'Select Yes or No'}
                       </button>
-                      <button type="button" onClick={() => setToolsOpen((s) => !s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open tools provided options">
+                      <button
+                        type="button"
+                        onClick={() => setToolsOpen((s) => !s)}
+                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                        aria-label="Open tools provided options"
+                      >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path
                             fillRule="evenodd"
@@ -1345,7 +1575,13 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
 
                   <div className="relative" ref={urgentRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Is The Request Urgent?</label>
-                    <select value={isUrgent} onChange={(e) => handleUrgentChange(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
+                    <select
+                      value={isUrgent}
+                      onChange={(e) => handleUrgentChange(e.target.value)}
+                      className="hidden"
+                      aria-hidden="true"
+                      tabIndex={-1}
+                    >
                       <option value=""></option>
                       <option value="Yes">Yes</option>
                       <option value="No">No</option>
@@ -1356,10 +1592,19 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         attempted && !isUrgent ? 'border-red-500' : 'border-gray-300'
                       } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
                     >
-                      <button type="button" onClick={() => setUrgentOpen((s) => !s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
+                      <button
+                        type="button"
+                        onClick={() => setUrgentOpen((s) => !s)}
+                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
+                      >
                         {isUrgent || 'Select Yes or No'}
                       </button>
-                      <button type="button" onClick={() => setUrgentOpen((s) => !s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open urgent options">
+                      <button
+                        type="button"
+                        onClick={() => setUrgentOpen((s) => !s)}
+                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                        aria-label="Open urgent options"
+                      >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path
                             fillRule="evenodd"
@@ -1402,14 +1647,18 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                       required
                       aria-invalid={attempted && !serviceDescription.trim()}
                     />
-                    {attempted && !serviceDescription.trim() && <p className="text-xs text-red-600 mt-1">Please describe the service.</p>}
+                    {attempted && !serviceDescription.trim() && (
+                      <p className="text-xs text-red-600 mt-1">Please describe the service.</p>
+                    )}
                   </div>
                 </div>
               </div>
 
               <div className="lg:col-span-1">
                 <div className="text-xl md:text-2xl font-semibold mb-3 text-center">Request Image</div>
-                <p className="text-base text-gray-600 text-center mb-5">Upload an image to help describe the service request or what you need done.</p>
+                <p className="text-base text-gray-600 text-center mb-5">
+                  Upload an image to help describe the service request or what you need done.
+                </p>
 
                 <div className="space-y-4">
                   <div className="w-full flex items-center justify-center gap-2">
@@ -1448,7 +1697,11 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                         <img src={image} alt="Uploaded Preview" className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className={`w-full h-[308px] rounded-xl flex items-center justify-center ${attempted ? 'bg-red-100 text-red-500' : 'bg-gray-200 text-gray-400'}`}>
+                      <div
+                        className={`w-full h-[308px] rounded-xl flex items-center justify-center ${
+                          attempted ? 'bg-red-100 text-red-500' : 'bg-gray-200 text-gray-400'
+                        }`}
+                      >
                         <span>No Image Selected</span>
                       </div>
                     )}
@@ -1506,12 +1759,23 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
-                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
@@ -1549,12 +1813,23 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
-                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>

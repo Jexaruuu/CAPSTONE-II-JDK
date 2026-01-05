@@ -177,7 +177,13 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     base_rate_numeric: base_rate_numeric_state,
     subtotal: subtotal_state,
     preferred_time_fee: preferred_time_fee_state,
-    total: total_state
+    total: total_state,
+    workers_needed: workers_needed_state,
+    workersNeeded: workersNeeded_state,
+    worker_needed: worker_needed_state,
+    number_of_workers: number_of_workers_state,
+    num_workers: num_workers_state,
+    manpower: manpower_state
   } = s;
 
   const review_image =
@@ -515,6 +521,88 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       } catch {}
     }
   };
+
+  const parseWorkersNeeded = (v) => {
+    if (v === null || v === undefined || v === '') return null;
+    if (typeof v === 'number' && Number.isFinite(v)) return Math.max(1, Math.floor(v));
+    const s2 = String(v).trim();
+    if (!s2) return null;
+    const n = Number(s2);
+    if (Number.isFinite(n)) return Math.max(1, Math.floor(n));
+    const m = s2.match(/\d+/);
+    if (!m) return null;
+    const nn = Number(m[0]);
+    return Number.isFinite(nn) ? Math.max(1, Math.floor(nn)) : null;
+  };
+
+  const workersNeeded = useMemo(() => {
+    const candidates = [
+      workers_needed_state,
+      workersNeeded_state,
+      worker_needed_state,
+      number_of_workers_state,
+      num_workers_state,
+      manpower_state,
+      savedDetails?.workers_needed,
+      savedDetails?.workersNeeded,
+      savedDetails?.worker_needed,
+      savedDetails?.number_of_workers,
+      savedDetails?.num_workers,
+      savedDetails?.manpower,
+      savedRate?.workers_needed,
+      savedRate?.workersNeeded,
+      savedRate?.worker_needed,
+      savedRate?.number_of_workers,
+      savedRate?.num_workers,
+      savedRate?.manpower
+    ];
+    for (const c of candidates) {
+      const n = parseWorkersNeeded(c);
+      if (n) return n;
+    }
+    return null;
+  }, [
+    workers_needed_state,
+    workersNeeded_state,
+    worker_needed_state,
+    number_of_workers_state,
+    num_workers_state,
+    manpower_state,
+    savedDetails,
+    savedRate
+  ]);
+
+  const workersNeededDisplay = useMemo(() => {
+    if (!workersNeeded) return '-';
+    return `${workersNeeded} ${workersNeeded === 1 ? 'worker' : 'workers'}`;
+  }, [workersNeeded]);
+
+  const totalPriceDisplay = useMemo(() => {
+    const fromState = cleanNumber(total_state);
+    if (Number.isFinite(fromState) && fromState !== null) return peso(fromState);
+
+    const fromLS = cleanNumber(savedRate?.total);
+    if (Number.isFinite(fromLS) && fromLS !== null) return peso(fromLS);
+
+    if (rateTypeNormalized === 'Service Task Rate') return peso(total);
+
+    if (rateTypeNormalized === 'By the Job Rate') {
+      const job = cleanNumber(rate_value);
+      return job !== null ? peso(job) : '-';
+    }
+
+    if (rateTypeNormalized === 'Hourly Rate') {
+      const rf = String(rate_from ?? '').trim();
+      const rt = String(rate_to ?? '').trim();
+      return rf && rt ? `₱${rf}–₱${rt} / hr` : '-';
+    }
+
+    const fallback = cleanNumber(rate_value);
+    if (fallback !== null) return peso(fallback);
+
+    const t = Number(total);
+    return Number.isFinite(t) && t > 0 ? peso(t) : '-';
+  }, [total_state, savedRate, rateTypeNormalized, total, rate_value, rate_from, rate_to]);
 
   const handleConfirm = async () => {
     try {
@@ -976,6 +1064,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     <div className="space-y-5">
                       <LabelValue label="Service Type" value={service_type} />
                       <LabelValue label="Service Task" value={service_task} />
+                      <LabelValue label="Workers Needed" value={workersNeededDisplay} />
                       <LabelValue label="Preferred Date" value={preferred_date_display} />
                       <LabelValue label="Preferred Time" value={preferred_time_display} />
                       <LabelValue
@@ -1072,10 +1161,22 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                                 {preferredTimeFee > 0 ? `+ ${peso(preferredTimeFee)}` : '—'}
                               </div>
                             </div>
+
+                            <div className="sm:col-span-2 rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3">
+                              <div className="text-xs text-gray-500 font-medium">Total</div>
+                              <div className="text-lg font-bold text-gray-900">{peso(total)}</div>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="md:col-span-2">
+                        <div className="rounded-xl border border-gray-200 bg-gray-50/40 px-4 py-3 text-sm text-gray-700 flex items-center justify-between gap-3">
+                          <div className="font-semibold text-gray-900">Total Price</div>
+                          <div className="font-bold text-gray-900">{totalPriceDisplay}</div>
+                        </div>
+                      </div>
+                    )}
 
                     {rateTypeNormalized === 'Hourly Rate' ? (
                       <div className="md:col-span-2">
@@ -1122,6 +1223,11 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                       <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">
                         {service_task || '-'}
                       </span>
+                    </div>
+
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-sm font-medium text-gray-700">Workers Needed:</span>
+                      <span className="text-base font-semibold text-[#008cfc]">{workersNeededDisplay}</span>
                     </div>
 
                     <div className="flex items-baseline gap-2">
@@ -1183,6 +1289,11 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                         <div className="flex items-start justify-between gap-3">
                           <span className="text-sm font-medium text-gray-700">Rate</span>
                           <div className="text-right">{primaryRateValueNode}</div>
+                        </div>
+
+                        <div className="mt-3 rounded-xl border border-gray-200 bg-white px-3 py-2 flex items-center justify-between gap-3">
+                          <div className="text-[11px] text-gray-500 font-medium">TOTAL PRICE</div>
+                          <div className="text-base font-bold text-gray-900">{totalPriceDisplay}</div>
                         </div>
                       </div>
                     )}
