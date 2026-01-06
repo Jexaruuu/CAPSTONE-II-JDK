@@ -164,10 +164,6 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     is_urgent = savedDetails.isUrgent,
     tools_provided = savedDetails.toolsProvided,
     service_description = savedDetails.serviceDescription,
-    rate_type = savedRate.rateType,
-    rate_from = savedRate.rateFrom,
-    rate_to = savedRate.rateTo,
-    rate_value = savedRate.rateValue,
     payment_method: payment_method_state,
     units: units_state,
     quantity_unit: quantity_unit_state,
@@ -374,27 +370,20 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     return Number.isFinite(n) ? n : 0;
   }, [preferred_time_fee_state, savedRate]);
 
-  const total = useMemo(() => {
-    const v = total_state !== undefined ? total_state : savedRate?.total;
-    const n = Number(v);
-    if (Number.isFinite(n)) return n;
-    return (Number(subtotal) || 0) + (Number(preferredTimeFee) || 0);
-  }, [total_state, savedRate, subtotal, preferredTimeFee]);
-
   const extraWorkersFeeTotal = (() => {
     const candidates = [
       s?.extra_workers_fee,
       s?.extraWorkersFeeTotal,
       s?.extra_workers_fee_total,
       s?.extraWorkersFee,
-      savedDetails?.extra_workers_fee,
-      savedDetails?.extraWorkersFeeTotal,
-      savedDetails?.extra_workers_fee_total,
-      savedDetails?.extraWorkersFee,
       savedRate?.extra_workers_fee,
       savedRate?.extraWorkersFeeTotal,
       savedRate?.extra_workers_fee_total,
-      savedRate?.extraWorkersFee
+      savedRate?.extraWorkersFee,
+      savedDetails?.extra_workers_fee,
+      savedDetails?.extraWorkersFeeTotal,
+      savedDetails?.extra_workers_fee_total,
+      savedDetails?.extraWorkersFee
     ];
     for (const c of candidates) {
       const n = cleanNumber(c);
@@ -408,47 +397,24 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     return base;
   }, [subtotal, preferredTimeFee, extraWorkersFeeTotal]);
 
+  const total = useMemo(() => {
+    const v = total_state !== undefined ? total_state : savedRate?.total;
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+    return serviceTaskTotal;
+  }, [total_state, savedRate, serviceTaskTotal]);
+
   const totalForDisplay = useMemo(() => {
-    if (String(rate_type || '').trim() === 'Service Task Rate') return serviceTaskTotal;
-    return total;
-  }, [rate_type, serviceTaskTotal, total]);
+    const n = Number(total);
+    if (Number.isFinite(n) && n >= 0) return n;
+    return Number(serviceTaskTotal) || 0;
+  }, [total, serviceTaskTotal]);
 
   const baseRateDisplay = useMemo(() => {
     const formatted = formatRate(baseRateRaw || baseRateNumeric || '');
     if (!formatted) return '';
     return shouldShowPerUnit(service_type) ? `per unit ${formatted}` : formatted;
   }, [baseRateRaw, baseRateNumeric, service_type]);
-
-  const rateTypeNormalized = String(rate_type || '').trim();
-
-  const primaryRateValueNode = useMemo(() => {
-    if (rateTypeNormalized === 'Hourly Rate') {
-      const rf = rate_from ?? '';
-      const rt = rate_to ?? '';
-      return rf && rt ? (
-        <div className="text-lg font-bold text-[#008cfc]">
-          ₱{rf}–₱{rt} <span className="text-sm font-semibold opacity-80">per hour</span>
-        </div>
-      ) : (
-        <div className="text-gray-500 text-sm">No rate provided</div>
-      );
-    }
-    if (rateTypeNormalized === 'By the Job Rate') {
-      const rv = rate_value ?? '';
-      return rv ? (
-        <div className="text-lg font-bold text-[#008cfc]">
-          ₱{rv} <span className="text-sm font-semibold opacity-80">per job</span>
-        </div>
-      ) : (
-        <div className="text-gray-500 text-sm">No rate provided</div>
-      );
-    }
-    if (rateTypeNormalized === 'Service Task Rate') {
-      return <div className="text-lg font-bold text-[#008cfc]">{peso(totalForDisplay)}</div>;
-    }
-    if (rate_value) return <div className="text-lg font-bold text-[#008cfc]">{formatRate(rate_value)}</div>;
-    return <div className="text-gray-500 text-sm">No rate provided</div>;
-  }, [rateTypeNormalized, rate_from, rate_to, rate_value, totalForDisplay]);
 
   const LabelValue = ({ label, value, emptyAs = '-' }) => {
     const isElement = React.isValidElement(value);
@@ -617,25 +583,25 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     const fromLS = cleanNumber(savedRate?.total);
     if (Number.isFinite(fromLS) && fromLS !== null) return peso(fromLS);
 
-    if (rateTypeNormalized === 'Service Task Rate') return peso(totalForDisplay);
-
-    if (rateTypeNormalized === 'By the Job Rate') {
-      const job = cleanNumber(rate_value);
-      return job !== null ? peso(job) : '-';
-    }
-
-    if (rateTypeNormalized === 'Hourly Rate') {
-      const rf = String(rate_from ?? '').trim();
-      const rt = String(rate_to ?? '').trim();
-      return rf && rt ? `₱${rf}–₱${rt} / hr` : '-';
-    }
-
-    const fallback = cleanNumber(rate_value);
-    if (fallback !== null) return peso(fallback);
-
     const t = Number(totalForDisplay);
-    return Number.isFinite(t) && t > 0 ? peso(t) : '-';
-  }, [total_state, savedRate, rateTypeNormalized, totalForDisplay, rate_value, rate_from, rate_to]);
+    return Number.isFinite(t) ? peso(t) : '-';
+  }, [total_state, savedRate, totalForDisplay]);
+
+  const extraWorkerCountForPayload = (() => {
+    const candidates = [
+      s?.extra_worker_count,
+      s?.extraWorkerCount,
+      savedRate?.extra_worker_count,
+      savedRate?.extraWorkerCount,
+      savedDetails?.extra_worker_count,
+      savedDetails?.extraWorkerCount
+    ];
+    for (const c of candidates) {
+      const n = parseWorkersNeeded(c);
+      if (n !== null && n !== undefined) return Math.max(0, Number(n) || 0);
+    }
+    return 0;
+  })();
 
   const handleConfirm = async () => {
     try {
@@ -671,6 +637,122 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         }
       })();
 
+      const workersNeedValue = (() => {
+        const candidates = [
+          workersNeeded,
+          detailsDraft?.workers_need,
+          detailsDraft?.workers_needed,
+          detailsDraft?.workersNeeded,
+          detailsDraft?.worker_needed,
+          detailsDraft?.number_of_workers,
+          detailsDraft?.num_workers,
+          detailsDraft?.manpower,
+          savedDetails?.workers_need,
+          savedDetails?.workers_needed,
+          savedDetails?.workersNeeded,
+          savedDetails?.worker_needed,
+          savedDetails?.number_of_workers,
+          savedDetails?.num_workers,
+          savedDetails?.manpower,
+          s?.workers_need,
+          s?.workers_needed,
+          s?.workersNeeded,
+          s?.worker_needed,
+          s?.number_of_workers,
+          s?.num_workers,
+          s?.manpower
+        ];
+        for (const c of candidates) {
+          const n = parseWorkersNeeded(c);
+          if (n) return n;
+        }
+        return null;
+      })();
+
+      const extraWorkersFeeForPayload = (() => {
+        const candidates = [
+          rateDraft?.extra_workers_fee,
+          rateDraft?.extraWorkersFeeTotal,
+          rateDraft?.extra_workers_fee_total,
+          rateDraft?.extraWorkersFee,
+          savedRate?.extra_workers_fee,
+          savedRate?.extraWorkersFeeTotal,
+          savedRate?.extra_workers_fee_total,
+          savedRate?.extraWorkersFee,
+          detailsDraft?.extra_workers_fee,
+          detailsDraft?.extraWorkersFeeTotal,
+          detailsDraft?.extra_workers_fee_total,
+          detailsDraft?.extraWorkersFee,
+          extraWorkersFeeTotal
+        ];
+        for (const c of candidates) {
+          const n = cleanNumber(c);
+          if (n !== null && Number.isFinite(n) && n >= 0) return n;
+        }
+        return 0;
+      })();
+
+      const extraWorkerCountValue = (() => {
+        const candidates = [
+          rateDraft?.extra_worker_count,
+          rateDraft?.extraWorkerCount,
+          savedRate?.extra_worker_count,
+          savedRate?.extraWorkerCount,
+          detailsDraft?.extra_worker_count,
+          detailsDraft?.extraWorkerCount,
+          extraWorkerCountForPayload
+        ];
+        for (const c of candidates) {
+          const n = cleanNumber(c);
+          if (n !== null && Number.isFinite(n) && n >= 0) return Math.max(0, Math.floor(n));
+        }
+        return 0;
+      })();
+
+      const normalizedPaymentForDb = normalizePayment(paymentMethod) || 'Cash';
+
+      const serviceTypeDraft = String(detailsDraft?.serviceType || service_type || '').trim();
+      const isLaundryDraft = serviceTypeDraft === 'Laundry';
+
+      const quantityUnitForDb = (() => {
+        const v = rateDraft?.quantity_unit ?? quantityUnit;
+        const s2 = String(v || '').trim().toLowerCase();
+        if (!s2) return isLaundryDraft ? 'kg' : 'unit';
+        if (s2 === 'kilogram' || s2 === 'kilograms') return 'kg';
+        return s2;
+      })();
+
+      const unitsForDb = (() => {
+        const candidates = [rateDraft?.units, units_state, savedRate?.units, rateUnits];
+        for (const c of candidates) {
+          if (c !== null && c !== undefined && c !== '') {
+            const u = toUnit(c);
+            if (Number.isFinite(u) && u >= 1) return u;
+          }
+        }
+        return 1;
+      })();
+
+      const unitKgForDb = isLaundryDraft && quantityUnitForDb === 'kg' ? unitsForDb : null;
+
+      const preferredTimeFeeForDb = (() => {
+        const candidates = [rateDraft?.preferred_time_fee, preferredTimeFee, preferred_time_fee_state, savedRate?.preferred_time_fee];
+        for (const c of candidates) {
+          const n = Number(c);
+          if (Number.isFinite(n) && n >= 0) return n;
+        }
+        return 0;
+      })();
+
+      const totalRateForDb = (() => {
+        const candidates = [rateDraft?.total, total_state, savedRate?.total, totalForDisplay];
+        for (const c of candidates) {
+          const n = Number(c);
+          if (Number.isFinite(n) && n >= 0) return n;
+        }
+        return 0;
+      })();
+
       const payload = {
         info: {
           firstName: infoDraft.firstName || '',
@@ -691,6 +773,11 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           isUrgent: detailsDraft.isUrgent || '',
           toolsProvided: detailsDraft.toolsProvided || '',
           serviceDescription: detailsDraft.serviceDescription || '',
+          workers_need: workersNeedValue,
+          workers_needed: workersNeedValue,
+          workersNeeded: workersNeedValue,
+          extra_worker_count: extraWorkerCountValue,
+          extra_workers_fee: extraWorkersFeeForPayload,
           image: detailsDraft.image || '',
           imageName: detailsDraft.imageName || '',
           attachments: Array.isArray(detailsDraft.attachments)
@@ -700,10 +787,18 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
               : []
         },
         rate: {
-          rateType: rateDraft.rateType || '',
-          rateFrom: rateDraft.rateFrom || '',
-          rateTo: rateDraft.rateTo || '',
-          rateValue: rateDraft.rateValue || ''
+          units: rateDraft.units,
+          base_rate_raw: rateDraft.base_rate_raw,
+          base_rate_numeric: rateDraft.base_rate_numeric,
+          subtotal: rateDraft.subtotal,
+          preferred_time_fee: rateDraft.preferred_time_fee,
+          total: rateDraft.total,
+          quantity_unit: rateDraft.quantity_unit,
+          billable_units: rateDraft.billable_units,
+          minimum_quantity: rateDraft.minimum_quantity,
+          minimum_applied: rateDraft.minimum_applied,
+          extra_worker_count: extraWorkerCountValue,
+          extra_workers_fee: extraWorkersFeeForPayload
         }
       };
 
@@ -770,10 +865,8 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         preferred_time: pTime,
         is_urgent: toBoolStrict(payload.details.isUrgent),
         tools_provided: toBoolStrict(payload.details.toolsProvided),
-        rate_type: (payload.rate.rateType || '').trim(),
-        rate_from: null,
-        rate_to: null,
-        rate_value: null,
+        workers_need: workersNeedValue,
+        workers_needed: workersNeedValue,
         attachments: payload.details.attachments,
         attachment: (payload.details.attachments && payload.details.attachments[0]) || payload.details.image || '',
         attachment_name: payload.details.imageName || '',
@@ -789,18 +882,21 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           email: emailVal,
           auth_uid: localStorage.getItem('auth_uid') || clientAuth.auth_uid || '',
           image_name: payload.details.imageName || '',
-          rate_units: toUnit(rateDraft.units),
-          base_rate_raw: rateDraft.base_rate_raw ?? '',
-          base_rate_numeric: rateDraft.base_rate_numeric ?? null,
-          subtotal: rateDraft.subtotal ?? null,
-          preferred_time_fee: rateDraft.preferred_time_fee ?? null,
-          extra_workers_fee: detailsDraft?.extra_workers_fee ?? null,
-          total: rateDraft.total ?? null,
-          quantity_unit: rateDraft.quantity_unit ?? null,
-          billable_units: rateDraft.billable_units ?? null,
-          minimum_quantity: rateDraft.minimum_quantity ?? null,
-          minimum_applied: !!rateDraft.minimum_applied,
-          payment_method: paymentMethod
+          rate_units: toUnit(payload.rate.units),
+          base_rate_raw: payload.rate.base_rate_raw ?? '',
+          base_rate_numeric: payload.rate.base_rate_numeric ?? null,
+          subtotal: payload.rate.subtotal ?? null,
+          preferred_time_fee: payload.rate.preferred_time_fee ?? null,
+          extra_worker_count: payload.rate.extra_worker_count ?? 0,
+          extra_workers_fee: payload.rate.extra_workers_fee ?? 0,
+          total: payload.rate.total ?? null,
+          quantity_unit: payload.rate.quantity_unit ?? null,
+          billable_units: payload.rate.billable_units ?? null,
+          minimum_quantity: payload.rate.minimum_quantity ?? null,
+          minimum_applied: !!payload.rate.minimum_applied,
+          payment_method: normalizedPaymentForDb,
+          workers_need: workersNeedValue,
+          workers_needed: workersNeedValue
         },
         details: {
           service_type: svcType,
@@ -809,18 +905,14 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           preferred_time: pTime,
           is_urgent: toBoolStrict(payload.details.isUrgent),
           tools_provided: toBoolStrict(payload.details.toolsProvided),
-          service_description: desc
+          service_description: desc,
+          workers_need: workersNeedValue,
+          workers_needed: workersNeedValue,
+          workersNeeded: workersNeedValue,
+          extra_worker_count: payload.rate.extra_worker_count ?? 0,
+          extra_workers_fee: payload.rate.extra_workers_fee ?? 0
         }
       };
-
-      if (normalized.rate_type === 'Hourly Rate') {
-        normalized.rate_from = cleanNumber(payload.rate.rateFrom);
-        normalized.rate_to = cleanNumber(payload.rate.rateTo);
-      } else if (normalized.rate_type === 'By the Job Rate') {
-        normalized.rate_value = cleanNumber(payload.rate.rateValue);
-      } else {
-        normalized.rate_value = cleanNumber(payload.rate.rateValue);
-      }
 
       const missing = requireFields(normalized, [
         'first_name',
@@ -833,8 +925,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         'service_task',
         'description',
         'preferred_date',
-        'preferred_time',
-        'rate_type'
+        'preferred_time'
       ]);
       if (missing.length) {
         setIsSubmitting(false);
@@ -887,6 +978,11 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         tools_provided: normalized.tools_provided,
         toolsProvided: normalized.tools_provided,
         service_description: normalized.description,
+        workers_need: workersNeedValue,
+        workers_needed: workersNeedValue,
+        workersNeeded: workersNeedValue,
+        extra_worker_count: normalized.metadata.extra_worker_count ?? 0,
+        extra_workers_fee: normalized.metadata.extra_workers_fee ?? 0,
         attachments:
           Array.isArray(normalized.attachments) && normalized.attachments.length
             ? normalized.attachments
@@ -895,17 +991,6 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
               : [],
         image: normalized.attachment,
         image_name: normalized.attachment_name
-      };
-
-      const ratePayload = {
-        rate_type: normalized.rate_type,
-        rateType: normalized.rate_type,
-        rate_from: normalized.rate_from,
-        rateFrom: normalized.rate_from,
-        rate_to: normalized.rate_to,
-        rateTo: normalized.rate_to,
-        rate_value: normalized.rate_value,
-        rateValue: normalized.rate_value
       };
 
       const metadataPayload = {
@@ -925,13 +1010,29 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         base_rate_numeric: normalized.metadata.base_rate_numeric,
         subtotal: normalized.metadata.subtotal,
         preferred_time_fee: normalized.metadata.preferred_time_fee,
-        extra_workers_fee: normalized.metadata.extra_workers_fee,
+        extra_worker_count: normalized.metadata.extra_worker_count ?? 0,
+        extra_workers_fee: normalized.metadata.extra_workers_fee ?? 0,
         total: normalized.metadata.total,
         quantity_unit: normalized.metadata.quantity_unit,
         billable_units: normalized.metadata.billable_units,
         minimum_quantity: normalized.metadata.minimum_quantity,
         minimum_applied: normalized.metadata.minimum_applied,
-        payment_method: paymentMethod
+        payment_method: normalizedPaymentForDb,
+        workers_need: workersNeedValue,
+        workers_needed: workersNeedValue
+      };
+
+      const clientServiceRatePayload = {
+        preferred_time_fee: preferredTimeFeeForDb,
+        extra_workers_fee: extraWorkersFeeForPayload,
+        units: unitsForDb,
+        unit_kg: unitKgForDb,
+        quantity_unit: quantityUnitForDb,
+        billable_units: Number.isFinite(Number(billableUnits)) ? Number(billableUnits) : null,
+        minimum_quantity: Number.isFinite(Number(minimumQty)) ? Number(minimumQty) : null,
+        minimum_applied: !!minimumApplied,
+        payment_method: normalizedPaymentForDb,
+        total_rate: totalRateForDb
       };
 
       const jsonBody = {
@@ -952,10 +1053,11 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         preferred_time: normalized.preferred_time,
         is_urgent: normalized.is_urgent,
         tools_provided: normalized.tools_provided,
-        rate_type: normalized.rate_type,
-        rate_from: normalized.rate_from,
-        rate_to: normalized.rate_to,
-        rate_value: normalized.rate_value,
+        workers_need: workersNeedValue,
+        workers_needed: workersNeedValue,
+        workersNeeded: workersNeedValue,
+        extra_worker_count: normalized.metadata.extra_worker_count ?? 0,
+        extra_workers_fee: normalized.metadata.extra_workers_fee ?? 0,
         attachments:
           Array.isArray(normalized.attachments) && normalized.attachments.length
             ? normalized.attachments
@@ -965,8 +1067,8 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         metadata: metadataPayload,
         info: infoPayload,
         details: detailsPayload,
-        rate: ratePayload,
-        payment_method: paymentMethod,
+        payment_method: normalizedPaymentForDb,
+        client_service_rate: clientServiceRatePayload,
         agreements: {
           email_address: (agreementsDraft.email_address || normalized.email_address || '').toString().trim(),
           agree_verify: !!agreementsDraft.agree_verify,
@@ -979,6 +1081,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         withCredentials: true,
         headers: { 'Content-Type': 'application/json', ...headersWithU }
       });
+
       setRequestGroupId(jsonRes?.data?.request?.request_group_id || null);
       setShowSuccess(true);
       localStorage.setItem(CONFIRM_FLAG, '1');
@@ -1016,8 +1119,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     });
   };
 
-  const showBreakdown =
-    rateTypeNormalized === 'Service Task Rate' && (Number.isFinite(Number(totalForDisplay)) || Number.isFinite(Number(subtotal)));
+  const showBreakdown = Number.isFinite(Number(totalForDisplay)) && Number(totalForDisplay) >= 0;
 
   const extraWorkersFeeNode = (
     <span className={`text-[15px] md:text-base font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
@@ -1226,14 +1328,6 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                         </div>
                       </div>
                     )}
-
-                    {rateTypeNormalized === 'Hourly Rate' ? (
-                      <div className="md:col-span-2">
-                        <div className="rounded-xl border border-gray-200 bg-gray-50/40 px-4 py-3 text-sm text-gray-700">
-                          Hourly rates are shown as a range. Final total will depend on actual service duration.
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               </div>
@@ -1304,62 +1398,48 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                       </div>
                     </div>
 
-                    {rateTypeNormalized === 'Service Task Rate' ? (
-                      <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                          <div className="px-4 pt-4 pb-2 text-[11px] tracking-wider text-gray-500 font-semibold">TOTAL</div>
-                          <div className="px-4 pb-4 flex items-center justify-between gap-3">
-                            <div className="text-base font-semibold text-gray-900">Total</div>
-                            <div className="text-2xl font-bold text-gray-900">{peso(totalForDisplay)}</div>
-                          </div>
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                        <div className="px-4 pt-4 pb-2 text-[11px] tracking-wider text-gray-500 font-semibold">TOTAL</div>
+                        <div className="px-4 pb-4 flex items-center justify-between gap-3">
+                          <div className="text-base font-semibold text-gray-900">Total</div>
+                          <div className="text-2xl font-bold text-gray-900">{peso(totalForDisplay)}</div>
+                        </div>
 
-                          <div className="px-4 pb-4 -mt-1">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="rounded-xl bg-white border border-gray-200 px-3 py-2">
-                                <div className="text-[11px] text-gray-500 font-medium">{isLaundry ? 'Quantity' : 'Units'}</div>
-                                <div className="text-sm font-semibold text-gray-900">
-                                  {rateUnits} {unitDisplayLabel}
-                                </div>
-                                {isLaundry && quantityUnit === 'kg' && minimumApplied && Number.isFinite(Number(billableUnits)) && billableUnits !== rateUnits ? (
-                                  <div className="mt-1 text-[11px] font-semibold text-gray-500">billed as {billableUnits} kg</div>
-                                ) : null}
+                        <div className="px-4 pb-4 -mt-1">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="rounded-xl bg-white border border-gray-200 px-3 py-2">
+                              <div className="text-[11px] text-gray-500 font-medium">{isLaundry ? 'Quantity' : 'Units'}</div>
+                              <div className="text-sm font-semibold text-gray-900">
+                                {rateUnits} {unitDisplayLabel}
                               </div>
+                              {isLaundry && quantityUnit === 'kg' && minimumApplied && Number.isFinite(Number(billableUnits)) && billableUnits !== rateUnits ? (
+                                <div className="mt-1 text-[11px] font-semibold text-gray-500">billed as {billableUnits} kg</div>
+                              ) : null}
+                            </div>
 
-                              <div className="rounded-xl bg-white border border-gray-200 px-3 py-2">
-                                <div className="text-[11px] text-gray-500 font-medium">Preferred time fee</div>
-                                <div className={`text-sm font-semibold ${preferredTimeFee > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                                  {preferredTimeFee > 0 ? `+ ${peso(preferredTimeFee)}` : '—'}
-                                </div>
+                            <div className="rounded-xl bg-white border border-gray-200 px-3 py-2">
+                              <div className="text-[11px] text-gray-500 font-medium">Preferred time fee</div>
+                              <div className={`text-sm font-semibold ${preferredTimeFee > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                                {preferredTimeFee > 0 ? `+ ${peso(preferredTimeFee)}` : '—'}
                               </div>
+                            </div>
 
-                              <div className="col-span-2 rounded-xl bg-white border border-gray-200 px-3 py-2">
-                                <div className="text-[11px] text-gray-500 font-medium">Added workers fee</div>
-                                <div className={`text-sm font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                                  {extraWorkersFeeTotal > 0 ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
-                                </div>
+                            <div className="col-span-2 rounded-xl bg-white border border-gray-200 px-3 py-2">
+                              <div className="text-[11px] text-gray-500 font-medium">Added workers fee</div>
+                              <div className={`text-sm font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                                {extraWorkersFeeTotal > 0 ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
                               </div>
+                            </div>
 
-                              <div className="col-span-2 rounded-xl bg-white border border-gray-200 px-3 py-2">
-                                <div className="text-[11px] text-gray-500 font-medium">Base rate</div>
-                                <div className="text-sm font-semibold text-gray-900">{baseRateDisplay || '—'}</div>
-                              </div>
+                            <div className="col-span-2 rounded-xl bg-white border border-gray-200 px-3 py-2">
+                              <div className="text-[11px] text-gray-500 font-medium">Base rate</div>
+                              <div className="text-sm font-semibold text-gray-900">{baseRateDisplay || '—'}</div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <span className="text-sm font-medium text-gray-700">Rate</span>
-                          <div className="text-right">{primaryRateValueNode}</div>
-                        </div>
-
-                        <div className="mt-3 rounded-xl border border-gray-200 bg-white px-3 py-2 flex items-center justify-between gap-3">
-                          <div className="text-[11px] text-gray-500 font-medium">TOTAL PRICE</div>
-                          <div className="text-base font-bold text-gray-900">{totalPriceDisplay}</div>
-                        </div>
-                      </div>
-                    )}
+                    </div>
 
                     <div className="rounded-2xl border border-gray-200 bg-white p-4">
                       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -1389,11 +1469,9 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                         <div className="px-4 pb-4 -mt-2 text-xs text-gray-500">You will only be charged after the service.</div>
                       </div>
 
-                      {rateTypeNormalized === 'Service Task Rate' ? (
-                        <div className="mt-3 text-xs text-gray-500">
-                          Total is based on your selected task rate × {isLaundry ? 'quantity' : 'units'}, plus preferred time fee and added workers fee (if applicable).
-                        </div>
-                      ) : null}
+                      <div className="mt-3 text-xs text-gray-500">
+                        Total is based on your selected task rate × {isLaundry ? 'quantity' : 'units'}, plus preferred time fee and added workers fee (if applicable).
+                      </div>
                     </div>
                   </div>
                 </div>

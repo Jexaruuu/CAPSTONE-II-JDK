@@ -1,4 +1,4 @@
-// BACKEND: clientservicerequestsModel.js
+// clientservicerequestsModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 const crypto = require('crypto');
 
@@ -27,24 +27,14 @@ async function uploadDataUrlToBucket(bucket, dataUrl, filenameBase) {
   return { url: pub?.publicUrl || null, name };
 }
 async function findClientByEmail(email) {
-  const { data, error } = await supabaseAdmin
-    .from('user_client')
-    .select('id, auth_uid, email_address')
-    .eq('email_address', email)
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await supabaseAdmin.from('user_client').select('id, auth_uid, email_address').eq('email_address', email).limit(1).maybeSingle();
   if (error) throw error;
   return data || null;
 }
 async function findClientById(id) {
   const n = parseInt(id, 10);
   if (!Number.isFinite(n)) return null;
-  const { data, error } = await supabaseAdmin
-    .from('user_client')
-    .select('id, auth_uid, email_address')
-    .eq('id', n)
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await supabaseAdmin.from('user_client').select('id, auth_uid, email_address').eq('id', n).limit(1).maybeSingle();
   if (error) throw error;
   return data || null;
 }
@@ -53,15 +43,47 @@ async function insertClientInformation(row) {
   if (error) throw error;
   return data;
 }
-async function insertServiceRequestDetails(row) {
-  const { data, error } = await supabaseAdmin.from('client_service_request_details').insert([row]).select('id').single();
-  if (error) throw error;
-  return data;
+
+function isMissingColumn(err, col) {
+  const raw = err?.message || String(err || '');
+  return new RegExp(`column\\s+.*${col}.*does\\s+not\\s+exist`, 'i').test(raw) || new RegExp(`"${col}"`, 'i').test(raw) && /does not exist/i.test(raw);
 }
-async function insertServiceRate(row) {
-  const { data, error } = await supabaseAdmin.from('client_service_rate').insert([row]).select('id').single();
-  if (error) throw error;
-  return data;
+function withWorkersColumn(row, target) {
+  const out = { ...(row || {}) };
+  const val =
+    out.workers_needed !== undefined
+      ? out.workers_needed
+      : out.workers_need !== undefined
+        ? out.workers_need
+        : undefined;
+
+  delete out.workers_needed;
+  delete out.workers_need;
+
+  if (val !== undefined) out[target] = val;
+  return out;
+}
+
+async function insertServiceRequestDetails(row) {
+  try {
+    const { data, error } = await supabaseAdmin.from('client_service_request_details').insert([row]).select('id').single();
+    if (error) throw error;
+    return data;
+  } catch (e) {
+    if (isMissingColumn(e, 'workers_needed')) {
+      const r2 = withWorkersColumn(row, 'workers_need');
+      const { data, error } = await supabaseAdmin.from('client_service_request_details').insert([r2]).select('id').single();
+      if (error) throw error;
+      return data;
+    }
+    if (isMissingColumn(e, 'workers_need')) {
+      const r2 = withWorkersColumn(row, 'workers_needed');
+      const { data, error } = await supabaseAdmin.from('client_service_request_details').insert([r2]).select('id').single();
+      if (error) throw error;
+      return data;
+    }
+    throw e;
+  }
 }
 async function insertServiceRequestStatus(row) {
   const { data, error } = await supabaseAdmin.from('client_service_request_status').insert([row]).select('id').single();
@@ -78,57 +100,72 @@ async function insertClientCancelRequest(row) {
     reason_other: row.reason_other ?? null,
     canceled_at: row.canceled_at || new Date().toISOString()
   };
-  const { data, error } = await supabaseAdmin
-    .from('client_cancel_request')
-    .insert([payload])
-    .select('id')
-    .single();
+  const { data, error } = await supabaseAdmin.from('client_cancel_request').insert([payload]).select('id').single();
   if (error) throw error;
   return data;
 }
 function newGroupId() {
   return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
 }
+
+function normalizeWorkersNeededRow(r) {
+  if (!r || typeof r !== 'object') return r;
+  if (r.workers_needed === undefined && r.workers_need !== undefined) return { ...r, workers_needed: r.workers_need };
+  return r;
+}
+
 async function listDetailsByEmail(email, limit = 10) {
-  const { data, error } = await supabaseAdmin
-    .from('client_service_request_details')
-    .select('id, request_group_id, created_at, email_address, service_type, service_task, service_description, preferred_date, preferred_time, is_urgent, tools_provided, request_image_url, image_name')
-    .eq('email_address', email)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return Array.isArray(data) ? data : [];
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('client_service_request_details')
+      .select(
+        'id, request_group_id, created_at, email_address, service_type, service_task, service_description, preferred_date, preferred_time, is_urgent, tools_provided, workers_needed, request_image_url, image_name'
+      )
+      .eq('email_address', email)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (Array.isArray(data) ? data : []).map(normalizeWorkersNeededRow);
+  } catch (e) {
+    if (isMissingColumn(e, 'workers_needed')) {
+      const { data, error } = await supabaseAdmin
+        .from('client_service_request_details')
+        .select(
+          'id, request_group_id, created_at, email_address, service_type, service_task, service_description, preferred_date, preferred_time, is_urgent, tools_provided, workers_need, request_image_url, image_name'
+        )
+        .eq('email_address', email)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (Array.isArray(data) ? data : []).map(normalizeWorkersNeededRow);
+    }
+    throw e;
+  }
 }
 async function getCombinedByGroupId(request_group_id) {
-  const [infoRes, detRes, rateRes] = await Promise.all([
+  const [infoRes, detRes] = await Promise.all([
     supabaseAdmin.from('client_information').select('*').eq('request_group_id', request_group_id).maybeSingle(),
-    supabaseAdmin.from('client_service_request_details').select('*').eq('request_group_id', request_group_id).maybeSingle(),
-    supabaseAdmin.from('client_service_rate').select('*').eq('request_group_id', request_group_id).maybeSingle()
+    supabaseAdmin.from('client_service_request_details').select('*').eq('request_group_id', request_group_id).maybeSingle()
   ]);
   if (infoRes.error) throw infoRes.error;
   if (detRes.error) throw detRes.error;
-  if (rateRes.error) throw rateRes.error;
-  if (!detRes.data && !infoRes.data && !rateRes.data) return null;
-  return { info: infoRes.data || {}, details: detRes.data || {}, rate: rateRes.data || {} };
+  if (!detRes.data && !infoRes.data) return null;
+  return { info: infoRes.data || {}, details: normalizeWorkersNeededRow(detRes.data || {}) || {} };
 }
 async function getCancelledByGroupIds(groupIds) {
   if (!Array.isArray(groupIds) || groupIds.length === 0) return [];
-  const { data, error } = await supabaseAdmin
-    .from('client_cancel_request')
-    .select('request_group_id')
-    .in('request_group_id', groupIds);
+  const { data, error } = await supabaseAdmin.from('client_cancel_request').select('request_group_id').in('request_group_id', groupIds);
   if (error) throw error;
-  return (data || []).map(x => x.request_group_id).filter(Boolean);
+  return (data || []).map((x) => x.request_group_id).filter(Boolean);
 }
 async function getCancelledMapByGroupIds(groupIds) {
   if (!Array.isArray(groupIds) || groupIds.length === 0) return {};
-  const { data, error } = await supabaseAdmin
-    .from('client_cancel_request')
-    .select('request_group_id,canceled_at')
-    .in('request_group_id', groupIds);
+  const { data, error } = await supabaseAdmin.from('client_cancel_request').select('request_group_id,canceled_at').in('request_group_id', groupIds);
   if (error) throw error;
   const m = {};
-  (data || []).forEach(x => { if (x.request_group_id) m[x.request_group_id] = x.canceled_at || null; });
+  (data || []).forEach((x) => {
+    if (x.request_group_id) m[x.request_group_id] = x.canceled_at || null;
+  });
   return m;
 }
 async function listPendingByEmail(email) {
@@ -144,13 +181,10 @@ async function listPendingByEmail(email) {
 }
 async function getCancelledReasonsByGroupIds(groupIds) {
   if (!Array.isArray(groupIds) || groupIds.length === 0) return {};
-  const { data, error } = await supabaseAdmin
-    .from('client_cancel_request')
-    .select('*')
-    .in('request_group_id', groupIds);
+  const { data, error } = await supabaseAdmin.from('client_cancel_request').select('*').in('request_group_id', groupIds);
   if (error) throw error;
   const m = {};
-  (data || []).forEach(x => {
+  (data || []).forEach((x) => {
     if (x.request_group_id) {
       m[x.request_group_id] = {
         reason_choice: x.reason_choice || null,
@@ -164,42 +198,57 @@ async function getCancelledReasonsByGroupIds(groupIds) {
 
 async function updateClientInformation(request_group_id, fields) {
   const payload = {};
-  Object.keys(fields || {}).forEach(k => { const v = fields[k]; if (v !== undefined) payload[k] = v; });
+  Object.keys(fields || {}).forEach((k) => {
+    const v = fields[k];
+    if (v !== undefined) payload[k] = v;
+  });
   if (!Object.keys(payload).length) return null;
-  const { data, error } = await supabaseAdmin
-    .from('client_information')
-    .update(payload)
-    .eq('request_group_id', request_group_id)
-    .select('id')
-    .maybeSingle();
+  const { data, error } = await supabaseAdmin.from('client_information').update(payload).eq('request_group_id', request_group_id).select('id').maybeSingle();
   if (error) throw error;
   return data;
 }
 async function updateServiceRequestDetails(request_group_id, fields) {
   const payload = {};
-  Object.keys(fields || {}).forEach(k => { const v = fields[k]; if (v !== undefined) payload[k] = v; });
+  Object.keys(fields || {}).forEach((k) => {
+    const v = fields[k];
+    if (v !== undefined) payload[k] = v;
+  });
   if (!Object.keys(payload).length) return null;
-  const { data, error } = await supabaseAdmin
-    .from('client_service_request_details')
-    .update(payload)
-    .eq('request_group_id', request_group_id)
-    .select('id')
-    .maybeSingle();
-  if (error) throw error;
-  return data;
-}
-async function updateServiceRate(request_group_id, fields) {
-  const payload = {};
-  Object.keys(fields || {}).forEach(k => { const v = fields[k]; if (v !== undefined) payload[k] = v; });
-  if (!Object.keys(payload).length) return null;
-  const { data, error } = await supabaseAdmin
-    .from('client_service_rate')
-    .update(payload)
-    .eq('request_group_id', request_group_id)
-    .select('id')
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('client_service_request_details')
+      .update(payload)
+      .eq('request_group_id', request_group_id)
+      .select('id')
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  } catch (e) {
+    if (isMissingColumn(e, 'workers_needed')) {
+      const p2 = withWorkersColumn(payload, 'workers_need');
+      const { data, error } = await supabaseAdmin
+        .from('client_service_request_details')
+        .update(p2)
+        .eq('request_group_id', request_group_id)
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    }
+    if (isMissingColumn(e, 'workers_need')) {
+      const p2 = withWorkersColumn(payload, 'workers_needed');
+      const { data, error } = await supabaseAdmin
+        .from('client_service_request_details')
+        .update(p2)
+        .eq('request_group_id', request_group_id)
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    }
+    throw e;
+  }
 }
 
 module.exports = {
@@ -208,7 +257,6 @@ module.exports = {
   findClientById,
   insertClientInformation,
   insertServiceRequestDetails,
-  insertServiceRate,
   insertServiceRequestStatus,
   insertClientCancelRequest,
   newGroupId,
@@ -219,6 +267,5 @@ module.exports = {
   listPendingByEmail,
   getCancelledReasonsByGroupIds,
   updateClientInformation,
-  updateServiceRequestDetails,
-  updateServiceRate
+  updateServiceRequestDetails
 };

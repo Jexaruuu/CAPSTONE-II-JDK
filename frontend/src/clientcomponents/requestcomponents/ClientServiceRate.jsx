@@ -11,10 +11,6 @@ const INCLUDED_WORKERS = 2;
 const EXTRA_WORKER_FEE = 150;
 
 const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
-  const [rateType, setRateType] = useState('');
-  const [rateFrom, setRateFrom] = useState('');
-  const [rateTo, setRateTo] = useState('');
-  const [rateValue, setRateValue] = useState('');
   const [attempted, setAttempted] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
@@ -201,7 +197,10 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
     return baseRateNum * billableUnits;
   }, [baseRateNum, billableUnits]);
 
-  const computedTotal = useMemo(() => computedSubtotal + nightFee + (Number(extraWorkersFeeTotal) || 0), [computedSubtotal, nightFee, extraWorkersFeeTotal]);
+  const computedTotal = useMemo(
+    () => computedSubtotal + nightFee + (Number(extraWorkersFeeTotal) || 0),
+    [computedSubtotal, nightFee, extraWorkersFeeTotal]
+  );
 
   const hasDetails = !!serviceType && !!serviceTask;
   const isFormValid = hasDetails && Number.isFinite(baseRateNum) && baseRateNum > 0 && (Number(units) || 0) >= 1;
@@ -214,7 +213,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         setServiceType(d.serviceType || '');
         setServiceTask(d.serviceTask || '');
         setPreferredTime(d.preferredTime || '');
-        const wn = Number(d.workersNeeded);
+        const wn = Number(d.workersNeeded ?? d.workers_needed);
         const safeWN = Number.isFinite(wn) && wn >= 1 ? wn : 1;
         setWorkersNeeded(safeWN);
 
@@ -233,17 +232,13 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        setRateType(data.rateType || '');
-        setRateFrom(data.rateFrom || '');
-        setRateTo(data.rateTo || '');
-        setRateValue(data.rateValue || '');
         const u = Number(data.units);
         setUnits(Number.isFinite(u) && u >= 1 ? u : 1);
         if (!serviceType && (data.serviceType || '')) setServiceType(data.serviceType || '');
         if (!serviceTask && (data.serviceTask || '')) setServiceTask(data.serviceTask || '');
         if (!preferredTime && (data.preferredTime || '')) setPreferredTime(data.preferredTime || '');
 
-        const wn2 = Number(data.workersNeeded);
+        const wn2 = Number(data.workersNeeded ?? data.workers_needed);
         const safeWN2 = Number.isFinite(wn2) && wn2 >= 1 ? wn2 : null;
         if (safeWN2 !== null) setWorkersNeeded(safeWN2);
 
@@ -259,19 +254,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   useEffect(() => {
     if (!hydrated) return;
 
-    const legacyRateType = 'Service Task Rate';
-    const legacyRateValue = Number.isFinite(computedTotal) ? String(Math.round(computedTotal)) : '';
-
-    setRateType(legacyRateType);
-    setRateFrom('');
-    setRateTo('');
-    setRateValue(legacyRateValue);
-
     const payload = {
-      rateType: legacyRateType,
-      rateFrom: '',
-      rateTo: '',
-      rateValue: legacyRateValue,
       serviceType,
       serviceTask,
       preferredTime,
@@ -375,10 +358,6 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
     setTimeout(() => {
       const statePayload = {
         title,
-        rate_type: rateType,
-        rate_from: rateFrom,
-        rate_to: rateTo,
-        rate_value: rateValue,
         service_type: serviceType,
         service_task: serviceTask,
         units: inputUnitsSafe,
@@ -424,7 +403,14 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <img
+              src="/jdklogo.png"
+              alt=""
+              className="h-8 w-8 object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
             <div className="text-2xl md:text-3xl font-semibold text-gray-900">Service rate based on your selected task</div>
           </div>
           <div className="flex items-center gap-2">
@@ -440,7 +426,10 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
             <h3 className="text-xl md:text-2xl font-semibold text-gray-900">Service Request Price Rate</h3>
-            <span style={{ display: 'none' }} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
+            <span
+              style={{ display: 'none' }}
+              className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200"
+            >
               <span className="h-3 w-3 rounded-full bg-current opacity-30" />
               Rate
             </span>
@@ -491,7 +480,9 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                     <div className="md:col-span-2">
                       <div className="flex items-center justify-between mb-2">
                         <div className="text-sm font-medium text-gray-700">{isLaundry ? `How many ${quantityUnit === 'kg' ? 'kg' : unitLabel}?` : 'How many units?'}</div>
-                        {attempted && hasDetails && !(Number.isFinite(baseRateNum) && baseRateNum > 0) ? <span className="text-xs text-red-600">Rate not available for this task</span> : null}
+                        {attempted && hasDetails && !(Number.isFinite(baseRateNum) && baseRateNum > 0) ? (
+                          <span className="text-xs text-red-600">Rate not available for this task</span>
+                        ) : null}
                       </div>
 
                       <div className={`rounded-2xl border p-4 ${attempted && !isFormValid ? 'border-red-200 bg-red-50/40' : 'border-gray-200 bg-gray-50/40'}`}>
@@ -501,7 +492,11 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                               type="button"
                               onClick={decUnits}
                               disabled={!Number.isFinite(baseRateNum) || baseRateNum <= 0}
-                              className={`h-11 w-11 rounded-xl border text-lg font-semibold transition ${Number.isFinite(baseRateNum) && baseRateNum > 0 ? 'border-gray-300 hover:bg-white text-gray-900' : 'border-gray-200 text-gray-300 cursor-not-allowed bg-white/50'}`}
+                              className={`h-11 w-11 rounded-xl border text-lg font-semibold transition ${
+                                Number.isFinite(baseRateNum) && baseRateNum > 0
+                                  ? 'border-gray-300 hover:bg-white text-gray-900'
+                                  : 'border-gray-200 text-gray-300 cursor-not-allowed bg-white/50'
+                              }`}
                             >
                               −
                             </button>
@@ -513,7 +508,11 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                               type="button"
                               onClick={incUnits}
                               disabled={!Number.isFinite(baseRateNum) || baseRateNum <= 0}
-                              className={`h-11 w-11 rounded-xl border text-lg font-semibold transition ${Number.isFinite(baseRateNum) && baseRateNum > 0 ? 'border-gray-300 hover:bg-white text-gray-900' : 'border-gray-200 text-gray-300 cursor-not-allowed bg-white/50'}`}
+                              className={`h-11 w-11 rounded-xl border text-lg font-semibold transition ${
+                                Number.isFinite(baseRateNum) && baseRateNum > 0
+                                  ? 'border-gray-300 hover:bg-white text-gray-900'
+                                  : 'border-gray-200 text-gray-300 cursor-not-allowed bg-white/50'
+                              }`}
                             >
                               +
                             </button>
@@ -526,11 +525,15 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                             </div>
                             <div className="flex items-center justify-between mt-1">
                               <span className="text-sm text-gray-600">Preferred time fee</span>
-                              <span className={`text-sm font-semibold ${nightFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>{nightFeeApplies ? `+ ${peso(nightFee)}` : '—'}</span>
+                              <span className={`text-sm font-semibold ${nightFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                                {nightFeeApplies ? `+ ${peso(nightFee)}` : '—'}
+                              </span>
                             </div>
                             <div className="flex items-center justify-between mt-1">
                               <span className="text-sm text-gray-600">Extra workers fee</span>
-                              <span className={`text-sm font-semibold ${workersFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>{workersFeeApplies ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}</span>
+                              <span className={`text-sm font-semibold ${workersFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                                {workersFeeApplies ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
+                              </span>
                             </div>
                             <div className="h-px bg-gray-200 my-3" />
                             <div className="flex items-center justify-between">
@@ -553,7 +556,9 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                         </div>
                       </div>
 
-                      {attempted && !isFormValid ? <p className="text-xs text-red-600 mt-2">Please ensure your service type/task is selected and the task has a valid rate.</p> : null}
+                      {attempted && !isFormValid ? (
+                        <p className="text-xs text-red-600 mt-2">Please ensure your service type/task is selected and the task has a valid rate.</p>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -575,7 +580,9 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm text-gray-600">Extra workers fee</span>
-                      <span className={`text-sm font-semibold ${workersFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>{workersFeeApplies ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}</span>
+                      <span className={`text-sm font-semibold ${workersFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                        {workersFeeApplies ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm text-gray-600">{isLaundry ? 'Quantity' : 'Units'}</span>
@@ -595,7 +602,9 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm text-gray-600">Preferred time fee</span>
-                      <span className={`text-sm font-semibold ${nightFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>{nightFeeApplies ? `+ ${peso(nightFee)}` : '—'}</span>
+                      <span className={`text-sm font-semibold ${nightFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                        {nightFeeApplies ? `+ ${peso(nightFee)}` : '—'}
+                      </span>
                     </div>
                     <div className="h-px bg-gray-200 my-2" />
                     <div className="flex items-center justify-between gap-3">
@@ -611,11 +620,6 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                 </div>
               </div>
             </div>
-
-            <input type="hidden" value={rateType} readOnly />
-            <input type="hidden" value={rateFrom} readOnly />
-            <input type="hidden" value={rateTo} readOnly />
-            <input type="hidden" value={rateValue} readOnly />
           </div>
         </div>
 
@@ -632,7 +636,9 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
             type="button"
             onClick={handleReviewClick}
             disabled={!isFormValid}
-            className={`sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-[#0077d6]' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'} focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40`}
+            className={`sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${
+              isFormValid ? 'bg-[#008cfc] text-white hover:bg-[#0077d6]' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
+            } focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40`}
             aria-disabled={!isFormValid}
           >
             Review Service Request
@@ -647,14 +653,29 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
           aria-label="Loading next step"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
-              <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
@@ -681,14 +702,29 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
           aria-label="Back to Step 2"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="relative mx-auto w-40 h-40">
-              <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (

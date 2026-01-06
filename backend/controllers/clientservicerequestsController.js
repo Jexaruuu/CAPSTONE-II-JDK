@@ -1,9 +1,8 @@
-// BACKEND: clientservicerequestsController.js
+// clientservicerequestsController.js
 const {
   uploadDataUrlToBucket,
   insertClientInformation,
   insertServiceRequestDetails,
-  insertServiceRate,
   newGroupId,
   findClientByEmail,
   findClientById,
@@ -14,8 +13,7 @@ const {
   getCancelledMapByGroupIds,
   getCancelledReasonsByGroupIds,
   updateClientInformation,
-  updateServiceRequestDetails,
-  updateServiceRate
+  updateServiceRequestDetails
 } = require('../models/clientservicerequestsModel');
 
 const { insertPendingRequest } = require('../models/clientservicerequeststatusModel');
@@ -85,12 +83,59 @@ function pick(obj, keys, alt = null) {
 function normalizeAttachments(arr) {
   if (!Array.isArray(arr)) return [];
   return arr
-    .map(x => {
+    .map((x) => {
       if (typeof x === 'string') return x;
       if (x && typeof x === 'object') return x.dataUrl || x.dataURL || x.base64 || x.url || null;
       return null;
     })
     .filter(Boolean);
+}
+
+function toIntOrNull(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    const n = Math.floor(v);
+    return n >= 1 ? n : null;
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  const n = Number(s);
+  if (Number.isFinite(n)) {
+    const nn = Math.floor(n);
+    return nn >= 1 ? nn : null;
+  }
+  const m = s.match(/\d+/);
+  if (!m) return null;
+  const nn = Math.floor(Number(m[0]));
+  return Number.isFinite(nn) && nn >= 1 ? nn : null;
+}
+
+function getWorkersNeeded(src, details, metadata) {
+  const v = pick(
+    { src, details, metadata },
+    [
+      'src.workers_needed',
+      'src.workers_need',
+      'src.workersNeeded',
+      'details.workers_needed',
+      'details.workers_need',
+      'details.workersNeeded',
+      'metadata.workers_needed',
+      'metadata.workers_need',
+      'metadata.workersNeeded'
+    ],
+    null
+  );
+  return toIntOrNull(v);
+}
+
+function workersNeededValue(obj) {
+  if (!obj) return null;
+  const v = obj.workers_needed;
+  if (v !== undefined && v !== null) return v;
+  const v2 = obj.workers_need;
+  if (v2 !== undefined && v2 !== null) return v2;
+  return null;
 }
 
 async function publicOrSignedUrl(bucket, path) {
@@ -113,60 +158,59 @@ exports.listOpen = async (req, res) => {
     if (error) throw error;
 
     const items = Array.isArray(rows) ? rows : [];
-    const valid = items.filter(r => !isExpiredPreferredDateTime(r?.details || {}));
-    const gids = valid.map(r => r.request_group_id).filter(Boolean);
+    const valid = items.filter((r) => !isExpiredPreferredDateTime(r?.details || {}));
+    const gids = valid.map((r) => r.request_group_id).filter(Boolean);
     let cancelled = [];
-    try { cancelled = await getCancelledByGroupIds(gids); } catch {}
+    try {
+      cancelled = await getCancelledByGroupIds(gids);
+    } catch {}
 
-    const open = valid.filter(r => !cancelled.includes(r.request_group_id));
+    const open = valid.filter((r) => !cancelled.includes(r.request_group_id));
 
     const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
-    const combined = await Promise.all(open.map(async r => {
-      const row = await getCombinedByGroupId(r.request_group_id);
-      if (!row) return null;
-      const d = row.details || {};
-      if (!d.request_image_url && d.image_name) {
-        row.details = { ...d, request_image_url: await publicOrSignedUrl(bucket, d.image_name) };
-      }
-      const ip = row.info || {};
-      let info = { ...ip };
-      if (!info.profile_picture_url && info.profile_picture_name) {
-        info.profile_picture_url = await publicOrSignedUrl(bucket, info.profile_picture_name);
-      }
-      return {
-        id: r.request_group_id,
-        request_group_id: r.request_group_id,
-        created_at: r.created_at,
-        status: r.status,
-        info: {
-          email_address: info.email_address || null,
-          first_name: info.first_name || null,
-          last_name: info.last_name || null,
-          contact_number: info.contact_number || null,
-          street: info.street || '',
-          barangay: info.barangay || '',
-          additional_address: info.additional_address || '',
-          profile_picture_url: info.profile_picture_url || null
-        },
-        details: {
-          service_type: row.details?.service_type || '',
-          service_task: row.details?.service_task || '',
-          preferred_date: row.details?.preferred_date || null,
-          preferred_time: row.details?.preferred_time || null,
-          is_urgent: row.details?.is_urgent || '',
-          tools_provided: row.details?.tools_provided || '',
-          service_description: row.details?.service_description || '',
-          request_image_url: row.details?.request_image_url || null,
-          image_name: row.details?.image_name || null
-        },
-        rate: {
-          rate_type: row.rate?.rate_type || '',
-          rate_from: row.rate?.rate_from || null,
-          rate_to: row.rate?.rate_to || null,
-          rate_value: row.rate?.rate_value || null
+    const combined = await Promise.all(
+      open.map(async (r) => {
+        const row = await getCombinedByGroupId(r.request_group_id);
+        if (!row) return null;
+        const d = row.details || {};
+        if (!d.request_image_url && d.image_name) {
+          row.details = { ...d, request_image_url: await publicOrSignedUrl(bucket, d.image_name) };
         }
-      };
-    }));
+        const ip = row.info || {};
+        let info = { ...ip };
+        if (!info.profile_picture_url && info.profile_picture_name) {
+          info.profile_picture_url = await publicOrSignedUrl(bucket, info.profile_picture_name);
+        }
+        return {
+          id: r.request_group_id,
+          request_group_id: r.request_group_id,
+          created_at: r.created_at,
+          status: r.status,
+          info: {
+            email_address: info.email_address || null,
+            first_name: info.first_name || null,
+            last_name: info.last_name || null,
+            contact_number: info.contact_number || null,
+            street: info.street || '',
+            barangay: info.barangay || '',
+            additional_address: info.additional_address || '',
+            profile_picture_url: info.profile_picture_url || null
+          },
+          details: {
+            service_type: row.details?.service_type || '',
+            service_task: row.details?.service_task || '',
+            preferred_date: row.details?.preferred_date || null,
+            preferred_time: row.details?.preferred_time || null,
+            is_urgent: row.details?.is_urgent || '',
+            tools_provided: row.details?.tools_provided || '',
+            service_description: row.details?.service_description || '',
+            workers_needed: workersNeededValue(row.details) ?? null,
+            request_image_url: row.details?.request_image_url || null,
+            image_name: row.details?.image_name || null
+          }
+        };
+      })
+    );
 
     const cleaned = combined.filter(Boolean).slice(0, limit);
     return res.status(200).json({ items: cleaned });
@@ -180,7 +224,6 @@ exports.submitFullRequest = async (req, res) => {
     const src = req.body || {};
     const info = src.info || src.information || {};
     const details = src.details || src.detail || {};
-    const rate = src.rate || src.pricing || {};
     const metadata = src.metadata || {};
 
     const client_id = pick(src, ['client_id', 'clientId', 'info.client_id', 'info.clientId']);
@@ -202,11 +245,7 @@ exports.submitFullRequest = async (req, res) => {
     const preferred_time = pick(src, ['preferred_time', 'preferredTime', 'details.preferred_time', 'details.preferredTime']);
     const is_urgent = pick(src, ['is_urgent', 'isUrgent', 'urgent', 'details.is_urgent', 'details.isUrgent', 'metadata.is_urgent', 'metadata.isUrgent']);
     const tools_provided = pick(src, ['tools_provided', 'toolsProvided', 'tools', 'details.tools_provided', 'details.toolsProvided', 'metadata.tools_provided', 'metadata.toolsProvided']);
-
-    const rate_type_raw = pick(src, ['rate_type', 'rateType', 'rate.rate_type', 'rate.rateType']);
-    const rate_from = pick(src, ['rate_from', 'rateFrom', 'rate.rate_from', 'rate.rateFrom']);
-    const rate_to = pick(src, ['rate_to', 'rateTo', 'rate.rate_to', 'rate.rateTo']);
-    const rate_value = pick(src, ['rate_value', 'rateValue', 'rate.rate_value', 'rate.rateValue']);
+    const workers_needed = getWorkersNeeded(src, details, metadata);
 
     const attachments = normalizeAttachments(pick(src, ['attachments', 'details.attachments'], []));
 
@@ -247,9 +286,9 @@ exports.submitFullRequest = async (req, res) => {
         .order('created_at', { ascending: false })
         .limit(50);
       const rows = Array.isArray(existing) ? existing : [];
-      const gids = rows.map(r => r.request_group_id).filter(Boolean);
+      const gids = rows.map((r) => r.request_group_id).filter(Boolean);
       const cancelled = await getCancelledByGroupIds(gids);
-      const active = rows.filter(r => {
+      const active = rows.filter((r) => {
         const s = String(r.status || '').toLowerCase();
         const notCancelled = !cancelled.includes(r.request_group_id);
         const notExpired = !isExpiredPreferredDateTime(r?.details || {});
@@ -268,7 +307,7 @@ exports.submitFullRequest = async (req, res) => {
         const promises = [];
         for (let i = 0; i < max; i++) promises.push(uploadDataUrlToBucket(bucket, attachments[i], `${request_group_id}-${i + 1}`));
         const results = await Promise.all(promises);
-        uploaded = results.filter(x => x?.url).map(x => ({ url: x.url, name: x.name }));
+        uploaded = results.filter((x) => x?.url).map((x) => ({ url: x.url, name: x.name }));
       } catch {
         uploaded = [];
       }
@@ -334,44 +373,19 @@ exports.submitFullRequest = async (req, res) => {
       is_urgent: yesNo(toBoolStrict(urgentRaw)),
       tools_provided: yesNo(toBoolStrict(toolsRaw)),
       service_description: description,
+      workers_needed: workers_needed,
       request_image_url: firstUpload?.url || details.image || metadata.request_image_url || metadata.image_url || null,
       image_name: firstUpload?.name || metadata.image_name || null
     };
 
     const missingDetails = [];
-    ['email_address', 'service_type', 'service_task', 'preferred_date', 'preferred_time', 'is_urgent', 'tools_provided', 'service_description'].forEach(k => { if (!detailsRow[k]) missingDetails.push(k); });
+    ['email_address', 'service_type', 'service_task', 'preferred_date', 'preferred_time', 'is_urgent', 'tools_provided', 'service_description'].forEach((k) => {
+      if (!detailsRow[k]) missingDetails.push(k);
+    });
     if (missingDetails.length) return res.status(400).json({ message: `Missing required client_service_request_details fields: ${missingDetails.join(', ')}` });
 
     try {
       await insertServiceRequestDetails(detailsRow);
-    } catch (e) {
-      return res.status(400).json({ message: friendlyError(e) });
-    }
-
-    let inferredRateType = rate_type_raw || null;
-    if (!inferredRateType) {
-      if (rate_value) inferredRateType = 'fixed';
-      else if (rate_from || rate_to) inferredRateType = 'range';
-    }
-
-    const rateRow = {
-      request_group_id,
-      client_id: effectiveClientId,
-      auth_uid: effectiveAuthUid || auth_uid || metadata.auth_uid || null,
-      email_address: infoRow.email_address,
-      rate_type: inferredRateType || null,
-      rate_from: rate_from || null,
-      rate_to: rate_to || null,
-      rate_value: rate_value || null
-    };
-
-    const missingRate = [];
-    if (!rateRow.email_address) missingRate.push('email_address');
-    if (!rateRow.rate_type) missingRate.push('rate_type');
-    if (missingRate.length) return res.status(400).json({ message: `Missing required client_service_rate fields: ${missingRate.join(', ')}` });
-
-    try {
-      await insertServiceRate(rateRow);
     } catch (e) {
       return res.status(400).json({ message: friendlyError(e) });
     }
@@ -394,15 +408,9 @@ exports.submitFullRequest = async (req, res) => {
       is_urgent: detailsRow.is_urgent,
       tools_provided: detailsRow.tools_provided,
       service_description: detailsRow.service_description,
+      workers_needed: detailsRow.workers_needed ?? null,
       request_image_url: detailsRow.request_image_url,
       image_name: detailsRow.image_name
-    };
-
-    const pendingRate = {
-      rate_type: rateRow.rate_type,
-      rate_from: rateRow.rate_from,
-      rate_to: rateRow.rate_to,
-      rate_value: rateRow.rate_value
     };
 
     let pendingRow;
@@ -414,7 +422,7 @@ exports.submitFullRequest = async (req, res) => {
         auth_uid: infoRow.auth_uid || effectiveAuthUid || auth_uid || null,
         info: pendingInfo,
         details: pendingDetails,
-        rate: pendingRate,
+        rate: {},
         status: 'pending'
       });
     } catch (e) {
@@ -442,7 +450,7 @@ exports.listApproved = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
     const { data, error } = await supabaseAdmin
       .from('client_service_request_status')
-      .select('id, request_group_id, status, created_at, email_address, client_id, auth_uid, info, details, rate')
+      .select('id, request_group_id, status, created_at, email_address, client_id, auth_uid, info, details')
       .eq('status', 'approved')
       .eq('email_address', email)
       .order('created_at', { ascending: false })
@@ -451,25 +459,41 @@ exports.listApproved = async (req, res) => {
 
     const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
     const items = Array.isArray(data) ? data : [];
-    const fixed = await Promise.all(items.map(async (it) => {
-      const d = { ...(it.details || {}) };
-      if (d.is_urgent !== undefined) d.is_urgent = yesNo(toBoolStrict(d.is_urgent));
-      if (!d.request_image_url && d.image_name) d.request_image_url = await publicOrSignedUrl(bucket, d.image_name);
-      let info = it.info || {};
-      if (!info.profile_picture_url || info.profile_picture_url === '') {
-        const combined = await getCombinedByGroupId(it.request_group_id);
-        const ip = combined?.info || {};
-        if (!ip.profile_picture_url && ip.profile_picture_name) {
-          info = { ...info, profile_picture_url: await publicOrSignedUrl(bucket, ip.profile_picture_name) };
-        } else if (ip.profile_picture_url) {
-          info = { ...info, profile_picture_url: ip.profile_picture_url };
+    const fixed = await Promise.all(
+      items.map(async (it) => {
+        const d = { ...(it.details || {}) };
+        if (d.is_urgent !== undefined) d.is_urgent = yesNo(toBoolStrict(d.is_urgent));
+        if (d.workers_needed === undefined && d.workers_need !== undefined) d.workers_needed = d.workers_need;
+        if (!d.request_image_url && d.image_name) d.request_image_url = await publicOrSignedUrl(bucket, d.image_name);
+        let info = it.info || {};
+        if (!info.profile_picture_url || info.profile_picture_url === '') {
+          const combined = await getCombinedByGroupId(it.request_group_id);
+          const ip = combined?.info || {};
+          if (!ip.profile_picture_url && ip.profile_picture_name) {
+            info = { ...info, profile_picture_url: await publicOrSignedUrl(bucket, ip.profile_picture_name) };
+          } else if (ip.profile_picture_url) {
+            info = { ...info, profile_picture_url: ip.profile_picture_url };
+          }
         }
-      }
-      return { ...it, details: d, info };
-    }));
-    const gids = fixed.map(it => it.request_group_id).filter(Boolean);
+        return {
+          id: it.id,
+          request_group_id: it.request_group_id,
+          status: it.status,
+          created_at: it.created_at,
+          email_address: it.email_address,
+          client_id: it.client_id,
+          auth_uid: it.auth_uid,
+          info,
+          details: d
+        };
+      })
+    );
+
+    const gids = fixed.map((it) => it.request_group_id).filter(Boolean);
     let cancelled = [];
-    try { cancelled = await getCancelledByGroupIds(gids); } catch {}
+    try {
+      cancelled = await getCancelledByGroupIds(gids);
+    } catch {}
     const filtered = fixed.filter((it) => !isExpiredPreferredDateTime(it?.details || {}) && !cancelled.includes(it.request_group_id));
     return res.status(200).json({ items: filtered });
   } catch {
@@ -485,92 +509,97 @@ exports.listCurrent = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
     const groupIdFilter = String(req.query.groupId || '').trim();
     const details = await listDetailsByEmail(email, limit);
-    const groups = details.map(d => d.request_group_id).filter(Boolean);
+    const groups = details.map((d) => d.request_group_id).filter(Boolean);
     const cancelledIds = await getCancelledByGroupIds(groups);
     const cancelMap = await getCancelledMapByGroupIds(groups);
     const cancelReasonsMap = await getCancelledReasonsByGroupIds(groups);
+
     let targetGroups = groups;
     let statusValue = 'pending';
     if (scope === 'cancelled') {
       targetGroups = cancelledIds;
       statusValue = 'cancelled';
     } else {
-      const activeGroups = groups.filter(g => !cancelledIds.includes(g));
+      const activeGroups = groups.filter((g) => !cancelledIds.includes(g));
       targetGroups = activeGroups;
       statusValue = 'pending';
     }
+
     if (groupIdFilter) {
       if (scope === 'cancelled') {
         targetGroups = cancelledIds.includes(groupIdFilter) ? [groupIdFilter] : [];
       } else {
-        targetGroups = cancelledIds.includes(groupIdFilter) ? [] : (groups.includes(groupIdFilter) ? [groupIdFilter] : []);
+        targetGroups = cancelledIds.includes(groupIdFilter) ? [] : groups.includes(groupIdFilter) ? [groupIdFilter] : [];
       }
     }
+
     let statusMap = {};
     if (targetGroups.length) {
-      const { data: pend } = await supabaseAdmin
-        .from('client_service_request_status')
-        .select('request_group_id,status,created_at,details')
-        .in('request_group_id', targetGroups);
-      (Array.isArray(pend) ? pend : []).forEach(r => {
+      const { data: pend } = await supabaseAdmin.from('client_service_request_status').select('request_group_id,status,created_at,details').in('request_group_id', targetGroups);
+      (Array.isArray(pend) ? pend : []).forEach((r) => {
         statusMap[r.request_group_id] = String(r.status || 'pending').toLowerCase();
       });
     }
+
     const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
-    const combined = await Promise.all(targetGroups.map(async g => {
-      const row = await getCombinedByGroupId(g);
-      if (!row) return null;
-      const d = row.details || {};
-      if (!d.request_image_url && d.image_name) d.request_image_url = await publicOrSignedUrl(bucket, d.image_name);
-      const ip = row.info || {};
-      let info = ip;
-      if (!ip.profile_picture_url && ip.profile_picture_name) {
-        info = { ...ip, profile_picture_url: await publicOrSignedUrl(bucket, ip.profile_picture_name) };
-      }
-      return { ...row, details: d, info };
-    }));
-    const items = combined.filter(Boolean).map(row => {
-      const d = row.details || {};
-      const r = row.rate || {};
-      const gid = row.details?.request_group_id || row.info?.request_group_id || row.rate?.request_group_id || '';
-      const base = {
-        id: gid,
-        client_id: row.info?.client_id || null,
-        auth_uid: row.info?.auth_uid || null,
-        created_at: d.created_at || row.info?.created_at || new Date().toISOString(),
-        details: {
-          service_type: d.service_type || '',
-          service_task: d.service_task || '',
-          preferred_date: d.preferred_date || '',
-          preferred_time: d.preferred_time || '',
-          is_urgent: d.is_urgent || '',
-          request_image_url: d.request_image_url || null,
-          image_name: d.image_name || null,
-          service_description: d.service_description || ''
-        },
-        rate: {
-          rate_type: r.rate_type || '',
-          rate_from: r.rate_from || '',
-          rate_to: r.rate_to || '',
-          rate_value: r.rate_value || ''
-        },
-        info: {
-          profile_picture_url: row.info?.profile_picture_url || null,
-          first_name: row.info?.first_name || null,
-          last_name: row.info?.last_name || null
+    const combined = await Promise.all(
+      targetGroups.map(async (g) => {
+        const row = await getCombinedByGroupId(g);
+        if (!row) return null;
+        const d = row.details || {};
+        if (!d.request_image_url && d.image_name) d.request_image_url = await publicOrSignedUrl(bucket, d.image_name);
+        const ip = row.info || {};
+        let info = ip;
+        if (!ip.profile_picture_url && ip.profile_picture_name) {
+          info = { ...ip, profile_picture_url: await publicOrSignedUrl(bucket, ip.profile_picture_name) };
         }
-      };
-      if (scope === 'cancelled') {
-        const cr = cancelReasonsMap[gid] || {};
-        return { ...base, status: 'cancelled', canceled_at: cr.canceled_at || cancelMap[gid] || null, reason_choice: cr.reason_choice || null, reason_other: cr.reason_other || null };
-      }
-      const s = statusMap[gid] || statusValue;
-      if (cancelledIds.includes(gid)) {
-        const cr = cancelReasonsMap[gid] || {};
-        return { ...base, status: 'cancelled', canceled_at: cr.canceled_at || cancelMap[gid] || null, reason_choice: cr.reason_choice || null, reason_other: cr.reason_other || null };
-      }
-      return { ...base, status: s };
-    });
+        return { ...row, details: d, info };
+      })
+    );
+
+    const items = combined
+      .filter(Boolean)
+      .map((row) => {
+        const d = row.details || {};
+        const gid = row.details?.request_group_id || row.info?.request_group_id || '';
+        const base = {
+          id: gid,
+          client_id: row.info?.client_id || null,
+          auth_uid: row.info?.auth_uid || null,
+          created_at: d.created_at || row.info?.created_at || new Date().toISOString(),
+          details: {
+            service_type: d.service_type || '',
+            service_task: d.service_task || '',
+            preferred_date: d.preferred_date || '',
+            preferred_time: d.preferred_time || '',
+            is_urgent: d.is_urgent || '',
+            tools_provided: d.tools_provided || '',
+            workers_needed: workersNeededValue(d) ?? null,
+            request_image_url: d.request_image_url || null,
+            image_name: d.image_name || null,
+            service_description: d.service_description || ''
+          },
+          info: {
+            profile_picture_url: row.info?.profile_picture_url || null,
+            first_name: row.info?.first_name || null,
+            last_name: row.info?.last_name || null
+          }
+        };
+
+        if (scope === 'cancelled') {
+          const cr = cancelReasonsMap[gid] || {};
+          return { ...base, status: 'cancelled', canceled_at: cr.canceled_at || cancelMap[gid] || null, reason_choice: cr.reason_choice || null, reason_other: cr.reason_other || null };
+        }
+
+        const s = statusMap[gid] || statusValue;
+        if (cancelledIds.includes(gid)) {
+          const cr = cancelReasonsMap[gid] || {};
+          return { ...base, status: 'cancelled', canceled_at: cr.canceled_at || cancelMap[gid] || null, reason_choice: cr.reason_choice || null, reason_other: cr.reason_other || null };
+        }
+
+        return { ...base, status: s };
+      });
+
     return res.status(200).json({ items });
   } catch (err) {
     return res.status(500).json({ message: friendlyError(err) });
@@ -604,6 +633,10 @@ exports.byGroup = async (req, res) => {
     if (!ip.profile_picture_url && ip.profile_picture_name) {
       row.info = { ...ip, profile_picture_url: await publicOrSignedUrl(bucket, ip.profile_picture_name) };
     }
+    if (row.details) {
+      if (row.details.workers_needed === undefined && row.details.workers_need !== undefined) row.details.workers_needed = row.details.workers_need;
+      if (row.details.workers_needed === undefined) row.details.workers_needed = null;
+    }
     return res.status(200).json(row);
   } catch {
     return res.status(500).json({ message: 'Failed to load request' });
@@ -636,10 +669,14 @@ exports.cancelRequest = async (req, res) => {
     if (!reason_choice && !reason_other) return res.status(400).json({ message: 'Provide a reason' });
 
     if (!auth_uid && client_id) {
-      try { auth_uid = (await findClientById(client_id))?.auth_uid || null; } catch {}
+      try {
+        auth_uid = (await findClientById(client_id))?.auth_uid || null;
+      } catch {}
     }
     if (!auth_uid && email_address) {
-      try { auth_uid = (await findClientByEmail(email_address))?.auth_uid || null; } catch {}
+      try {
+        auth_uid = (await findClientByEmail(email_address))?.auth_uid || null;
+      } catch {}
     }
 
     const canceled_at = new Date().toISOString();
@@ -667,7 +704,6 @@ exports.updateByGroup = async (req, res) => {
     const src = req.body || {};
     const info = src.info || src.information || {};
     const details = src.details || src.detail || {};
-    const rate = src.rate || src.pricing || {};
     const metadata = src.metadata || {};
 
     const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
@@ -701,11 +737,13 @@ exports.updateByGroup = async (req, res) => {
       street: info.street ?? current.info?.street ?? '',
       barangay: info.barangay ?? current.info?.barangay ?? '',
       additional_address: info.additional_address ?? current.info?.additional_address ?? '',
-      profile_picture_url: (profileUploaded?.url ?? info.profile_picture_url ?? current.info?.profile_picture_url ?? null),
-      profile_picture_name: (profileUploaded?.name ?? info.profile_picture_name ?? current.info?.profile_picture_name ?? null)
+      profile_picture_url: profileUploaded?.url ?? info.profile_picture_url ?? current.info?.profile_picture_url ?? null,
+      profile_picture_name: profileUploaded?.name ?? info.profile_picture_name ?? current.info?.profile_picture_name ?? null
     };
 
     await updateClientInformation(gid, infoRow);
+
+    const incomingWorkersNeeded = getWorkersNeeded(src, details, metadata);
 
     const newDetails = {
       service_type: details.service_type ?? current.details?.service_type ?? '',
@@ -715,26 +753,12 @@ exports.updateByGroup = async (req, res) => {
       is_urgent: details.is_urgent ?? current.details?.is_urgent ?? null,
       tools_provided: details.tools_provided ?? current.details?.tools_provided ?? null,
       service_description: details.service_description ?? current.details?.service_description ?? '',
+      workers_needed: incomingWorkersNeeded !== null ? incomingWorkersNeeded : details.workers_needed ?? details.workers_need ?? current.details?.workers_needed ?? current.details?.workers_need ?? null,
       request_image_url: uploaded[0]?.url ?? details.request_image_url ?? current.details?.request_image_url ?? null,
       image_name: uploaded[0]?.name ?? current.details?.image_name ?? null
     };
 
     await updateServiceRequestDetails(gid, newDetails);
-
-    let inferredRateType = rate.rate_type || current.rate?.rate_type || null;
-    if (!inferredRateType) {
-      if (rate.rate_value) inferredRateType = 'fixed';
-      else if (rate.rate_from || rate.rate_to) inferredRateType = 'range';
-    }
-
-    const newRate = {
-      rate_type: inferredRateType,
-      rate_from: rate.rate_from ?? current.rate?.rate_from ?? null,
-      rate_to: rate.rate_to ?? current.rate?.rate_to ?? null,
-      rate_value: rate.rate_value ?? current.rate?.rate_value ?? null
-    };
-
-    await updateServiceRate(gid, newRate);
 
     await supabaseAdmin
       .from('client_service_request_status')
@@ -756,15 +780,11 @@ exports.updateByGroup = async (req, res) => {
           is_urgent: newDetails.is_urgent,
           tools_provided: newDetails.tools_provided,
           service_description: newDetails.service_description,
+          workers_needed: newDetails.workers_needed ?? null,
           request_image_url: newDetails.request_image_url,
           image_name: newDetails.image_name
         },
-        rate: {
-          rate_type: newRate.rate_type,
-          rate_from: newRate.rate_from,
-          rate_to: newRate.rate_to,
-          rate_value: newRate.rate_value
-        }
+        rate: {}
       })
       .eq('request_group_id', gid);
 
@@ -773,6 +793,10 @@ exports.updateByGroup = async (req, res) => {
     const bucket2 = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
     if (!d.request_image_url && d.image_name) {
       updated.details = { ...d, request_image_url: await publicOrSignedUrl(bucket2, d.image_name) };
+    }
+    if (updated.details) {
+      if (updated.details.workers_needed === undefined && updated.details.workers_need !== undefined) updated.details.workers_needed = updated.details.workers_need;
+      if (updated.details.workers_needed === undefined) updated.details.workers_needed = null;
     }
 
     return res.status(200).json(updated);
