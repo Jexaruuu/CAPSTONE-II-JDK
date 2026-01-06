@@ -1,3 +1,4 @@
+// ClientReviewServiceRequest.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -380,6 +381,38 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     return (Number(subtotal) || 0) + (Number(preferredTimeFee) || 0);
   }, [total_state, savedRate, subtotal, preferredTimeFee]);
 
+  const extraWorkersFeeTotal = (() => {
+    const candidates = [
+      s?.extra_workers_fee,
+      s?.extraWorkersFeeTotal,
+      s?.extra_workers_fee_total,
+      s?.extraWorkersFee,
+      savedDetails?.extra_workers_fee,
+      savedDetails?.extraWorkersFeeTotal,
+      savedDetails?.extra_workers_fee_total,
+      savedDetails?.extraWorkersFee,
+      savedRate?.extra_workers_fee,
+      savedRate?.extraWorkersFeeTotal,
+      savedRate?.extra_workers_fee_total,
+      savedRate?.extraWorkersFee
+    ];
+    for (const c of candidates) {
+      const n = cleanNumber(c);
+      if (n !== null && Number.isFinite(n) && n > 0) return n;
+    }
+    return 0;
+  })();
+
+  const serviceTaskTotal = useMemo(() => {
+    const base = (Number(subtotal) || 0) + (Number(preferredTimeFee) || 0) + (Number(extraWorkersFeeTotal) || 0);
+    return base;
+  }, [subtotal, preferredTimeFee, extraWorkersFeeTotal]);
+
+  const totalForDisplay = useMemo(() => {
+    if (String(rate_type || '').trim() === 'Service Task Rate') return serviceTaskTotal;
+    return total;
+  }, [rate_type, serviceTaskTotal, total]);
+
   const baseRateDisplay = useMemo(() => {
     const formatted = formatRate(baseRateRaw || baseRateNumeric || '');
     if (!formatted) return '';
@@ -411,11 +444,11 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       );
     }
     if (rateTypeNormalized === 'Service Task Rate') {
-      return <div className="text-lg font-bold text-[#008cfc]">{peso(total)}</div>;
+      return <div className="text-lg font-bold text-[#008cfc]">{peso(totalForDisplay)}</div>;
     }
     if (rate_value) return <div className="text-lg font-bold text-[#008cfc]">{formatRate(rate_value)}</div>;
     return <div className="text-gray-500 text-sm">No rate provided</div>;
-  }, [rateTypeNormalized, rate_from, rate_to, rate_value, total]);
+  }, [rateTypeNormalized, rate_from, rate_to, rate_value, totalForDisplay]);
 
   const LabelValue = ({ label, value, emptyAs = '-' }) => {
     const isElement = React.isValidElement(value);
@@ -584,7 +617,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     const fromLS = cleanNumber(savedRate?.total);
     if (Number.isFinite(fromLS) && fromLS !== null) return peso(fromLS);
 
-    if (rateTypeNormalized === 'Service Task Rate') return peso(total);
+    if (rateTypeNormalized === 'Service Task Rate') return peso(totalForDisplay);
 
     if (rateTypeNormalized === 'By the Job Rate') {
       const job = cleanNumber(rate_value);
@@ -600,9 +633,9 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
     const fallback = cleanNumber(rate_value);
     if (fallback !== null) return peso(fallback);
 
-    const t = Number(total);
+    const t = Number(totalForDisplay);
     return Number.isFinite(t) && t > 0 ? peso(t) : '-';
-  }, [total_state, savedRate, rateTypeNormalized, total, rate_value, rate_from, rate_to]);
+  }, [total_state, savedRate, rateTypeNormalized, totalForDisplay, rate_value, rate_from, rate_to]);
 
   const handleConfirm = async () => {
     try {
@@ -761,6 +794,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
           base_rate_numeric: rateDraft.base_rate_numeric ?? null,
           subtotal: rateDraft.subtotal ?? null,
           preferred_time_fee: rateDraft.preferred_time_fee ?? null,
+          extra_workers_fee: detailsDraft?.extra_workers_fee ?? null,
           total: rateDraft.total ?? null,
           quantity_unit: rateDraft.quantity_unit ?? null,
           billable_units: rateDraft.billable_units ?? null,
@@ -891,6 +925,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         base_rate_numeric: normalized.metadata.base_rate_numeric,
         subtotal: normalized.metadata.subtotal,
         preferred_time_fee: normalized.metadata.preferred_time_fee,
+        extra_workers_fee: normalized.metadata.extra_workers_fee,
         total: normalized.metadata.total,
         quantity_unit: normalized.metadata.quantity_unit,
         billable_units: normalized.metadata.billable_units,
@@ -982,7 +1017,13 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   };
 
   const showBreakdown =
-    rateTypeNormalized === 'Service Task Rate' && (Number.isFinite(Number(total)) || Number.isFinite(Number(subtotal)));
+    rateTypeNormalized === 'Service Task Rate' && (Number.isFinite(Number(totalForDisplay)) || Number.isFinite(Number(subtotal)));
+
+  const extraWorkersFeeNode = (
+    <span className={`text-[15px] md:text-base font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+      {extraWorkersFeeTotal > 0 ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
+    </span>
+  );
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
@@ -1065,6 +1106,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                       <LabelValue label="Service Type" value={service_type} />
                       <LabelValue label="Service Task" value={service_task} />
                       <LabelValue label="Workers Needed" value={workersNeededDisplay} />
+                      <LabelValue label="Added Workers Fee" value={extraWorkersFeeNode} />
                       <LabelValue label="Preferred Date" value={preferred_date_display} />
                       <LabelValue label="Preferred Time" value={preferred_time_display} />
                       <LabelValue
@@ -1162,9 +1204,16 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                               </div>
                             </div>
 
+                            <div className="rounded-xl border border-gray-200 bg-white p-4 sm:col-span-2">
+                              <div className="text-xs text-gray-500 font-medium">Added workers fee</div>
+                              <div className={`mt-1 text-base font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                                {extraWorkersFeeTotal > 0 ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
+                              </div>
+                            </div>
+
                             <div className="sm:col-span-2 rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3">
                               <div className="text-xs text-gray-500 font-medium">Total</div>
-                              <div className="text-lg font-bold text-gray-900">{peso(total)}</div>
+                              <div className="text-lg font-bold text-gray-900">{peso(totalForDisplay)}</div>
                             </div>
                           </div>
                         </div>
@@ -1231,6 +1280,13 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     </div>
 
                     <div className="flex items-baseline gap-2">
+                      <span className="text-sm font-medium text-gray-700">Added Workers Fee:</span>
+                      <span className={`text-base font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                        {extraWorkersFeeTotal > 0 ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-baseline gap-2">
                       <span className="text-sm font-medium text-gray-700">Schedule:</span>
                       <span className="text-base font-semibold text-[#008cfc]">
                         {preferred_date_display || '-'} • {preferred_time_display || '-'}
@@ -1254,7 +1310,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                           <div className="px-4 pt-4 pb-2 text-[11px] tracking-wider text-gray-500 font-semibold">TOTAL</div>
                           <div className="px-4 pb-4 flex items-center justify-between gap-3">
                             <div className="text-base font-semibold text-gray-900">Total</div>
-                            <div className="text-2xl font-bold text-gray-900">{peso(total)}</div>
+                            <div className="text-2xl font-bold text-gray-900">{peso(totalForDisplay)}</div>
                           </div>
 
                           <div className="px-4 pb-4 -mt-1">
@@ -1270,9 +1326,16 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                               </div>
 
                               <div className="rounded-xl bg-white border border-gray-200 px-3 py-2">
-                                <div className="text-[11px] text-gray-500 font-medium">Fee</div>
+                                <div className="text-[11px] text-gray-500 font-medium">Preferred time fee</div>
                                 <div className={`text-sm font-semibold ${preferredTimeFee > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
                                   {preferredTimeFee > 0 ? `+ ${peso(preferredTimeFee)}` : '—'}
+                                </div>
+                              </div>
+
+                              <div className="col-span-2 rounded-xl bg-white border border-gray-200 px-3 py-2">
+                                <div className="text-[11px] text-gray-500 font-medium">Added workers fee</div>
+                                <div className={`text-sm font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                                  {extraWorkersFeeTotal > 0 ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
                                 </div>
                               </div>
 
@@ -1328,7 +1391,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
 
                       {rateTypeNormalized === 'Service Task Rate' ? (
                         <div className="mt-3 text-xs text-gray-500">
-                          Total is based on your selected task rate × {isLaundry ? 'quantity' : 'units'}, plus preferred time fee (if applicable).
+                          Total is based on your selected task rate × {isLaundry ? 'quantity' : 'units'}, plus preferred time fee and added workers fee (if applicable).
                         </div>
                       ) : null}
                     </div>
