@@ -1,8 +1,8 @@
-// clientservicerequestsController.js
 const {
   uploadDataUrlToBucket,
   insertClientInformation,
   insertServiceRequestDetails,
+  insertClientServiceRate,
   newGroupId,
   findClientByEmail,
   findClientById,
@@ -37,6 +37,7 @@ function dateOnlyFrom(input) {
   const d = new Date(raw);
   return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
+
 function parseHM24(val) {
   if (!val) return { h: 23, m: 59 };
   const s = String(val).trim();
@@ -54,6 +55,7 @@ function parseHM24(val) {
   if (min > 59) min = 59;
   return { h, m: min };
 }
+
 function isExpiredPreferredDateTime(details) {
   const d = dateOnlyFrom(details?.preferred_date);
   if (!d) return false;
@@ -62,6 +64,7 @@ function isExpiredPreferredDateTime(details) {
   const now = new Date();
   return d.getTime() < now.getTime();
 }
+
 function toBoolStrict(v) {
   if (typeof v === 'boolean') return v;
   if (v === 1 || v === '1') return true;
@@ -71,6 +74,7 @@ function toBoolStrict(v) {
   if (['no', 'n', 'false', 'f'].includes(s)) return false;
   return false;
 }
+
 const yesNo = (b) => (b ? 'Yes' : 'No');
 
 function pick(obj, keys, alt = null) {
@@ -80,6 +84,7 @@ function pick(obj, keys, alt = null) {
   }
   return alt;
 }
+
 function normalizeAttachments(arr) {
   if (!Array.isArray(arr)) return [];
   return arr
@@ -108,6 +113,27 @@ function toIntOrNull(v) {
   if (!m) return null;
   const nn = Math.floor(Number(m[0]));
   return Number.isFinite(nn) && nn >= 1 ? nn : null;
+}
+
+function toNumberOrNull(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const s = String(v);
+  const m = s.match(/-?\d+(\.\d+)?/);
+  if (!m) return null;
+  const n = Number(m[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toNonNegNumber(v, fallback = 0) {
+  const n = toNumberOrNull(v);
+  if (n === null) return fallback;
+  return n >= 0 ? n : fallback;
+}
+
+function pesoPH(v) {
+  const n = toNonNegNumber(v, 0);
+  return `₱${new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`;
 }
 
 function getWorkersNeeded(src, details, metadata) {
@@ -390,6 +416,75 @@ exports.submitFullRequest = async (req, res) => {
       return res.status(400).json({ message: friendlyError(e) });
     }
 
+    const rateSrc = src.client_service_rate || src.clientServiceRate || src.rate || metadata.client_service_rate || metadata.rate || {};
+    const paymentMethod = String(
+      pick(
+        { src, rateSrc, metadata },
+        ['src.payment_method', 'src.paymentMethod', 'rateSrc.payment_method', 'rateSrc.paymentMethod', 'metadata.payment_method', 'metadata.paymentMethod'],
+        ''
+      ) || ''
+    )
+      .trim()
+      .replace(/\s+/g, ' ');
+
+    const unitsVal = (() => {
+      const v = pick({ src, rateSrc, metadata }, ['rateSrc.units', 'rateSrc.unit', 'src.units', 'src.rate_units', 'metadata.rate_units', 'metadata.units', 'metadata.unit'], null);
+      const n = toIntOrNull(v);
+      return n ?? 1;
+    })();
+
+    const unitKgVal = (() => {
+      const v = pick({ src, rateSrc, metadata }, ['rateSrc.unit_kg', 'rateSrc.unitKg', 'metadata.unit_kg', 'metadata.unitKg'], null);
+      const n = toNumberOrNull(v);
+      return n === null ? null : n >= 0 ? n : null;
+    })();
+
+    const preferredTimeFeeVal = toNonNegNumber(
+      pick(
+        { src, rateSrc, metadata },
+        ['rateSrc.preferred_time_fee', 'rateSrc.preferredTimeFee', 'src.preferred_time_fee', 'metadata.preferred_time_fee', 'metadata.preferredTimeFee'],
+        0
+      ),
+      0
+    );
+
+    const extraWorkersFeeVal = toNonNegNumber(
+      pick(
+        { src, rateSrc, metadata },
+        ['rateSrc.extra_workers_fee', 'rateSrc.extraWorkersFee', 'src.extra_workers_fee', 'metadata.extra_workers_fee', 'metadata.extraWorkersFee'],
+        0
+      ),
+      0
+    );
+
+    const totalRateVal = toNonNegNumber(
+      pick(
+        { src, rateSrc, metadata },
+        ['rateSrc.total_rate', 'rateSrc.totalRate', 'rateSrc.total', 'src.total_rate', 'metadata.total_rate', 'metadata.totalRate', 'metadata.total'],
+        0
+      ),
+      0
+    );
+
+    const rateRow = {
+      request_group_id,
+      client_id: effectiveClientId,
+      auth_uid: infoRow.auth_uid || effectiveAuthUid || auth_uid || null,
+      email_address: infoRow.email_address,
+      preferred_time_fee_php: pesoPH(preferredTimeFeeVal),
+      extra_workers_fee_php: pesoPH(extraWorkersFeeVal),
+      units: unitsVal,
+      unit_kg: unitKgVal,
+      payment_method: paymentMethod || null,
+      total_rate_php: pesoPH(totalRateVal)
+    };
+
+    try {
+      await insertClientServiceRate(rateRow);
+    } catch (e) {
+      return res.status(400).json({ message: friendlyError(e) });
+    }
+
     const pendingInfo = {
       first_name: infoRow.first_name,
       last_name: infoRow.last_name,
@@ -422,7 +517,14 @@ exports.submitFullRequest = async (req, res) => {
         auth_uid: infoRow.auth_uid || effectiveAuthUid || auth_uid || null,
         info: pendingInfo,
         details: pendingDetails,
-        rate: {},
+        rate: {
+          preferred_time_fee: preferredTimeFeeVal,
+          extra_workers_fee: extraWorkersFeeVal,
+          units: rateRow.units,
+          unit_kg: rateRow.unit_kg,
+          payment_method: rateRow.payment_method,
+          total_rate: totalRateVal
+        },
         status: 'pending'
       });
     } catch (e) {

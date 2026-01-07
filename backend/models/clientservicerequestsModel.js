@@ -1,4 +1,3 @@
-// clientservicerequestsModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 const crypto = require('crypto');
 
@@ -7,6 +6,7 @@ function safeExtFromMime(mime) {
   const map = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg' };
   return map[mime] || 'bin';
 }
+
 function decodeDataUrl(dataUrl) {
   const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl || '');
   if (!m) return null;
@@ -14,6 +14,7 @@ function decodeDataUrl(dataUrl) {
   const b64 = m[2];
   return { mime, buffer: Buffer.from(b64, 'base64') };
 }
+
 async function uploadDataUrlToBucket(bucket, dataUrl, filenameBase) {
   if (!dataUrl) return { url: null, name: null };
   const decoded = decodeDataUrl(dataUrl);
@@ -26,11 +27,13 @@ async function uploadDataUrlToBucket(bucket, dataUrl, filenameBase) {
   const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
   return { url: pub?.publicUrl || null, name };
 }
+
 async function findClientByEmail(email) {
   const { data, error } = await supabaseAdmin.from('user_client').select('id, auth_uid, email_address').eq('email_address', email).limit(1).maybeSingle();
   if (error) throw error;
   return data || null;
 }
+
 async function findClientById(id) {
   const n = parseInt(id, 10);
   if (!Number.isFinite(n)) return null;
@@ -38,6 +41,7 @@ async function findClientById(id) {
   if (error) throw error;
   return data || null;
 }
+
 async function insertClientInformation(row) {
   const { data, error } = await supabaseAdmin.from('client_information').insert([row]).select('id').single();
   if (error) throw error;
@@ -45,9 +49,34 @@ async function insertClientInformation(row) {
 }
 
 function isMissingColumn(err, col) {
-  const raw = err?.message || String(err || '');
-  return new RegExp(`column\\s+.*${col}.*does\\s+not\\s+exist`, 'i').test(raw) || new RegExp(`"${col}"`, 'i').test(raw) && /does not exist/i.test(raw);
+  if (!col) return false;
+  const raw = `${err?.message || ''} ${err?.details || ''} ${err?.hint || ''} ${err?.code || ''}`;
+  const s = String(raw || '');
+  const a = new RegExp(`column\\s+.*${col}.*does\\s+not\\s+exist`, 'i');
+  const b = new RegExp(`"${col}"`, 'i');
+  const c = new RegExp(`'${col}'`, 'i');
+  const d = new RegExp(`could\\s+not\\s+find\\s+the\\s+'${col}'\\s+column`, 'i');
+  const e = /schema\s+cache/i;
+  if (a.test(s)) return true;
+  if ((b.test(s) || c.test(s)) && /does not exist/i.test(s)) return true;
+  if (d.test(s)) return true;
+  if ((b.test(s) || c.test(s)) && e.test(s)) return true;
+  return false;
 }
+
+function isNonWritableColumn(err, col) {
+  if (!col) return false;
+  const raw = `${err?.message || ''} ${err?.details || ''} ${err?.hint || ''} ${err?.code || ''}`;
+  const s = String(raw || '');
+  const a = new RegExp(`cannot\\s+insert\\s+into\\s+column\\s+"?${col}"?`, 'i');
+  const b = new RegExp(`column\\s+"?${col}"?\\s+is\\s+generated`, 'i');
+  const c = /generated\s+always/i;
+  if (a.test(s)) return true;
+  if (b.test(s)) return true;
+  if (c.test(s) && new RegExp(`"${col}"`, 'i').test(s)) return true;
+  return false;
+}
+
 function withWorkersColumn(row, target) {
   const out = { ...(row || {}) };
   const val =
@@ -85,11 +114,50 @@ async function insertServiceRequestDetails(row) {
     throw e;
   }
 }
+
 async function insertServiceRequestStatus(row) {
   const { data, error } = await supabaseAdmin.from('client_service_request_status').insert([row]).select('id').single();
   if (error) throw error;
   return data;
 }
+
+async function insertClientServiceRate(row) {
+  const base = { ...(row || {}) };
+  const optionalCols = [
+    'preferred_time_fee_php',
+    'extra_workers_fee_php',
+    'units',
+    'unit_kg',
+    'payment_method',
+    'total_rate_php'
+  ];
+
+  let payload = { ...base };
+  for (let i = 0; i < optionalCols.length + 2; i++) {
+    try {
+      const { data, error } = await supabaseAdmin.from('client_service_rate').insert([payload]).select('id').single();
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      let removed = false;
+      for (const c of optionalCols) {
+        if (payload[c] !== undefined && (isMissingColumn(e, c) || isNonWritableColumn(e, c))) {
+          const next = { ...payload };
+          delete next[c];
+          payload = next;
+          removed = true;
+          break;
+        }
+      }
+      if (!removed) throw e;
+    }
+  }
+
+  const { data, error } = await supabaseAdmin.from('client_service_rate').insert([payload]).select('id').single();
+  if (error) throw error;
+  return data;
+}
+
 async function insertClientCancelRequest(row) {
   const payload = {
     request_group_id: row.request_group_id,
@@ -104,6 +172,7 @@ async function insertClientCancelRequest(row) {
   if (error) throw error;
   return data;
 }
+
 function newGroupId() {
   return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
 }
@@ -142,6 +211,7 @@ async function listDetailsByEmail(email, limit = 10) {
     throw e;
   }
 }
+
 async function getCombinedByGroupId(request_group_id) {
   const [infoRes, detRes] = await Promise.all([
     supabaseAdmin.from('client_information').select('*').eq('request_group_id', request_group_id).maybeSingle(),
@@ -152,12 +222,14 @@ async function getCombinedByGroupId(request_group_id) {
   if (!detRes.data && !infoRes.data) return null;
   return { info: infoRes.data || {}, details: normalizeWorkersNeededRow(detRes.data || {}) || {} };
 }
+
 async function getCancelledByGroupIds(groupIds) {
   if (!Array.isArray(groupIds) || groupIds.length === 0) return [];
   const { data, error } = await supabaseAdmin.from('client_cancel_request').select('request_group_id').in('request_group_id', groupIds);
   if (error) throw error;
   return (data || []).map((x) => x.request_group_id).filter(Boolean);
 }
+
 async function getCancelledMapByGroupIds(groupIds) {
   if (!Array.isArray(groupIds) || groupIds.length === 0) return {};
   const { data, error } = await supabaseAdmin.from('client_cancel_request').select('request_group_id,canceled_at').in('request_group_id', groupIds);
@@ -168,6 +240,7 @@ async function getCancelledMapByGroupIds(groupIds) {
   });
   return m;
 }
+
 async function listPendingByEmail(email) {
   const { data, error } = await supabaseAdmin
     .from('client_service_request_status')
@@ -179,6 +252,7 @@ async function listPendingByEmail(email) {
   if (error) throw error;
   return Array.isArray(data) ? data : [];
 }
+
 async function getCancelledReasonsByGroupIds(groupIds) {
   if (!Array.isArray(groupIds) || groupIds.length === 0) return {};
   const { data, error } = await supabaseAdmin.from('client_cancel_request').select('*').in('request_group_id', groupIds);
@@ -207,6 +281,7 @@ async function updateClientInformation(request_group_id, fields) {
   if (error) throw error;
   return data;
 }
+
 async function updateServiceRequestDetails(request_group_id, fields) {
   const payload = {};
   Object.keys(fields || {}).forEach((k) => {
@@ -258,6 +333,7 @@ module.exports = {
   insertClientInformation,
   insertServiceRequestDetails,
   insertServiceRequestStatus,
+  insertClientServiceRate,
   insertClientCancelRequest,
   newGroupId,
   listDetailsByEmail,
