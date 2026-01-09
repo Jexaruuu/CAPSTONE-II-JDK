@@ -138,6 +138,46 @@ function isExpiredPreferred(dateVal, timeVal) {
   return dt.getTime() < Date.now();
 }
 
+function toIntOrNull(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    const n = Math.floor(v);
+    return n >= 1 ? n : null;
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  const n = Number(s);
+  if (Number.isFinite(n)) {
+    const nn = Math.floor(n);
+    return nn >= 1 ? nn : null;
+  }
+  const m = s.match(/\d+/);
+  if (!m) return null;
+  const nn = Math.floor(Number(m[0]));
+  return Number.isFinite(nn) && nn >= 1 ? nn : null;
+}
+
+function toNumberOrNull(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const s = String(v);
+  const m = s.match(/-?\d+(\.\d+)?/);
+  if (!m) return null;
+  const n = Number(m[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function pesoPH(v) {
+  if (v === null || v === undefined || v === '') return '-';
+  const s = String(v).trim();
+  if (!s) return '-';
+  if (/₱/i.test(s)) return s;
+  if (/php/i.test(s)) return s.replace(/php/i, '₱').trim();
+  const n = toNumberOrNull(s.replace(/,/g, ''));
+  if (n === null) return `₱${s}`;
+  return `₱${new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`;
+}
+
 const ClientPost = () => {
   const [loading, setLoading] = useState(true);
   const [approved, setApproved] = useState([]);
@@ -320,31 +360,31 @@ const ClientPost = () => {
   }, []);
 
   useEffect(() => {
-  const loadCurrent = async () => {
-    try {
-      const email = getClientEmail();
-      const { data } = await axios.get(`${API_BASE}/api/clientservicerequests`, {
-        withCredentials: true,
-        headers: headersWithU,
-        params: { email }
-      });
-      const items = Array.isArray(data?.items) ? data.items : [];
-      const filtered = items.filter((it) => {
-        const stat = String(it?.status || it?.details?.status || '').toLowerCase();
-        if (stat === 'declined') return false;
-        const d = it?.details?.preferred_date;
-        const t = it?.details?.preferred_time;
-        return !isExpiredPreferred(d, t);
-      });
-      setCurrentItems(filtered);
-    } catch {
-      setCurrentItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-  loadCurrent();
-}, [appU]);
+    const loadCurrent = async () => {
+      try {
+        const email = getClientEmail();
+        const { data } = await axios.get(`${API_BASE}/api/clientservicerequests`, {
+          withCredentials: true,
+          headers: headersWithU,
+          params: { email }
+        });
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const filtered = items.filter((it) => {
+          const stat = String(it?.status || it?.details?.status || '').toLowerCase();
+          if (stat === 'declined') return false;
+          const d = it?.details?.preferred_date;
+          const t = it?.details?.preferred_time;
+          return !isExpiredPreferred(d, t);
+        });
+        setCurrentItems(filtered);
+      } catch {
+        setCurrentItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCurrent();
+  }, [appU]);
 
   useEffect(() => {
     if (banners.length < 2) return;
@@ -611,6 +651,53 @@ const ClientPost = () => {
     return `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name)}`;
   }, [currentItem, capFirst]);
 
+  const workersNeededText = useMemo(() => {
+    const v =
+      currentItem?.details?.workers_needed ??
+      currentItem?.details?.workers_need ??
+      currentItem?.workers_needed ??
+      currentItem?.workers_need ??
+      null;
+    const n = toIntOrNull(v);
+    return n === null ? '-' : String(n);
+  }, [currentItem]);
+
+  const unitsText = useMemo(() => {
+    const v =
+      currentItem?.rate?.units ??
+      currentItem?.rate?.unit ??
+      currentItem?.details?.units ??
+      currentItem?.details?.unit ??
+      currentItem?.metadata?.units ??
+      currentItem?.metadata?.unit ??
+      null;
+    const n = toIntOrNull(v);
+    const kg =
+      currentItem?.rate?.unit_kg ??
+      currentItem?.rate?.unitKg ??
+      currentItem?.details?.unit_kg ??
+      currentItem?.details?.unitKg ??
+      null;
+    const kgNum = toNumberOrNull(kg);
+    if (n === null) return '-';
+    if (kgNum === null) return String(n);
+    return `${String(n)} (${kgNum} kg)`;
+  }, [currentItem]);
+
+  const totalRateText = useMemo(() => {
+    const v =
+      currentItem?.rate?.total_rate_php ??
+      currentItem?.rate?.totalRatePhp ??
+      currentItem?.rate?.total_rate ??
+      currentItem?.rate?.totalRate ??
+      currentItem?.details?.total_rate_php ??
+      currentItem?.details?.totalRatePhp ??
+      currentItem?.details?.total_rate ??
+      currentItem?.details?.totalRate ??
+      null;
+    return pesoPH(v);
+  }, [currentItem]);
+
   const handleDelete = async () => {
     if (!currentItem?.id || deleting) return;
     setShowDeleteConfirm(true);
@@ -744,33 +831,16 @@ const ClientPost = () => {
                       </div>
                       <div className="space-y-1.5 md:pl-10">
                         <div className="flex flex-wrap gap-x-1 gap-y-1">
-                          <span className="text-gray-700 font-semibold">Rate Type:</span>
-                          <span className="text-[#008cfc] font-semibold">{getRateType(currentItem) || '-'}</span>
+                          <span className="text-gray-700 font-semibold">Workers Needed:</span>
+                          <span className="text-[#008cfc] font-semibold">{workersNeededText}</span>
                         </div>
                         <div className="flex flex-wrap gap-x-1 gap-y-1">
-                          <span className="text-gray-700 font-semibold">Service Rate:</span>
-                          <span className="text-[#008cfc] font-semibold">
-                            {(() => {
-                              const t = String(currentItem?.rate?.rate_type || '').toLowerCase();
-                              const from = currentItem?.rate?.rate_from;
-                              const to = currentItem?.rate?.rate_to;
-                              const val = currentItem?.rate?.rate_value;
-                              const peso = (v) => {
-                                if (v === null || v === undefined) return '';
-                                const s = String(v).trim();
-                                if (!s) return '';
-                                if (/₱|php/i.test(s)) return s;
-                                const n = parseFloat(s.replace(/,/g, ''));
-                                if (!isNaN(n)) return `₱${n.toLocaleString()}`;
-                                return `₱${s}`;
-                              };
-                              if (t === 'fixed' || t === 'by_job' || t === 'by the job' || t === 'by_the_job') return val ? `${peso(val)}` : '-';
-                              if (t === 'hourly' || t === 'range') return from || to ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}` : '-';
-                              if (val) return peso(val);
-                              if (from || to) return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
-                              return '-';
-                            })()}
-                          </span>
+                          <span className="text-gray-700 font-semibold">Units:</span>
+                          <span className="text-[#008cfc] font-semibold">{unitsText}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-1 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Total Rate:</span>
+                          <span className="text-[#008cfc] font-semibold">{totalRateText}</span>
                         </div>
                       </div>
                     </div>

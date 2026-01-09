@@ -172,6 +172,18 @@ async function publicOrSignedUrl(bucket, path) {
   return signed?.signedUrl || null;
 }
 
+function pickRateForResponse(rateRow) {
+  const r = rateRow && typeof rateRow === 'object' ? rateRow : {};
+  return {
+    units: r.units ?? null,
+    unit_kg: r.unit_kg ?? null,
+    payment_method: r.payment_method ?? null,
+    preferred_time_fee_php: r.preferred_time_fee_php ?? null,
+    extra_workers_fee_php: r.extra_workers_fee_php ?? null,
+    total_rate_php: r.total_rate_php ?? null
+  };
+}
+
 exports.listOpen = async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '50', 10), 1), 200);
@@ -233,7 +245,8 @@ exports.listOpen = async (req, res) => {
             workers_needed: workersNeededValue(row.details) ?? null,
             request_image_url: row.details?.request_image_url || null,
             image_name: row.details?.image_name || null
-          }
+          },
+          rate: pickRateForResponse(row.rate)
         };
       })
     );
@@ -471,11 +484,11 @@ exports.submitFullRequest = async (req, res) => {
       client_id: effectiveClientId,
       auth_uid: infoRow.auth_uid || effectiveAuthUid || auth_uid || null,
       email_address: infoRow.email_address,
-      preferred_time_fee_php: pesoPH(preferredTimeFeeVal),
-      extra_workers_fee_php: pesoPH(extraWorkersFeeVal),
       units: unitsVal,
       unit_kg: unitKgVal,
       payment_method: paymentMethod || null,
+      preferred_time_fee_php: pesoPH(preferredTimeFeeVal),
+      extra_workers_fee_php: pesoPH(extraWorkersFeeVal),
       total_rate_php: pesoPH(totalRateVal)
     };
 
@@ -518,12 +531,12 @@ exports.submitFullRequest = async (req, res) => {
         info: pendingInfo,
         details: pendingDetails,
         rate: {
-          preferred_time_fee: preferredTimeFeeVal,
-          extra_workers_fee: extraWorkersFeeVal,
-          units: rateRow.units,
-          unit_kg: rateRow.unit_kg,
+          units: unitsVal,
+          unit_kg: unitKgVal,
           payment_method: rateRow.payment_method,
-          total_rate: totalRateVal
+          preferred_time_fee_php: rateRow.preferred_time_fee_php,
+          extra_workers_fee_php: rateRow.extra_workers_fee_php,
+          total_rate_php: rateRow.total_rate_php
         },
         status: 'pending'
       });
@@ -567,9 +580,13 @@ exports.listApproved = async (req, res) => {
         if (d.is_urgent !== undefined) d.is_urgent = yesNo(toBoolStrict(d.is_urgent));
         if (d.workers_needed === undefined && d.workers_need !== undefined) d.workers_needed = d.workers_need;
         if (!d.request_image_url && d.image_name) d.request_image_url = await publicOrSignedUrl(bucket, d.image_name);
+
         let info = it.info || {};
+        let rate = {};
+        const combined = await getCombinedByGroupId(it.request_group_id);
+        if (combined?.rate) rate = pickRateForResponse(combined.rate);
+
         if (!info.profile_picture_url || info.profile_picture_url === '') {
-          const combined = await getCombinedByGroupId(it.request_group_id);
           const ip = combined?.info || {};
           if (!ip.profile_picture_url && ip.profile_picture_name) {
             info = { ...info, profile_picture_url: await publicOrSignedUrl(bucket, ip.profile_picture_name) };
@@ -577,6 +594,7 @@ exports.listApproved = async (req, res) => {
             info = { ...info, profile_picture_url: ip.profile_picture_url };
           }
         }
+
         return {
           id: it.id,
           request_group_id: it.request_group_id,
@@ -586,7 +604,8 @@ exports.listApproved = async (req, res) => {
           client_id: it.client_id,
           auth_uid: it.auth_uid,
           info,
-          details: d
+          details: d,
+          rate
         };
       })
     );
@@ -685,7 +704,8 @@ exports.listCurrent = async (req, res) => {
             profile_picture_url: row.info?.profile_picture_url || null,
             first_name: row.info?.first_name || null,
             last_name: row.info?.last_name || null
-          }
+          },
+          rate: pickRateForResponse(row.rate)
         };
 
         if (scope === 'cancelled') {
@@ -739,6 +759,7 @@ exports.byGroup = async (req, res) => {
       if (row.details.workers_needed === undefined && row.details.workers_need !== undefined) row.details.workers_needed = row.details.workers_need;
       if (row.details.workers_needed === undefined) row.details.workers_needed = null;
     }
+    row.rate = pickRateForResponse(row.rate);
     return res.status(200).json(row);
   } catch {
     return res.status(500).json({ message: 'Failed to load request' });
@@ -862,6 +883,8 @@ exports.updateByGroup = async (req, res) => {
 
     await updateServiceRequestDetails(gid, newDetails);
 
+    const rateForStatus = pickRateForResponse(current.rate);
+
     await supabaseAdmin
       .from('client_service_request_status')
       .update({
@@ -886,7 +909,7 @@ exports.updateByGroup = async (req, res) => {
           request_image_url: newDetails.request_image_url,
           image_name: newDetails.image_name
         },
-        rate: {}
+        rate: rateForStatus
       })
       .eq('request_group_id', gid);
 
@@ -900,8 +923,77 @@ exports.updateByGroup = async (req, res) => {
       if (updated.details.workers_needed === undefined && updated.details.workers_need !== undefined) updated.details.workers_needed = updated.details.workers_need;
       if (updated.details.workers_needed === undefined) updated.details.workers_needed = null;
     }
+    updated.rate = pickRateForResponse(updated.rate);
 
     return res.status(200).json(updated);
+  } catch (err) {
+    return res.status(500).json({ message: friendlyError(err) });
+  }
+};
+
+exports.updatePaymentMethodByGroup = async (req, res) => {
+  try {
+    const gid = String(req.params.groupId || '').trim();
+    if (!gid) return res.status(400).json({ message: 'groupId is required' });
+
+    const src = req.body || {};
+    const raw = String(src.payment_method ?? src.paymentMethod ?? '').trim();
+    const low = raw.toLowerCase();
+    const payment_method = low === 'gcash' || low.includes('gcash') || low.includes('maya') || low === 'paymaya' ? 'GCash' : 'Cash';
+
+    const current = await getCombinedByGroupId(gid);
+    if (!current) return res.status(404).json({ message: 'Not found' });
+
+    let savedRate = null;
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('client_service_rate')
+        .update({ payment_method })
+        .eq('request_group_id', gid)
+        .select('*')
+        .maybeSingle();
+      if (error) throw error;
+      savedRate = data || null;
+    } catch (e) {
+      return res.status(400).json({ message: friendlyError(e) });
+    }
+
+    if (!savedRate) {
+      const seed = {
+        request_group_id: gid,
+        client_id: current.info?.client_id ?? src.client_id ?? null,
+        auth_uid: current.info?.auth_uid ?? src.auth_uid ?? null,
+        email_address: current.info?.email_address ?? src.email_address ?? null,
+        units: current.rate?.units ?? 1,
+        unit_kg: current.rate?.unit_kg ?? null,
+        payment_method: payment_method,
+        preferred_time_fee_php: current.rate?.preferred_time_fee_php ?? null,
+        extra_workers_fee_php: current.rate?.extra_workers_fee_php ?? null,
+        total_rate_php: current.rate?.total_rate_php ?? null
+      };
+      try {
+        await insertClientServiceRate(seed);
+      } catch (e) {
+        return res.status(400).json({ message: friendlyError(e) });
+      }
+    }
+
+    const refreshed = await getCombinedByGroupId(gid);
+    const rateClean = pickRateForResponse(refreshed?.rate || {});
+    rateClean.payment_method = payment_method;
+
+    try {
+      await supabaseAdmin
+        .from('client_service_request_status')
+        .update({ rate: rateClean })
+        .eq('request_group_id', gid);
+    } catch {}
+
+    return res.status(200).json({
+      ...(refreshed || {}),
+      payment_method,
+      rate: rateClean
+    });
   } catch (err) {
     return res.status(500).json({ message: friendlyError(err) });
   }

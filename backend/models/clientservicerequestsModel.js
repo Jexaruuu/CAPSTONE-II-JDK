@@ -123,16 +123,23 @@ async function insertServiceRequestStatus(row) {
 
 async function insertClientServiceRate(row) {
   const base = { ...(row || {}) };
-  const optionalCols = [
-    'preferred_time_fee_php',
-    'extra_workers_fee_php',
-    'units',
-    'unit_kg',
-    'payment_method',
-    'total_rate_php'
-  ];
 
-  let payload = { ...base };
+  const payloadBase = {
+    request_group_id: base.request_group_id,
+    client_id: base.client_id ?? null,
+    auth_uid: base.auth_uid ?? null,
+    email_address: base.email_address ?? null,
+    units: base.units ?? null,
+    unit_kg: base.unit_kg ?? null,
+    payment_method: base.payment_method ?? null,
+    preferred_time_fee_php: base.preferred_time_fee_php ?? null,
+    extra_workers_fee_php: base.extra_workers_fee_php ?? null,
+    total_rate_php: base.total_rate_php ?? null
+  };
+
+  const optionalCols = ['units', 'unit_kg', 'payment_method', 'preferred_time_fee_php', 'extra_workers_fee_php', 'total_rate_php'];
+
+  let payload = { ...payloadBase };
   for (let i = 0; i < optionalCols.length + 2; i++) {
     try {
       const { data, error } = await supabaseAdmin.from('client_service_rate').insert([payload]).select('id').single();
@@ -156,6 +163,53 @@ async function insertClientServiceRate(row) {
   const { data, error } = await supabaseAdmin.from('client_service_rate').insert([payload]).select('id').single();
   if (error) throw error;
   return data;
+}
+
+async function updateClientServiceRate(request_group_id, fields) {
+  const payload0 = {};
+  Object.keys(fields || {}).forEach((k) => {
+    const v = fields[k];
+    if (v !== undefined) payload0[k] = v;
+  });
+  if (!Object.keys(payload0).length) return null;
+
+  let payload = { ...payload0 };
+  const keys = Object.keys(payload);
+
+  for (let i = 0; i < keys.length + 2; i++) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('client_service_rate')
+        .update(payload)
+        .eq('request_group_id', request_group_id)
+        .select('*')
+        .maybeSingle();
+      if (error) throw error;
+      return data || null;
+    } catch (e) {
+      let removed = false;
+      for (const c of Object.keys(payload)) {
+        if (payload[c] !== undefined && (isMissingColumn(e, c) || isNonWritableColumn(e, c))) {
+          const next = { ...payload };
+          delete next[c];
+          payload = next;
+          removed = true;
+          break;
+        }
+      }
+      if (!removed) throw e;
+      if (!Object.keys(payload).length) return null;
+    }
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('client_service_rate')
+    .update(payload)
+    .eq('request_group_id', request_group_id)
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
 }
 
 async function insertClientCancelRequest(row) {
@@ -213,14 +267,20 @@ async function listDetailsByEmail(email, limit = 10) {
 }
 
 async function getCombinedByGroupId(request_group_id) {
-  const [infoRes, detRes] = await Promise.all([
+  const [infoRes, detRes, rateRes] = await Promise.all([
     supabaseAdmin.from('client_information').select('*').eq('request_group_id', request_group_id).maybeSingle(),
-    supabaseAdmin.from('client_service_request_details').select('*').eq('request_group_id', request_group_id).maybeSingle()
+    supabaseAdmin.from('client_service_request_details').select('*').eq('request_group_id', request_group_id).maybeSingle(),
+    supabaseAdmin.from('client_service_rate').select('*').eq('request_group_id', request_group_id).maybeSingle()
   ]);
   if (infoRes.error) throw infoRes.error;
   if (detRes.error) throw detRes.error;
-  if (!detRes.data && !infoRes.data) return null;
-  return { info: infoRes.data || {}, details: normalizeWorkersNeededRow(detRes.data || {}) || {} };
+  if (rateRes.error) throw rateRes.error;
+  if (!detRes.data && !infoRes.data && !rateRes.data) return null;
+  return {
+    info: infoRes.data || {},
+    details: normalizeWorkersNeededRow(detRes.data || {}) || {},
+    rate: rateRes.data || {}
+  };
 }
 
 async function getCancelledByGroupIds(groupIds) {
@@ -334,6 +394,7 @@ module.exports = {
   insertServiceRequestDetails,
   insertServiceRequestStatus,
   insertClientServiceRate,
+  updateClientServiceRate,
   insertClientCancelRequest,
   newGroupId,
   listDetailsByEmail,
