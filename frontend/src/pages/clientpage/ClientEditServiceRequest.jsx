@@ -6,6 +6,12 @@ import ClientFooter from '../../clientcomponents/ClientFooter';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
+const NIGHT_TIME_FEE = 200;
+
+const INCLUDED_WORKERS = 2;
+const EXTRA_WORKER_FEE = 150;
+const MAX_WORKERS = 6;
+
 const toYesNo = v => {
   const s = String(v ?? '').trim().toLowerCase();
   if (s === 'yes' || s === 'y' || s === 'true' || s === 't' || s === '1') return 'Yes';
@@ -40,30 +46,38 @@ function buildAppU() {
 
 const formatTime12h = (t) => {
   if (!t || typeof t !== 'string' || !t.includes(':')) return t || '-';
-  const [hh, mm] = t.split(':');
+  const cleaned = String(t).trim();
+  const core = cleaned.includes('T') ? cleaned.split('T')[0] : cleaned;
+  const token = core.split(' ')[0];
+  const parts = token.split(':');
+  if (parts.length < 2) return cleaned;
+  const hh = parts[0];
+  const mm = parts[1];
   let h = parseInt(hh, 10);
-  if (Number.isNaN(h)) return t;
+  if (Number.isNaN(h)) return cleaned;
   const suffix = h >= 12 ? 'PM' : 'AM';
   h = h % 12;
   if (h === 0) h = 12;
-  return `${h}:${mm} ${suffix}`;
+  return `${h}:${String(mm).padStart(2, '0')} ${suffix}`;
 };
 
 const formatDateMDY = (d) => {
   if (!d) return d || '-';
-  const tryDate = new Date(d);
+  const raw = String(d).trim();
+  const token = raw.includes('T') ? raw.split('T')[0] : raw.split(' ')[0];
+  const tryDate = new Date(token);
   if (!Number.isNaN(tryDate.getTime())) {
     const mm = String(tryDate.getMonth() + 1).padStart(2, '0');
     const dd = String(tryDate.getDate()).padStart(2, '0');
     const yyyy = String(tryDate.getFullYear());
     return `${mm}/${dd}/${yyyy}`;
   }
-  const parts = String(d).split('-');
+  const parts = token.split('-');
   if (parts.length === 3) {
     const [yyyy, mm, dd] = parts;
     return `${String(mm).padStart(2, '0')}/${String(dd).padStart(2, '0')}/${yyyy}`;
   }
-  return d;
+  return raw;
 };
 
 const normalizeRateType = (v, r = {}) => {
@@ -73,6 +87,98 @@ const normalizeRateType = (v, r = {}) => {
   if (r && (r.rate_from != null || r.rate_to != null)) return 'range';
   if (r && (r.rate_value != null && r.rate_value !== '')) return 'by_job';
   return '';
+};
+
+const clampInt = (v, min, max) => {
+  const n = parseInt(String(v ?? ''), 10);
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, n));
+};
+
+const formatRate = (v) => {
+  if (v === null || v === undefined || v === '') return '';
+  if (typeof v === 'string') return v.trim().startsWith('₱') ? v : `₱${v}`;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '';
+  return `₱${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 }).format(n)}`;
+};
+
+const withPerUnitLabel = (rateStr) => {
+  if (!rateStr) return '';
+  return `per unit ${rateStr}`;
+};
+
+const shouldShowPerUnit = (type) =>
+  type === 'Car Washing' || type === 'Plumbing' || type === 'Carpentry' || type === 'Electrical Works';
+
+const serviceTaskRates = {
+  Carpentry: {
+    'General Carpentry': 1000,
+    'Furniture Repair': 900,
+    'Wood Polishing': 1200,
+    'Door & Window Fitting': 1500,
+    'Custom Furniture Design': 2000,
+    'Modular Kitchen Installation': 6000,
+    'Flooring & Decking': 3500,
+    'Cabinet & Wardrobe Fixing': 1200,
+    'Wall Paneling & False Ceiling': 4000,
+    'Wood Restoration & Refinishing': 2500
+  },
+  'Electrical Works': {
+    'Wiring Repair': 1000,
+    'Appliance Installation': 800,
+    'Lighting Fixtures': 700,
+    'Circuit Breaker & Fuse Repair': 1200,
+    'CCTV & Security System Setup': 2500,
+    'Fan & Exhaust Installation': 700,
+    'Inverter & Battery Setup': 1800,
+    'Switchboard & Socket Repair': 800,
+    'Electrical Safety Inspection': 1500,
+    'Smart Home Automation': 3000
+  },
+  Plumbing: {
+    'Leak Fixing': 900,
+    'Pipe Installation': 1500,
+    'Bathroom Fittings': 1200,
+    'Drain Cleaning & Unclogging': 1800,
+    'Water Tank Installation': 2500,
+    'Gas Pipeline Installation': 3500,
+    'Septic Tank & Sewer Repair': 4500,
+    'Water Heater Installation': 2000,
+    'Toilet & Sink Repair': 1000,
+    'Kitchen Plumbing Solutions': 1800
+  },
+  'Car Washing': {
+    'Exterior Wash': 350,
+    'Interior Cleaning': 700,
+    'Wax & Polish': 1200,
+    'Underbody Cleaning': 500,
+    'Engine Bay Cleaning': 900,
+    'Headlight Restoration': 1500,
+    'Ceramic Coating': 12000,
+    'Tire & Rim Cleaning': 400,
+    'Vacuum & Odor Removal': 700,
+    'Paint Protection Film Application': 15000
+  },
+  Laundry: {
+    'Dry Cleaning': '₱130/kg',
+    Ironing: '₱100/kg',
+    'Wash & Fold': '₱50/kg',
+    'Steam Pressing': '₱130/kg',
+    'Stain Removal Treatment': '₱180/kg',
+    'Curtains & Upholstery Cleaning': '₱400–₱800',
+    'Delicate Fabric Care': '₱90/kg',
+    'Shoe & Leather Cleaning': '₱250/pair',
+    'Express Same-Day Laundry': '₱70/kg',
+    'Eco-Friendly Washing': '₱60/kg'
+  }
+};
+
+const getSelectedTaskRate = (serviceType, serviceTask) => {
+  if (!serviceType || !serviceTask) return '';
+  const v = serviceTaskRates?.[serviceType]?.[serviceTask];
+  const r = formatRate(v);
+  return shouldShowPerUnit(serviceType) ? withPerUnitLabel(r) : r;
 };
 
 const PopList = ({
@@ -85,7 +191,9 @@ const PopList = ({
   title = 'Select',
   clearable = false,
   onClear,
-  clearText = 'Clear'
+  clearText = 'Clear',
+  renderItem,
+  rightLabel
 }) => (
   <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
     <div className="text-sm font-semibold text-gray-800 px-2 pb-2">{title}</div>
@@ -93,19 +201,26 @@ const PopList = ({
       {items && items.length ? items.map((it) => {
         const isSel = value === it;
         const disabled = disabledLabel && disabledLabel(it);
+        const right = typeof rightLabel === 'function' ? (rightLabel(it) || '') : '';
         return (
           <button
-            key={it}
+            key={String(it)}
             type="button"
             disabled={disabled}
             onClick={() => !disabled && onSelect(it)}
             className={[
               'text-left py-2 px-3 rounded-lg text-sm',
+              right ? 'flex items-center justify-between gap-3' : '',
               disabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50',
               isSel && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
             ].join(' ')}
           >
-            {it}
+            <span className="truncate">{renderItem ? renderItem(it) : String(it)}</span>
+            {right ? (
+              <span className={`shrink-0 text-xs font-semibold ${isSel && !disabled ? 'text-white/90' : 'text-[#008cfc]'}`}>
+                {right}
+              </span>
+            ) : null}
           </button>
         );
       }) : (
@@ -138,8 +253,11 @@ export default function ClientEditServiceRequest() {
   const [serviceTask, setServiceTask] = useState('');
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
+  const [workersNeed, setWorkersNeed] = useState('');
   const [isUrgent, setIsUrgent] = useState('');
   const [toolsProvided, setToolsProvided] = useState('');
+  const [units, setUnits] = useState('');
+  const [unitKg, setUnitKg] = useState('');
   const [description, setDescription] = useState('');
   const [rateType, setRateType] = useState('');
   const [rateFrom, setRateFrom] = useState('');
@@ -177,6 +295,45 @@ export default function ClientEditServiceRequest() {
     return parts[0] + '.' + parts.slice(1).join('').replace(/\./g, '');
   };
 
+  const sanitizeInteger = (s) => String(s ?? '').replace(/[^\d]/g, '');
+
+  const normalizeYMD = (v) => {
+    if (!v) return '';
+    const raw = String(v).trim();
+    const token = raw.includes('T') ? raw.split('T')[0] : raw.split(' ')[0];
+    const m1 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(token);
+    if (m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+    const m2 = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(token);
+    if (m2) {
+      const mm = String(m2[1]).padStart(2, '0');
+      const dd = String(m2[2]).padStart(2, '0');
+      return `${m2[3]}-${mm}-${dd}`;
+    }
+    const d = new Date(token);
+    if (Number.isNaN(d.getTime())) return token;
+    const y = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${mm}-${dd}`;
+  };
+
+  const normalizeHM = (v) => {
+    if (!v) return '';
+    const s = String(v).trim();
+    const m = /^(\d{1,2}):(\d{2})/.exec(s);
+    if (m) return `${String(parseInt(m[1], 10)).padStart(2, '0')}:${m[2]}`;
+    const d = new Date(`1970-01-01T${s}`);
+    if (!Number.isNaN(d.getTime())) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const m2 = /^(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])$/.exec(s);
+    if (!m2) return s;
+    let h = parseInt(m2[1], 10);
+    const min = m2[2] ? parseInt(m2[2], 10) : 0;
+    const ap = m2[3].toUpperCase();
+    if (ap === 'PM' && h < 12) h += 12;
+    if (ap === 'AM' && h === 12) h = 0;
+    return `${String(h).padStart(2, '0')}:${String(Math.min(Math.max(min, 0), 59)).padStart(2, '0')}`;
+  };
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
@@ -194,12 +351,22 @@ export default function ClientEditServiceRequest() {
         const r = data?.rate || {};
         const info = data?.info || {};
         const normRT = normalizeRateType(r.rate_type, r);
+        const pd = normalizeYMD(d.preferred_date || '');
+        const pt = normalizeHM(d.preferred_time || '');
+        const wnRaw = String(d.workers_need ?? d.workersNeed ?? '').trim();
+        const wnSafe = wnRaw ? String(clampInt(wnRaw, 1, MAX_WORKERS)) : '';
+        const u = String(r.units ?? '').trim();
+        const uk = String(r.unit_kg ?? r.unitKg ?? '').trim();
+
         setServiceType(d.service_type || '');
         setServiceTask(d.service_task || '');
-        setPreferredDate(d.preferred_date || '');
-        setPreferredTime(d.preferred_time || '');
+        setPreferredDate(pd);
+        setPreferredTime(pt);
+        setWorkersNeed(wnSafe);
         setIsUrgent(toYesNo(d.is_urgent));
         setToolsProvided(toYesNo(d.tools_provided));
+        setUnits(u);
+        setUnitKg(uk);
         setDescription(d.service_description || '');
         setRateType(normRT);
         setRateFrom(r.rate_from || '');
@@ -213,10 +380,13 @@ export default function ClientEditServiceRequest() {
         setOrig({
           serviceType: d.service_type || '',
           serviceTask: d.service_task || '',
-          preferredDate: d.preferred_date || '',
-          preferredTime: d.preferred_time || '',
+          preferredDate: pd,
+          preferredTime: pt,
+          workersNeed: wnSafe,
           isUrgent: toYesNo(d.is_urgent),
           toolsProvided: toYesNo(d.tools_provided),
+          units: String(r.units ?? ''),
+          unitKg: String(r.unit_kg ?? r.unitKg ?? ''),
           description: d.service_description || '',
           rateType: normRT,
           rateFrom: String(r.rate_from ?? ''),
@@ -245,13 +415,12 @@ export default function ClientEditServiceRequest() {
       a(serviceTask) !== a(orig.serviceTask) ||
       a(preferredDate) !== a(orig.preferredDate) ||
       a(preferredTime) !== a(orig.preferredTime) ||
+      a(workersNeed) !== a(orig.workersNeed) ||
       a(isUrgent) !== a(orig.isUrgent) ||
       a(toolsProvided) !== a(orig.toolsProvided) ||
+      a(units) !== a(orig.units) ||
+      a(unitKg) !== a(orig.unitKg) ||
       a(description) !== a(orig.description) ||
-      a(rateType) !== a(orig.rateType) ||
-      a(rateFrom) !== a(orig.rateFrom) ||
-      a(rateTo) !== a(orig.rateTo) ||
-      a(rateValue) !== a(orig.rateValue) ||
       a(barangay) !== a(orig.barangay) ||
       a(street) !== a(orig.street) ||
       a(additionalAddress) !== a(orig.additionalAddress) ||
@@ -266,13 +435,12 @@ export default function ClientEditServiceRequest() {
     serviceTask,
     preferredDate,
     preferredTime,
+    workersNeed,
     isUrgent,
     toolsProvided,
+    units,
+    unitKg,
     description,
-    rateType,
-    rateFrom,
-    rateTo,
-    rateValue,
     barangay,
     street,
     additionalAddress,
@@ -283,33 +451,27 @@ export default function ClientEditServiceRequest() {
   ]);
 
   useEffect(()=>{ 
-  const lock=cancelLoading; 
-  const html=document.documentElement; 
-  const body=document.body; 
-  const prevHtml=html.style.overflow; 
-  const prevBody=body.style.overflow; 
-  if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } 
-  else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } 
-  return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; 
-},[cancelLoading]);
+    const lock=cancelLoading; 
+    const html=document.documentElement; 
+    const body=document.body; 
+    const prevHtml=html.style.overflow; 
+    const prevBody=body.style.overflow; 
+    if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } 
+    else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } 
+    return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; 
+  },[cancelLoading]);
 
-useEffect(() => { 
-  const handler = (e) => { if (cancelLoading) e.preventDefault(); }; 
-  if (cancelLoading) { 
-    window.addEventListener('wheel', handler, { passive: false }); 
-    window.addEventListener('touchmove', handler, { passive: false }); 
-  } 
-  return () => { 
-    window.removeEventListener('wheel', handler); 
-    window.removeEventListener('touchmove', handler); 
-  }; 
-}, [cancelLoading]);
-
-  const rateTypeDisplay = useMemo(() => {
-    if (String(rateType || '').toLowerCase() === 'range') return 'Hourly Rate';
-    if (String(rateType || '').toLowerCase() === 'by_job' || String(rateType || '').toLowerCase() === 'fixed') return 'By the Job Rate';
-    return '';
-  }, [rateType]);
+  useEffect(() => { 
+    const handler = (e) => { if (cancelLoading) e.preventDefault(); }; 
+    if (cancelLoading) { 
+      window.addEventListener('wheel', handler, { passive: false }); 
+      window.addEventListener('touchmove', handler, { passive: false }); 
+    } 
+    return () => { 
+      window.removeEventListener('wheel', handler); 
+      window.removeEventListener('touchmove', handler); 
+    }; 
+  }, [cancelLoading]);
 
   const onPickImage = async (e) => {
     const f = e.target.files?.[0];
@@ -334,6 +496,13 @@ useEffect(() => {
     return Number.isFinite(n) ? n : null;
   };
 
+  const toIntOrNull = (v) => {
+    const s = String(v ?? '').trim();
+    if (!s) return null;
+    const n = parseInt(s.replace(/[^\d]/g, ''), 10);
+    return Number.isFinite(n) ? n : null;
+  };
+
   const onSave = async () => {
     if (saving) return;
     setSaving(true);
@@ -341,6 +510,9 @@ useEffect(() => {
     setOk('');
     setError('');
     try {
+      const rt = rateType || normalizeRateType(rateType, { rate_from: rateFrom, rate_to: rateTo, rate_value: rateValue });
+      const isLaundryNow = String(serviceType || '').toLowerCase() === 'laundry';
+      const wn = clampInt(workersNeed || 1, 1, MAX_WORKERS);
       const payload = {
         info: {
           barangay,
@@ -353,15 +525,18 @@ useEffect(() => {
           service_task: serviceTask,
           preferred_date: preferredDate,
           preferred_time: preferredTime,
+          workers_need: wn,
           is_urgent: fromYesNo(isUrgent),
           tools_provided: fromYesNo(toolsProvided),
           service_description: description
         },
         rate: {
-          rate_type: rateType || normalizeRateType(rateType, { rate_from: rateFrom, rate_to: rateTo, rate_value: rateValue }),
-          rate_from: String(rateType || '').toLowerCase() === 'range' ? toNumOrNull(rateFrom) : null,
-          rate_to: String(rateType || '').toLowerCase() === 'range' ? toNumOrNull(rateTo) : null,
-          rate_value: String(rateType || '').toLowerCase() === 'range' ? null : toNumOrNull(rateValue)
+          rate_type: rt,
+          rate_from: String(rt || '').toLowerCase() === 'range' ? toNumOrNull(rateFrom) : null,
+          rate_to: String(rt || '').toLowerCase() === 'range' ? toNumOrNull(rateTo) : null,
+          rate_value: String(rt || '').toLowerCase() === 'range' ? null : toNumOrNull(rateValue),
+          units: isLaundryNow ? null : toIntOrNull(units),
+          unit_kg: isLaundryNow ? toNumOrNull(unitKg || units) : null
         }
       };
       if (imageDataUrl) payload.attachments = [imageDataUrl];
@@ -409,7 +584,7 @@ useEffect(() => {
   const urgentRef = useRef(null);
   const pdRef = useRef(null);
   const ptRef = useRef(null);
-  const rateTypeRef = useRef(null);
+  const workersNeedRef = useRef(null);
   const barangayRef = useRef(null);
 
   const [stOpen, setStOpen] = useState(false);
@@ -418,7 +593,7 @@ useEffect(() => {
   const [urgentOpen, setUrgentOpen] = useState(false);
   const [pdOpen, setPdOpen] = useState(false);
   const [ptOpen, setPtOpen] = useState(false);
-  const [rateTypeOpen, setRateTypeOpen] = useState(false);
+  const [workersNeedOpen, setWorkersNeedOpen] = useState(false);
   const [barangayOpen, setBarangayOpen] = useState(false);
   const [barangayQuery, setBarangayQuery] = useState('');
 
@@ -463,8 +638,7 @@ useEffect(() => {
     return `${m}/${da}/${y}`;
   };
   const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
-  const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
-  const addMonths = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  const addMonths = (d, delta = 1) => new Date(d.getFullYear(), d.getMonth() + delta, 1);
 
   const [pdView, setPdView] = useState(new Date());
   const monthsList = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -481,7 +655,7 @@ useEffect(() => {
   const openPD = () => {
     if (preferredDate) setPdView(fromYMDLocal(preferredDate));
     else setPdView(fromYMDLocal(todayStr));
-    setPdOpen((s) => !s);
+    setPdOpen(true);
     setPdMonthOpen(false);
     setPdYearOpen(false);
   };
@@ -491,47 +665,141 @@ useEffect(() => {
     setPdView(next < minStart ? minStart : next);
   };
 
-  const openPT = () => setPtOpen((s) => !s);
+  const openPT = () => setPtOpen(true);
   const to12h = (hhmm) => {
     if (!hhmm) return '';
     const [h, m] = hhmm.split(':').map((x) => parseInt(x, 10));
     const ampm = h >= 12 ? 'PM' : 'AM';
     const hr = h % 12 === 0 ? 12 : h % 12;
-    return `${String(hr).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
-    };
+    return `${hr}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
 
-  const rateError = useMemo(() => {
-    if (String(rateType || '').toLowerCase() !== 'range') return '';
-    if (rateFrom === '' || rateTo === '') return '';
-    const f = Number(rateFrom);
-    const t = Number(rateTo);
-    if (Number.isFinite(f) && Number.isFinite(t) && t <= f) return 'To must be greater than From';
-    return '';
-  }, [rateType, rateFrom, rateTo]);
+  const timeSlots = useMemo(() => {
+    const slots = [];
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+      }
+    }
+    return slots;
+  }, []);
+
+  const getNowHHMM = () => {
+    const n = new Date();
+    const hh = String(n.getHours()).padStart(2, '0');
+    const mm = String(n.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
+  useEffect(() => {
+    if (preferredDate === todayStr && preferredTime && preferredTime < getNowHHMM()) {
+      setPreferredTime('');
+    }
+  }, [preferredDate, todayStr]);
+
+  const isGreenTime = (t) => {
+    const [hh, mm] = t.split(':').map((x) => parseInt(x, 10));
+    if (hh >= 20) return true;
+    if (hh >= 0 && hh <= 5) return true;
+    if (hh === 6 && (mm === 0 || mm === 30)) return true;
+    return false;
+  };
+
+  const isRedTime = (t) => {
+    const [hh, mm] = t.split(':').map((x) => parseInt(x, 10));
+    if (hh >= 20 && hh <= 23) return true;
+    if (hh === 0 && (mm === 0 || mm === 30)) return true;
+    return false;
+  };
+
+  const isNightTimeForFee = (t) => {
+    if (!t) return false;
+    const [hh, mm] = String(t).split(':').map((x) => parseInt(x, 10));
+    if (!Number.isFinite(hh) || !Number.isFinite(mm)) return false;
+    if (hh >= 20) return true;
+    if (hh >= 0 && hh <= 5) return true;
+    if (hh === 6 && (mm === 0 || mm === 30)) return true;
+    return false;
+  };
+
+  const preferredTimeFeeLabel = preferredTime && isNightTimeForFee(preferredTime) ? `+ fee ${formatRate(NIGHT_TIME_FEE)}` : '';
+
+  const pdGrid = useMemo(() => {
+    const view = pdView instanceof Date && !Number.isNaN(pdView.getTime()) ? pdView : new Date();
+    const y = view.getFullYear();
+    const m = view.getMonth();
+    const first = new Date(y, m, 1);
+    const last = new Date(y, m + 1, 0);
+    const startIdx = first.getDay();
+    const daysInMonth = last.getDate();
+    const cells = [];
+    for (let i = 0; i < startIdx; i++) cells.push({ kind: 'pad', key: `p-${i}` });
+    for (let d = 1; d <= daysInMonth; d++) cells.push({ kind: 'day', day: d, key: `d-${y}-${m}-${d}` });
+    while (cells.length % 7 !== 0) cells.push({ kind: 'pad', key: `e-${cells.length}` });
+    const weeks = [];
+    for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+    return { y, m, weeks };
+  }, [pdView]);
+
+  const minDate = useMemo(() => {
+    const d = fromYMDLocal(todayStr);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [todayStr]);
+
+  const ymdFromParts = (y, m0, day) => {
+    const mm = String(m0 + 1).padStart(2, '0');
+    const dd = String(day).padStart(2, '0');
+    return `${y}-${mm}-${dd}`;
+  };
+
+  useEffect(() => {
+    const onDown = (e) => {
+      const t = e.target;
+      if (pdOpen && pdRef.current && !pdRef.current.contains(t)) {
+        setPdOpen(false);
+        setPdMonthOpen(false);
+        setPdYearOpen(false);
+      }
+      if (ptOpen && ptRef.current && !ptRef.current.contains(t)) {
+        setPtOpen(false);
+      }
+      if (workersNeedOpen && workersNeedRef.current && !workersNeedRef.current.contains(t)) {
+        setWorkersNeedOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [pdOpen, ptOpen, workersNeedOpen]);
+
+  const isLaundry = useMemo(() => String(serviceType || '').toLowerCase() === 'laundry', [serviceType]);
+
+  const workersNeedSafe = useMemo(() => clampInt(workersNeed || 1, 1, MAX_WORKERS), [workersNeed]);
+  const extraWorkerCount = useMemo(() => Math.max(0, workersNeedSafe - INCLUDED_WORKERS), [workersNeedSafe]);
+  const extraWorkersFeeTotal = useMemo(() => extraWorkerCount * EXTRA_WORKER_FEE, [extraWorkerCount]);
+  const workersFeeLabel = useMemo(() => extraWorkerCount > 0 ? `+ fee ${formatRate(extraWorkersFeeTotal)}` : '', [extraWorkerCount, extraWorkersFeeTotal]);
 
   const isComplete = useMemo(() => {
-    const req = [serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, description, rateType, barangay, street];
+    const req = [serviceType, serviceTask, preferredDate, preferredTime, workersNeed, isUrgent, toolsProvided, description, barangay, street];
     const allFilled = req.every(v => String(v ?? '').trim() !== '');
     if (!allFilled) return false;
-    const rt = String(rateType || '').toLowerCase();
-    if (rt === 'range') {
-      if (String(rateFrom ?? '').trim() === '' || String(rateTo ?? '').trim() === '') return false;
-      const f = Number(rateFrom);
-      const t = Number(rateTo);
-      if (!Number.isFinite(f) || !Number.isFinite(t)) return false;
-      if (t <= f) return false;
-      return true;
-    }
-    if (rt === 'by_job' || rt === 'fixed') {
-      if (String(rateValue ?? '').trim() === '') return false;
-      const v = Number(rateValue);
-      if (!Number.isFinite(v)) return false;
-      return true;
-    }
-    return false;
-  }, [serviceType, serviceTask, preferredDate, preferredTime, isUrgent, toolsProvided, description, rateType, barangay, street, rateFrom, rateTo, rateValue]);
 
-  const canSave = isDirty && !rateError && isComplete && !saving;
+    if (isLaundry) {
+      const kg = String(unitKg || units || '').trim();
+      if (!kg) return false;
+      const n = Number(kg);
+      if (!Number.isFinite(n)) return false;
+      return true;
+    } else {
+      if (String(units ?? '').trim() === '') return false;
+      const n = parseInt(String(units).replace(/[^\d]/g, ''), 10);
+      if (!Number.isFinite(n)) return false;
+      if (n <= 0) return false;
+      return true;
+    }
+  }, [serviceType, serviceTask, preferredDate, preferredTime, workersNeed, isUrgent, toolsProvided, description, barangay, street, units, unitKg, isLaundry]);
+
+  const canSave = isDirty && isComplete && !saving;
 
   useEffect(()=>{ document.body.style.overflow=confirmOpen?"hidden":""; return()=>{ document.body.style.overflow=""; }; },[confirmOpen]);
   useEffect(()=>{ const lock=showSuccess||showSaving; const html=document.documentElement; const body=document.body; const prevHtml=html.style.overflow; const prevBody=body.style.overflow; if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; },[showSuccess,showSaving]);
@@ -541,6 +809,8 @@ useEffect(() => {
   useEffect(()=>{ const lock=loading; const html=document.documentElement; const body=document.body; const prevHtml=html.style.overflow; const prevBody=body.style.overflow; if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; },[loading]);
 
   useEffect(() => { const handler = (e) => { if (loading) e.preventDefault(); }; if (loading) { window.addEventListener('wheel', handler, { passive: false }); window.addEventListener('touchmove', handler, { passive: false }); } return () => { window.removeEventListener('wheel', handler); window.removeEventListener('touchmove', handler); }; }, [loading]);
+
+  const workersNeedOptions = useMemo(() => Array.from({ length: MAX_WORKERS }, (_, i) => String(i + 1)), []);
 
   return (
     <>
@@ -567,7 +837,7 @@ useEffect(() => {
                 <button
                   type="button"
                   onClick={()=>setConfirmOpen(true)}
-                  disabled={saving || !isDirty || !!rateError || !isComplete}
+                  disabled={saving || !isDirty || !isComplete}
                   className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
                 >
                   {saving ? 'Saving…' : 'Save Changes'}
@@ -748,11 +1018,11 @@ useEffect(() => {
                           <PopList
                             items={sortedServiceTypes}
                             value={serviceType}
-                            onSelect={(v)=>{ setServiceType(v); setServiceTask(''); setStOpen(false); }}
+                            onSelect={(v)=>{ setServiceType(v); setServiceTask(''); setStOpen(false); setUnits(''); setUnitKg(''); }}
                             fullWidth
                             title="Select Service Type"
                             clearable
-                            onClear={()=>{ setServiceType(''); setServiceTask(''); setStOpen(false); }}
+                            onClear={()=>{ setServiceType(''); setServiceTask(''); setStOpen(false); setUnits(''); setUnitKg(''); }}
                           />
                         )}
                       </div>
@@ -765,7 +1035,14 @@ useEffect(() => {
                         </select>
                         <div className={`flex items-center rounded-xl border ${!serviceType ? 'opacity-60 cursor-not-allowed border-gray-300' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                           <button type="button" onClick={()=>serviceType && setTaskOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none" disabled={!serviceType}>
-                            {serviceTask || 'Select Service Task'}
+                            {serviceTask ? (
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="truncate">{serviceTask}</span>
+                                <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{getSelectedTaskRate(serviceType, serviceTask)}</span>
+                              </div>
+                            ) : (
+                              <span>Select Service Task</span>
+                            )}
                           </button>
                           <button type="button" onClick={()=>serviceType && setTaskOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open service task options" disabled={!serviceType}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
@@ -781,6 +1058,10 @@ useEffect(() => {
                             title="Select Service Task"
                             clearable
                             onClear={()=>{ setServiceTask(''); setTaskOpen(false); }}
+                            rightLabel={(it) => {
+                              const rr = formatRate(serviceTaskRates?.[serviceType]?.[it]);
+                              return shouldShowPerUnit(serviceType) ? withPerUnitLabel(rr) : rr;
+                            }}
                           />
                         )}
                       </div>
@@ -790,41 +1071,373 @@ useEffect(() => {
                         <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
                           <input
                             type="text"
-                            value={preferredDate ? formatDateMDY(preferredDate) : ''}
-                            onFocus={()=>{
-                              if (preferredDate) setPdView(new Date(preferredDate));
-                              else setPdView(new Date(todayStr));
-                              setPdOpen(s=>!s); setPdMonthOpen(false); setPdYearOpen(false);
+                            value={preferredDate ? toMDY(fromYMDLocal(preferredDate)) : ''}
+                            onFocus={() => {
+                              openPD();
                             }}
                             readOnly
                             placeholder="mm/dd/yyyy"
                             className="w-full px-4 py-3 rounded-l-xl focus:outline-none"
                           />
-                          <button type="button" onClick={()=>{
-                            if (preferredDate) setPdView(new Date(preferredDate));
-                            else setPdView(new Date(todayStr));
-                            setPdOpen(s=>!s); setPdMonthOpen(false); setPdYearOpen(false);
-                          }} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open calendar">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 01-1-1z" /><path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" /></svg>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (pdOpen) {
+                                setPdOpen(false);
+                                setPdMonthOpen(false);
+                                setPdYearOpen(false);
+                              } else {
+                                openPD();
+                              }
+                            }}
+                            className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                            aria-label="Open calendar"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 01-1-1z" />
+                              <path d="M18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" />
+                            </svg>
                           </button>
                         </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Earliest: <span className="font-medium">{toMDY(fromYMDLocal(todayStr))}</span>
+                        </p>
+
+                        {pdOpen && (
+                          <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
+                            <div className="flex items-center justify-between px-2 pb-2">
+                              <button
+                                type="button"
+                                onClick={() => canPrevPD() && setPdView(addMonths(pdView, -1))}
+                                className={`p-2 rounded-lg hover:bg-gray-100 ${canPrevPD() ? 'text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
+                                aria-label="Previous month"
+                                disabled={!canPrevPD()}
+                              >
+                                ‹
+                              </button>
+
+                              <div className="relative flex items-center gap-2">
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => { setPdMonthOpen((v) => !v); setPdYearOpen(false); }}
+                                    className="min-w-[120px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
+                                  >
+                                    {monthsList[pdGrid.m]}
+                                    <span className="ml-2">▾</span>
+                                  </button>
+                                  {pdMonthOpen ? (
+                                    <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                      {monthsList.map((mName, idx) => {
+                                        const isDisabled = new Date(pdGrid.y, idx, 1) < startOfMonth(fromYMDLocal(todayStr));
+                                        return (
+                                          <button
+                                            key={mName}
+                                            type="button"
+                                            disabled={isDisabled}
+                                            onClick={() => {
+                                              if (!isDisabled) setPDMonthYear(idx, pdGrid.y);
+                                              setPdMonthOpen(false);
+                                            }}
+                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${idx === pdGrid.m ? 'bg-blue-100' : ''} ${isDisabled ? 'text-gray-300 cursor-not-allowed hover:bg-white' : 'text-gray-700'}`}
+                                          >
+                                            {mName}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : null}
+                                </div>
+
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => { setPdYearOpen((v) => !v); setPdMonthOpen(false); }}
+                                    className="min-w-[90px] justify-between inline-flex items-center border border-gray-300 rounded-md px-2 py-1 text-sm hover:bg-gray-50"
+                                  >
+                                    {pdGrid.y}
+                                    <span className="ml-2">▾</span>
+                                  </button>
+                                  {pdYearOpen ? (
+                                    <div className="absolute z-[1010] mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                      {yearsList.map((yy) => (
+                                        <button
+                                          key={yy}
+                                          type="button"
+                                          onClick={() => {
+                                            setPDMonthYear(pdGrid.m, yy);
+                                            setPdYearOpen(false);
+                                          }}
+                                          className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${yy === pdGrid.y ? 'bg-blue-100' : ''}`}
+                                        >
+                                          {yy}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setPdView(addMonths(pdView, 1))}
+                                className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+                                aria-label="Next month"
+                              >
+                                ›
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 px-2">
+                              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+                                <div key={d} className="py-1">{d}</div>
+                              ))}
+                            </div>
+
+                            <div className="mt-1">
+                              {pdGrid.weeks.map((wk, wi) => (
+                                <div key={`wk-${wi}`} className="grid grid-cols-7 gap-1 px-2">
+                                  {wk.map((cell) => {
+                                    if (cell.kind === 'pad') return <div key={cell.key} className="py-2" />;
+                                    const ymd = ymdFromParts(pdGrid.y, pdGrid.m, cell.day);
+                                    const d = fromYMDLocal(ymd);
+                                    d.setHours(0, 0, 0, 0);
+                                    const disabled = d < minDate;
+                                    const selected = preferredDate === ymd;
+                                    return (
+                                      <button
+                                        key={cell.key}
+                                        type="button"
+                                        disabled={disabled}
+                                        onClick={() => {
+                                          if (disabled) return;
+                                          setPreferredDate(ymd);
+                                          setPdOpen(false);
+                                          setPdMonthOpen(false);
+                                          setPdYearOpen(false);
+                                          if (ymd === todayStr && preferredTime && preferredTime < getNowHHMM()) setPreferredTime('');
+                                        }}
+                                        className={[
+                                          'py-2 rounded-lg transition text-sm w-9 h-9 mx-auto',
+                                          disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700',
+                                          selected && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
+                                        ].join(' ')}
+                                      >
+                                        {cell.day}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="flex items-center justify-between mt-3 px-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPreferredDate('');
+                                  setPdOpen(false);
+                                  setPdMonthOpen(false);
+                                  setPdYearOpen(false);
+                                }}
+                                className="text-xs text-gray-500 hover:text-gray-700"
+                              >
+                                Clear
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPdView(fromYMDLocal(todayStr));
+                                }}
+                                className="text-xs text-blue-600 hover:text-blue-700"
+                              >
+                                Jump to today
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="relative md:col-span-2" ref={ptRef}>
                         <span className="block text-sm font-medium text-gray-700 mb-2">Preferred Time</span>
                         <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                          <input
-                            type="text"
-                            value={preferredTime ? formatTime12h(preferredTime) : ''}
-                            onFocus={()=>setPtOpen(s=>!s)}
-                            readOnly
-                            placeholder="hh:mm AM/PM"
-                            className="w-full px-4 py-3 rounded-l-xl focus:outline-none"
-                          />
-                          <button type="button" onClick={()=>setPtOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open time options">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-12.5a.75.75 0 00-1.5 0V10c0 .199.079.39.22.53l2.75 2.75a.75.75 0 101.06-1.06l-2.53-2.53V5.5z" clipRule="evenodd" /></svg>
+                          <button
+                            type="button"
+                            onClick={() => { if (ptOpen) setPtOpen(false); else openPT(); }}
+                            onFocus={() => setPtOpen(true)}
+                            className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
+                          >
+                            {preferredTime ? (
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="truncate">{to12h(preferredTime)}</span>
+                                {preferredTimeFeeLabel ? (
+                                  <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{preferredTimeFeeLabel}</span>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <span>hh:mm AM/PM</span>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { if (ptOpen) setPtOpen(false); else openPT(); }}
+                            className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                            aria-label="Open time options"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-12.5a.75.75 0 00-1.5 0V10c0 .199.079.39.22.53l2.75 2.75a.75.75 0 101.06-1.06l-2.53-2.53V5.5z" clipRule="evenodd" />
+                            </svg>
                           </button>
                         </div>
+
+                        {ptOpen && (
+                          <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
+                            <div className="text-sm font-semibold text-gray-800 px-2 pb-2">Select Time</div>
+                            <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto px-2">
+                              {timeSlots.map((t) => {
+                                const nowHHMM = getNowHHMM();
+                                const isToday = preferredDate === todayStr;
+                                const disabled = isToday && t < nowHHMM;
+                                return (
+                                  <button
+                                    key={t}
+                                    type="button"
+                                    disabled={disabled}
+                                    onClick={() => {
+                                      if (disabled) return;
+                                      setPreferredTime(t);
+                                      setPtOpen(false);
+                                    }}
+                                    className={`py-2 rounded-lg text-sm ${
+                                      disabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 '
+                                    }${
+                                      disabled
+                                        ? ''
+                                        : isGreenTime(t)
+                                          ? 'text-green-600'
+                                          : isRedTime(t)
+                                            ? 'text-red-600'
+                                            : 'text-gray-700'
+                                    } ${preferredTime === t && !disabled ? ' bg-blue-600 text-white hover:bg-blue-600' : ''}`}
+                                  >
+                                    {to12h(t)}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <div className="flex items-center justify-between mt-3 px-2">
+                              <span className="text-xs text-gray-400">{timeSlots.length} results</span>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPreferredTime('');
+                                    setPtOpen(false);
+                                  }}
+                                  className="text-xs text-gray-500 hover:text-gray-700"
+                                >
+                                  Clear
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const n = new Date();
+                                    const mins = n.getMinutes();
+                                    let up = mins % 30 === 0 ? mins : mins + (30 - (mins % 30));
+                                    let h = n.getHours();
+                                    if (up === 60) {
+                                      h = h + 1;
+                                      up = 0;
+                                    }
+                                    const cand = `${String(h).padStart(2, '0')}:${String(up).padStart(2, '0')}`;
+                                    if (preferredDate === todayStr) {
+                                      const next = timeSlots.find((tt) => tt >= cand);
+                                      if (next) setPreferredTime(next);
+                                      else setPreferredTime('');
+                                    } else {
+                                      setPreferredTime(cand);
+                                    }
+                                    setPtOpen(false);
+                                  }}
+                                  className="text-xs text-blue-600 hover:text-blue-700"
+                                >
+                                  Now (rounded)
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="relative md:col-span-2" ref={workersNeedRef}>
+                        <span className="block text-sm font-medium text-gray-700 mb-2">Workers Need</span>
+                        <select value={String(workersNeedSafe)} onChange={(e)=>setWorkersNeed(String(clampInt(e.target.value, 1, MAX_WORKERS)))} className="hidden" aria-hidden="true" tabIndex={-1}>
+                          <option value=""></option>
+                          {workersNeedOptions.map((n)=> <option key={n} value={n}>{n}</option>)}
+                        </select>
+                        <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                          <button
+                            type="button"
+                            onClick={()=>setWorkersNeedOpen(s=>!s)}
+                            className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="truncate">
+                                {workersNeedSafe} worker{workersNeedSafe === 1 ? '' : 's'}
+                              </span>
+                              {workersFeeLabel ? (
+                                <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{workersFeeLabel}</span>
+                              ) : null}
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={()=>setWorkersNeedOpen(s=>!s)}
+                            className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                            aria-label="Open workers need options"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
+                          </button>
+                        </div>
+
+                        <p className="text-xs text-gray-500 mt-1">
+                          Up to <span className="font-medium">{INCLUDED_WORKERS}</span> workers included. Extra worker fee is{' '}
+                          <span className="font-medium">{formatRate(EXTRA_WORKER_FEE)}</span> per added worker.
+                        </p>
+
+                        <div className="mt-2 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs text-gray-700">Selected workers</span>
+                            <span className="text-xs font-semibold text-[#008cfc]">
+                              {workersNeedSafe} {workersNeedSafe === 1 ? 'worker' : 'workers'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 mt-1">
+                            <span className="text-xs text-gray-700">Extra workers fee</span>
+                            <span className={`text-xs font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                              {extraWorkersFeeTotal > 0 ? `+ ${formatRate(extraWorkersFeeTotal)}` : '—'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {workersNeedOpen && (
+                          <PopList
+                            items={workersNeedOptions}
+                            value={String(workersNeedSafe)}
+                            onSelect={(v)=>{ setWorkersNeed(String(clampInt(v, 1, MAX_WORKERS))); setWorkersNeedOpen(false); }}
+                            fullWidth
+                            title="Select Workers Need"
+                            clearable
+                            onClear={()=>{ setWorkersNeed('1'); setWorkersNeedOpen(false); }}
+                            renderItem={(v)=> `${v} worker${String(v) === '1' ? '' : 's'}`}
+                            rightLabel={(it) => {
+                              const n = clampInt(it, 1, MAX_WORKERS);
+                              const extra = Math.max(0, n - INCLUDED_WORKERS);
+                              const fee = extra * EXTRA_WORKER_FEE;
+                              return extra > 0 ? `+ fee ${formatRate(fee)}` : '';
+                            }}
+                          />
+                        )}
                       </div>
 
                       <div className="relative" ref={toolsRef}>
@@ -884,6 +1497,25 @@ useEffect(() => {
                       </div>
 
                       <div className="md:col-span-2">
+                        <span className="block text-sm font-medium text-gray-700 mb-2">{isLaundry ? 'Unit/kg' : 'Units'}</span>
+                        <div className="flex items-center rounded-xl border border-gray-300 h-[48px] px-3 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                          <input
+                            value={isLaundry ? (unitKg || '') : (units || '')}
+                            onChange={(e)=>{
+                              const v = isLaundry ? sanitizeDecimal(e.target.value) : sanitizeInteger(e.target.value);
+                              if (isLaundry) { setUnitKg(v); setUnits(v); }
+                              else { setUnits(v); setUnitKg(''); }
+                            }}
+                            placeholder={isLaundry ? '0' : '0'}
+                            inputMode={isLaundry ? 'decimal' : 'numeric'}
+                            pattern={isLaundry ? "[0-9]*[.]?[0-9]*" : "[0-9]*"}
+                            className="w-full outline-none"
+                          />
+                          <span className="text-gray-500 ml-2 text-sm">{isLaundry ? 'unit/kg' : ''}</span>
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-2">
                         <span className="block text-sm font-medium text-gray-700 mb-2">Service Description</span>
                         <textarea
                           value={description}
@@ -894,115 +1526,24 @@ useEffect(() => {
                       </div>
                     </div>
 
-                    <div className="mt-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                        <div className="relative" ref={rateTypeRef}>
-                          <span className="block text-sm font-medium text-gray-700 mb-2">Rate Type</span>
-                          <select value={rateType} onChange={(e)=>setRateType(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
-                            <option value=""></option>
-                            <option value="fixed">Fixed</option>
-                            <option value="range">Hourly / Range</option>
-                            <option value="by_job">By the Job</option>
-                          </select>
-                          <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40 h-[48px]">
-                            <button
-                              type="button"
-                              onClick={()=>setRateTypeOpen(s=>!s)}
-                              className="w-full px-4 text-left rounded-l-xl focus:outline-none"
-                            >
-                              {rateTypeDisplay || 'Select Rate Type'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={()=>setRateTypeOpen(s=>!s)}
-                              className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                              aria-label="Open rate type options"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
-                            </button>
-                          </div>
-                          {rateTypeOpen && (
-                            <PopList
-                              items={['Hourly Rate','By the Job Rate']}
-                              value={rateTypeDisplay}
-                              onSelect={(v)=>{ setRateType(v === 'Hourly Rate' ? 'range' : 'by_job'); setRateFrom(''); setRateTo(''); setRateValue(''); setRateTypeOpen(false); }}
-                              fullWidth
-                              title="Select Rate Type"
-                              clearable
-                              onClear={()=>{ setRateType(''); setRateFrom(''); setRateTo(''); setRateValue(''); setRateTypeOpen(false); }}
-                            />
-                          )}
-                        </div>
-
-                        {String(rateType || '').toLowerCase() === 'range' ? (
-                          <div className="grid grid-cols-2 gap-3 md:col-span-1">
-                            <div className="grid gap-2">
-                              <span className="block text-sm font-medium text-gray-700">Rate From</span>
-                              <div className={`flex items-center rounded-xl border ${rateError ? 'border-red-300' : 'border-gray-300'} h-[48px] px-3`}>
-                                <span className="text-gray-500 mr-2">₱</span>
-                                <input
-                                  value={rateFrom}
-                                  onChange={e=>setRateFrom(sanitizeDecimal(e.target.value))}
-                                  placeholder="0"
-                                  inputMode="decimal"
-                                  pattern="[0-9]*[.]?[0-9]*"
-                                  className="w-full outline-none"
-                                />
-                                <span className="text-gray-500 ml-2 text-sm"></span>
-                              </div>
-                            </div>
-                            <div className="grid gap-2">
-                              <span className="block text-sm font-medium text-gray-700">Rate To</span>
-                              <div className={`flex items-center rounded-xl border ${rateError ? 'border-red-300' : 'border-gray-300'} h-[48px] px-3`}>
-                                <span className="text-gray-500 mr-2">₱</span>
-                                <input
-                                  value={rateTo}
-                                  onChange={e=>setRateTo(sanitizeDecimal(e.target.value))}
-                                  placeholder="0"
-                                  inputMode="decimal"
-                                  pattern="[0-9]*[.]?[0-9]*"
-                                  className="w-full outline-none"
-                                />
-                                <span className="text-gray-500 ml-2 text-sm"></span>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="grid gap-2 md:col-span-1">
-                            <span className="block text-sm font-medium text-gray-700">Service Rate</span>
-                            <div className="flex items-center rounded-xl border border-gray-300 h-[48px] px-3 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                              <span className="text-gray-500 mr-2">₱</span>
-                              <input
-                                value={rateValue}
-                                onChange={e=>setRateValue(sanitizeDecimal(e.target.value))}
-                                placeholder="0"
-                                inputMode="decimal"
-                                pattern="[0-9]*[.]?[0-9]*"
-                                className="w-full outline-none"
-                              />
-                              <span className="text-gray-500 ml-2 text-sm"></span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <div className="mt-4 hidden" />
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-2">
-            <button
-  type="button"
-  onClick={onCancel}
-  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
->
-  Cancel
-</button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 onClick={()=>setConfirmOpen(true)}
-                disabled={saving || !isDirty || !!rateError || !isComplete}
+                disabled={saving || !isDirty || !isComplete}
                 className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
               >
                 {saving ? 'Saving…' : 'Save Changes'}
