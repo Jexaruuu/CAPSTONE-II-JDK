@@ -26,6 +26,11 @@ This Client Policy works together with the Worker Policy to keep services safe, 
 - No attempts to bypass security, disrupt services, or misuse platform features.
 - No uploading of harmful or illegal content.
 - We may suspend or terminate accounts that violate policies or threaten platform safety.
+
+5. No Refund Agreement
+- By using JDK HOMECARE, you acknowledge that fees paid through the platform are generally non-refundable once a service booking is confirmed or processed.
+- Disputes, failed service attempts, or cancellations may be reviewed by JDK HOMECARE support, but any refund or credit is not guaranteed and may be provided only when required by applicable law or when JDK HOMECARE determines it is appropriate.
+- You agree to provide accurate details and cooperate with verification requests (e.g., messages, timestamps, photos) during dispute review.
 `;
 
 const CLIENT_NDA_AGREEMENT_TEXT = `JDK HOMECARE Non-Disclosure Agreement (NDA)
@@ -667,7 +672,11 @@ const ClientSignUpPage = () => {
             {otpError && <div className="text-red-600 text-center mt-3">{otpError}</div>}
 
             <div className="flex items-center justify-between mt-4">
-              <button onClick={() => setOtpOpen(false)} className="px-4 py-2 rounded-md border border-gray-300" disabled={otpVerifying}>
+              <button
+                onClick={() => setOtpOpen(false)}
+                className="px-4 py-2 rounded-md border border-gray-300"
+                disabled={otpVerifying}
+              >
                 Cancel
               </button>
               <div className="flex items-center gap-3">
@@ -747,7 +756,11 @@ const ClientSignUpPage = () => {
             </div>
 
             <div className="mt-4 flex items-center justify-end gap-3">
-              <button type="button" onClick={() => setPrivacyOpen(false)} className="px-4 py-2 rounded-md border border-gray-300">
+              <button
+                type="button"
+                onClick={() => setPrivacyOpen(false)}
+                className="px-4 py-2 rounded-md border border-gray-300"
+              >
                 Cancel
               </button>
               <button type="button" onClick={agreePrivacy} className="px-4 py-2 rounded-md bg-[#008cfc] text-white">
@@ -807,10 +820,27 @@ const ClientSignUpPage = () => {
                 <li>No uploading of harmful or illegal content.</li>
                 <li>We may suspend or terminate accounts that violate policies or threaten platform safety.</li>
               </ul>
+
+              <p className="mt-4 font-semibold">5. No Refund Agreement</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>
+                  By using JDK HOMECARE, you acknowledge that fees paid through the platform are generally non-refundable once a service booking is confirmed or processed.
+                </li>
+                <li>
+                  Disputes, failed service attempts, or cancellations may be reviewed by JDK HOMECARE support, but any refund or credit is not guaranteed and may be provided only when required by applicable law or when JDK HOMECARE determines it is appropriate.
+                </li>
+                <li>
+                  You agree to provide accurate details and cooperate with verification requests (e.g., messages, timestamps, photos) during dispute review.
+                </li>
+              </ul>
             </div>
 
             <div className="mt-4 flex items-center justify-end gap-3">
-              <button type="button" onClick={() => setPolicyOpen(false)} className="px-4 py-2 rounded-md border border-gray-300">
+              <button
+                type="button"
+                onClick={() => setPolicyOpen(false)}
+                className="px-4 py-2 rounded-md border border-gray-300"
+              >
                 Cancel
               </button>
               <button type="button" onClick={agreePolicy} className="px-4 py-2 rounded-md bg-[#008cfc] text-white">
@@ -848,7 +878,9 @@ const ClientSignUpPage = () => {
               <ul className="list-disc pl-5 mt-2 space-y-1">
                 <li>You agree not to disclose confidential information to any third party.</li>
                 <li>You agree to use confidential information only for platform-related purposes.</li>
-                <li>You agree to take reasonable steps to protect confidentiality (e.g., not sharing screenshots, data exports, or private messages).</li>
+                <li>
+                  You agree to take reasonable steps to protect confidentiality (e.g., not sharing screenshots, data exports, or private messages).
+                </li>
               </ul>
 
               <p className="mt-4 font-semibold">3. Exceptions</p>
@@ -864,7 +896,11 @@ const ClientSignUpPage = () => {
             </div>
 
             <div className="mt-4 flex items-center justify-end gap-3">
-              <button type="button" onClick={() => setNdaOpen(false)} className="px-4 py-2 rounded-md border border-gray-300">
+              <button
+                type="button"
+                onClick={() => setNdaOpen(false)}
+                className="px-4 py-2 rounded-md border border-gray-300"
+              >
                 Cancel
               </button>
               <button type="button" onClick={agreeNda} className="px-4 py-2 rounded-md bg-[#008cfc] text-white">

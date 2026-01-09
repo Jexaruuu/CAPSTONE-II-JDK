@@ -736,6 +736,19 @@ const WorkerSignUpPage = () => {
                 <li>No uploading of harmful or illegal content.</li>
                 <li>We may suspend or terminate accounts that violate policies or threaten platform safety.</li>
               </ul>
+
+              <p className="mt-4 font-semibold">5. No Refund Agreement</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>
+                  By using JDK HOMECARE, you acknowledge that fees paid through the platform are generally non-refundable once a service booking is confirmed or processed.
+                </li>
+                <li>
+                  Disputes, failed service attempts, or cancellations may be reviewed by JDK HOMECARE support, but any refund or credit is not guaranteed and may be provided only when required by applicable law or when JDK HOMECARE determines it is appropriate.
+                </li>
+                <li>
+                  You agree to provide accurate details and cooperate with verification requests (e.g., messages, timestamps, photos) during dispute review.
+                </li>
+              </ul>
             </div>
 
             <div className="mt-4 flex items-center justify-end gap-3">
