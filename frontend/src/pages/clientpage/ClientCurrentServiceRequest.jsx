@@ -218,6 +218,30 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
   }, [item]);
   const createdAgo = item.created_at ? timeAgo(item.created_at) : "";
 
+  const workersNeedText = (() => {
+    const v = d.workers_needed ?? d.workers_need ?? null;
+    if (v === null || v === undefined) return "-";
+    const s = String(v).trim();
+    return s ? s : "-";
+  })();
+
+  const unitsText = (() => {
+    const u = rate?.units ?? null;
+    const kg = rate?.unit_kg ?? null;
+    if (u !== null && u !== undefined && String(u).trim() !== "") return String(u).trim();
+    if (kg !== null && kg !== undefined && String(kg).trim() !== "") return `${String(kg).trim()} kg`;
+    return "-";
+  })();
+
+  const totalRateText = (() => {
+    const raw = rate?.total_rate_php ?? rate?.total_rate ?? rate?.total ?? null;
+    if (raw === null || raw === undefined) return "-";
+    const s = String(raw).trim();
+    if (!s) return "-";
+    const out = peso(s);
+    return out ? out : "-";
+  })();
+
   return (
     <div className="relative overflow-hidden bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
       <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
@@ -263,12 +287,16 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
                 </div>
                 <div className="space-y-1.5 md:pl-10">
                   <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    <span className="text-gray-700 font-semibold">Rate Type:</span>
-                    <span className="text-[#008cfc] font-semibold">{formatRateType(rate.rate_type)}</span>
+                    <span className="text-gray-700 font-semibold">Workers Need:</span>
+                    <span className="text-[#008cfc] font-semibold">{workersNeedText}</span>
                   </div>
                   <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    <span className="text-gray-700 font-semibold">Service Rate:</span>
-                    <span className="text-[#008cfc] font-semibold"><RateText rate={rate} /></span>
+                    <span className="text-gray-700 font-semibold">Units:</span>
+                    <span className="text-[#008cfc] font-semibold">{unitsText}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Total Rate:</span>
+                    <span className="text-[#008cfc] font-semibold">{totalRateText}</span>
                   </div>
                 </div>
               </div>
@@ -283,25 +311,25 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
         </div>
 
         <div className="-mt-9 flex justify-end gap-2">
-         {(isDeclined || isCancelled) ? (
-  <Link
-    to={`/current-service-request/${encodeURIComponent(item.id)}`}
-    onClick={(e) => { e.preventDefault(); onReason(item); }}
-    className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-  >
-    View Reason
-  </Link>
-) : (
-  !isExpiredReq && (
-    <Link
-      to={`/current-service-request/${encodeURIComponent(item.id)}`}
-      onClick={(e) => { e.preventDefault(); onView(item.id); }}
-      className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-    >
-      View
-    </Link>
-  )
-)}
+          {(isDeclined || isCancelled) ? (
+            <Link
+              to={`/current-service-request/${encodeURIComponent(item.id)}`}
+              onClick={(e) => { e.preventDefault(); onReason(item); }}
+              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+            >
+              View Reason
+            </Link>
+          ) : (
+            !isExpiredReq && (
+              <Link
+                to={`/current-service-request/${encodeURIComponent(item.id)}`}
+                onClick={(e) => { e.preventDefault(); onView(item.id); }}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
+                View
+              </Link>
+            )
+          )}
           {isApproved && !isCancelled && !isDeclined && !isExpiredReq && (
             <button
               type="button"
@@ -411,9 +439,9 @@ export default function ClientCurrentServiceRequest() {
         params: { scope: "cancelled", email: getClientEmail() },
         withCredentials: true,
       });
-        const arr = Array.isArray(data?.items) ? data.items : [];
-        const ids = arr.map(r => r.details?.request_group_id || r.info?.request_group_id || r.rate?.request_group_id || r.id).filter(Boolean);
-        return new Set(ids.map(String));
+      const arr = Array.isArray(data?.items) ? data.items : [];
+      const ids = arr.map(r => r.details?.request_group_id || r.info?.request_group_id || r.rate?.request_group_id || r.id).filter(Boolean);
+      return new Set(ids.map(String));
     } catch {
       return new Set();
     }
@@ -771,17 +799,17 @@ export default function ClientCurrentServiceRequest() {
                 >
                   Canceled Requests
                 </button>
-               <button
-  type="button"
-  onClick={() => setStatusFilter((v) => (v === "expired" ? "all" : "expired"))}
-  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
-    statusFilter === "expired"
-      ? "border-[#008cfc] bg-[#008cfc] text-white"
-      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-  }`}
->
-  Expired Requests
-</button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter((v) => (v === "expired" ? "all" : "expired"))}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                    statusFilter === "expired"
+                      ? "border-[#008cfc] bg-[#008cfc] text-white"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Expired Requests
+                </button>
               </div>
             </div>
             <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
