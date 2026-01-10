@@ -81,11 +81,66 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   const serviceTypes = ['Carpenter', 'Electrician', 'Plumber', 'Carwasher', 'Laundry'];
 
   const jobTasks = {
-    Carpenter: ['General Carpentry', 'Furniture Repair', 'Wood Polishing', 'Door & Window Fitting', 'Custom Furniture Design', 'Modular Kitchen Installation', 'Flooring & Decking', 'Cabinet & Wardrobe Fixing', 'Wall Paneling & False Ceiling', 'Wood Restoration & Refinishing'],
-    Laundry: ['Dry Cleaning', 'Ironing', 'Wash & Fold', 'Steam Pressing', 'Stain Removal Treatment', 'Curtains & Upholstery Cleaning', 'Delicate Fabric Care', 'Shoe & Leather Cleaning', 'Express Same-Day Laundry', 'Eco-Friendly Washing'],
-    Electrician: ['Wiring Repair', 'Appliance Installation', 'Lighting Fixtures', 'Circuit Breaker & Fuse Repair', 'CCTV & Security System Setup', 'Fan & Exhaust Installation', 'Inverter & Battery Setup', 'Switchboard & Socket Repair', 'Electrical Safety Inspection', 'Smart Home Automation'],
-    Plumber: ['Leak Fixing', 'Pipe Installation', 'Bathroom Fittings', 'Drain Cleaning & Unclogging', 'Water Tank Installation', 'Gas Pipeline Installation', 'Septic Tank & Sewer Repair', 'Water Heater Installation', 'Toilet & Sink Repair', 'Kitchen Plumbing Solutions'],
-    Carwasher: ['Exterior Wash', 'Interior Detailing', 'Wax & Polish', 'Underbody Cleaning', 'Engine Bay Cleaning', 'Headlight Restoration', 'Ceramic Coating', 'Tire & Rim Cleaning', 'Vacuum & Odor Removal', 'Paint Protection Film Application']
+    Carpenter: [
+      'General Carpentry',
+      'Furniture Repair',
+      'Wood Polishing',
+      'Door & Window Fitting',
+      'Custom Furniture Design',
+      'Modular Kitchen Installation',
+      'Flooring & Decking',
+      'Cabinet & Wardrobe Fixing',
+      'Wall Paneling & False Ceiling',
+      'Wood Restoration & Refinishing'
+    ],
+    Laundry: [
+      'Dry Cleaning',
+      'Ironing',
+      'Wash & Fold',
+      'Steam Pressing',
+      'Stain Removal Treatment',
+      'Curtains & Upholstery Cleaning',
+      'Delicate Fabric Care',
+      'Shoe & Leather Cleaning',
+      'Express Same-Day Laundry',
+      'Eco-Friendly Washing'
+    ],
+    Electrician: [
+      'Wiring Repair',
+      'Appliance Installation',
+      'Lighting Fixtures',
+      'Circuit Breaker & Fuse Repair',
+      'CCTV & Security System Setup',
+      'Fan & Exhaust Installation',
+      'Inverter & Battery Setup',
+      'Switchboard & Socket Repair',
+      'Electrical Safety Inspection',
+      'Smart Home Automation'
+    ],
+    Plumber: [
+      'Leak Fixinging',
+      'Pipe Installation',
+      'Bathroom Fittings',
+      'Drain Cleaning & Unclogging',
+      'Water Tank Installation',
+      'Gas Pipeline Installation',
+      'Septic Tank & Sewer Repair',
+      'Water Heater Installation',
+      'Toilet & Sink Repair',
+      'Kitchen Plumbing Solutions'
+    ],
+    Carwasher: [
+      'Exterior Wash',
+      'Interior Detailing',
+      'Wax & Polish',
+      'Underbody Cleaning',
+      'Engine Bay Cleaning',
+      'Headlight Restoration',
+      'Ceramic Coating',
+      'Tire & Rim Cleaning',
+      'Vacuum & Odor Removal',
+      'Paint Protection Film Application'
+    ]
   };
 
   const serviceTaskRates = {
@@ -138,16 +193,16 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       'Paint Protection Film Application': 15000
     },
     Laundry: {
-      'Dry Cleaning': '₱150/kg',
-      'Ironing': '₱120/kg',
-      'Wash & Fold': '₱60/kg',
-      'Steam Pressing': '₱150/kg',
-      'Stain Removal Treatment': '₱200/kg',
+      'Dry Cleaning': '₱130/kg',
+      Ironing: '₱100/kg',
+      'Wash & Fold': '₱50/kg',
+      'Steam Pressing': '₱130/kg',
+      'Stain Removal Treatment': '₱180/kg',
       'Curtains & Upholstery Cleaning': '₱400–₱800',
-      'Delicate Fabric Care': '₱100/kg',
+      'Delicate Fabric Care': '₱90/kg',
       'Shoe & Leather Cleaning': '₱250/pair',
-      'Express Same-Day Laundry': '₱80/kg',
-      'Eco-Friendly Washing': '₱70/kg'
+      'Express Same-Day Laundry': '₱70/kg',
+      'Eco-Friendly Washing': '₱60/kg'
     }
   };
 

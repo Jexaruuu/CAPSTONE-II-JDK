@@ -1,17 +1,26 @@
-import React, { useEffect, useState } from 'react';
+// WorkerRate.jsx
+import React, { useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'workerRate';
+const DETAILS_KEY = 'workerWorkInformation';
+
+const NIGHT_TIME_FEE = 200;
+const MIN_LAUNDRY_KG = 8;
+
+const INCLUDED_WORKERS = 2;
+const EXTRA_WORKER_FEE = 150;
 
 const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
-  const [rateType, setRateType] = useState('');
-  const [rateFrom, setRateFrom] = useState('');
-  const [rateTo, setRateTo] = useState('');
-  const [rateValue, setRateValue] = useState('');
   const [attempted, setAttempted] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
-  const [logoBroken, setLogoBroken] = useState(false);
   const [isLoadingBack, setIsLoadingBack] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
+
+  const [serviceType, setServiceType] = useState('');
+  const [serviceTask, setServiceTask] = useState('');
+  const [preferredTime, setPreferredTime] = useState('');
+  const [units, setUnits] = useState(1);
 
   useEffect(() => {
     try {
@@ -25,68 +34,244 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
     } catch {}
   };
 
+  const serviceTaskRates = useMemo(
+    () => ({
+      Carpentry: {
+        'General Carpentry': 1000,
+        'Furniture Repair': 900,
+        'Wood Polishing': 1200,
+        'Door & Window Fitting': 1500,
+        'Custom Furniture Design': 2000,
+        'Modular Kitchen Installation': 6000,
+        'Flooring & Decking': 3500,
+        'Cabinet & Wardrobe Fixing': 1200,
+        'Wall Paneling & False Ceiling': 4000,
+        'Wood Restoration & Refinishing': 2500
+      },
+      'Electrical Works': {
+        'Wiring Repair': 1000,
+        'Appliance Installation': 800,
+        'Lighting Fixtures': 700,
+        'Circuit Breaker & Fuse Repair': 1200,
+        'CCTV & Security System Setup': 2500,
+        'Fan & Exhaust Installation': 700,
+        'Inverter & Battery Setup': 1800,
+        'Switchboard & Socket Repair': 800,
+        'Electrical Safety Inspection': 1500,
+        'Smart Home Automation': 3000
+      },
+      Plumbing: {
+        'Leak Fixing': 900,
+        'Pipe Installation': 1500,
+        'Bathroom Fittings': 1200,
+        'Drain Cleaning & Unclogging': 1800,
+        'Water Tank Installation': 2500,
+        'Gas Pipeline Installation': 3500,
+        'Septic Tank & Sewer Repair': 4500,
+        'Water Heater Installation': 2000,
+        'Toilet & Sink Repair': 1000,
+        'Kitchen Plumbing Solutions': 1800
+      },
+      'Car Washing': {
+        'Exterior Wash': 350,
+        'Interior Cleaning': 700,
+        'Wax & Polish': 1200,
+        'Underbody Cleaning': 500,
+        'Engine Bay Cleaning': 900,
+        'Headlight Restoration': 1500,
+        'Ceramic Coating': 12000,
+        'Tire & Rim Cleaning': 400,
+        'Vacuum & Odor Removal': 700,
+        'Paint Protection Film Application': 15000
+      },
+      Laundry: {
+        'Wash & Fold': '₱50/kg',
+        Ironing: '₱100/kg',
+        'Dry Cleaning': '₱130/kg',
+        'Steam Pressing': '₱130/kg',
+        'Stain Removal Treatment': '₱180/kg',
+        'Delicate Fabric Care': '₱90/kg',
+        'Eco-Friendly Washing': '₱60/kg',
+        'Express Same-Day Laundry': '₱70/kg',
+        'Curtains & Upholstery Cleaning': '₱600/pc',
+        'Shoe & Leather Cleaning': '₱250/pair'
+      }
+    }),
+    []
+  );
+
+  const formatRate = (v) => {
+    if (v === null || v === undefined || v === '') return '';
+    if (typeof v === 'string') return v.trim().startsWith('₱') ? v.trim() : `₱${v}`;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '';
+    return `₱${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 }).format(n)}`;
+  };
+
+  const shouldShowPerUnit = (type) =>
+    type === 'Car Washing' || type === 'Plumbing' || type === 'Carpentry' || type === 'Electrical Works';
+
+  const withPerUnitLabel = (rateStr) => {
+    if (!rateStr) return '';
+    return `per unit ${rateStr}`;
+  };
+
+  const parseNumericRate = (v) => {
+    if (v === null || v === undefined || v === '') return null;
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    const s = String(v);
+    const nums = s.match(/\d+(\.\d+)?/g);
+    if (!nums || !nums.length) return null;
+    const a = Number(nums[0]);
+    const b = nums.length >= 2 ? Number(nums[1]) : null;
+    if (!Number.isFinite(a)) return null;
+    if (b !== null && Number.isFinite(b)) return Math.round((a + b) / 2);
+    return a;
+  };
+
+  const isNightTimeForFee = (t) => {
+    if (!t) return false;
+    const [hh, mm] = String(t).split(':').map((x) => parseInt(x, 10));
+    if (!Number.isFinite(hh) || !Number.isFinite(mm)) return false;
+    if (hh >= 20) return true;
+    if (hh >= 0 && hh <= 5) return true;
+    if (hh === 6 && (mm === 0 || mm === 30)) return true;
+    return false;
+  };
+
+  const isLaundry = serviceType === 'Laundry';
+
+  const baseRateRaw = useMemo(() => {
+    if (!serviceType || !serviceTask) return '';
+    const v = serviceTaskRates?.[serviceType]?.[serviceTask];
+    return v === undefined ? '' : v;
+  }, [serviceType, serviceTask, serviceTaskRates]);
+
+  const baseRateNum = useMemo(() => parseNumericRate(baseRateRaw), [baseRateRaw]);
+
+  const baseRateDisplay = useMemo(() => {
+    const r = formatRate(baseRateRaw);
+    if (!r) return '';
+    return shouldShowPerUnit(serviceType) ? withPerUnitLabel(r) : r;
+  }, [baseRateRaw, serviceType]);
+
+  const quantityUnit = useMemo(() => {
+    if (!isLaundry) return 'unit';
+    const s = String(baseRateRaw || '').toLowerCase();
+    if (s.includes('/pair') || s.includes('pair')) return 'pair';
+    if (s.includes('/pc') || s.includes('/piece') || s.includes('piece')) return 'pc';
+    if (s.includes('/load') || s.includes('load')) return 'load';
+    if (s.includes('/bag') || s.includes('bag')) return 'bag';
+    if (s.includes('/kg') || s.includes('kg')) return 'kg';
+    return 'item';
+  }, [isLaundry, baseRateRaw]);
+
+  const unitLabel = useMemo(() => {
+    const n = Math.max(1, Number(units) || 1);
+    if (quantityUnit === 'kg') return 'kg';
+    if (quantityUnit === 'pc') return n === 1 ? 'pc' : 'pcs';
+    return n === 1 ? quantityUnit : `${quantityUnit}s`;
+  }, [quantityUnit, units]);
+
+  const inputUnitsSafe = useMemo(() => Math.max(1, Number(units) || 1), [units]);
+
+  const billableUnits = useMemo(() => {
+    if (isLaundry && quantityUnit === 'kg') return Math.max(MIN_LAUNDRY_KG, inputUnitsSafe);
+    return inputUnitsSafe;
+  }, [isLaundry, quantityUnit, inputUnitsSafe]);
+
+  const minApplied = useMemo(
+    () => isLaundry && quantityUnit === 'kg' && inputUnitsSafe < MIN_LAUNDRY_KG,
+    [isLaundry, quantityUnit, inputUnitsSafe]
+  );
+
+  const nightFeeApplies = useMemo(() => !!preferredTime && isNightTimeForFee(preferredTime), [preferredTime]);
+  const nightFee = nightFeeApplies ? NIGHT_TIME_FEE : 0;
+
+  const computedSubtotal = useMemo(() => {
+    if (!Number.isFinite(baseRateNum) || baseRateNum <= 0) return 0;
+    return baseRateNum * billableUnits;
+  }, [baseRateNum, billableUnits]);
+
+  const computedTotal = useMemo(() => computedSubtotal + nightFee, [computedSubtotal, nightFee]);
+
+  const hasDetails = !!serviceType && !!serviceTask;
+  const isFormValid = hasDetails && Number.isFinite(baseRateNum) && baseRateNum > 0 && (Number(units) || 0) >= 1;
+
   useEffect(() => {
+    const pullDetails = (obj) => {
+      if (!obj || typeof obj !== 'object') return;
+      const st = obj.serviceType ?? obj.service_type ?? obj.service ?? obj.type ?? '';
+      const sk = obj.serviceTask ?? obj.service_task ?? obj.task ?? '';
+      const pt = obj.preferredTime ?? obj.preferred_time ?? obj.time ?? '';
+      const u = Number(obj.units ?? obj.unit ?? 1);
+
+      if (st) setServiceType(String(st));
+      if (sk) setServiceTask(String(sk));
+      if (pt) setPreferredTime(String(pt));
+      setUnits(Number.isFinite(u) && u >= 1 ? u : 1);
+    };
+
+    const savedDetails = localStorage.getItem(DETAILS_KEY);
+    if (savedDetails) {
+      try {
+        pullDetails(JSON.parse(savedDetails));
+      } catch {}
+    }
+
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        const data = JSON.parse(saved);
-        setRateType(data.rate_type || '');
-        setRateFrom(data.rate_from || '');
-        setRateTo(data.rate_to || '');
-        setRateValue(data.rate_value || '');
+        pullDetails(JSON.parse(saved));
       } catch {}
     }
+
     setHydrated(true);
   }, []);
 
-  const handleRateTypeChange = (e) => {
-    setRateType(e.target.value);
-    setRateFrom('');
-    setRateTo('');
-    setRateValue('');
-  };
-
-  const blockNonNumeric = (e) => {
-    const k = e.key;
-    if (k.length === 1 && !/[0-9]/.test(k)) e.preventDefault();
-  };
-
-  const sanitizeDigits = (v) => v.replace(/\D/g, '');
-
-  const handleRateValueChange = (e) => setRateValue(sanitizeDigits(e.target.value));
-  const handleRateFromChange = (e) => setRateFrom(sanitizeDigits(e.target.value));
-  const handleRateToChange = (e) => setRateTo(sanitizeDigits(e.target.value));
-
-  const isHourlyValid = () => {
-    if (!rateFrom || !rateTo) return false;
-    const from = Number(rateFrom);
-    const to = Number(rateTo);
-    return Number.isFinite(from) && Number.isFinite(to) && from > 0 && to > 0 && to > from;
-  };
-
-  const isJobValid = () => {
-    if (!rateValue) return false;
-    const v = Number(rateValue);
-    return Number.isFinite(v) && v > 0;
-  };
-
-  const isFormValid =
-    rateType &&
-    ((rateType === 'Hourly Rate' && isHourlyValid()) ||
-      (rateType === 'By the Job Rate' && isJobValid()));
-
   useEffect(() => {
     if (!hydrated) return;
-    const draft = {
-      rate_type: rateType,
-      rate_from: rateFrom,
-      rate_to: rateTo,
-      rate_value: rateValue
+
+    const payload = {
+      serviceType,
+      serviceTask,
+      preferredTime,
+      units: inputUnitsSafe,
+      quantity_unit: quantityUnit,
+      billable_units: billableUnits,
+      minimum_quantity: isLaundry && quantityUnit === 'kg' ? MIN_LAUNDRY_KG : null,
+      minimum_applied: !!minApplied,
+      base_rate_raw: baseRateRaw,
+      base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
+      subtotal: Number.isFinite(computedSubtotal) ? computedSubtotal : 0,
+      preferred_time_fee: nightFee,
+      total: Number.isFinite(computedTotal) ? computedTotal : 0,
+      rate_type: 'Task-Based Rate',
+      rate_from: '',
+      rate_to: '',
+      rate_value: Number.isFinite(baseRateNum) ? String(baseRateNum) : ''
     };
+
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {}
-  }, [hydrated, rateType, rateFrom, rateTo, rateValue]);
+  }, [
+    hydrated,
+    serviceType,
+    serviceTask,
+    preferredTime,
+    units,
+    inputUnitsSafe,
+    quantityUnit,
+    billableUnits,
+    minApplied,
+    isLaundry,
+    baseRateRaw,
+    baseRateNum,
+    computedSubtotal,
+    nightFee,
+    computedTotal
+  ]);
 
   useEffect(() => {
     if (!isLoadingNext) return;
@@ -144,13 +329,32 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
     };
   }, [isLoadingBack]);
 
+  const decUnits = () => setUnits((u) => Math.max(1, (Number(u) || 1) - 1));
+  const incUnits = () => setUnits((u) => Math.min(999, (Number(u) || 1) + 1));
+
+  const peso = (n) => `₱${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 }).format(Number(n) || 0)}`;
+
   const proceed = () => {
     const draft = {
-      rate_type: rateType,
-      rate_from: rateFrom,
-      rate_to: rateTo,
-      rate_value: rateValue
+      serviceType,
+      serviceTask,
+      preferredTime,
+      units: inputUnitsSafe,
+      quantity_unit: quantityUnit,
+      billable_units: billableUnits,
+      minimum_quantity: isLaundry && quantityUnit === 'kg' ? MIN_LAUNDRY_KG : null,
+      minimum_applied: !!minApplied,
+      base_rate_raw: baseRateRaw,
+      base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
+      subtotal: Number.isFinite(computedSubtotal) ? computedSubtotal : 0,
+      preferred_time_fee: nightFee,
+      total: Number.isFinite(computedTotal) ? computedTotal : 0,
+      rate_type: 'Task-Based Rate',
+      rate_from: '',
+      rate_to: '',
+      rate_value: Number.isFinite(baseRateNum) ? String(baseRateNum) : ''
     };
+
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
     } catch {}
@@ -190,7 +394,7 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
               }}
             />
             <div className="text-2xl md:text-3xl font-semibold text-gray-900">
-              Please choose your service rate
+              Service rate based on your selected task
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -205,187 +409,174 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
       <form className="mx-auto w-full max-w-[1520px] px-6 space-y-6">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm ring-1 ring-gray-100/60 mt-5">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/80">
-            <h3 className="text-xl md:text-2xl font-semibold text-gray-900">
-              Service Price Rate
-            </h3>
+            <h3 className="text-xl md:text-2xl font-semibold text-gray-900">Service Price Rate</h3>
+            <span
+              style={{ display: 'none' }}
+              className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200"
+            >
+              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+              Rate
+            </span>
           </div>
 
           <div className="px-6 py-6">
             <p className="text-base text-gray-600 mb-6">
-              Please choose the service rate type and enter the price.
+              Your price range is automatically based on the service type and task you selected in the previous step.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              <button
-                type="button"
-                onClick={() => handleRateTypeChange({ target: { value: 'Hourly Rate' } })}
-                className={`p-4 border rounded-xl text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 ${
-                  rateType === 'Hourly Rate'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 grid place-items-center rounded-lg bg-blue-100">
-                    <img src="/Clock.png" alt="" className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-base font-semibold text-gray-900">Hourly Rate</p>
-                    <p className="text-sm text-gray-500">Charge per hour of work</p>
-                  </div>
-                </div>
-              </button>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <div className="text-sm font-medium text-gray-700 mb-2">Service Type</div>
+                      <div className={`rounded-xl border px-4 py-3 ${attempted && !serviceType ? 'border-red-500' : 'border-gray-300'}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="truncate text-gray-900">{serviceType || 'Not selected'}</span>
+                        </div>
+                      </div>
+                      {attempted && !serviceType && <p className="text-xs text-red-600 mt-1">Please go back and select a service type.</p>}
+                    </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  handleRateTypeChange({ target: { value: 'By the Job Rate' } })
-                }
-                className={`p-4 border rounded-xl text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 ${
-                  rateType === 'By the Job Rate'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 grid place-items-center rounded-lg bg-blue-100">
-                    <img src="/Contract.png" alt="" className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-base font-semibold text-gray-900">By the Job Rate</p>
-                    <p className="text-sm text-gray-500">Single fixed price</p>
+                    <div>
+                      <div className="text-sm font-medium text-gray-700 mb-2">Service Task</div>
+                      <div className={`rounded-xl border px-4 py-3 ${attempted && !serviceTask ? 'border-red-500' : 'border-gray-300'}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="truncate text-gray-900">{serviceTask || 'Not selected'}</span>
+                          {baseRateDisplay ? <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{baseRateDisplay}</span> : null}
+                        </div>
+                      </div>
+                      {attempted && !serviceTask && <p className="text-xs text-red-600 mt-1">Please go back and select a service task.</p>}
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-medium text-gray-700">
+                          {isLaundry ? `How many ${quantityUnit === 'kg' ? 'kg' : unitLabel}?` : 'How many units?'}
+                        </div>
+                        {attempted && hasDetails && !(Number.isFinite(baseRateNum) && baseRateNum > 0) ? (
+                          <span className="text-xs text-red-600">Rate not available for this task</span>
+                        ) : null}
+                      </div>
+
+                      <div className={`rounded-2xl border p-4 ${attempted && !isFormValid ? 'border-red-200 bg-red-50/40' : 'border-gray-200 bg-gray-50/40'}`}>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={decUnits}
+                              disabled={!Number.isFinite(baseRateNum) || baseRateNum <= 0}
+                              className={`h-11 w-11 rounded-xl border text-lg font-semibold transition ${
+                                Number.isFinite(baseRateNum) && baseRateNum > 0
+                                  ? 'border-gray-300 hover:bg-white text-gray-900'
+                                  : 'border-gray-200 text-gray-300 cursor-not-allowed bg-white/50'
+                              }`}
+                            >
+                              −
+                            </button>
+                            <div className="min-w-[90px] text-center">
+                              <div className="text-2xl font-semibold text-gray-900">{inputUnitsSafe}</div>
+                              <div className="text-xs text-gray-500">{unitLabel}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={incUnits}
+                              disabled={!Number.isFinite(baseRateNum) || baseRateNum <= 0}
+                              className={`h-11 w-11 rounded-xl border text-lg font-semibold transition ${
+                                Number.isFinite(baseRateNum) && baseRateNum > 0
+                                  ? 'border-gray-300 hover:bg-white text-gray-900'
+                                  : 'border-gray-200 text-gray-300 cursor-not-allowed bg-white/50'
+                              }`}
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">Subtotal</span>
+                              <span className="text-sm font-semibold text-gray-900">{peso(computedSubtotal)}</span>
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                              <span className="text-sm text-gray-600">Preferred time fee</span>
+                              <span className={`text-sm font-semibold ${nightFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                                {nightFeeApplies ? `+ ${peso(nightFee)}` : '—'}
+                              </span>
+                            </div>
+                            <div className="h-px bg-gray-200 my-3" />
+                            <div className="flex items-center justify-between">
+                              <span className="text-base font-semibold text-gray-900">Total</span>
+                              <span className="text-base font-semibold text-gray-900">{peso(computedTotal)}</span>
+                            </div>
+                            {isLaundry && quantityUnit === 'kg' ? (
+                              <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
+                                <div className="text-xs text-gray-700">
+                                  Minimum charge is <span className="font-semibold">8kg</span>.
+                                  {minApplied ? (
+                                    <span className="ml-1">
+                                      You entered <span className="font-semibold">{inputUnitsSafe}kg</span>, billed as{' '}
+                                      <span className="font-semibold">8kg</span>.
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      {attempted && !isFormValid ? (
+                        <p className="text-xs text-red-600 mt-2">Please ensure your service type/task is selected and the task has a valid rate.</p>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
-              </button>
+              </div>
+
+              <div className="lg:col-span-1">
+                <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                  <div className="text-lg font-semibold text-gray-900">Summary</div>
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-gray-600">Base rate</span>
+                      <span className="text-sm font-semibold text-gray-900">{baseRateDisplay || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-gray-600">{isLaundry ? 'Quantity' : 'Units'}</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {inputUnitsSafe} {unitLabel}
+                      </span>
+                    </div>
+                    {isLaundry && quantityUnit === 'kg' ? (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-gray-600">Billable kg</span>
+                        <span className={`text-sm font-semibold ${minApplied ? 'text-[#008cfc]' : 'text-gray-900'}`}>{billableUnits} kg</span>
+                      </div>
+                    ) : null}
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-gray-600">Subtotal</span>
+                      <span className="text-sm font-semibold text-gray-900">{peso(computedSubtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-gray-600">Preferred time fee</span>
+                      <span className={`text-sm font-semibold ${nightFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                        {nightFeeApplies ? `+ ${peso(nightFee)}` : '—'}
+                      </span>
+                    </div>
+                    <div className="h-px bg-gray-200 my-2" />
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-base font-semibold text-gray-900">Total</span>
+                      <span className="text-base font-semibold text-gray-900">{peso(computedTotal)}</span>
+                    </div>
+                    {!hasDetails ? (
+                      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        Go back and select your service type and task.
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             </div>
-
-            {rateType === 'Hourly Rate' && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Enter the Rate (Per Hour)
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      From
-                    </label>
-                    <div
-                      className={`relative rounded-xl border ${
-                        attempted && !isHourlyValid()
-                          ? 'border-red-500'
-                          : 'border-gray-300'
-                      } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
-                    >
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                        ₱
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="\d*"
-                        value={rateFrom}
-                        onChange={handleRateFromChange}
-                        onKeyDown={blockNonNumeric}
-                        onPaste={(e) => {
-                          e.preventDefault();
-                          const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '');
-                          setRateFrom(t);
-                        }}
-                        className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      To
-                    </label>
-                    <div
-                      className={`relative rounded-xl border ${
-                        attempted && !isHourlyValid()
-                          ? 'border-red-500'
-                          : 'border-gray-300'
-                      } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
-                    >
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                        ₱
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="\d*"
-                        value={rateTo}
-                        onChange={handleRateToChange}
-                        onKeyDown={blockNonNumeric}
-                        onPaste={(e) => {
-                          e.preventDefault();
-                          const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '');
-                          setRateTo(t);
-                        }}
-                        className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-                {attempted && rateFrom && rateTo && !isHourlyValid() && (
-                  <p className="text-xs text-red-600 mt-1">
-                    Enter valid amounts. “To” must be strictly greater than “From”, and both must be positive.
-                  </p>
-                )}
-                <p className="text-base text-gray-600 mt-2">
-                  This can be your usual hourly rate for home services.
-                </p>
-                <p className="text-base text-gray-600 mt-4">
-                  Offer your budget-friendly rates for plumbing, carpentry, electrical work, car
-                  washing, and laundry.
-                </p>
-              </div>
-            )}
-
-            {rateType === 'By the Job Rate' && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Enter the Rate
-                </label>
-                <div
-                  className={`relative rounded-xl border ${
-                    attempted && !isJobValid() ? 'border-red-500' : 'border-gray-300'
-                  } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
-                >
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                    ₱
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="\d*"
-                    value={rateValue}
-                    onChange={handleRateValueChange}
-                    onKeyDown={blockNonNumeric}
-                    onPaste={(e) => {
-                      e.preventDefault();
-                      const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '');
-                      setRateValue(t);
-                    }}
-                    className="w-full pl-8 px-4 py-3 rounded-xl focus:outline-none"
-                    required
-                  />
-                </div>
-                {attempted && !isJobValid() && (
-                  <p className="text-xs text-red-600 mt-1">
-                    Enter a valid amount greater than 0.
-                  </p>
-                )}
-                <p className="text-base text-gray-600 mt-2">
-                  Set a fixed price for your service.
-                </p>
-                <p className="text-base text-gray-600 mt-4">
-                  You and the client can discuss and agree on this fixed price based on the scope of
-                  work.
-                </p>
-              </div>
-            )}
           </div>
         </div>
 
@@ -404,9 +595,7 @@ const WorkerRate = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
             disabled={!isFormValid}
             aria-disabled={!isFormValid}
             className={`sm:w-1/3 w-full px-6 py-3 rounded-xl transition shadow-sm ${
-              isFormValid
-                ? 'bg-[#008cfc] text-white hover:bg-[#0077d6]'
-                : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
+              isFormValid ? 'bg-[#008cfc] text-white hover:bg-[#0077d6]' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
             } focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40`}
           >
             Next : Terms &amp; Condition Agreements
