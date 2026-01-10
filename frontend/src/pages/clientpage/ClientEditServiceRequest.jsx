@@ -283,6 +283,10 @@ export default function ClientEditServiceRequest() {
   const [showSaving, setShowSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  const [preferredTimeFeePhp, setPreferredTimeFeePhp] = useState('');
+  const [extraWorkersFeePhp, setExtraWorkersFeePhp] = useState('');
+  const [totalRatePhp, setTotalRatePhp] = useState('');
+
   const [orig, setOrig] = useState(null);
 
   const fileRef = useRef(null);
@@ -353,7 +357,7 @@ export default function ClientEditServiceRequest() {
         const normRT = normalizeRateType(r.rate_type, r);
         const pd = normalizeYMD(d.preferred_date || '');
         const pt = normalizeHM(d.preferred_time || '');
-        const wnRaw = String(d.workers_need ?? d.workersNeed ?? '').trim();
+        const wnRaw = String((d.workers_needed ?? d.workers_need ?? d.workersNeed) ?? '').trim();
         const wnSafe = wnRaw ? String(clampInt(wnRaw, 1, MAX_WORKERS)) : '';
         const u = String(r.units ?? '').trim();
         const uk = String(r.unit_kg ?? r.unitKg ?? '').trim();
@@ -377,6 +381,9 @@ export default function ClientEditServiceRequest() {
         setStreet(info.street || '');
         setAdditionalAddress(info.additional_address || info.additionalAddress || '');
         setClientImageUrl(info.profile_picture_url || '');
+        setPreferredTimeFeePhp(r.preferred_time_fee_php || '');
+        setExtraWorkersFeePhp(r.extra_workers_fee_php || '');
+        setTotalRatePhp(r.total_rate_php || '');
         setOrig({
           serviceType: d.service_type || '',
           serviceTask: d.service_task || '',
@@ -396,7 +403,10 @@ export default function ClientEditServiceRequest() {
           street: info.street || '',
           additionalAddress: info.additional_address || info.additionalAddress || '',
           imageUrl: d.request_image_url || '',
-          clientImageUrl: info.profile_picture_url || ''
+          clientImageUrl: info.profile_picture_url || '',
+          preferredTimeFeePhp: r.preferred_time_fee_php || '',
+          extraWorkersFeePhp: r.extra_workers_fee_php || '',
+          totalRatePhp: r.total_rate_php || ''
         });
       } catch {
         setError('Failed to load request');
@@ -722,7 +732,7 @@ export default function ClientEditServiceRequest() {
     return false;
   };
 
-  const preferredTimeFeeLabel = preferredTime && isNightTimeForFee(preferredTime) ? `+ fee ${formatRate(NIGHT_TIME_FEE)}` : '';
+  const preferredTimeFeeLabelLocal = preferredTime && isNightTimeForFee(preferredTime) ? `+ fee ${formatRate(NIGHT_TIME_FEE)}` : '';
 
   const pdGrid = useMemo(() => {
     const view = pdView instanceof Date && !Number.isNaN(pdView.getTime()) ? pdView : new Date();
@@ -776,8 +786,18 @@ export default function ClientEditServiceRequest() {
 
   const workersNeedSafe = useMemo(() => clampInt(workersNeed || 1, 1, MAX_WORKERS), [workersNeed]);
   const extraWorkerCount = useMemo(() => Math.max(0, workersNeedSafe - INCLUDED_WORKERS), [workersNeedSafe]);
-  const extraWorkersFeeTotal = useMemo(() => extraWorkerCount * EXTRA_WORKER_FEE, [extraWorkerCount]);
-  const workersFeeLabel = useMemo(() => extraWorkerCount > 0 ? `+ fee ${formatRate(extraWorkersFeeTotal)}` : '', [extraWorkerCount, extraWorkersFeeTotal]);
+  const extraWorkersFeeTotalLocal = useMemo(() => extraWorkerCount * EXTRA_WORKER_FEE, [extraWorkerCount]);
+  const workersFeeLabelLocal = useMemo(() => extraWorkerCount > 0 ? `+ fee ${formatRate(extraWorkersFeeTotalLocal)}` : '', [extraWorkerCount, extraWorkersFeeTotalLocal]);
+
+  const preferredTimeFeeDisplay = useMemo(() => {
+    if (preferredTimeFeePhp && String(preferredTimeFeePhp).trim()) return String(preferredTimeFeePhp);
+    return preferredTimeFeeLabelLocal ? preferredTimeFeeLabelLocal.replace('+ fee ', '') : '';
+  }, [preferredTimeFeePhp, preferredTimeFeeLabelLocal]);
+
+  const extraWorkersFeeDisplay = useMemo(() => {
+    if (extraWorkersFeePhp && String(extraWorkersFeePhp).trim()) return String(extraWorkersFeePhp);
+    return extraWorkersFeeTotalLocal > 0 ? formatRate(extraWorkersFeeTotalLocal) : '';
+  }, [extraWorkersFeePhp, extraWorkersFeeTotalLocal]);
 
   const isComplete = useMemo(() => {
     const req = [serviceType, serviceTask, preferredDate, preferredTime, workersNeed, isUrgent, toolsProvided, description, barangay, street];
@@ -1270,8 +1290,8 @@ export default function ClientEditServiceRequest() {
                             {preferredTime ? (
                               <div className="flex items-center justify-between gap-3">
                                 <span className="truncate">{to12h(preferredTime)}</span>
-                                {preferredTimeFeeLabel ? (
-                                  <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{preferredTimeFeeLabel}</span>
+                                {(preferredTimeFeeLabelLocal || preferredTimeFeePhp) ? (
+                                  <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{preferredTimeFeePhp ? `+ fee ${preferredTimeFeePhp}` : preferredTimeFeeLabelLocal}</span>
                                 ) : null}
                               </div>
                             ) : (
@@ -1385,8 +1405,8 @@ export default function ClientEditServiceRequest() {
                               <span className="truncate">
                                 {workersNeedSafe} worker{workersNeedSafe === 1 ? '' : 's'}
                               </span>
-                              {workersFeeLabel ? (
-                                <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{workersFeeLabel}</span>
+                              {(workersFeeLabelLocal || extraWorkersFeePhp) ? (
+                                <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{extraWorkersFeePhp ? `+ fee ${extraWorkersFeePhp}` : workersFeeLabelLocal}</span>
                               ) : null}
                             </div>
                           </button>
@@ -1414,8 +1434,8 @@ export default function ClientEditServiceRequest() {
                           </div>
                           <div className="flex items-center justify-between gap-3 mt-1">
                             <span className="text-xs text-gray-700">Extra workers fee</span>
-                            <span className={`text-xs font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                              {extraWorkersFeeTotal > 0 ? `+ ${formatRate(extraWorkersFeeTotal)}` : '—'}
+                            <span className={`text-xs font-semibold ${extraWorkersFeeDisplay ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                              {extraWorkersFeeDisplay ? `+ ${extraWorkersFeeDisplay}` : '—'}
                             </span>
                           </div>
                         </div>
@@ -1529,6 +1549,39 @@ export default function ClientEditServiceRequest() {
                     <div className="mt-4 hidden" />
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4">
+                <h3 className="text-lg md:text-xl font-semibold text-gray-900">Fees Summary</h3>
+              </div>
+              <div className="border-t border-gray-100" />
+              <div className="px-6 py-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="rounded-xl border border-gray-200 p-4">
+                    <div className="text-xs text-gray-500">Workers Need</div>
+                    <div className="text-base font-semibold text-gray-900 mt-1">{workersNeedSafe}</div>
+                  </div>
+                  <div className="rounded-xl border border-gray-200 p-4">
+                    <div className="text-xs text-gray-500">{isLaundry ? 'Unit/kg' : 'Units'}</div>
+                    <div className="text-base font-semibold text-gray-900 mt-1">{isLaundry ? (unitKg || '—') : (units || '—')}</div>
+                  </div>
+                  <div className="rounded-xl border border-gray-200 p-4">
+                    <div className="text-xs text-gray-500">Preferred Time Fee</div>
+                    <div className="text-base font-semibold text-gray-900 mt-1">{preferredTimeFeeDisplay || '—'}</div>
+                  </div>
+                  <div className="rounded-xl border border-gray-200 p-4">
+                    <div className="text-xs text-gray-500">Extra Workers Fee</div>
+                    <div className="text-base font-semibold text-gray-900 mt-1">{extraWorkersFeeDisplay || '—'}</div>
+                  </div>
+                </div>
+                {totalRatePhp ? (
+                  <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4 flex items-center justify-between">
+                    <div className="text-sm text-gray-700">Total Rate</div>
+                    <div className="text-base font-semibold text-[#008cfc]">{totalRatePhp}</div>
+                  </div>
+                ) : null}
               </div>
             </div>
 
