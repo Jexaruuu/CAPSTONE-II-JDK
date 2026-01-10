@@ -181,6 +181,35 @@ const getSelectedTaskRate = (serviceType, serviceTask) => {
   return shouldShowPerUnit(serviceType) ? withPerUnitLabel(r) : r;
 };
 
+const moneyNumberFromAny = (v) => {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const s = String(v).replace(/,/g, '');
+  const nums = s.match(/(\d+(?:\.\d+)?)/g);
+  if (!nums || !nums.length) return null;
+  const ns = nums.map(x => Number(x)).filter(n => Number.isFinite(n));
+  if (!ns.length) return null;
+  if (ns.length >= 2 && /[–-]/.test(s)) {
+    const a = ns[0];
+    const b = ns[1];
+    if (Number.isFinite(a) && Number.isFinite(b)) return (a + b) / 2;
+  }
+  return ns[0];
+};
+
+const getTaskRateNumber = (serviceType, serviceTask) => {
+  if (!serviceType || !serviceTask) return null;
+  const raw = serviceTaskRates?.[serviceType]?.[serviceTask];
+  return moneyNumberFromAny(raw);
+};
+
+const isLaundryRatePerKg = (serviceType, serviceTask) => {
+  if (String(serviceType || '').toLowerCase() !== 'laundry') return false;
+  const raw = serviceTaskRates?.[serviceType]?.[serviceTask];
+  const s = String(raw ?? '').toLowerCase();
+  return s.includes('/kg') || s.includes('per kg');
+};
+
 const PopList = ({
   items,
   value,
@@ -523,6 +552,7 @@ export default function ClientEditServiceRequest() {
       const rt = rateType || normalizeRateType(rateType, { rate_from: rateFrom, rate_to: rateTo, rate_value: rateValue });
       const isLaundryNow = String(serviceType || '').toLowerCase() === 'laundry';
       const wn = clampInt(workersNeed || 1, 1, MAX_WORKERS);
+
       const payload = {
         info: {
           barangay,
@@ -546,10 +576,15 @@ export default function ClientEditServiceRequest() {
           rate_to: String(rt || '').toLowerCase() === 'range' ? toNumOrNull(rateTo) : null,
           rate_value: String(rt || '').toLowerCase() === 'range' ? null : toNumOrNull(rateValue),
           units: isLaundryNow ? null : toIntOrNull(units),
-          unit_kg: isLaundryNow ? toNumOrNull(unitKg || units) : null
+          unit_kg: isLaundryNow ? toNumOrNull(unitKg || units) : null,
+          preferred_time_fee_php: preferredTimeFeePhp || '',
+          extra_workers_fee_php: extraWorkersFeePhp || '',
+          total_rate_php: totalRatePhp || ''
         }
       };
+
       if (imageDataUrl) payload.attachments = [imageDataUrl];
+
       await axios.put(`${API_BASE}/api/clientservicerequests/by-group/${encodeURIComponent(gid)}`, payload, {
         withCredentials: true,
         headers: headersWithU
@@ -732,8 +767,6 @@ export default function ClientEditServiceRequest() {
     return false;
   };
 
-  const preferredTimeFeeLabelLocal = preferredTime && isNightTimeForFee(preferredTime) ? `+ fee ${formatRate(NIGHT_TIME_FEE)}` : '';
-
   const pdGrid = useMemo(() => {
     const view = pdView instanceof Date && !Number.isNaN(pdView.getTime()) ? pdView : new Date();
     const y = view.getFullYear();
@@ -787,17 +820,68 @@ export default function ClientEditServiceRequest() {
   const workersNeedSafe = useMemo(() => clampInt(workersNeed || 1, 1, MAX_WORKERS), [workersNeed]);
   const extraWorkerCount = useMemo(() => Math.max(0, workersNeedSafe - INCLUDED_WORKERS), [workersNeedSafe]);
   const extraWorkersFeeTotalLocal = useMemo(() => extraWorkerCount * EXTRA_WORKER_FEE, [extraWorkerCount]);
-  const workersFeeLabelLocal = useMemo(() => extraWorkerCount > 0 ? `+ fee ${formatRate(extraWorkersFeeTotalLocal)}` : '', [extraWorkerCount, extraWorkersFeeTotalLocal]);
 
-  const preferredTimeFeeDisplay = useMemo(() => {
-    if (preferredTimeFeePhp && String(preferredTimeFeePhp).trim()) return String(preferredTimeFeePhp);
-    return preferredTimeFeeLabelLocal ? preferredTimeFeeLabelLocal.replace('+ fee ', '') : '';
-  }, [preferredTimeFeePhp, preferredTimeFeeLabelLocal]);
+  const preferredTimeFeeAmountLocal = useMemo(() => (preferredTime && isNightTimeForFee(preferredTime) ? NIGHT_TIME_FEE : 0), [preferredTime]);
+  const preferredTimeFeeDisplay = useMemo(() => (preferredTimeFeeAmountLocal > 0 ? formatRate(preferredTimeFeeAmountLocal) : ''), [preferredTimeFeeAmountLocal]);
+  const extraWorkersFeeDisplay = useMemo(() => (extraWorkersFeeTotalLocal > 0 ? formatRate(extraWorkersFeeTotalLocal) : ''), [extraWorkersFeeTotalLocal]);
 
-  const extraWorkersFeeDisplay = useMemo(() => {
-    if (extraWorkersFeePhp && String(extraWorkersFeePhp).trim()) return String(extraWorkersFeePhp);
-    return extraWorkersFeeTotalLocal > 0 ? formatRate(extraWorkersFeeTotalLocal) : '';
-  }, [extraWorkersFeePhp, extraWorkersFeeTotalLocal]);
+  const preferredTimeFeeLabelLocal = useMemo(() => (preferredTimeFeeDisplay ? `+ fee ${preferredTimeFeeDisplay}` : ''), [preferredTimeFeeDisplay]);
+  const workersFeeLabelLocal = useMemo(() => (extraWorkersFeeDisplay ? `+ fee ${extraWorkersFeeDisplay}` : ''), [extraWorkersFeeDisplay]);
+
+  const selectedTaskRateRaw = useMemo(() => {
+    if (!serviceType || !serviceTask) return null;
+    return serviceTaskRates?.[serviceType]?.[serviceTask] ?? null;
+  }, [serviceType, serviceTask]);
+
+  const selectedTaskRateNumber = useMemo(() => getTaskRateNumber(serviceType, serviceTask), [serviceType, serviceTask]);
+
+  const qtyForPricing = useMemo(() => {
+    if (isLaundry) {
+      const kg = Number(String(unitKg || units || '').replace(/[^\d.]/g, ''));
+      return Number.isFinite(kg) && kg > 0 ? kg : null;
+    }
+    const u = parseInt(String(units || '').replace(/[^\d]/g, ''), 10);
+    return Number.isFinite(u) && u > 0 ? u : null;
+  }, [isLaundry, unitKg, units]);
+
+  const baseAmountLocal = useMemo(() => {
+    if (!serviceType || !serviceTask) return null;
+    const rate = selectedTaskRateNumber;
+    if (!Number.isFinite(rate) || rate <= 0) return null;
+
+    if (String(serviceType || '').toLowerCase() === 'laundry') {
+      const perKg = isLaundryRatePerKg(serviceType, serviceTask);
+      if (perKg) {
+        if (!Number.isFinite(qtyForPricing) || qtyForPricing <= 0) return null;
+        return rate * qtyForPricing;
+      }
+      return rate;
+    }
+
+    if (shouldShowPerUnit(serviceType)) {
+      if (!Number.isFinite(qtyForPricing) || qtyForPricing <= 0) return null;
+      return rate * qtyForPricing;
+    }
+
+    return rate;
+  }, [serviceType, serviceTask, selectedTaskRateNumber, qtyForPricing]);
+
+  const computedTotalAmountLocal = useMemo(() => {
+    if (!Number.isFinite(baseAmountLocal) || baseAmountLocal === null) return null;
+    return baseAmountLocal + (preferredTimeFeeAmountLocal || 0) + (extraWorkersFeeTotalLocal || 0);
+  }, [baseAmountLocal, preferredTimeFeeAmountLocal, extraWorkersFeeTotalLocal]);
+
+  useEffect(() => {
+    setPreferredTimeFeePhp(preferredTimeFeeDisplay || '');
+    setExtraWorkersFeePhp(extraWorkersFeeDisplay || '');
+    if (Number.isFinite(computedTotalAmountLocal) && computedTotalAmountLocal !== null) setTotalRatePhp(formatRate(computedTotalAmountLocal));
+    else setTotalRatePhp('');
+  }, [preferredTimeFeeDisplay, extraWorkersFeeDisplay, computedTotalAmountLocal]);
+
+  const totalRateDisplay = useMemo(() => {
+    if (Number.isFinite(computedTotalAmountLocal) && computedTotalAmountLocal !== null) return formatRate(computedTotalAmountLocal);
+    return totalRatePhp ? String(totalRatePhp) : '';
+  }, [computedTotalAmountLocal, totalRatePhp]);
 
   const isComplete = useMemo(() => {
     const req = [serviceType, serviceTask, preferredDate, preferredTime, workersNeed, isUrgent, toolsProvided, description, barangay, street];
@@ -1048,7 +1132,7 @@ export default function ClientEditServiceRequest() {
                       </div>
 
                       <div className="relative" ref={taskRef}>
-                        <span className="block text sm font-medium text-gray-700 mb-2">Service Task</span>
+                        <span className="block text-sm font-medium text-gray-700 mb-2">Service Task</span>
                         <select value={serviceTask} onChange={e=>setServiceTask(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1} disabled={!serviceType}>
                           <option value=""></option>
                           {serviceType && (serviceTasks[serviceType] || []).map((t)=> <option key={t} value={t}>{t}</option>)}
@@ -1290,8 +1374,8 @@ export default function ClientEditServiceRequest() {
                             {preferredTime ? (
                               <div className="flex items-center justify-between gap-3">
                                 <span className="truncate">{to12h(preferredTime)}</span>
-                                {(preferredTimeFeeLabelLocal || preferredTimeFeePhp) ? (
-                                  <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{preferredTimeFeePhp ? `+ fee ${preferredTimeFeePhp}` : preferredTimeFeeLabelLocal}</span>
+                                {preferredTimeFeeLabelLocal ? (
+                                  <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{preferredTimeFeeLabelLocal}</span>
                                 ) : null}
                               </div>
                             ) : (
@@ -1405,8 +1489,8 @@ export default function ClientEditServiceRequest() {
                               <span className="truncate">
                                 {workersNeedSafe} worker{workersNeedSafe === 1 ? '' : 's'}
                               </span>
-                              {(workersFeeLabelLocal || extraWorkersFeePhp) ? (
-                                <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{extraWorkersFeePhp ? `+ fee ${extraWorkersFeePhp}` : workersFeeLabelLocal}</span>
+                              {workersFeeLabelLocal ? (
+                                <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{workersFeeLabelLocal}</span>
                               ) : null}
                             </div>
                           </button>
@@ -1576,10 +1660,10 @@ export default function ClientEditServiceRequest() {
                     <div className="text-base font-semibold text-gray-900 mt-1">{extraWorkersFeeDisplay || '—'}</div>
                   </div>
                 </div>
-                {totalRatePhp ? (
+                {totalRateDisplay ? (
                   <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4 flex items-center justify-between">
                     <div className="text-sm text-gray-700">Total Rate</div>
-                    <div className="text-base font-semibold text-[#008cfc]">{totalRatePhp}</div>
+                    <div className="text-base font-semibold text-[#008cfc]">{totalRateDisplay}</div>
                   </div>
                 ) : null}
               </div>

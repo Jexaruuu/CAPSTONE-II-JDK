@@ -3,6 +3,7 @@ const {
   insertClientInformation,
   insertServiceRequestDetails,
   insertClientServiceRate,
+  updateClientServiceRate,
   newGroupId,
   findClientByEmail,
   findClientById,
@@ -182,6 +183,200 @@ function pickRateForResponse(rateRow) {
     extra_workers_fee_php: r.extra_workers_fee_php ?? null,
     total_rate_php: r.total_rate_php ?? null
   };
+}
+
+const NIGHT_TIME_FEE = 200;
+const INCLUDED_WORKERS = 2;
+const EXTRA_WORKER_FEE = 150;
+
+const serviceTaskRates = {
+  Carpentry: {
+    'General Carpentry': 1000,
+    'Furniture Repair': 900,
+    'Wood Polishing': 1200,
+    'Door & Window Fitting': 1500,
+    'Custom Furniture Design': 2000,
+    'Modular Kitchen Installation': 6000,
+    'Flooring & Decking': 3500,
+    'Cabinet & Wardrobe Fixing': 1200,
+    'Wall Paneling & False Ceiling': 4000,
+    'Wood Restoration & Refinishing': 2500
+  },
+  'Electrical Works': {
+    'Wiring Repair': 1000,
+    'Appliance Installation': 800,
+    'Lighting Fixtures': 700,
+    'Circuit Breaker & Fuse Repair': 1200,
+    'CCTV & Security System Setup': 2500,
+    'Fan & Exhaust Installation': 700,
+    'Inverter & Battery Setup': 1800,
+    'Switchboard & Socket Repair': 800,
+    'Electrical Safety Inspection': 1500,
+    'Smart Home Automation': 3000
+  },
+  Plumbing: {
+    'Leak Fixing': 900,
+    'Pipe Installation': 1500,
+    'Bathroom Fittings': 1200,
+    'Drain Cleaning & Unclogging': 1800,
+    'Water Tank Installation': 2500,
+    'Gas Pipeline Installation': 3500,
+    'Septic Tank & Sewer Repair': 4500,
+    'Water Heater Installation': 2000,
+    'Toilet & Sink Repair': 1000,
+    'Kitchen Plumbing Solutions': 1800
+  },
+  'Car Washing': {
+    'Exterior Wash': 350,
+    'Interior Cleaning': 700,
+    'Wax & Polish': 1200,
+    'Underbody Cleaning': 500,
+    'Engine Bay Cleaning': 900,
+    'Headlight Restoration': 1500,
+    'Ceramic Coating': 12000,
+    'Tire & Rim Cleaning': 400,
+    'Vacuum & Odor Removal': 700,
+    'Paint Protection Film Application': 15000
+  },
+  Laundry: {
+    'Dry Cleaning': '₱130/kg',
+    Ironing: '₱100/kg',
+    'Wash & Fold': '₱50/kg',
+    'Steam Pressing': '₱130/kg',
+    'Stain Removal Treatment': '₱180/kg',
+    'Curtains & Upholstery Cleaning': '₱400–₱800',
+    'Delicate Fabric Care': '₱90/kg',
+    'Shoe & Leather Cleaning': '₱250/pair',
+    'Express Same-Day Laundry': '₱70/kg',
+    'Eco-Friendly Washing': '₱60/kg'
+  }
+};
+
+function moneyNumberFromAny(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const s = String(v).replace(/,/g, '');
+  const nums = s.match(/(\d+(?:\.\d+)?)/g);
+  if (!nums || !nums.length) return null;
+  const ns = nums.map((x) => Number(x)).filter((n) => Number.isFinite(n));
+  if (!ns.length) return null;
+  if (ns.length >= 2 && /[–-]/.test(s)) {
+    const a = ns[0];
+    const b = ns[1];
+    if (Number.isFinite(a) && Number.isFinite(b)) return (a + b) / 2;
+  }
+  return ns[0];
+}
+
+function isLaundryRatePerKg(serviceType, serviceTask) {
+  if (String(serviceType || '').toLowerCase() !== 'laundry') return false;
+  const raw = serviceTaskRates?.[serviceType]?.[serviceTask];
+  const s = String(raw ?? '').toLowerCase();
+  return s.includes('/kg') || s.includes('per kg');
+}
+
+function shouldShowPerUnit(type) {
+  return type === 'Car Washing' || type === 'Plumbing' || type === 'Carpentry' || type === 'Electrical Works';
+}
+
+function isNightTimeForFee(t) {
+  if (!t) return false;
+  const [hh, mm] = String(t).split(':').map((x) => parseInt(x, 10));
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return false;
+  if (hh >= 20) return true;
+  if (hh >= 0 && hh <= 5) return true;
+  if (hh === 6 && (mm === 0 || mm === 30)) return true;
+  return false;
+}
+
+function computeRateNumbers(details, rate) {
+  const service_type = details?.service_type || '';
+  const service_task = details?.service_task || '';
+  const preferred_time = details?.preferred_time || '';
+  const workers_needed = toIntOrNull(details?.workers_needed ?? details?.workers_need ?? null);
+
+  const raw = serviceTaskRates?.[service_type]?.[service_task];
+  const baseRate = moneyNumberFromAny(raw);
+
+  const units = toIntOrNull(rate?.units ?? null);
+  const unit_kg = toNumberOrNull(rate?.unit_kg ?? null);
+
+  let qty = null;
+  if (String(service_type || '').toLowerCase() === 'laundry') {
+    const kg = toNumberOrNull(unit_kg ?? units);
+    qty = kg !== null && kg > 0 ? kg : null;
+  } else {
+    qty = units !== null && units > 0 ? units : null;
+  }
+
+  let baseAmount = null;
+  if (Number.isFinite(baseRate) && baseRate > 0) {
+    if (String(service_type || '').toLowerCase() === 'laundry') {
+      if (isLaundryRatePerKg(service_type, service_task)) {
+        if (qty !== null) baseAmount = baseRate * qty;
+      } else {
+        baseAmount = baseRate;
+      }
+    } else if (shouldShowPerUnit(service_type)) {
+      if (qty !== null) baseAmount = baseRate * qty;
+    } else {
+      baseAmount = baseRate;
+    }
+  }
+
+  const preferredTimeFee = preferred_time && isNightTimeForFee(preferred_time) ? NIGHT_TIME_FEE : 0;
+  const extraWorkers = workers_needed !== null ? Math.max(0, workers_needed - INCLUDED_WORKERS) : 0;
+  const extraWorkersFee = extraWorkers * EXTRA_WORKER_FEE;
+
+  let total = null;
+  if (baseAmount !== null && Number.isFinite(baseAmount)) total = baseAmount + preferredTimeFee + extraWorkersFee;
+
+  return {
+    units: units ?? null,
+    unit_kg: unit_kg ?? null,
+    preferredTimeFee,
+    extraWorkersFee,
+    total
+  };
+}
+
+function normalizePesoPhpMaybe(val) {
+  if (val === null || val === undefined || val === '') return null;
+  const s = String(val).trim();
+  if (!s) return null;
+  if (s.startsWith('₱')) return s;
+  const n = moneyNumberFromAny(s);
+  if (n === null) return null;
+  return pesoPH(n);
+}
+
+function normalizePaymentMethod(raw, fallback) {
+  const s = String(raw ?? '').trim();
+  if (!s) return fallback ?? null;
+  const low = s.toLowerCase();
+  if (low === 'gcash' || low.includes('gcash') || low.includes('maya') || low === 'paymaya') return 'GCash';
+  return 'Cash';
+}
+
+async function upsertClientServiceRateByGroup(gid, fields, seedBase) {
+  let updated = null;
+  try {
+    updated = await updateClientServiceRate(gid, fields);
+  } catch {}
+  if (updated) return updated;
+
+  const seed = {
+    request_group_id: gid,
+    client_id: seedBase?.client_id ?? null,
+    auth_uid: seedBase?.auth_uid ?? null,
+    email_address: seedBase?.email_address ?? null,
+    ...fields
+  };
+  try {
+    await insertClientServiceRate(seed);
+  } catch {}
+  const combined = await getCombinedByGroupId(gid);
+  return combined?.rate || null;
 }
 
 exports.listOpen = async (req, res) => {
@@ -883,7 +1078,70 @@ exports.updateByGroup = async (req, res) => {
 
     await updateServiceRequestDetails(gid, newDetails);
 
-    const rateForStatus = pickRateForResponse(current.rate);
+    const incomingRate = src.rate || src.client_service_rate || src.clientServiceRate || metadata.rate || metadata.client_service_rate || {};
+    const unitsIncoming = pick({ incomingRate }, ['incomingRate.units', 'incomingRate.unit', 'incomingRate.rate_units'], undefined);
+    const unitKgIncoming = pick({ incomingRate }, ['incomingRate.unit_kg', 'incomingRate.unitKg'], undefined);
+
+    const unitsFinal = unitsIncoming !== undefined ? toIntOrNull(unitsIncoming) : (current.rate?.units ?? null);
+    const unitKgFinal = unitKgIncoming !== undefined ? toNumberOrNull(unitKgIncoming) : (current.rate?.unit_kg ?? null);
+
+    const pmRaw =
+      pick({ incomingRate, src }, ['incomingRate.payment_method', 'incomingRate.paymentMethod', 'src.payment_method', 'src.paymentMethod'], undefined);
+    const payment_method = normalizePaymentMethod(pmRaw, current.rate?.payment_method ?? null);
+
+    const computedNums = computeRateNumbers(newDetails, { units: unitsFinal, unit_kg: unitKgFinal });
+
+    const ptFeeNumIn =
+      pick({ incomingRate }, ['incomingRate.preferred_time_fee', 'incomingRate.preferredTimeFee'], undefined);
+    const exFeeNumIn =
+      pick({ incomingRate }, ['incomingRate.extra_workers_fee', 'incomingRate.extraWorkersFee'], undefined);
+    const totalNumIn =
+      pick({ incomingRate }, ['incomingRate.total_rate', 'incomingRate.totalRate', 'incomingRate.total'], undefined);
+
+    const ptFeePhpIn =
+      pick({ incomingRate }, ['incomingRate.preferred_time_fee_php', 'incomingRate.preferredTimeFeePhp'], undefined);
+    const exFeePhpIn =
+      pick({ incomingRate }, ['incomingRate.extra_workers_fee_php', 'incomingRate.extraWorkersFeePhp'], undefined);
+    const totalPhpIn =
+      pick({ incomingRate }, ['incomingRate.total_rate_php', 'incomingRate.totalRatePhp'], undefined);
+
+    const preferredTimeFeeNum = computedNums.total !== null ? computedNums.preferredTimeFee : toNonNegNumber(ptFeeNumIn, 0);
+    const extraWorkersFeeNum = computedNums.total !== null ? computedNums.extraWorkersFee : toNonNegNumber(exFeeNumIn, 0);
+
+    let totalNum = null;
+    if (computedNums.total !== null) totalNum = computedNums.total;
+    else {
+      const t = toNumberOrNull(totalNumIn);
+      if (t !== null && t >= 0) totalNum = t;
+    }
+
+    const preferred_time_fee_php =
+      computedNums.total !== null ? pesoPH(preferredTimeFeeNum) : (normalizePesoPhpMaybe(ptFeePhpIn) ?? (preferredTimeFeeNum ? pesoPH(preferredTimeFeeNum) : pesoPH(0)));
+
+    const extra_workers_fee_php =
+      computedNums.total !== null ? pesoPH(extraWorkersFeeNum) : (normalizePesoPhpMaybe(exFeePhpIn) ?? (extraWorkersFeeNum ? pesoPH(extraWorkersFeeNum) : pesoPH(0)));
+
+    const total_rate_php =
+      computedNums.total !== null
+        ? pesoPH(totalNum)
+        : (normalizePesoPhpMaybe(totalPhpIn) ?? (totalNum !== null ? pesoPH(totalNum) : (current.rate?.total_rate_php ?? null)));
+
+    const rateFields = {
+      units: unitsFinal ?? null,
+      unit_kg: unitKgFinal ?? null,
+      payment_method: payment_method ?? null,
+      preferred_time_fee_php: preferred_time_fee_php ?? null,
+      extra_workers_fee_php: extra_workers_fee_php ?? null,
+      total_rate_php: total_rate_php ?? null
+    };
+
+    const rateSaved = await upsertClientServiceRateByGroup(gid, rateFields, {
+      client_id: current.info?.client_id ?? null,
+      auth_uid: current.info?.auth_uid ?? null,
+      email_address: current.info?.email_address ?? null
+    });
+
+    const rateForStatus = pickRateForResponse(rateSaved || rateFields);
 
     await supabaseAdmin
       .from('client_service_request_status')
