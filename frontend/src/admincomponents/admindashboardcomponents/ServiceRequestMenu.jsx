@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { ChevronsUpDown, RotateCcw } from "lucide-react";
+import { ChevronsUpDown, RotateCcw, X, Mail, CalendarDays, Clock, ClipboardList, ShieldCheck } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -150,6 +150,30 @@ function fmtDateTime(val) {
 }
 function peso(val) {
   if (val === null || val === undefined || val === "") return "-";
+
+  if (typeof val === "string") {
+    const s0 = val.trim();
+    if (!s0) return "-";
+
+    const cleaned = s0
+      .replace(/₱/g, "")
+      .replace(/\bphp\b/gi, "")
+      .replace(/,/g, "")
+      .trim();
+
+    const n = Number(cleaned);
+    if (!isNaN(n)) {
+      try {
+        return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(n);
+      } catch {
+        return `₱ ${n}`;
+      }
+    }
+
+    if (s0.includes("₱")) return s0;
+    return `₱ ${s0}`;
+  }
+
   const n = Number(val);
   if (!isNaN(n)) {
     try {
@@ -158,8 +182,10 @@ function peso(val) {
       return `₱ ${n}`;
     }
   }
+
   return `₱ ${val}`;
 }
+
 function fmtMMDDYYYY(val) {
   const d = dateOnlyFrom(val);
   if (!d) return val || "-";
@@ -430,14 +456,14 @@ export default function AdminServiceRequests() {
   }, []);
 
   useEffect(() => {
-  const onDeleted = (e) => {
-    fetchCounts();
-    fetchItems(filter, searchTerm);
-    setCurrentPage(1);
-  };
-  window.addEventListener('client-request-deleted', onDeleted);
-  return () => window.removeEventListener('client-request-deleted', onDeleted);
-}, [filter, searchTerm]);
+    const onDeleted = (e) => {
+      fetchCounts();
+      fetchItems(filter, searchTerm);
+      setCurrentPage(1);
+    };
+    window.addEventListener('client-request-deleted', onDeleted);
+    return () => window.removeEventListener('client-request-deleted', onDeleted);
+  }, [filter, searchTerm]);
 
   useEffect(() => {
     if (!ENABLE_SELECTION) return;
@@ -497,6 +523,14 @@ export default function AdminServiceRequests() {
     return () => {
       document.body.style.overflow = "";
     };
+  }, [viewRow]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") setViewRow(null);
+    };
+    if (viewRow) document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [viewRow]);
 
   useEffect(() => {
@@ -725,134 +759,21 @@ export default function AdminServiceRequests() {
     </section>
   );
 
+  const QuickItem = ({ icon, label, value }) => (
+    <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2">
+      <div className="mt-0.5 rounded-lg border border-gray-200 bg-gray-50 p-2 text-gray-700">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">{label}</div>
+        <div className="text-sm font-semibold text-gray-900 break-words">{value}</div>
+      </div>
+    </div>
+  );
+
   const renderSection = () => {
     if (!viewRow) return null;
-    if (sectionOpen === "all") {
-      const img = pickDetailImage(viewRow?.details);
-      const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
-      return (
-        <div className="space-y-4">
-          <SectionCard
-            title="Personal Information"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-                <span className="inline-flex h-3 w-3 rounded-full bg-[#0b82ff]" />
-                Client
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
-              <Field
-                label="Barangay"
-                value={viewRow?.info?.barangay || "-"}
-              />
-              <Field label="Street" value={viewRow?.info?.street || "-"} />
-              <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
-              <div className="sm:col-span-3 mt-2 pt-3 border-t border-gray-100">
-                <Field
-                  label="Contact Number"
-                  value={
-                    <div className="inline-flex items-center gap-2 text-[15px]">
-                      <img
-                        src="../../../public/philippines.png"
-                        alt="Philippines"
-                        className="h-4 w-6 rounded-[2px] object-cover"
-                      />
-                      <span>{formatContactNumberPH(viewRow?.info?.contact_number)}</span>
-                    </div>
-                  }
-                />
-              </div>
-            </div>
-          </SectionCard>
 
-          <SectionCard
-            title="Service Request Details"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-                Request
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                  <Field label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
-                  <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
-                  <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
-                  <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                  <Field label="Urgent" value={<YesNoPill yes={viewRow?.details?.is_urgent} />} />
-                  <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.details?.tools_provided} />} />
-                </div>
-                <div>
-                  <Field
-                    label="Description"
-                    value={
-                      <span className="whitespace-pre-line text-[15px] leading-relaxed">
-                        {viewRow?.details?.service_description || viewRow?.details?.description || "-"}
-                      </span>
-                    }
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="aspect-[4/3] w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden grid place-items-center">
-                  {img ? (
-                    <img
-                      src={img}
-                      alt="Service Request"
-                      className="w-full h-full object-cover"
-                      onError={({ currentTarget }) => {
-                        currentTarget.style.display = "none";
-                        const p = currentTarget.parentElement;
-                        if (p) p.innerHTML = '<div class="text-sm text-gray-500">No image available</div>';
-                      }}
-                    />
-                  ) : (
-                    <div className="text-sm text-gray-500">No image available</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Service Rate"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-                Pricing
-              </span>
-            }
-          >
-            {t.includes("by the job") ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 max-w-3xl">
-                <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
-                <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
-              </div>
-            ) : t.includes("hourly") ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 max-w-4xl">
-                <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
-                <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
-                <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
-                <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
-                <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
-                <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
-                <div className="sm:col-span-3">
-                  <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
-                </div>
-              </div>
-            )}
-          </SectionCard>
-        </div>
-      );
-    }
     if (sectionOpen === "info") {
       return (
         <SectionCard
@@ -865,10 +786,7 @@ export default function AdminServiceRequests() {
           }
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
-            <Field
-              label="Barangay"
-              value={viewRow?.info?.barangay || "-"}
-            />
+            <Field label="Barangay" value={viewRow?.info?.barangay || "-"} />
             <Field label="Street" value={viewRow?.info?.street || "-"} />
             <Field label="Additional Address" value={viewRow?.info?.additional_address || "-"} />
             <div className="sm:col-span-3 mt-2 pt-3 border-gray-100">
@@ -905,16 +823,24 @@ export default function AdminServiceRequests() {
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                <Field label="Service Type" value={<ServiceTypePill value={viewRow?.details?.service_type} />} />
-                <Field label="Task" value={<TaskPill value={viewRow?.details?.service_task} />} />
-                <Field label="Preferred Date" value={fmtMMDDYYYY(viewRow?.details?.preferred_date) || "-"} />
-                <Field label="Preferred Time" value={fmtPreferredTime(viewRow?.details?.preferred_time)} />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                <Field label="Urgent" value={<YesNoPill yes={viewRow?.details?.is_urgent} />} />
-                <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.details?.tools_provided} />} />
-              </div>
+              <div className="grid grid-cols-1 gap-x-6 gap-y-4">
+  <Field
+    label="Urgent"
+    value={
+      <span className="whitespace-pre-line text-[15px] leading-relaxed">
+        {viewRow?.details?.is_urgent ? "Yes" : "No"}
+      </span>
+    }
+  />
+  <Field
+    label="Tools Provided"
+    value={
+      <span className="whitespace-pre-line text-[15px] leading-relaxed">
+        {viewRow?.details?.tools_provided ? "Yes" : "No"}
+      </span>
+    }
+  />
+</div>
               <div>
                 <Field
                   label="Description"
@@ -948,66 +874,45 @@ export default function AdminServiceRequests() {
         </SectionCard>
       );
     }
+
     if (sectionOpen === "rate") {
-      const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
-      if (t.includes("by the job")) {
-        return (
-          <SectionCard
-            title="Service Rate"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-                Pricing
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 max-w-3xl">
-              <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
-              <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
-            </div>
-          </SectionCard>
-        );
+  const rate = viewRow?.rate || {};
+  const st = String(viewRow?.details?.service_type || "").toLowerCase();
+  const task = String(viewRow?.details?.service_task || "").toLowerCase();
+  const isLaundry = st.includes("laundry") || task.includes("laundry");
+
+  const unitsVal = rate?.units ?? "-";
+  const unitKgVal =
+    rate?.unit_kg === null || rate?.unit_kg === undefined || rate?.unit_kg === ""
+      ? "-"
+      : rate?.unit_kg;
+
+  return (
+    <SectionCard
+      title="Service Rate"
+      badge={
+        <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+          Pricing
+        </span>
       }
-      if (t.includes("hourly")) {
-        return (
-          <SectionCard
-            title="Service Rate"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-                Pricing
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 max-w-4xl">
-              <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
-              <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
-              <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
-            </div>
-          </SectionCard>
-        );
-      }
-      return (
-        <SectionCard
-          title="Service Rate"
-          badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-              Pricing
-            </span>
-          }
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
-            <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
-            <Field label="Rate From" value={peso(viewRow?.rate?.rate_from)} />
-            <Field label="Rate To" value={peso(viewRow?.rate?.rate_to)} />
-            <div className="sm:col-span-3">
-              <Field label="Rate Value" value={peso(viewRow?.rate?.rate_value)} />
-            </div>
-          </div>
-        </SectionCard>
-      );
-    }
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
+        <Field label="Units" value={unitsVal} />
+
+        {isLaundry ? (
+          <Field label="Unit (kg)" value={unitKgVal} />
+        ) : null}
+
+        <Field label="Payment Method" value={rate?.payment_method || "-"} />
+        <Field label="Preferred Time Fee" value={peso(rate?.preferred_time_fee_php)} />
+        <Field label="Extra Workers Fee" value={peso(rate?.extra_workers_fee_php)} />
+        <Field label="Total Rate" value={peso(rate?.total_rate_php)} />
+      </div>
+    </SectionCard>
+  );
+}
+
     return null;
   };
 
@@ -1027,6 +932,49 @@ export default function AdminServiceRequests() {
     const start = (currentPage - 1) * pageSize;
     return sortedRows.slice(start, start + pageSize);
   }, [sortedRows, currentPage]);
+
+  const closeView = () => {
+    setViewRow(null);
+  };
+
+  const viewStatusPills = (r) => {
+    if (!r) return null;
+    const sLower = String(r.status || "").toLowerCase();
+    const isCanceled = sLower === "canceled" || sLower === "cancelled";
+    const isFinal = sLower === "approved" || sLower === "declined" || isCanceled;
+    return (
+      <div className="flex flex-nowrap gap-2 whitespace-nowrap">
+        {r._expired ? (
+          isFinal ? (
+            isCanceled ? (
+              <StatusPill value="canceled" />
+            ) : (
+              <>
+                <StatusPill value={r.status} />
+                <StatusPill value="expired" />
+              </>
+            )
+          ) : (
+            <StatusPill value="expired" />
+          )
+        ) : (
+          <StatusPill value={r.ui_status} />
+        )}
+      </div>
+    );
+  };
+
+  const initialsFrom = (first, last) => {
+    const a = (String(first || "").trim().slice(0, 1) + String(last || "").trim().slice(0, 1)).toUpperCase();
+    return a || "?";
+  };
+
+  const scheduleText = (r) => {
+    const d = fmtMMDDYYYY(r?.details?.preferred_date || r?.preferred_date);
+    const t = fmtPreferredTime(r?.details?.preferred_time || r?.preferred_time);
+    const hasAny = (r?.details?.preferred_date || r?.preferred_date || r?.details?.preferred_time || r?.preferred_time);
+    return hasAny ? `${d || "-"} • ${t || "-"}` : "-";
+  };
 
   return (
     <>
@@ -1255,7 +1203,7 @@ export default function AdminServiceRequests() {
                                 {u.created_at_display || "-"}
                               </td>
                               <td className="px-4 py-4 border border-gray-200 w-[160px] min-w-[160px]">
-                               <div className="flex items-center gap-1 flex-nowrap whitespace-nowrap">
+                                <div className="flex items-center gap-1 flex-nowrap whitespace-nowrap">
                                   {u._expired ? (
                                     isFinal ? (
                                       isCanceled ? (
@@ -1389,95 +1337,323 @@ export default function AdminServiceRequests() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Request details"
+            aria-label="Service request details"
             tabIndex={-1}
             className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
           >
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
-            <div className="relative w-full max-w-[960px] max-h-[80vh] rounded-2xl border border-gray-200 bg-white shadow-2xl flex flex-col overflow-hidden">
-              <div className="relative px-6 sm:px-8 py-4 border-b border-gray-200 bg-white">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-gray-200 bg-gray-100 overflow-hidden">
-                      {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
-                        <img
-                          src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                          onError={({ currentTarget }) => {
-                            currentTarget.style.display = "none";
-                            const parent = currentTarget.parentElement;
-                            if (parent) {
-                              parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${(
-                                ((viewRow?.name_first || "").trim().slice(0, 1) +
-                                  (viewRow?.name_last || "").trim().slice(0, 1)) || "?"
-                              ).toUpperCase()}</div>`;
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">
-                          {(((viewRow?.name_first || "").trim().slice(0, 1) + (viewRow?.name_last || "").trim().slice(0, 1)) || "?").toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-lg sm:text-xl font-semibold text-gray-900">
-                        {[viewRow.name_first, viewRow.name_last].filter(Boolean).join(" ") || "-"}
-                      </div>
-                      <div className="text-sm text-gray-500">{viewRow.email || "-"}</div>
-                    </div>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeView} />
+
+            <div className="relative w-full max-w-6xl max-h-[86vh] rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+              <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-white to-white">
+                <div className="px-6 sm:px-8 py-5">
+                  <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+  <div className="text-[11px] font-semibold tracking-[0.25em] uppercase text-gray-500">
+    Service Request
+  </div>
+</div>
+
+
+          <div className="flex items-center gap-2 shrink-0">
+  <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700">
+    <ShieldCheck className="h-4 w-4" />
+    Admin View
+  </span>
+</div>
                   </div>
-                  <div className="flex flex-col items-start md:items-end gap-2">
-                    <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
-                      Request Summary
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Created{" "}
-                      <span className="font-medium text-gray-700">
-                        {viewRow.created_at_display || "-"}
-                      </span>
-                    </div>
-                    <div className="flex flex-nowrap gap-2 whitespace-nowrap">
-                      {viewRow._expired ? (
-                        (viewRow.status === "approved" || viewRow.status === "declined" || ["canceled", "cancelled"].includes(String(viewRow.status).toLowerCase())) ? (
-                          ["canceled", "cancelled"].includes(String(viewRow.status).toLowerCase()) ? (
-                            <StatusPill value="canceled" />
-                          ) : (
-                            <>
-                              <StatusPill value={viewRow.status} />
-                              <StatusPill value="expired" />
-                            </>
-                          )
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row max-h-[calc(86vh-76px)]">
+                <aside className="md:w-[320px] lg:w-[360px] border-b md:border-b-0 md:border-r border-gray-200 bg-white">
+                  <div className="p-5 sm:p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-2xl border border-gray-200 bg-gray-100 overflow-hidden shadow-sm">
+                        {viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture ? (
+                          <img
+                            src={viewRow?.info?.profile_picture_url || viewRow?.info?.profile_picture}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                            onError={({ currentTarget }) => {
+                              currentTarget.style.display = "none";
+                              const parent = currentTarget.parentElement;
+                              if (parent) {
+                                parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${initialsFrom(viewRow?.name_first, viewRow?.name_last)}</div>`;
+                              }
+                            }}
+                          />
                         ) : (
-                          <StatusPill value="expired" />
-                        )
-                      ) : (
-                        <StatusPill value={viewRow.ui_status} />
-                      )}
+                          <div className="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">
+                            {initialsFrom(viewRow?.name_first, viewRow?.name_last)}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="text-base font-semibold text-gray-900 truncate">
+                          {[viewRow?.name_first, viewRow?.name_last].filter(Boolean).join(" ") || "-"}
+                        </div>
+                        <div className="text-sm text-gray-500 truncate">
+                          {viewRow?.email || "-"}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {viewStatusPills(viewRow)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-1 gap-3">
+                      <QuickItem
+                        icon={<CalendarDays className="h-4 w-4" />}
+                        label="Created"
+                        value={viewRow?.created_at_display || "-"}
+                      />
+                      <QuickItem
+                        icon={<Clock className="h-4 w-4" />}
+                        label="Preferred Schedule"
+                        value={scheduleText(viewRow)}
+                      />
+          <QuickItem
+  icon={<ClipboardList className="h-4 w-4" />}
+  value={
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500 whitespace-nowrap">
+          Service Type:
+        </div>
+        <ServiceTypePill value={viewRow?.details?.service_type || viewRow?.service_type} />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500 whitespace-nowrap">
+          Service Task:
+        </div>
+        <TaskPill value={viewRow?.details?.service_task || viewRow?.service_task} />
+      </div>
+    </div>
+  }
+/>
+                    </div>
+
+                    <div className="mt-5">
+                      <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
+                        Request IDs
+                      </div>
+                      <div className="mt-2 grid grid-cols-1 gap-2">
+                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                          <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">Request Group</div>
+                          <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
+                            {viewRow?.request_group_id || "-"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                          <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">Request ID</div>
+                          <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
+                            {viewRow?.id || "-"}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </aside>
 
-              <div className="px-6 sm:px-8 py-4 flex-1 bg-gray-50 flex flex-col overflow-hidden">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-gray-200 shrink-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <SectionButton k="info" label="Personal Information" />
-                    <SectionButton k="details" label="Service Request Details" />
-                    <SectionButton k="rate" label="Service Rate" />
+                <section className="flex-1 bg-gray-50 overflow-hidden">
+                  <div className="h-full flex flex-col">
+                    <div className="px-5 sm:px-6 pt-5 pb-3 border-b border-gray-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <SectionButton k="info" label="Personal Information" />
+                          <SectionButton k="details" label="Service Request Details" />
+                          <SectionButton k="rate" label="Service Rate" />
+                        </div>
+                     
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto blue-scroll p-5 sm:p-6">
+                      {renderSection()}
+                    </div>
+
+                    <div className="px-5 sm:px-6 py-4 flex items-center justify-end gap-2">
+                
+                      <button
+                        type="button"
+                        onClick={closeView}
+                        className="inline-flex items-center rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showDecline && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Decline Service Request"
+            tabIndex={-1}
+            autoFocus
+            className="fixed inset-0 z-[2147483646] flex items-center justify-center"
+          >
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => !submittingDecline && setShowDecline(false)}
+            />
+            <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
+              <div className="px-6 pt-6">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-100 grid place-items-center">
+                    <span className="text-blue-600 text-lg">ⓘ</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xl font-semibold text-gray-900">Decline Service Request</div>
+                    <div className="text-sm text-gray-600">Select reason for declining.</div>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto blue-scroll pt-3">
-                  {renderSection()}
-                </div>
               </div>
 
-              <div className="px-6 sm:px-8 py-4 border-t border-gray-200 bg-white flex justify-end">
+              <div className="px-6 py-5 space-y-4">
+                <div className="grid grid-cols-1 gap-2">
+                  {REASONS_ADMIN.map((r) => (
+                    <label
+                      key={r}
+                      className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
+                        declineReason === r
+                          ? "border-blue-400 ring-1 ring-blue-200 bg-blue-50"
+                          : "border-gray-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="decline-reason"
+                        className="h-4 w-4"
+                        checked={declineReason === r}
+                        onChange={() => setDeclineReason((curr) => (curr === r ? "" : r))}
+                        disabled={submittingDecline}
+                      />
+                      <span className="text-sm md:text-base">{r}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-gray-700">Other</div>
+                  <textarea
+                    value={declineOther}
+                    onChange={(e) => setDeclineOther(e.target.value)}
+                    disabled={submittingDecline}
+                    placeholder="Type other reason here"
+                    className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+
+                {declineErr ? (
+                  <div className="text-sm text-blue-700">{declineErr}</div>
+                ) : null}
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => { setViewRow(null); }}
-                  className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                  onClick={() => !submittingDecline && setShowDecline(false)}
+                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-60"
+                  disabled={submittingDecline}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={submitDecline}
+                  className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition disabled:opacity-60"
+                  disabled={submittingDecline}
+                >
+                  {submittingDecline ? "Submitting..." : "Confirm Decline"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showReason && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Decline reason (service request)"
+            tabIndex={-1}
+            className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
+          >
+            <div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setShowReason(false)}
+            />
+            <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
+                    <div className="mt-1 text-sm text-gray-600">
+                      Created {reasonTarget?.created_at_display || "-"}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
+                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                      {reasonTarget?.service_type || "Request"}
+                    </span>
+                    <div className="text-sm text-gray-600">
+                      Decided {reasonTarget?.decided_at ? fmtDateTime(reasonTarget.decided_at) : "-"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
+                  <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">
+                    Reason
+                  </div>
+                  <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
+                    {getReasonText(reasonTarget)}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-red-200 bg-white p-4">
+                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">
+                      Client
+                    </div>
+                    <div className="mt-1 text-[15px] font-semibold text-gray-900">
+                      {[reasonTarget?.name_first, reasonTarget?.name_last].filter(Boolean).join(" ") || "-"}
+                    </div>
+                    <div className="text-sm text-gray-600">{reasonTarget?.email || "-"}</div>
+                  </div>
+
+                  <div className="rounded-xl border border-red-200 bg-white p-4">
+                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">
+                      Service
+                    </div>
+                    <div className="mt-1 text-[15px] font-semibold text-gray-900">
+                      {reasonTarget?.service_task || "-"}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {reasonTarget?.service_type || "-"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReason(false);
+                  }}
+                  className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
                 >
                   Close
                 </button>
@@ -1485,178 +1661,6 @@ export default function AdminServiceRequests() {
             </div>
           </div>
         )}
-
-      {showDecline && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Decline Service Request"
-          tabIndex={-1}
-          autoFocus
-          className="fixed inset-0 z-[2147483646] flex items-center justify-center"
-        >
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => !submittingDecline && setShowDecline(false)}
-          />
-          <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
-            <div className="px-6 pt-6">
-              <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-100 grid place-items-center">
-                  <span className="text-blue-600 text-lg">ⓘ</span>
-                </div>
-                <div className="flex-1">
-                  <div className="text-xl font-semibold text-gray-900">Decline Service Request</div>
-                  <div className="text-sm text-gray-600">Select reason for declining.</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="px-6 py-5 space-y-4">
-              <div className="grid grid-cols-1 gap-2">
-                {REASONS_ADMIN.map((r) => (
-                  <label
-                    key={r}
-                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
-                      declineReason === r
-                        ? "border-blue-400 ring-1 ring-blue-200 bg-blue-50"
-                        : "border-gray-200 hover:bg-gray-50"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="decline-reason"
-                      className="h-4 w-4"
-                      checked={declineReason === r}
-                      onChange={() => setDeclineReason((curr) => (curr === r ? "" : r))}
-                      disabled={submittingDecline}
-                    />
-                    <span className="text-sm md:text-base">{r}</span>
-                  </label>
-                ))}
-              </div>
-
-              <div className="space-y-2">
-                <div className="text-sm font-semibold text-gray-700">Other</div>
-                <textarea
-                  value={declineOther}
-                  onChange={(e) => setDeclineOther(e.target.value)}
-                  disabled={submittingDecline}
-                  placeholder="Type other reason here"
-                  className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-
-              {declineErr ? (
-                <div className="text-sm text-blue-700">{declineErr}</div>
-              ) : null}
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => !submittingDecline && setShowDecline(false)}
-                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-60"
-                disabled={submittingDecline}
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={submitDecline}
-                className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition disabled:opacity-60"
-                disabled={submittingDecline}
-              >
-                {submittingDecline ? "Submitting..." : "Confirm Decline"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-{showReason && (
-  <div
-    role="dialog"
-    aria-modal="true"
-    aria-label="Decline reason (service request)"
-    tabIndex={-1}
-    className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
-  >
-    <div
-      className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-      onClick={() => setShowReason(false)}
-    />
-    <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
-      <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
-            <div className="mt-1 text-sm text-gray-600">
-              Created {reasonTarget?.created_at_display || "-"}
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
-              <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-              {reasonTarget?.service_type || "Request"}
-            </span>
-            <div className="text-sm text-gray-600">
-              Decided {reasonTarget?.decided_at ? fmtDateTime(reasonTarget.decided_at) : "-"}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6">
-        <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
-          <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">
-            Reason
-          </div>
-          <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
-            {getReasonText(reasonTarget)}
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-red-200 bg-white p-4">
-            <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">
-              Client
-            </div>
-            <div className="mt-1 text-[15px] font-semibold text-gray-900">
-              {[reasonTarget?.name_first, reasonTarget?.name_last].filter(Boolean).join(" ") || "-"}
-            </div>
-            <div className="text-sm text-gray-600">{reasonTarget?.email || "-"}</div>
-          </div>
-
-          <div className="rounded-xl border border-red-200 bg-white p-4">
-            <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">
-              Service
-            </div>
-            <div className="mt-1 text-[15px] font-semibold text-gray-900">
-              {reasonTarget?.service_task || "-"}
-            </div>
-            <div className="text-sm text-gray-600">
-              {reasonTarget?.service_type || "-"}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
-        <button
-          type="button"
-          onClick={() => {
-            setShowReason(false);
-          }}
-          className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
 
         {submittingDecline && !showDeclineLoading && (
           <div

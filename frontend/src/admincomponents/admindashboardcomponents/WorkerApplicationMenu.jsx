@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { ChevronsUpDown, RotateCcw } from "lucide-react";
+import { ChevronsUpDown, RotateCcw, X, Mail, ShieldCheck, CalendarDays, ClipboardList, Briefcase } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -216,6 +216,52 @@ const SectionCard = ({ title, children, badge }) => (
     <div className="p-4">{children}</div>
   </section>
 );
+
+const QuickItem = ({ icon, label, value }) => (
+  <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2">
+    <div className="mt-0.5 rounded-lg border border-gray-200 bg-gray-50 p-2 text-gray-700">
+      {icon}
+    </div>
+    <div className="min-w-0">
+      <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">{label}</div>
+
+      {value === null || value === undefined || value === "" ? (
+        <div className="text-sm font-semibold text-gray-900 break-words">-</div>
+      ) : typeof value === "string" || typeof value === "number" ? (
+        <div className="text-sm font-semibold text-gray-900 break-words">{value}</div>
+      ) : (
+        <div className="break-words">{value}</div>
+      )}
+    </div>
+  </div>
+);
+
+const QuickItemRow = ({ icon, label, value }) => (
+  <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2">
+    <div className="mt-0.5 rounded-lg border border-gray-200 bg-gray-50 p-2 text-gray-700">
+      {icon}
+    </div>
+
+    <div className="min-w-0 flex-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500 whitespace-nowrap">
+          {label}
+        </div>
+
+        <div className="min-w-0 flex-1 flex justify-end">
+          {value === null || value === undefined || value === "" ? (
+            <div className="text-sm font-semibold text-gray-900">-</div>
+          ) : typeof value === "string" || typeof value === "number" ? (
+            <div className="text-sm font-semibold text-gray-900 break-words text-right">{value}</div>
+          ) : (
+            <div className="min-w-0 text-right">{value}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 
 function parseDateTime(val) {
   if (!val) return null;
@@ -622,6 +668,19 @@ export default function WorkerApplicationMenu() {
       });
     } catch {}
   };
+
+  const closeView = () => setViewRow(null);
+
+const initialsFrom = (first, last) => {
+  const a = (String(first || "").trim().slice(0, 1) + String(last || "").trim().slice(0, 1)).toUpperCase();
+  return a || "?";
+};
+
+const viewStatusPills = (r) => (
+  <div className="flex flex-nowrap gap-2 whitespace-nowrap">
+    <StatusPill value={r?.status} />
+  </div>
+);
 
   const fetchItems = async (_statusArg = filter, qArg = searchTerm) => {
     setLoading(true);
@@ -1031,225 +1090,62 @@ age: ageValue ?? "-",
   };
 
   const renderSection = () => {
-    if (!viewRow) return null;
-    const t = String(viewRow?.rate_type || "").toLowerCase();
-    if (sectionOpen === "all") {
-      return (
-        <div className="space-y-4">
-          <SectionCard
-            title="Personal Information"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-                Worker
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
-              <Field label="Date of Birth" value={viewRow?.date_of_birth_display || "-"} />
-              <Field label="Age" value={viewRow?.age ?? "-"} />
-              <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
-              <Field label="Barangay" value={viewRow?.barangay || "-"} />
-              <Field label="Additional Address" value={viewRow?.additional_address || "-"} />
-            </div>
-          </SectionCard>
+  if (!viewRow) return null;
 
-          <SectionCard
-            title="Work Details"
-            badge={
-              <span className="inline-flex items.center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white text-gray-700 border-gray-200">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-                Experience
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-4">
-              <div>
-                <Field
-                  label="Primary Service"
-                  value={
-                    viewRow?.primary_service ||
-                    (Array.isArray(viewRow?.service_types) && viewRow.service_types.length ? viewRow.service_types[0] : "-")
-                  }
-                />
-              </div>
-              <div>
-                <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
-              </div>
-              <div>
-                <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
-              </div>
-              <div className="lg:col-span-3">
-                <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types} />} />
-              </div>
-              <div className="lg:col-span-3">
-                <Field
-                  label="Service Task(s)"
-                  value={<ServiceTasksInline list={viewRow?.service_tasks} fallback={viewRow?.task_or_role} />}
-                />
-              </div>
-              <div className="lg:col-span-3">
-                <Field label="Service Description" value={viewRow?.service_description || "-"} />
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Service Rate"
-            badge={
-              <span className="inline-flex items.center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg.white text-gray-700 border-gray-200">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-                Pricing
-              </span>
-            }
-          >
-            {t.includes("by the job") ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 max-w-3xl">
-                <Field label="Rate Type" value={viewRow?.rate_type || "-"} />
-                <Field label="Rate Value" value={peso(viewRow?.rate_value)} />
-              </div>
-            ) : t.includes("hourly") ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 max-w-4xl">
-                <Field label="Rate Type" value={viewRow?.rate_type || "-"} />
-                <Field label="Rate From" value={peso(viewRow?.rate_from)} />
-                <Field label="Rate To" value={peso(viewRow?.rate_to)} />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
-                <Field label="Rate Type" value={viewRow?.rate_type || "-"} />
-                <Field label="Rate From" value={peso(viewRow?.rate_from)} />
-                <Field label="Rate To" value={peso(viewRow?.rate_to)} />
-                <Field label="Rate Value" value={peso(viewRow?.rate_value)} />
-              </div>
-            )}
-          </SectionCard>
+  if (sectionOpen === "info") {
+    return (
+      <SectionCard
+        title="Personal Information"
+        badge={
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+            Worker
+          </span>
+        }
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
+          <Field label="Date of Birth" value={viewRow?.date_of_birth_display || "-"} />
+          <Field label="Age" value={viewRow?.age ?? "-"} />
+          <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
+          <Field label="Barangay" value={viewRow?.barangay || "-"} />
+          <Field label="Street" value={viewRow?.additional_address || "-"} />
         </div>
-      );
-    }
-    if (sectionOpen === "info") {
-      return (
-        <SectionCard
-          title="Personal Information"
-          badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-              Worker
-            </span>
-          }
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
-            <Field label="Date of Birth" value={viewRow?.date_of_birth_display || "-"} />
-            <Field label="Age" value={viewRow?.age ?? "-"} />
-            <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
-            <Field label="Barangay" value={viewRow?.barangay || "-"} />
-            <Field label="Street" value={viewRow?.additional_address || "-"} />
-          </div>
-        </SectionCard>
-      );
-    }
-    if (sectionOpen === "work") {
-      return (
-        <SectionCard
-          title="Work Details"
-          badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-              Experience
-            </span>
-          }
-        >
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-4">
-            <div>
-              <Field
-                label="Primary Service"
-                value={
-                  viewRow?.primary_service ||
-                  (Array.isArray(viewRow?.service_types) && viewRow.service_types.length ? viewRow.service_types[0] : "-")
-                }
-              />
-            </div>
-            <div>
-              <Field label="Tools Provided" value={<YesNoPill yes={viewRow?.tools_provided} />} />
-            </div>
-            <div>
-              <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
-            </div>
-            <div className="lg:col-span-3">
-              <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types} />} />
-            </div>
-            <div className="lg:col-span-3">
-              <Field
-                label="Service Task(s)"
-                value={<ServiceTasksInline list={viewRow?.service_tasks} fallback={viewRow?.task_or_role} />}
-              />
-            </div>
-            <div className="lg:col-span-3">
-              <Field label="Service Description" value={viewRow?.service_description || "-"} />
-            </div>
-          </div>
-        </SectionCard>
-      );
-    }
-    if (sectionOpen === "rate") {
-      const tLower = t;
-      if (tLower.includes("by the job")) {
-        return (
-          <SectionCard
-            title="Service Rate"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-                Pricing
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 max-w-3xl">
-              <Field label="Rate Type" value={viewRow?.rate_type || "-"} />
-              <Field label="Rate Value" value={peso(viewRow?.rate_value)} />
-            </div>
-          </SectionCard>
-        );
+      </SectionCard>
+    );
+  }
+
+  if (sectionOpen === "work") {
+  const toolsText =
+    viewRow?.tools_provided === true ? "Yes" : viewRow?.tools_provided === false ? "No" : "-";
+
+  return (
+    <SectionCard
+      title="Work Details"
+      badge={
+        <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+          Experience
+        </span>
       }
-      if (tLower.includes("hourly")) {
-        return (
-          <SectionCard
-            title="Service Rate"
-            badge={
-              <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-                Pricing
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 max-w-4xl">
-              <Field label="Rate Type" value={viewRow?.rate_type || "-"} />
-              <Field label="Rate From" value={peso(viewRow?.rate_from)} />
-              <Field label="Rate To" value={peso(viewRow?.rate_to)} />
-            </div>
-          </SectionCard>
-        );
-      }
-      return (
-        <SectionCard
-          title="Service Rate"
-          badge={
-            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-              Pricing
-            </span>
-          }
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
-            <Field label="Rate Type" value={viewRow?.rate_type || "-"} />
-            <Field label="Rate From" value={peso(viewRow?.rate_from)} />
-            <Field label="Rate To" value={peso(viewRow?.rate_to)} />
-            <Field label="Rate Value" value={peso(viewRow?.rate_value)} />
-          </div>
-        </SectionCard>
-      );
-    }
-    return null;
-  };
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-4">
+        <div>
+          <Field label="Tools Provided" value={toolsText} />
+        </div>
+        <div>
+          <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
+        </div>
+        <div className="lg:col-span-3">
+          <Field label="Service Description" value={viewRow?.service_description || "-"} />
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+  return null;
+};
+
 
   const [serviceFilter, setServiceFilter] = useState("all");
   const categoryMap = (serviceOrTask) => {
@@ -1586,504 +1482,378 @@ age: ageValue ?? "-",
         </section>
 
         {viewRow && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Worker application details"
-            tabIndex={-1}
-            className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
-          >
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setViewRow(null); }} />
-            <div className="relative w-full max-w-[960px] max-h-[80vh] rounded-2xl border border-gray-200 bg-white shadow-2xl flex flex-col overflow-hidden">
-              <div className="relative px-6 sm:px-8 py-4 border-b border-gray-200 bg-white">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-gray-200 bg-gray-100 overflow-hidden">
-                      <img
-                        src={viewRow?.profile_picture_url || avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim())}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                        data-fallback="primary"
-                        onError={({ currentTarget }) => {
-                          const parent = currentTarget.parentElement;
-                          if (currentTarget.dataset.fallback === "primary") {
-                            currentTarget.dataset.fallback = "dice";
-                            currentTarget.src = avatarFromName(`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim());
-                            return;
-                          }
-                          currentTarget.style.display = "none";
-                          if (parent) {
-                            parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${((viewRow?.name_first || "").trim().slice(0,1) + (viewRow?.name_last || "").trim().slice(0,1) || "?").toUpperCase()}</div>`;
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                   
-                                            <div className="text-lg sm:text-xl font-semibold text-gray-900">
-                                              {`${viewRow?.name_first || ""} ${viewRow?.name_last || ""}`.trim() || "-"}
-                                            </div>
-                      <div className="text-sm text-gray-500">{viewRow.email || "-"}</div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-start md:items-end gap-2">
-                    <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
-                      Application Summary
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Created{" "}
-                      <span className="font-medium text-gray-700">
-                        {viewRow.created_at_display || "-"}
-                      </span>
-                    </div>
-                    <div className="flex flex-nowrap gap-2 whitespace-nowrap">
-                      <StatusPill value={viewRow.status} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-6 sm:px-8 py-4 flex-1 bg-gray-50 flex flex-col overflow-hidden">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-gray-200 shrink-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <SectionButton k="info" label="Personal Information" />
-                    <SectionButton k="work" label="Work Details" />
-                    <SectionButton k="rate" label="Service Rate" />
-                  </div>
-                </div>
-                <div className="flex-1 overflow-y-auto blue-scroll pt-3">
-                  {renderSection()}
-                </div>
-              </div>
-
-              <div className="px-6 sm:px-8 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row gap-3 sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() => { setViewRow(null); }}
-                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDocs(true)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium bg-[#0b82ff] text-white border border-[#0b82ff] hover:bg-[#086bd4]"
-                >
-                  View Documents
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {viewRow && showDocs && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="View documents"
-            tabIndex={-1}
-            className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
-          >
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDocs(false)} />
-            <div className="relative w-full max-w-[900px] max-h-[80vh] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
-              <div className="px-6 py-4 border-b border-gray-200 bg-white">
-                <div className="text.base font-semibold text-gray-900">Documents</div>
-              </div>
-              <div className="p-6 overflow-y-auto max-h-[65vh] [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
-                {viewRow && viewRow.docs && Object.keys(viewRow.docs).length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[
-                      { label: "Primary ID (Front)", keys: ["primary_id_front", "primaryIdFront", "primary_front", "primary_front_id", "primary_id_front_url", "primary_front_url"] },
-                      { label: "Primary ID (Back)", keys: ["primary_id_back", "primaryIdBack", "primary_back", "primary_back_id", "primary_id_back_url", "primary_back_url"] },
-                      { label: "Secondary ID", keys: ["secondary_id", "secondaryId", "secondary_id_url"] },
-                      { label: "NBI/Police Clearance", keys: ["nbi_police_clearance", "nbi_clearance", "police_clearance", "nbi", "police"] },
-                      { label: "Proof of Address", keys: ["proof_of_address","proofOfAddress","address_proof","proof_address","billing_proof","utility_bill","proof_of_residence","proofOfResidence","residence_proof","residency_proof","barangay_clearance","barangay_certificate","electric_bill","water_bill","meralco_bill"], fuzzy: { any: ["address","residence","residency","billing","utility","bill","proof","poa","barangay","clearance"] } },
-                      { label: "Medical Certificate", keys: ["medical_certificate", "med_cert"], fuzzy: { any: ["medical", "med_cert", "medcert", "health", "fit_to_work", "fit-to-work", "fit2work", "med"] } },
-                      { label: "Certificates", keys: ["certificates", "training_certificates", "certs"] },
-                    ].map((cfg) => {
-                      const d = viewRow.docs || {};
-                      const found = resolveDoc(d, cfg.keys, cfg.fuzzy);
-                      const url = toDocUrl(found);
-                      const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(url);
-                      return (
-                        <div key={cfg.label} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                          <div className="p-4">
-                            {isImg && url ? (
-                              <img src={url} alt={cfg.label} className="w.full h-44 object-contain" />
-                            ) : (
-                              <div className="text-sm text-gray-500 h-44.grid place-items-center"> {url ? "Preview not available" : "No document"} </div>
-                            )}
-                          </div>
-                          <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-                            <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-800">
-                              <span className="h-2 w-2 rounded-full bg-gray-500/70" />
-                              {cfg.label}
-                            </div>
-                            {url ? (
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center justify-center rounded-md border border-blue-300 px-4 h-9 text-sm font-medium text-blue-600 hover:bg-blue-50"
-                              >
-                                Open
-                              </a>
-                            ) : (
-                              <span className="text-sm text-gray-400">No link</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-600">No documents.</div>
-                )}
-              </div>
-              <div className="px-6 py-4 border-t border-gray-200 bg-white">
-                <button
-                  onClick={() => setShowDocs(false)}
-                  className="w-full inline-flex items-center justify-center rounded-md border border-blue-300 px-6 h-11 text-sm font-medium text-blue-600 hover:bg-blue-50"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showDecline && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Decline worker application"
-            tabIndex={-1}
-            autoFocus
-            className="fixed inset-0 z-[2147483646] flex items-center justify-center"
-          >
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingDecline && setShowDecline(false)} />
-            <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
-              <div className="px-6 pt-6">
-                <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-100 grid place-items-center">
-                    <span className="text-blue-600 text-lg">ⓘ</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-xl font-semibold text-gray-900">Decline Worker Application</div>
-                    <div className="text-sm text-gray-600">Select reason for declining.</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-6 py-5 space-y-4">
-                <div className="grid grid-cols-1 gap-2">
-                  {REASONS_ADMIN.map((r) => (
-                    <label
-                      key={r}
-                      className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${declineReason===r?'border-blue-500 ring-1 ring-blue-300 bg-blue-50':'border-gray-200 hover:bg-gray-50'}`}
-                    >
-                      <input
-                        type="radio"
-                        name="decline-reason"
-                        className="h-4 w-4"
-                        checked={declineReason === r}
-                        onChange={() => setDeclineReason((curr) => (curr === r ? "" : r))}
-                        disabled={submittingDecline}
-                      />
-                      <span className="text-sm md:text-base">{r}</span>
-                    </label>
-                  ))}
-                </div>
-
-                <div className="space-y-2">
-                  <div className="text-sm font-semibold text-gray-700">Other</div>
-                  <textarea
-                    value={declineOther}
-                    onChange={(e) => setDeclineOther(e.target.value)}
-                    disabled={submittingDecline}
-                    placeholder="Type other reason here"
-                    className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-
-                {declineErr ? <div className="text-sm text-red-700">{declineErr}</div> : null}
-              </div>
-
-              <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end bg-white">
-                <button
-                  type="button"
-                  onClick={() => !submittingDecline && setShowDecline(false)}
-                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-                  disabled={submittingDecline}
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={submitDecline}
-                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-60"
-                  disabled={submittingDecline}
-                >
-                  Confirm Decline
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showReason && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Decline reason (worker application)"
-            tabIndex={-1}
-            className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
-          >
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
-            <div className="relative w-full max-w-[720px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
-              <div className="px-6 py-4 bg-gradient-to-r from-red-50 to.white border-b border-red-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-red-700">Decline Reason</h3>
-                    <div className="mt-1 text-sm text-gray-600">Created {reasonTarget?.created_at_display || "-"}</div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
-                      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                      {Array.isArray(reasonTarget?.service_types) && reasonTarget?.service_types.length ? reasonTarget.service_types[0] : "Application"}
-                    </span>
-                    <div className="text-sm text-gray-600">Decided {reasonTarget?.decided_at_display || "-"}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
-                  <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">Reason</div>
-                  <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
-                    {getReasonText(reasonTarget)}
-                  </div>
-                </div>
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-red-200 bg-white p-4">
-                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Worker</div>
-                    <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                      {[reasonTarget?.name_first, reasonTarget?.name_last].filter(Boolean).join(" ") || "-"}
-                    </div>
-                    <div className="text-sm text-gray-600">{reasonTarget?.email || "-"}</div>
-                  </div>
-                  <div className="rounded-xl border border-red-200 bg-white p-4">
-                    <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service</div>
-                    <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                      {Array.isArray(reasonTarget?.service_types) && reasonTarget?.service_types.length
-                        ? reasonTarget.service_types.join(", ")
-                        : "-"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
-                <button
-                  type="button"
-                  onClick={() => { setShowReason(false); }}
-                  className="w-full inline-flex items-center justify-center rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {submittingDecline && !showDeclineLoading && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Please wait a moment"
-            tabIndex={-1}
-            autoFocus
-            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
-          >
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg.white shadow-2xl p-8">
-              <div className="relative mx-auto w-40 h-40">
-                <div
-                  className="absolute inset-0 animate-spin rounded-full"
-                  style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#0b82ff22", borderTopColor: "#0b82ff", borderRadius: "9999px" }}
-                />
-                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
-              </div>
-              <div className="mt-6 text-center space-y-1">
-                <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
-                <div className="text-sm text-gray-600 animate-pulse">Submitting decline</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {submittingConfirmCancel && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Please wait a moment"
-            tabIndex={-1}
-            autoFocus
-            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
-          >
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
-              <div className="relative mx-auto w-40 h-40">
-                <div
-                  className="absolute inset-0 animate-spin rounded-full"
-                  style={{ borderWidth: "10px", borderStyle: "solid", borderColor: "#0b82ff22", borderTopColor: "#0b82ff", borderRadius: "9999px" }}
-                />
-                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
-              </div>
-              <div className="mt-6 text-center space-y-1">
-                <div className="text-lg font-semibold text-gray-900">Please wait a moment</div>
-                <div className="text-sm text-gray-600 animate-pulse">Confirming cancel</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showConfirmCancelSuccess && !submittingConfirmCancel && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Cancel Request Successful"
-            tabIndex={-1}
-            autoFocus
-            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            className="fixed inset-0 z-[2147483647] flex items-center justify-center"
-          >
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
-              <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-                <img
-                  src="/jdklogo.png"
-                  alt="JDK Homecare Logo"
-                  className="w-16 h-16 object-contain"
-                  onError={({ currentTarget }) => {
-                    currentTarget.style.display = "none";
-                    const p = currentTarget.parentElement;
-                    if (p) p.innerHTML = '<div class="w-16 h-16 rounded-full border border-[#0b82ff] flex items-center justify-center"><span class="font-bold text-[#0b82ff]">JDK</span></div>';
-                  }}
-                />
-              </div>
-              <div className="mt-6 text-center space-y-2">
-                <div className="text-lg font-semibold text-gray-900">Cancel Request Successful</div>
-                <div className="text-sm text-gray-600">The request was canceled successfully.</div>
-              </div>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowConfirmCancelSuccess(false);
-                    fetchCounts();
-                    fetchItems(filter, searchTerm);
-                  }}
-                  className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showDeclineLoading && (
-          <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label="Loading next step"
-              tabIndex={-1}
-              className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8 z-[2147483647]"
-            >
-              <div className="relative mx-auto w-40 h-40">
-                <div
-                  className="absolute inset-0 animate-spin rounded-full"
-                  style={{
-                    borderWidth: '10px',
-                    borderStyle: 'solid',
-                    borderColor: '#0b82ff22',
-                    borderTopColor: '#0b82ff',
-                    borderRadius: '9999px'
-                  }}
-                />
-                <div className="absolute inset-6 rounded-full border-2 border-[#0b82ff33]" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {!logoBrokenDecline ? (
-                    <img
-                      src="/jdklogo.png"
-                      alt="JDK Homecare Logo"
-                      className="w-20 h-20 object-contain"
-                      onError={() => setLogoBrokenDecline(true)}
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-full border border-[#0b82ff] flex.items-center justify-center">
-                      <span className="font-bold text-[#0b82ff]">JDK</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="mt-6 text-center">
-                <div className="text-base font-semibold text-gray-900">Please wait a moment</div>
-                <div className="text-sm text-gray-500 animate-pulse">Submitting decline</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-      {showDeclineSuccess && (
   <div
     role="dialog"
     aria-modal="true"
-    aria-label="Application declined successfully"
+    aria-label="Worker application details"
     tabIndex={-1}
-    autoFocus
-    onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-    className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+    className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
   >
-    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-    <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#0b82ff] bg-white shadow-2xl p-8">
-      <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#0b82ff33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-        {!logoBrokenDecline2 ? (
-          <img
-            src="/jdklogo.png"
-            alt="JDK Homecare Logo"
-            className="w-16 h-16 object-contain"
-            onError={() => setLogoBrokenDecline2(true)}
-          />
-        ) : (
-          <div className="w-16 h-16 rounded-full border border-[#0b82ff] flex items-center justify-center">
-            <span className="font-bold text-[#0b82ff]">JDK</span>
+    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeView} />
+
+    <div className="relative w-full max-w-6xl max-h-[86vh] rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+      <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-white to-white">
+        <div className="px-6 sm:px-8 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+  <div className="text-[11px] font-semibold tracking-[0.25em] uppercase text-gray-500">
+    Worker Application
+  </div>
+ 
+</div>
+
+<div className="flex items-center gap-2 shrink-0">
+  <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700">
+    <ShieldCheck className="h-4 w-4" />
+    Admin View
+  </span>
+</div>
           </div>
-        )}
+        </div>
       </div>
-      <div className="mt-6 text-center space-y-2">
-        <div className="text-lg font-semibold text-gray-900">Application Declined Successfully</div>
-        <div className="text-sm text-gray-600">The application has been declined.</div>
+
+      <div className="flex flex-col md:flex-row max-h-[calc(86vh-76px)]">
+        <aside className="md:w-[320px] lg:w-[360px] border-b md:border-b-0 md:border-r border-gray-200 bg-white">
+          <div className="p-5 sm:p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl border border-gray-200 bg-gray-100 overflow-hidden shadow-sm">
+                {viewRow?.profile_picture_url ? (
+                  <img
+                    src={viewRow.profile_picture_url}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={({ currentTarget }) => {
+                      currentTarget.style.display = "none";
+                      const parent = currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${initialsFrom(viewRow?.name_first, viewRow?.name_last)}</div>`;
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">
+                    {initialsFrom(viewRow?.name_first, viewRow?.name_last)}
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0">
+                <div className="text-base font-semibold text-gray-900 truncate">
+                  {[viewRow?.name_first, viewRow?.name_last].filter(Boolean).join(" ") || "-"}
+                </div>
+                <div className="text-sm text-gray-500 truncate">{viewRow?.email || "-"}</div>
+                <div className="mt-2 flex flex-wrap gap-2">{viewStatusPills(viewRow)}</div>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-3">
+              <QuickItem
+                icon={<CalendarDays className="h-4 w-4" />}
+                label="Created"
+                value={viewRow?.created_at_display || "-"}
+              />
+        <QuickItem
+  icon={<Briefcase className="h-4 w-4" />}
+  label="Service Type:"
+  value={
+    <ServiceTypePill
+      value={
+        viewRow?.primary_service ||
+        (Array.isArray(viewRow?.service_types) && viewRow.service_types.length ? viewRow.service_types[0] : "-")
+      }
+    />
+  }
+/>
+              <QuickItem
+  icon={<ClipboardList className="h-4 w-4" />}
+  label="Service Task(s):"
+  value={
+    <div className="flex flex-col gap-2">
+
+      <div className="flex flex-wrap items-center gap-2">
+      
+        <ServiceTasksInline list={viewRow?.service_tasks} fallback={viewRow?.task_or_role} />
       </div>
-      <div className="mt-6">
-        <button
-          type="button"
-          onClick={() => setShowDeclineSuccess(false)}
-          className="w-full px-6 py-3 bg-[#0b82ff] text-white rounded-xl shadow-sm hover:bg-[#086bd4] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b82ff]/40"
-        >
-          Done
-        </button>
+    </div>
+  }
+/>
+            </div>
+<div className="mt-5">
+  <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
+    Application IDs
+  </div>
+  <div className="mt-2 grid grid-cols-1 gap-2">
+    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+      <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
+        Application Group
+      </div>
+      <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
+        {viewRow?.request_group_id || "-"}
+      </div>
+    </div>
+    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+      <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
+        Application ID
+      </div>
+      <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
+        {viewRow?.id || "-"}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div className="mt-5">
+  <button
+    type="button"
+    onClick={() => setShowDocs(true)}
+    className="w-full inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium bg-[#0b82ff] text-white border border-[#0b82ff] hover:bg-[#086bd4]"
+  >
+    View Documents
+  </button>
+</div>
+          </div>
+        </aside>
+
+        <section className="flex-1 bg-gray-50">
+          <div className="p-5 sm:p-6 flex flex-col h-full">
+       <div className="mb-3 flex flex-wrap items-center justify-start gap-3 pb-2 border-b border-gray-200 shrink-0">
+  <div className="flex flex-wrap items-center gap-2">
+    <SectionButton k="info" label="Personal Information" />
+    <SectionButton k="work" label="Work Details" />
+  </div>
+</div>
+
+<div className="absolute bottom-6 right-6 z-20">
+  <button
+    type="button"
+    onClick={closeView}
+    className="inline-flex items-center justify-center rounded-xl border border-blue-300 bg-white px-6 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+  >
+    Done
+  </button>
+</div>
+
+            <div className="flex-1 overflow-y-auto blue-scroll pt-3">
+              {renderSection()}
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   </div>
 )}
+
+      {viewRow && showDocs && (
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-label="View documents"
+    tabIndex={-1}
+    className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+  >
+    <div
+  className="absolute inset-0 bg-black/0.5 backdrop-blur-sm"
+  onClick={() => setShowDocs(false)}
+/>
+
+    <div className="relative w-full max-w-6xl max-h-[86vh] rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+      <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-white to-white">
+        <div className="px-6 sm:px-8 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold tracking-[0.25em] uppercase text-gray-500">
+                Worker Application
+              </div>
+              <div className="mt-1 text-lg font-semibold text-gray-900">Documents</div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700">
+                <ShieldCheck className="h-4 w-4" />
+                Admin View
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row max-h-[calc(86vh-76px)]">
+        <aside className="md:w-[320px] lg:w-[360px] border-b md:border-b-0 md:border-r border-gray-200 bg-white">
+          <div className="p-5 sm:p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl border border-gray-200 bg-gray-100 overflow-hidden shadow-sm">
+                {viewRow?.profile_picture_url ? (
+                  <img
+                    src={viewRow.profile_picture_url}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={({ currentTarget }) => {
+                      currentTarget.style.display = "none";
+                      const parent = currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${initialsFrom(
+                          viewRow?.name_first,
+                          viewRow?.name_last
+                        )}</div>`;
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">
+                    {initialsFrom(viewRow?.name_first, viewRow?.name_last)}
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0">
+                <div className="text-base font-semibold text-gray-900 truncate">
+                  {[viewRow?.name_first, viewRow?.name_last].filter(Boolean).join(" ") || "-"}
+                </div>
+                <div className="text-sm text-gray-500 truncate">{viewRow?.email || "-"}</div>
+                <div className="mt-2 flex flex-wrap gap-2">{viewStatusPills(viewRow)}</div>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-3">
+              <QuickItem
+                icon={<CalendarDays className="h-4 w-4" />}
+                label="Created"
+                value={viewRow?.created_at_display || "-"}
+              />
+              <QuickItem
+                icon={<Briefcase className="h-4 w-4" />}
+                label="Service Type:"
+                value={
+                  <ServiceTypePill
+                    value={
+                      viewRow?.primary_service ||
+                      (Array.isArray(viewRow?.service_types) && viewRow.service_types.length
+                        ? viewRow.service_types[0]
+                        : "-")
+                    }
+                  />
+                }
+              />
+              <QuickItem
+                icon={<ClipboardList className="h-4 w-4" />}
+                label="Service Task(s):"
+                value={<ServiceTasksInline list={viewRow?.service_tasks} fallback={viewRow?.task_or_role} />}
+              />
+            </div>
+
+            <div className="mt-5">
+              <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
+                Application IDs
+              </div>
+              <div className="mt-2 grid grid-cols-1 gap-2">
+                <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                  <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
+                    Application Group
+                  </div>
+                  <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
+                    {viewRow?.request_group_id || "-"}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                  <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
+                    Application ID
+                  </div>
+                  <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
+                    {viewRow?.id || "-"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => setShowDocs(false)}
+                className="w-full inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium bg-[#0b82ff] text-white border border-[#0b82ff] hover:bg-[#086bd4]"
+              >
+                Back to Details
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section className="flex-1 bg-gray-50">
+          <div className="p-5 sm:p-6 flex flex-col h-full relative">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-gray-200 shrink-0">
+              <div className="text-sm font-semibold text-gray-900">Submitted Documents</div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto blue-scroll pt-3 pb-20">
+              {viewRow && viewRow.docs && Object.keys(viewRow.docs).length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[
+                    { label: "Primary ID (Front)", keys: ["primary_id_front", "primaryIdFront", "primary_front", "primary_front_id", "primary_id_front_url", "primary_front_url"] },
+                    { label: "Primary ID (Back)", keys: ["primary_id_back", "primaryIdBack", "primary_back", "primary_back_id", "primary_id_back_url", "primary_back_url"] },
+                    { label: "Secondary ID", keys: ["secondary_id", "secondaryId", "secondary_id_url"] },
+                    { label: "NBI/Police Clearance", keys: ["nbi_police_clearance", "nbi_clearance", "police_clearance", "nbi", "police"] },
+                    { label: "Proof of Address", keys: ["proof_of_address","proofOfAddress","address_proof","proof_address","billing_proof","utility_bill","proof_of_residence","proofOfResidence","residence_proof","residency_proof","barangay_clearance","barangay_certificate","electric_bill","water_bill","meralco_bill"], fuzzy: { any: ["address","residence","residency","billing","utility","bill","proof","poa","barangay","clearance"] } },
+                    { label: "Medical Certificate", keys: ["medical_certificate", "med_cert"], fuzzy: { any: ["medical", "med_cert", "medcert", "health", "fit_to_work", "fit-to-work", "fit2work", "med"] } },
+                    { label: "Certificates", keys: ["certificates", "training_certificates", "certs"] },
+                  ].map((cfg) => {
+                    const d = viewRow.docs || {};
+                    const found = resolveDoc(d, cfg.keys, cfg.fuzzy);
+                    const url = toDocUrl(found);
+                    const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(url);
+
+                    return (
+                      <div key={cfg.label} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <div className="p-4">
+                          {isImg && url ? (
+                            <img src={url} alt={cfg.label} className="w-full h-44 object-contain" />
+                          ) : (
+                            <div className="h-44 grid place-items-center text-sm text-gray-500">
+                              {url ? "Preview not available" : "No document"}
+                            </div>
+                          )}
+                        </div>
+                        <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                          <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-800">
+                            <span className="h-2 w-2 rounded-full bg-gray-500/70" />
+                            {cfg.label}
+                          </div>
+                          {url ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center justify-center rounded-md border border-blue-300 px-4 h-9 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                            >
+                              Open
+                            </a>
+                          ) : (
+                            <span className="text-sm text-gray-400">No link</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center text-gray-600">No documents.</div>
+              )}
+            </div>
+
+            <div className="absolute bottom-6 right-6 z-20">
+              <button
+                type="button"
+                onClick={() => setShowDocs(false)}
+                className="inline-flex items-center justify-center rounded-xl border border-blue-300 bg-white px-6 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+)}
+
       </main>
     </>
   );

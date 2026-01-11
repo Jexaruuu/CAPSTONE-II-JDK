@@ -39,29 +39,26 @@ async function listApplications({status,q,limit=200}){
 
   const gids=apps.map(r=>r.request_group_id).filter(Boolean);
   const uniqGids=[...new Set(gids)];
+
   const fetchInfo = supabaseAdmin.from('worker_information').select('*').in('request_group_id',uniqGids);
   const fetchWork = supabaseAdmin.from('worker_work_information').select('*').in('request_group_id',uniqGids);
-  const fetchRate = supabaseAdmin.from('worker_service_rate').select('*').in('request_group_id',uniqGids);
   const fetchDocs = supabaseAdmin.from('worker_required_documents').select('*').in('request_group_id',uniqGids);
 
-  const [{data:infoRows,error:infoErr},{data:workRows,error:workErr},{data:rateRows,error:rateErr},{data:docRows,error:docErr}] =
-    await Promise.all([fetchInfo,fetchWork,fetchRate,fetchDocs]);
+  const [{data:infoRows,error:infoErr},{data:workRows,error:workErr},{data:docRows,error:docErr}] =
+    await Promise.all([fetchInfo,fetchWork,fetchDocs]);
 
   if(infoErr) throw infoErr;
   if(workErr) throw workErr;
-  if(rateErr) throw rateErr;
   if(docErr) throw docErr;
 
   const infoMap=toMapByGroup(infoRows||[]);
   const workMap=toMapByGroup(workRows||[]);
-  const rateMap=toMapByGroup(rateRows||[]);
   const docMap=toMapByGroup(docRows||[]);
 
   const merged=apps.map(a=>{
     const g=a.request_group_id;
     const i=infoMap.get(g)||{};
     const w=workMap.get(g)||{};
-    const r=rateMap.get(g)||{};
     const d=docMap.get(g)||{};
     const docs=nonEmptyObject({
       primary_id_front:d.primary_id_front||d.primaryIdFront||d.primary_front,
@@ -85,7 +82,7 @@ async function listApplications({status,q,limit=200}){
       created_at:a.created_at||null,
       info:i,
       work:w,
-      rate:r,
+      rate:{},
       docs:docs
     };
   });

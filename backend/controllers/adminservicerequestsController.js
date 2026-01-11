@@ -81,10 +81,10 @@ async function hydrate(baseRows) {
       .from('client_service_request_details')
       .select('request_group_id, preferred_date, preferred_time, service_type, service_task, service_description, is_urgent, tools_provided, request_image_url, image_name')
       .in('request_group_id', gids),
-    supabaseAdmin
-      .from('client_service_rate')
-      .select('request_group_id, rate_type, rate_from, rate_to, rate_value')
-      .in('request_group_id', gids),
+supabaseAdmin
+  .from('client_service_rate')
+  .select('request_group_id, units, unit_kg, payment_method, preferred_time_fee_php, extra_workers_fee_php, total_rate_php')
+  .in('request_group_id', gids),
   ]);
 
   const toMap = (res) => {
