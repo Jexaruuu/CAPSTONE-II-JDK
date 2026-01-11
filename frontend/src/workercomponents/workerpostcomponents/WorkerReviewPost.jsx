@@ -38,7 +38,6 @@ const clearWorkerApplicationDrafts = () => {
     localStorage.removeItem('workerWorkInformation');
     localStorage.removeItem('workerDocuments');
     localStorage.removeItem('workerDocumentsData');
-    localStorage.removeItem('workerRate');
     localStorage.removeItem('workerAgreements');
   } catch {}
 };
@@ -153,13 +152,6 @@ const WorkerReviewPost = ({ handleBack }) => {
       return {};
     }
   })();
-  const savedRate = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('workerRate') || '{}');
-    } catch {
-      return {};
-    }
-  })();
   const savedAgree = (() => {
     try {
       return JSON.parse(localStorage.getItem('workerAgreements') || '{}');
@@ -187,11 +179,6 @@ const WorkerReviewPost = ({ handleBack }) => {
   const years_experience = s.years_experience ?? savedWork.years_experience ?? savedWork.yearsExperience ?? '';
   const tools_provided = s.tools_provided ?? savedWork.tools_provided ?? savedWork.toolsProvided ?? '';
   const service_description = s.service_description ?? savedWork.service_description ?? savedWork.serviceDescription ?? '';
-
-  const rate_type = s.rate_type ?? savedRate.rate_type ?? savedRate.rateType ?? '';
-  const rate_from = s.rate_from ?? savedRate.rate_from ?? savedRate.rateFrom ?? '';
-  const rate_to = s.rate_to ?? savedRate.rate_to ?? savedRate.rateTo ?? '';
-  const rate_value = s.rate_value ?? savedRate.rate_value ?? savedRate.rateValue ?? '';
 
   const docsFromState = Array.isArray(s.docs) ? s.docs : [];
   const docs = docsFromState.length ? docsFromState : [...(Array.isArray(savedDocsData) ? savedDocsData : []), ...(Array.isArray(savedDocsAlt) ? savedDocsAlt : [])];
@@ -436,9 +423,6 @@ const WorkerReviewPost = ({ handleBack }) => {
       const docsDraftB = (() => {
         try { return JSON.parse(localStorage.getItem('workerDocuments') || '[]'); } catch { return []; }
       })();
-      const rateDraft = (() => {
-        try { return JSON.parse(localStorage.getItem('workerRate') || '{}'); } catch { return {}; }
-      })();
       const agreeDraft = (() => {
         try { return JSON.parse(localStorage.getItem('workerAgreements') || '{}'); } catch { return {}; }
       })();
@@ -478,12 +462,6 @@ const WorkerReviewPost = ({ handleBack }) => {
           serviceDescription: workDraft.service_description || workDraft.serviceDescription || ''
         },
         documents: [],
-        rate: {
-          rateType: rateDraft.rateType || rateDraft.rate_type || '',
-          rateFrom: rateDraft.rateFrom || rateDraft.rate_from || '',
-          rateTo: rateDraft.rateTo || rateDraft.rate_to || '',
-          rateValue: rateDraft.rateValue || rateDraft.rate_value || ''
-        },
         agreements: {
           consent_background_checks: !!agreeDraft.agree_verify,
           consent_terms_privacy: !!agreeDraft.agree_tos,
@@ -656,10 +634,6 @@ const WorkerReviewPost = ({ handleBack }) => {
         years_experience: coerceYears(years_experience),
         tools_provided: normalizeToolsProvided(tools_provided),
         service_description: (service_description || '').trim(),
-        rate_type: (rate_type || '').trim(),
-        rate_from: null,
-        rate_to: null,
-        rate_value: null,
         documents: documentsNormalized,
         required_documents_object: docsObject,
         agreements: {
@@ -675,22 +649,6 @@ const WorkerReviewPost = ({ handleBack }) => {
         }
       };
 
-      if (normalized.rate_type === 'Hourly Rate') {
-        normalized.rate_from = (() => {
-          const n = Number(rate_from);
-          return Number.isFinite(n) ? n : null;
-        })();
-        normalized.rate_to = (() => {
-          const n = Number(rate_to);
-          return Number.isFinite(n) ? n : null;
-        })();
-      } else if (normalized.rate_type === 'By the Job Rate') {
-        normalized.rate_value = (() => {
-          const n = Number(rate_value);
-          return Number.isFinite(n) ? n : null;
-        })();
-      }
-
       const missing = requireFields(normalized, [
         'first_name',
         'last_name',
@@ -699,7 +657,6 @@ const WorkerReviewPost = ({ handleBack }) => {
         'barangay',
         'service_types',
         'service_description',
-        'rate_type',
         'profile_picture'
       ]);
       if (missing.length) {
@@ -753,17 +710,6 @@ const WorkerReviewPost = ({ handleBack }) => {
         work_description: normalized.service_description
       };
 
-      const ratePayload = {
-        rate_type: normalized.rate_type,
-        rateType: normalized.rate_type,
-        rate_from: normalized.rate_from,
-        rateFrom: normalized.rate_from,
-        rate_to: normalized.rate_to,
-        rateTo: normalized.rate_to,
-        rate_value: normalized.rate_value,
-        rateValue: normalized.rate_value
-      };
-
       const requiredDocsPayload = {
         ...normalized.required_documents_object,
         worker_id: normalized.worker_id,
@@ -778,7 +724,6 @@ const WorkerReviewPost = ({ handleBack }) => {
         {
           info: infoPayload,
           details: workPayload,
-          rate: ratePayload,
           documents: normalized.documents,
           required_documents: requiredDocsPayload,
           agreements: normalized.agreements,
@@ -962,23 +907,6 @@ const WorkerReviewPost = ({ handleBack }) => {
                   </div>
                 </div>
               </div>
-
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-4">
-                  <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Rate</h3>
-                </div>
-                <div className="border-t border-gray-100" />
-                <div className="px-6 py-6">
-                  <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
-                    <LabelValue label="Rate Type" value={rate_type} />
-                    {rate_type === 'Hourly Rate' ? (
-                      <LabelValue label="Rate" value={rate_from && rate_to ? `₱${rate_from} - ₱${rate_to} per hour` : ''} />
-                    ) : (
-                      <LabelValue label="Rate" value={rate_value ? `₱${rate_value}` : ''} />
-                    )}
-                  </div>
-                </div>
-              </div>
             </div>
 
             <aside className="lg:col-span-1 flex flex-col">
@@ -1003,20 +931,6 @@ const WorkerReviewPost = ({ handleBack }) => {
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-gray-700">Tools:</span>
                     <span className="text-base font-semibold text-[#008cfc]">{tools_provided || '-'}</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-sm font-medium text-gray-700">Rate:</span>
-                    {rate_type === 'Hourly Rate' ? (
-                      <div className="text-lg font-bold text-[#008cfc]">
-                        ₱{rate_from || 0}–₱{rate_to || 0} <span className="text-sm font-semibold opacity-80">per hour</span>
-                      </div>
-                    ) : rate_type === 'By the Job Rate' ? (
-                      <div className="text-lg font-bold text-[#008cfc]">
-                        ₱{rate_value || 0} <span className="text-sm font-semibold opacity-80">per job</span>
-                      </div>
-                    ) : (
-                      <div className="text-gray-500 text-sm">No rate provided</div>
-                    )}
                   </div>
                 </div>
                 {submitError ? (

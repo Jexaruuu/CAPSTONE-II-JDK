@@ -143,91 +143,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     ]
   };
 
-  const serviceTaskRates = {
-    Carpenter: {
-      'General Carpentry': 1000,
-      'Furniture Repair': 900,
-      'Wood Polishing': 1200,
-      'Door & Window Fitting': 1500,
-      'Custom Furniture Design': 2000,
-      'Modular Kitchen Installation': 6000,
-      'Flooring & Decking': 3500,
-      'Cabinet & Wardrobe Fixing': 1200,
-      'Wall Paneling & False Ceiling': 4000,
-      'Wood Restoration & Refinishing': 2500
-    },
-    Electrician: {
-      'Wiring Repair': 1000,
-      'Appliance Installation': 800,
-      'Lighting Fixtures': 700,
-      'Circuit Breaker & Fuse Repair': 1200,
-      'CCTV & Security System Setup': 2500,
-      'Fan & Exhaust Installation': 700,
-      'Inverter & Battery Setup': 1800,
-      'Switchboard & Socket Repair': 800,
-      'Electrical Safety Inspection': 1500,
-      'Smart Home Automation': 3000
-    },
-    Plumber: {
-      'Leak Fixing': 900,
-      'Pipe Installation': 1500,
-      'Bathroom Fittings': 1200,
-      'Drain Cleaning & Unclogging': 1800,
-      'Water Tank Installation': 2500,
-      'Gas Pipeline Installation': 3500,
-      'Septic Tank & Sewer Repair': 4500,
-      'Water Heater Installation': 2000,
-      'Toilet & Sink Repair': 1000,
-      'Kitchen Plumbing Solutions': 1800
-    },
-    Carwasher: {
-      'Exterior Wash': 350,
-      'Interior Detailing': 700,
-      'Wax & Polish': 1200,
-      'Underbody Cleaning': 500,
-      'Engine Bay Cleaning': 900,
-      'Headlight Restoration': 1500,
-      'Ceramic Coating': 12000,
-      'Tire & Rim Cleaning': 400,
-      'Vacuum & Odor Removal': 700,
-      'Paint Protection Film Application': 15000
-    },
-    Laundry: {
-      'Dry Cleaning': '₱130/kg',
-      Ironing: '₱100/kg',
-      'Wash & Fold': '₱50/kg',
-      'Steam Pressing': '₱130/kg',
-      'Stain Removal Treatment': '₱180/kg',
-      'Curtains & Upholstery Cleaning': '₱400–₱800',
-      'Delicate Fabric Care': '₱90/kg',
-      'Shoe & Leather Cleaning': '₱250/pair',
-      'Express Same-Day Laundry': '₱70/kg',
-      'Eco-Friendly Washing': '₱60/kg'
-    }
-  };
-
-  const formatRate = (v) => {
-    if (v === null || v === undefined || v === '') return '';
-    if (typeof v === 'string') return v.trim().startsWith('₱') ? v : `₱${v}`;
-    const n = Number(v);
-    if (!Number.isFinite(n)) return '';
-    return `₱${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 }).format(n)}`;
-  };
-
-  const withPerUnitLabel = (rateStr) => {
-    if (!rateStr) return '';
-    return `per unit ${rateStr}`;
-  };
-
-  const shouldShowPerUnit = (type) => type === 'Carwasher' || type === 'Plumber' || type === 'Carpenter' || type === 'Electrician';
-
-  const getTaskRateLabel = (type, task) => {
-    if (!type || !task) return '';
-    const raw = serviceTaskRates?.[type]?.[task];
-    const r = formatRate(raw);
-    return shouldShowPerUnit(type) ? withPerUnitLabel(r) : r;
-  };
-
   const PopList = ({ items, value, onSelect, title = 'Select', fullWidth = false, emptyLabel = 'No options', disabledLabel, hideSearch = false, rightLabel }) => {
     const [q, setQ] = useState('');
     const filtered = hideSearch ? items || [] : (items || []).filter((it) => it.toLowerCase().includes(q.toLowerCase()));
@@ -525,20 +440,12 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                           <div className="px-4 py-4">
                             {(serviceTask[jobType] || []).map((task, index) => {
                               const key = `${jobType}-${index}`;
-                              const rateLabel = task ? getTaskRateLabel(jobType, task) : '';
                               return (
                                 <div key={index} className="mb-3" ref={(node) => setTaskRowRef(key, node)}>
                                   <div className={`flex items-stretch rounded-xl border ${attempted && !task ? 'border-red-500' : 'border-gray-300'} bg-white overflow-hidden`}>
                                     <div className="px-3 py-3 text-xs text-gray-500 bg-gray-50 border-r border-gray-200 min-w-[62px] grid place-items-center">Task {index + 1}</div>
                                     <button type="button" onClick={() => setOpenTaskKey((k) => (k === key ? null : key))} className="flex-1 px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                                      {task ? (
-                                        <div className="flex items-center justify-between gap-3">
-                                          <span className="truncate">{task}</span>
-                                          <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{rateLabel}</span>
-                                        </div>
-                                      ) : (
-                                        'Select a service'
-                                      )}
+                                      {task ? <span className="truncate">{task}</span> : 'Select a service'}
                                     </button>
                                     <button type="button" onClick={() => setOpenTaskKey((k) => (k === key ? null : key))} className="px-3 pr-4 text-gray-600 hover:text-gray-800">
                                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -555,7 +462,6 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                                         fullWidth
                                         title={`Select ${jobType} Service`}
                                         disabledLabel={(opt) => (serviceTask[jobType] || []).includes(opt) && opt !== task}
-                                        rightLabel={(it) => getTaskRateLabel(jobType, it)}
                                         onSelect={(val) => {
                                           handleJobDetailChange(jobType, index, val);
                                           setOpenTaskKey(null);

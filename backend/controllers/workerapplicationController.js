@@ -2,7 +2,6 @@ const {
   uploadDataUrlToBucket,
   insertWorkerInformation,
   insertWorkerWorkInformation,
-  insertWorkerRate,
   insertWorkerRequiredDocuments,
   insertPendingApplication,
   newGroupId,
@@ -19,7 +18,7 @@ const fallbackProfile = { profile_picture_url: '/fallback-profile.png', profile_
 function friendlyError(err) {
   const raw = err?.message || String(err);
   if (/wa-attachments/i.test(raw) && /not.*found|bucket/i.test(raw)) return 'Storage bucket "wa-attachments" is missing.';
-  if (/worker_information|worker_work_information|worker_service_rate|worker_required_documents|worker_application_status|worker_cancel_application/i.test(raw))
+  if (/worker_information|worker_work_information|worker_required_documents|worker_application_status|worker_cancel_application/i.test(raw))
     return `Database error: ${raw}`;
   return raw;
 }
@@ -232,7 +231,6 @@ exports.submitFullApplication = async (req, res) => {
     const src = req.body || {};
     const info = src.info || src.information || src.profile || {};
     const details = src.details || src.detail || src.work || {};
-    const rate = src.rate || src.pricing || {};
     const metadata = src.metadata || {};
 
     const worker_id_in = pick(src, ['worker_id', 'workerId', 'info.worker_id', 'info.workerId']);
@@ -279,11 +277,6 @@ exports.submitFullApplication = async (req, res) => {
     const years_experience = pick(src, ['years_experience', 'details.years_experience', 'details.yearsExperience', 'work.years_experience', 'work.yearsExperience']);
     const tools_provided = pick(src, ['tools_provided', 'details.tools_provided', 'details.toolsProvided', 'work.tools_provided', 'work.toolsProvided', 'metadata.tools_provided', 'metadata.toolsProvided'], 'No');
     const work_description = pick(src, ['work_description', 'service_description', 'details.work_description', 'details.service_description', 'work.service_description', 'work.serviceDescription']);
-
-    const rate_type_raw = pick(src, ['rate_type', 'rateType', 'rate.rate_type', 'rate.rateType', 'pricing.rate_type', 'pricing.rateType']);
-    let rate_from = pick(src, ['rate_from', 'rateFrom', 'rate.rate_from', 'rate.rateFrom', 'pricing.rate_from', 'pricing.rateFrom']);
-    let rate_to = pick(src, ['rate_to', 'rateTo', 'rate.rate_to', 'rate.rateTo', 'pricing.rate_to', 'pricing.rateTo']);
-    let rate_value = pick(src, ['rate_value', 'rateValue', 'rate.rate_value', 'rate.rateValue', 'pricing.rate_value', 'pricing.rateValue']);
 
     let effectiveWorkerId = worker_id_in != null && String(worker_id_in).trim() !== '' ? Number(worker_id_in) : null;
     let effectiveAuthUid = null;
@@ -450,68 +443,6 @@ exports.submitFullApplication = async (req, res) => {
     if (missingDetails.length) return res.status(400).json({ message: `Missing required worker_work_information fields: ${missingDetails.join(', ')}` });
 
     await insertWorkerWorkInformation(detailsRow);
-
-    let inferredRateType = rate_type_raw || null;
-    if (!inferredRateType) {
-      if (rate_value) inferredRateType = 'By the Job Rate';
-      else if (rate_from || rate_to) inferredRateType = 'Hourly Rate';
-    }
-    const toLabelRateType = (t) => {
-      const s = String(t || '').toLowerCase();
-      if (s.includes('hour')) return 'Hourly Rate';
-      if (s.includes('job') || s.includes('fixed') || s.includes('flat')) return 'By the Job Rate';
-      return '';
-    };
-    const rateTypeDb = toLabelRateType(inferredRateType);
-
-    if (rateTypeDb === 'Hourly Rate') {
-      const rf = rate_from != null && rate_from !== '' ? Number(rate_from) : null;
-      const rt = rate_to != null && rate_to !== '' ? Number(rate_to) : null;
-      if (rf != null && rt == null) rate_to = rf;
-      if (rt != null && rf == null) rate_from = rt;
-    }
-
-    const rateRow = {
-      request_group_id,
-      worker_id: effectiveWorkerId,
-      auth_uid: effectiveWorkerId ? effectiveAuthUid : auth_uid || metadata.auth_uid || null,
-      email_address: infoRow.email_address,
-      rate_type: rateTypeDb || null,
-      rate_from: rate_from !== undefined && rate_from !== null && String(rate_from) !== '' ? Number(rate_from) : null,
-      rate_to: rate_to !== undefined && rate_to !== null && String(rate_to) !== '' ? Number(rate_to) : null,
-      rate_value: rate_value !== undefined && rate_value !== null && String(rate_value) !== '' ? Number(rate_value) : null
-    };
-
-    const missingRate = [];
-    if (!rateRow.rate_type) missingRate.push('rate_type');
-    if (rateRow.rate_type === 'Hourly Rate' && (rateRow.rate_from == null || rateRow.rate_to == null)) missingRate.push('rate_from/rate_to');
-    if (rateRow.rate_type === 'By the Job Rate' && rateRow.rate_value == null) missingRate.push('rate_value');
-    if (missingRate.length) return res.status(400).json({ message: `Missing required worker_service_rate fields: ${missingRate.join(', ')}` });
-
-    try {
-      await insertWorkerRate(rateRow);
-    } catch (e) {
-      const raw = String(e?.message || '');
-      if (/rate_type.*check|rate_type_check/i.test(raw)) {
-        const fallbacks =
-          rateRow.rate_type === 'Hourly Rate'
-            ? ['hourly', 'hourly_rate']
-            : rateRow.rate_type === 'By the Job Rate'
-            ? ['job', 'by_job_rate']
-            : [];
-        let inserted = false;
-        for (const alt of fallbacks) {
-          try {
-            await insertWorkerRate({ ...rateRow, rate_type: alt });
-            inserted = true;
-            break;
-          } catch {}
-        }
-        if (!inserted) throw e;
-      } else {
-        throw e;
-      }
-    }
 
     const bucket = process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments';
 
@@ -817,13 +748,6 @@ exports.submitFullApplication = async (req, res) => {
       work_description: detailsRow.work_description
     };
 
-    const pendingRate = {
-      rate_type: rateRow.rate_type,
-      rate_from: rateRow.rate_from,
-      rate_to: rateRow.rate_to,
-      rate_value: rateRow.rate_value
-    };
-
     try {
       const { data: existing } = await supabaseAdmin
         .from('worker_application_status')
@@ -846,7 +770,6 @@ exports.submitFullApplication = async (req, res) => {
         email_address: infoRow.email_address,
         info: pendingInfo,
         details: pendingDetails,
-        rate: pendingRate,
         status: 'pending'
       });
     } catch (e) {
@@ -872,7 +795,7 @@ exports.listPublicApproved = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '60', 10), 1), 200);
     const { data: apps, error } = await supabaseAdmin
       .from('worker_application_status')
-      .select('id, request_group_id, status, created_at, email_address, info, details, rate')
+      .select('id, request_group_id, status, created_at, email_address, info, details')
       .eq('status', 'approved')
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -906,23 +829,18 @@ exports.listPublicApproved = async (req, res) => {
     if (!approvedCurrentGids.length) return res.status(200).json({ items: [] });
 
     let infoMap = {},
-      workMap = {},
-      rateMap = {};
+      workMap = {};
     const targets = approvedCurrentGids;
 
-    const [{ data: infos }, { data: works }, { data: rates }] = await Promise.all([
+    const [{ data: infos }, { data: works }] = await Promise.all([
       supabaseAdmin.from('worker_information').select('*').in('request_group_id', targets),
-      supabaseAdmin.from('worker_work_information').select('*').in('request_group_id', targets),
-      supabaseAdmin.from('worker_service_rate').select('*').in('request_group_id', targets)
+      supabaseAdmin.from('worker_work_information').select('*').in('request_group_id', targets)
     ]);
     (infos || []).forEach((r) => {
       if (r?.request_group_id) infoMap[r.request_group_id] = r;
     });
     (works || []).forEach((r) => {
       if (r?.request_group_id) workMap[r.request_group_id] = r;
-    });
-    (rates || []).forEach((r) => {
-      if (r?.request_group_id) rateMap[r.request_group_id] = r;
     });
 
     const items = rows
@@ -931,7 +849,6 @@ exports.listPublicApproved = async (req, res) => {
         const gid = r.request_group_id;
         const i = infoMap[gid] || r.info || {};
         const w = workMap[gid] || r.details || {};
-        const rt = rateMap[gid] || r.rate || {};
         return {
           id: r.id,
           request_group_id: gid,
@@ -939,8 +856,7 @@ exports.listPublicApproved = async (req, res) => {
           status: 'approved',
           created_at: r.created_at,
           info: i,
-          work: w,
-          rate: rt
+          work: w
         };
       });
 
@@ -994,7 +910,7 @@ exports.listMine = async (req, res) => {
 
     let q = supabaseAdmin
       .from('worker_application_status')
-      .select('id, request_group_id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason, auth_uid, worker_id, info, details, rate')
+      .select('id, request_group_id, status, created_at, decided_at, email_address, reason_choice, reason_other, decision_reason, auth_uid, worker_id, info, details')
       .order('created_at', { ascending: false })
       .limit(200);
     if (email) q = q.ilike('email_address', email);
@@ -1019,7 +935,6 @@ exports.listMine = async (req, res) => {
 
     let infoMap = {},
       detailsMap = {},
-      rateMap = {},
       docsMap = {};
     if (targetGroups.length) {
       try {
@@ -1043,15 +958,6 @@ exports.listMine = async (req, res) => {
         });
       } catch {}
       try {
-        const { data: rates } = await supabaseAdmin
-          .from('worker_service_rate')
-          .select('request_group_id, auth_uid, rate_type, rate_from, rate_to, rate_value, worker_id')
-          .in('request_group_id', targetGroups);
-        (rates || []).forEach((r) => {
-          if (r?.request_group_id) rateMap[r.request_group_id] = r;
-        });
-      } catch {}
-      try {
         const { data: docs } = await supabaseAdmin
           .from('worker_required_documents')
           .select(
@@ -1070,9 +976,8 @@ exports.listMine = async (req, res) => {
         const gid = r.request_group_id;
         const mergedInfo = infoMap[gid] || r.info || {};
         const mergedDetails = detailsMap[gid] || r.details || {};
-        const mergedRate = rateMap[gid] || r.rate || {};
         const mergedDocs = docsMap[gid] || null;
-        return { ...r, info: mergedInfo, details: mergedDetails, rate: mergedRate, required_documents: mergedDocs };
+        return { ...r, info: mergedInfo, details: mergedDetails, required_documents: mergedDocs };
       });
 
     return res.status(200).json({ items });
@@ -1173,10 +1078,9 @@ exports.getByGroupFull = async (req, res) => {
     const gid = String(req.params.id || '').trim();
     if (!gid) return res.status(400).json({ message: 'Missing id' });
 
-    const [{ data: info }, { data: details }, { data: rate }, { data: docs }, { data: statusRow }] = await Promise.all([
+    const [{ data: info }, { data: details }, { data: docs }, { data: statusRow }] = await Promise.all([
       supabaseAdmin.from('worker_information').select('*').eq('request_group_id', gid).order('id', { ascending: false }).limit(1).maybeSingle(),
       supabaseAdmin.from('worker_work_information').select('*').eq('request_group_id', gid).order('id', { ascending: false }).limit(1).maybeSingle(),
-      supabaseAdmin.from('worker_service_rate').select('*').eq('request_group_id', gid).order('id', { ascending: false }).limit(1).maybeSingle(),
       supabaseAdmin
         .from('worker_required_documents')
         .select(
@@ -1186,17 +1090,22 @@ exports.getByGroupFull = async (req, res) => {
         .order('id', { ascending: false })
         .limit(1)
         .maybeSingle(),
-      supabaseAdmin.from('worker_application_status').select('id, request_group_id, status, email_address, created_at, auth_uid').eq('request_group_id', gid).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      supabaseAdmin
+        .from('worker_application_status')
+        .select('id, request_group_id, status, email_address, created_at, auth_uid')
+        .eq('request_group_id', gid)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
     ]);
 
-    if (!statusRow && !info && !details && !rate) return res.status(404).json({ message: 'Application not found' });
+    if (!statusRow && !info && !details) return res.status(404).json({ message: 'Application not found' });
 
     return res.status(200).json({
       request_group_id: gid,
       status: statusRow || null,
       info: info || null,
       details: details || null,
-      rate: rate || null,
       required_documents: docs || null
     });
   } catch (e) {
@@ -1350,36 +1259,6 @@ exports.updateByGroup = async (req, res) => {
       return row;
     };
 
-    const upsertRate = async () => {
-      const r = payload.rate || {};
-      const s = String(r.rate_type || '').toLowerCase();
-      let rate_type = '';
-      if (s.includes('hour')) rate_type = 'Hourly Rate';
-      else if (s.includes('job') || s.includes('fixed') || s.includes('flat')) rate_type = 'By the Job Rate';
-      else rate_type = r.rate_type || '';
-      let rf = r.rate_from != null && r.rate_from !== '' ? Number(r.rate_from) : null;
-      let rt = r.rate_to != null && r.rate_to !== '' ? Number(r.rate_to) : null;
-      let rv = r.rate_value != null && r.rate_value !== '' ? Number(r.rate_value) : null;
-      if (rate_type === 'Hourly Rate') {
-        if (rf != null && rt == null) rt = rf;
-        if (rt != null && rf == null) rf = rt;
-      }
-      const row = {
-        request_group_id: gid,
-        worker_id: worker_id || null,
-        auth_uid: auth_uid || null,
-        email_address: email || null,
-        rate_type: rate_type || null,
-        rate_from: rf,
-        rate_to: rt,
-        rate_value: rv
-      };
-      const { data: existId } = await supabaseAdmin.from('worker_service_rate').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
-      if (existId?.id) await supabaseAdmin.from('worker_service_rate').update(row).eq('id', existId.id);
-      else await insertWorkerRate(row);
-      return row;
-    };
-
     const upsertDocs = async () => {
       const docs = payload.required_documents || payload.documents || null;
       if (!docs) return null;
@@ -1486,7 +1365,7 @@ exports.updateByGroup = async (req, res) => {
       return shape;
     };
 
-    const [infoRes, detailsRes, rateRes, docsRes] = await Promise.all([upsertInfo(), upsertDetails(), upsertRate(), upsertDocs()]);
+    const [infoRes, detailsRes, docsRes] = await Promise.all([upsertInfo(), upsertDetails(), upsertDocs()]);
 
     if (statusRow?.id) {
       await supabaseAdmin
@@ -1507,12 +1386,6 @@ exports.updateByGroup = async (req, res) => {
             years_experience: detailsRes?.years_experience ?? null,
             tools_provided: detailsRes?.tools_provided ?? null,
             work_description: detailsRes?.work_description || null
-          },
-          rate: {
-            rate_type: rateRes?.rate_type || null,
-            rate_from: rateRes?.rate_from ?? null,
-            rate_to: rateRes?.rate_to ?? null,
-            rate_value: rateRes?.rate_value ?? null
           }
         })
         .eq('id', statusRow.id);

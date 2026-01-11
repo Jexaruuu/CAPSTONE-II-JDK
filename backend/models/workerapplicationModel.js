@@ -1,4 +1,3 @@
-// workerapplicationModel.js
 const { supabaseAdmin } = require('../supabaseClient');
 const crypto = require('crypto');
 
@@ -47,18 +46,15 @@ async function insertWorkerWorkInformation(row) {
   if (error) throw error;
   return data;
 }
-async function insertWorkerRate(row) {
-  const { data, error } = await supabaseAdmin.from('worker_service_rate').insert([row]).select('id').single();
-  if (error) throw error;
-  return data;
-}
 async function insertWorkerRequiredDocuments(row) {
   const { data, error } = await supabaseAdmin.from('worker_required_documents').insert([row]).select('id').single();
   if (error) throw error;
   return data;
 }
 async function insertPendingApplication(row) {
-  const { data, error } = await supabaseAdmin.from('worker_application_status').insert([row]).select('id,created_at').single();
+  const safeRow = { ...(row || {}) };
+  if ('rate' in safeRow) delete safeRow.rate;
+  const { data, error } = await supabaseAdmin.from('worker_application_status').insert([safeRow]).select('id,created_at').single();
   if (error) throw error;
   return data;
 }
@@ -98,7 +94,6 @@ module.exports = {
   insertWorkerInformation,
   updateWorkerInformationWorkerId,
   insertWorkerWorkInformation,
-  insertWorkerRate,
   insertWorkerRequiredDocuments,
   insertPendingApplication,
   newGroupId,
