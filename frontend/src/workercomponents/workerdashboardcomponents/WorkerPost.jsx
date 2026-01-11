@@ -799,7 +799,7 @@ function WorkerPost() {
                       <span className="text-[#008cfc] font-semibold">{currentServiceTasks || '-'}</span>
                     </div>
                     <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago` : ''}</div>
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+                    <div className="mt-4 grid grid-cols-1 gap-y-3 gap-x-12 text-base text-gray-700">
                       <div className="space-y-1.5">
                         <div className="flex flex-wrap gap-x-2 gap-y-1">
                           <span className="text-gray-700 font-semibold">Barangay:</span>
@@ -818,42 +818,6 @@ function WorkerPost() {
                         <div className="flex flex-wrap gap-x-2 gap-y-1">
                           <span className="text-gray-700 font-semibold">Tools Provided:</span>
                           <span className={toolsClassLocal}>{toolsTextLocal}</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1.5 md:pl-10">
-                        <div className="flex flex-wrap gap-x-2 gap-y-1">
-                          <span className="text-gray-700 font-semibold">Rate Type:</span>
-                          <span className="text-[#008cfc] font-semibold">{getRateType(currentApp) || '-'}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-x-2 gap-y-1">
-                          <span className="text-gray-700 font-semibold">Service Rate:</span>
-                          <span className="text-[#008cfc] font-semibold">
-                            {(() => {
-                              const d = currentApp?.rate || currentApp?.details || {};
-                              const t = String(d?.rate_type || '').toLowerCase();
-                              const from = d?.rate_from;
-                              const to = d?.rate_to;
-                              const val = d?.rate_value;
-                              const peso = (v) => {
-                                if (v === null || v === undefined) return '';
-                                const s = String(v).trim();
-                                if (!s) return '';
-                                if (/₱|php/i.test(s)) return s;
-                                const n = parseFloat(s.replace(/,/g, ''));
-                                if (!isNaN(n)) return `₱${n.toLocaleString()}`;
-                                return `₱${s}`;
-                              };
-                              if (t.includes('job') || t.includes('fixed')) return val ? `${peso(val)}` : '-';
-                              if (t.includes('hour') || t.includes('range'))
-                                return from || to
-                                  ? `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`
-                                  : '-';
-                              if (val) return peso(val);
-                              if (from || to)
-                                return `${from ? peso(from) : ''}${from && to ? ' - ' : ''}${to ? peso(to) : ''}`;
-                              return '-';
-                            })()}
-                          </span>
                         </div>
                       </div>
                     </div>
