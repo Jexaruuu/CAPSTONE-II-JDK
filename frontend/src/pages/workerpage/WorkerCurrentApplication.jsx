@@ -160,7 +160,6 @@ const StatusBadge = ({ status }) => {
 const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
   const info = item.info || {};
   const work = item.work || {};
-  const rate = item.rate || {};
   const serviceTypesRaw = Array.isArray(work?.service_types)
     ? work.service_types
     : typeof work?.service_types === "string"
@@ -191,8 +190,6 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
       ? String(work.years_experience)
       : "";
   const tools = work?.tools_provided;
-  const rateTypeText = formatRateType(rate?.rate_type);
-  const showTopBadge = false;
 
   const buildServiceTasksText = (w) => {
     const jd = w?.job_details || w?.service_task;
@@ -247,7 +244,7 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
               <div className="mt-1 text-base text-gray-500">
                 {createdAgo ? `Created ${createdAgo}` : ""}
               </div>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+              <div className="mt-4 grid grid-cols-1 gap-y-3 gap-x-12 text-base text-gray-700">
                 <div className="space-y-1.5">
                   <div className="flex flex-wrap gap-x-2 gap-y-1">
                     <span className="text-gray-700 font-semibold">Barangay:</span>
@@ -273,24 +270,6 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
                           ? "Yes"
                           : "No"
                         : String(tools || "").trim() || "-"}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-1.5 md:pl-10">
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    <span className="text-gray-700 font-semibold">
-                      Rate Type:
-                    </span>
-                    <span className="text-[#008cfc] font-semibold">
-                      {rateTypeText || "-"}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    <span className="text-gray-700 font-semibold">
-                      Service Rate:
-                    </span>
-                    <span className="text-[#008cfc] font-semibold">
-                      <RateText rate={rate} />
                     </span>
                   </div>
                 </div>
@@ -1157,7 +1136,7 @@ export default function WorkerCurrentApplication() {
                 {!logoBroken ? (
                   <img src="/jdklogo.png" alt="Logo" className="w-14 h-14 object-contain" onError={() => setLogoBroken(true)} />
                 ) : (
-                  <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items中心 justify-center">
+                  <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
                   </div>
                 )}
