@@ -6,7 +6,7 @@ const DETAILS_KEY = 'clientServiceRequestDetails';
 const NIGHT_TIME_FEE = 200;
 const MIN_LAUNDRY_KG = 8;
 
-const INCLUDED_WORKERS = 2;
+const INCLUDED_WORKERS = 1;
 const EXTRA_WORKER_FEE = 150;
 const MAX_WORKERS = 5;
 const MIN_UNITS_FOR_EXTRA_WORKERS = 1;
@@ -26,6 +26,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const [workersNeeded, setWorkersNeeded] = useState(1);
   const [extraWorkerCount, setExtraWorkerCount] = useState(0);
   const [extraWorkersFeeTotal, setExtraWorkersFeeTotal] = useState(0);
+  
 
   const preserveQuantityRef = useRef(false);
 
@@ -507,48 +508,73 @@ const withPerUnitLabel = (rateStr) => {
     setHydrated(true);
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
+ useEffect(() => {
+  if (!hydrated) return;
 
-    const payload = {
-      serviceType,
-      serviceTask,
-      preferredTime,
-      units: inputUnitsSafe,
-      quantity_unit: quantityUnit,
-      billable_units: billableUnits,
-      minimum_quantity: isLaundry && quantityUnit === 'kg' ? MIN_LAUNDRY_KG : null,
-      minimum_applied: !!minApplied,
-      base_rate_raw: baseRateRaw,
-      base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
-      subtotal: Number.isFinite(computedSubtotal) ? computedSubtotal : 0,
-      preferred_time_fee: nightFee,
-      workersNeeded: workersNeededSafe,
-      extra_worker_count: Number.isFinite(Number(extraWorkerCount)) ? Number(extraWorkerCount) : 0,
-      extra_workers_fee: Number.isFinite(Number(extraWorkersFeeTotal)) ? Number(extraWorkersFeeTotal) : 0,
-      total: Number.isFinite(computedTotal) ? computedTotal : 0
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [
-    hydrated,
+  const payload = {
     serviceType,
     serviceTask,
     preferredTime,
-    units,
-    baseRateRaw,
-    baseRateNum,
-    computedSubtotal,
-    nightFee,
-    computedTotal,
-    quantityUnit,
-    inputUnitsSafe,
-    billableUnits,
-    minApplied,
-    isLaundry,
-    workersNeededSafe,
-    extraWorkerCount,
-    extraWorkersFeeTotal
-  ]);
+    units: inputUnitsSafe,
+    quantity_unit: quantityUnit,
+    billable_units: billableUnits,
+    minimum_quantity: isLaundry && quantityUnit === 'kg' ? MIN_LAUNDRY_KG : null,
+    minimum_applied: !!minApplied,
+    base_rate_raw: baseRateRaw,
+    base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
+    subtotal: Number.isFinite(computedSubtotal) ? computedSubtotal : 0,
+    preferred_time_fee: nightFee,
+    workersNeeded: workersNeededSafe,
+    workers_need: workersNeededSafe,
+    workers_needed: workersNeededSafe,
+    worker_needed: workersNeededSafe,
+    number_of_workers: workersNeededSafe,
+    num_workers: workersNeededSafe,
+    manpower: workersNeededSafe,
+    extra_worker_count: Number.isFinite(Number(extraWorkerCount)) ? Number(extraWorkerCount) : 0,
+    extra_workers_fee: Number.isFinite(Number(extraWorkersFeeTotal)) ? Number(extraWorkersFeeTotal) : 0,
+    total: Number.isFinite(computedTotal) ? computedTotal : 0
+  };
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+
+  try {
+    const raw = localStorage.getItem(DETAILS_KEY);
+    const d = raw ? JSON.parse(raw) : {};
+    const next = {
+      ...(d && typeof d === 'object' ? d : {}),
+      workersNeeded: workersNeededSafe,
+      workers_need: workersNeededSafe,
+      workers_needed: workersNeededSafe,
+      worker_needed: workersNeededSafe,
+      number_of_workers: workersNeededSafe,
+      num_workers: workersNeededSafe,
+      manpower: workersNeededSafe,
+      extra_worker_count: Number(payload.extra_worker_count) || 0,
+      extra_workers_fee: Number(payload.extra_workers_fee) || 0
+    };
+    localStorage.setItem(DETAILS_KEY, JSON.stringify(next));
+  } catch {}
+}, [
+  hydrated,
+  serviceType,
+  serviceTask,
+  preferredTime,
+  units,
+  baseRateRaw,
+  baseRateNum,
+  computedSubtotal,
+  nightFee,
+  computedTotal,
+  quantityUnit,
+  inputUnitsSafe,
+  billableUnits,
+  minApplied,
+  isLaundry,
+  workersNeededSafe,
+  extraWorkerCount,
+  extraWorkersFeeTotal
+]);
 
   useEffect(() => {
     if (!isLoadingNext) return;
@@ -615,24 +641,30 @@ const withPerUnitLabel = (rateStr) => {
   jumpTop();
   setIsLoadingNext(true);
   setTimeout(() => {
-    const statePayload = {
-      title,
-      service_type: serviceType,
-      service_task: serviceTask,
-      units: inputUnitsSafe,
-      quantity_unit: quantityUnit,
-      billable_units: billableUnits,
-      minimum_quantity: isLaundry && quantityUnit === 'kg' ? MIN_LAUNDRY_KG : null,
-      minimum_applied: !!minApplied,
-      base_rate_raw: baseRateRaw,
-      base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
-      subtotal: computedSubtotal,
-      preferred_time_fee: nightFee,
-      workers_needed: workersNeededSafe,
-      extra_worker_count: Number(extraWorkerCount) || 0,
-      extra_workers_fee: Number(extraWorkersFeeTotal) || 0,
-      total: computedTotal
-    };
+   const statePayload = {
+  title,
+  service_type: serviceType,
+  service_task: serviceTask,
+  units: inputUnitsSafe,
+  quantity_unit: quantityUnit,
+  billable_units: billableUnits,
+  minimum_quantity: isLaundry && quantityUnit === 'kg' ? MIN_LAUNDRY_KG : null,
+  minimum_applied: !!minApplied,
+  base_rate_raw: baseRateRaw,
+  base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
+  subtotal: computedSubtotal,
+  preferred_time_fee: nightFee,
+  workers_needed: workersNeededSafe,
+  workers_need: workersNeededSafe,
+  workersNeeded: workersNeededSafe,
+  worker_needed: workersNeededSafe,
+  number_of_workers: workersNeededSafe,
+  num_workers: workersNeededSafe,
+  manpower: workersNeededSafe,
+  extra_worker_count: Number(extraWorkerCount) || 0,
+  extra_workers_fee: Number(extraWorkersFeeTotal) || 0,
+  total: computedTotal
+};
 
     if (typeof handleNext === 'function') {
       handleNext();

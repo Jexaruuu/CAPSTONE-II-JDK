@@ -535,41 +535,43 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   };
 
   const workersNeeded = useMemo(() => {
-    const candidates = [
-      workers_needed_state,
-      workersNeeded_state,
-      worker_needed_state,
-      number_of_workers_state,
-      num_workers_state,
-      manpower_state,
-      savedDetails?.workers_needed,
-      savedDetails?.workersNeeded,
-      savedDetails?.worker_needed,
-      savedDetails?.number_of_workers,
-      savedDetails?.num_workers,
-      savedDetails?.manpower,
-      savedRate?.workers_needed,
-      savedRate?.workersNeeded,
-      savedRate?.worker_needed,
-      savedRate?.number_of_workers,
-      savedRate?.num_workers,
-      savedRate?.manpower
-    ];
-    for (const c of candidates) {
-      const n = parseWorkersNeeded(c);
-      if (n) return n;
-    }
-    return null;
-  }, [
+  const candidates = [
     workers_needed_state,
     workersNeeded_state,
     worker_needed_state,
     number_of_workers_state,
     num_workers_state,
     manpower_state,
-    savedDetails,
-    savedRate
-  ]);
+    savedDetails?.workers_need,
+    savedDetails?.workers_needed,
+    savedDetails?.workersNeeded,
+    savedDetails?.worker_needed,
+    savedDetails?.number_of_workers,
+    savedDetails?.num_workers,
+    savedDetails?.manpower,
+    savedRate?.workers_need,
+    savedRate?.workers_needed,
+    savedRate?.workersNeeded,
+    savedRate?.worker_needed,
+    savedRate?.number_of_workers,
+    savedRate?.num_workers,
+    savedRate?.manpower
+  ];
+  for (const c of candidates) {
+    const n = parseWorkersNeeded(c);
+    if (n) return n;
+  }
+  return null;
+}, [
+  workers_needed_state,
+  workersNeeded_state,
+  worker_needed_state,
+  number_of_workers_state,
+  num_workers_state,
+  manpower_state,
+  savedDetails,
+  savedRate
+]);
 
   const workersNeededDisplay = useMemo(() => {
     if (!workersNeeded) return '-';
@@ -638,36 +640,43 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       })();
 
       const workersNeedValue = (() => {
-        const candidates = [
-          workersNeeded,
-          detailsDraft?.workers_need,
-          detailsDraft?.workers_needed,
-          detailsDraft?.workersNeeded,
-          detailsDraft?.worker_needed,
-          detailsDraft?.number_of_workers,
-          detailsDraft?.num_workers,
-          detailsDraft?.manpower,
-          savedDetails?.workers_need,
-          savedDetails?.workers_needed,
-          savedDetails?.workersNeeded,
-          savedDetails?.worker_needed,
-          savedDetails?.number_of_workers,
-          savedDetails?.num_workers,
-          savedDetails?.manpower,
-          s?.workers_need,
-          s?.workers_needed,
-          s?.workersNeeded,
-          s?.worker_needed,
-          s?.number_of_workers,
-          s?.num_workers,
-          s?.manpower
-        ];
-        for (const c of candidates) {
-          const n = parseWorkersNeeded(c);
-          if (n) return n;
-        }
-        return null;
-      })();
+  const candidates = [
+    workersNeeded,
+    rateDraft?.workers_need,
+    rateDraft?.workers_needed,
+    rateDraft?.workersNeeded,
+    rateDraft?.worker_needed,
+    rateDraft?.number_of_workers,
+    rateDraft?.num_workers,
+    rateDraft?.manpower,
+    detailsDraft?.workers_need,
+    detailsDraft?.workers_needed,
+    detailsDraft?.workersNeeded,
+    detailsDraft?.worker_needed,
+    detailsDraft?.number_of_workers,
+    detailsDraft?.num_workers,
+    detailsDraft?.manpower,
+    savedDetails?.workers_need,
+    savedDetails?.workers_needed,
+    savedDetails?.workersNeeded,
+    savedDetails?.worker_needed,
+    savedDetails?.number_of_workers,
+    savedDetails?.num_workers,
+    savedDetails?.manpower,
+    s?.workers_need,
+    s?.workers_needed,
+    s?.workersNeeded,
+    s?.worker_needed,
+    s?.number_of_workers,
+    s?.num_workers,
+    s?.manpower
+  ];
+  for (const c of candidates) {
+    const n = parseWorkersNeeded(c);
+    if (n) return n;
+  }
+  return null;
+})();
 
       const extraWorkersFeeForPayload = (() => {
         const candidates = [
@@ -1121,9 +1130,11 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
 
   const showBreakdown = Number.isFinite(Number(totalForDisplay)) && Number(totalForDisplay) >= 0;
 
+   const showAddedWorkersFee = Number(extraWorkersFeeTotal) > 0;
+
   const extraWorkersFeeNode = (
-    <span className={`text-[15px] md:text-base font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-      {extraWorkersFeeTotal > 0 ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
+    <span className="text-[15px] md:text-base font-semibold text-[#008cfc]">
+      {`+ ${peso(extraWorkersFeeTotal)}`}
     </span>
   );
 
@@ -1207,8 +1218,8 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                     <div className="space-y-5">
                       <LabelValue label="Service Type" value={service_type} />
                       <LabelValue label="Service Task" value={service_task} />
-                      <LabelValue label="Workers Needed" value={workersNeededDisplay} />
-                      <LabelValue label="Added Workers Fee" value={extraWorkersFeeNode} />
+                       <LabelValue label="Workers Needed" value={workersNeededDisplay} />
+                      {showAddedWorkersFee ? <LabelValue label="Added Workers Fee" value={extraWorkersFeeNode} /> : null}
                       <LabelValue label="Preferred Date" value={preferred_date_display} />
                       <LabelValue label="Preferred Time" value={preferred_time_display} />
                       <LabelValue
@@ -1269,7 +1280,7 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                 <div className="px-6 py-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
                     {showBreakdown ? (
-                      <div className="md:col-span-2">
+                                   <div className="md:col-span-2">
                         <div className="mt-2 rounded-2xl border border-gray-200 bg-gray-50/40 p-5">
                           <div className="flex items-center justify-between">
                             <div className="text-sm font-semibold text-gray-900">Cost Breakdown</div>
@@ -1287,11 +1298,6 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                               <div className="mt-1 text-base font-semibold text-gray-900">
                                 {rateUnits} {unitDisplayLabel}
                               </div>
-                              {isLaundry && quantityUnit === 'kg' && minimumApplied && Number.isFinite(Number(billableUnits)) && billableUnits !== rateUnits ? (
-                                <div className="mt-1 text-xs text-gray-500 font-semibold">
-                                  billed as {billableUnits} kg{minimumQty ? ` • min ${minimumQty}kg` : ''}
-                                </div>
-                              ) : null}
                             </div>
 
                             <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -1306,20 +1312,16 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                               </div>
                             </div>
 
-                            <div className="rounded-xl border border-gray-200 bg-white p-4 sm:col-span-2">
-                              <div className="text-xs text-gray-500 font-medium">Added workers fee</div>
-                              <div className={`mt-1 text-base font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                                {extraWorkersFeeTotal > 0 ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
+                            {showAddedWorkersFee ? (
+                              <div className="rounded-xl border border-gray-200 bg-white p-4 sm:col-span-2">
+                                <div className="text-xs text-gray-500 font-medium">Added workers fee</div>
+                                <div className="mt-1 text-base font-semibold text-[#008cfc]">{`+ ${peso(extraWorkersFeeTotal)}`}</div>
                               </div>
-                            </div>
-
-                            <div className="sm:col-span-2 rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3">
-                              <div className="text-xs text-gray-500 font-medium">Total</div>
-                              <div className="text-lg font-bold text-gray-900">{peso(totalForDisplay)}</div>
-                            </div>
+                            ) : null}
                           </div>
                         </div>
                       </div>
+
                     ) : (
                       <div className="md:col-span-2">
                         <div className="rounded-xl border border-gray-200 bg-gray-50/40 px-4 py-3 text-sm text-gray-700 flex items-center justify-between gap-3">
@@ -1373,12 +1375,13 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                       <span className="text-base font-semibold text-[#008cfc]">{workersNeededDisplay}</span>
                     </div>
 
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-medium text-gray-700">Added Workers Fee:</span>
-                      <span className={`text-base font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                        {extraWorkersFeeTotal > 0 ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
-                      </span>
-                    </div>
+                                       {showAddedWorkersFee ? (
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-medium text-gray-700">Added Workers Fee:</span>
+                        <span className="text-base font-semibold text-[#008cfc]">{`+ ${peso(extraWorkersFeeTotal)}`}</span>
+                      </div>
+                    ) : null}
+
 
                     <div className="flex items-baseline gap-2">
                       <span className="text-sm font-medium text-gray-700">Schedule:</span>
@@ -1425,12 +1428,12 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
                               </div>
                             </div>
 
-                            <div className="col-span-2 rounded-xl bg-white border border-gray-200 px-3 py-2">
-                              <div className="text-[11px] text-gray-500 font-medium">Added workers fee</div>
-                              <div className={`text-sm font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                                {extraWorkersFeeTotal > 0 ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
+                            {showAddedWorkersFee ? (
+                              <div className="col-span-2 rounded-xl bg-white border border-gray-200 px-3 py-2">
+                                <div className="text-[11px] text-gray-500 font-medium">Added workers fee</div>
+                                <div className="text-sm font-semibold text-[#008cfc]">{`+ ${peso(extraWorkersFeeTotal)}`}</div>
                               </div>
-                            </div>
+                            ) : null}
 
                             <div className="col-span-2 rounded-xl bg-white border border-gray-200 px-3 py-2">
                               <div className="text-[11px] text-gray-500 font-medium">Base rate</div>

@@ -8,9 +8,32 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const NIGHT_TIME_FEE = 200;
 
-const INCLUDED_WORKERS = 2;
+const INCLUDED_WORKERS = 1;
 const EXTRA_WORKER_FEE = 150;
-const MAX_WORKERS = 6;
+const MAX_WORKERS = 5;
+
+
+const TASK_HEADERS = new Set([
+  'Regular Clothes',
+  'Dry Cleaning (Per Piece)',
+  'Electrical',
+  'Appliances',
+  'Electrical',
+  'Appliances'
+]);
+
+const normalizeHeader = (t) =>
+  String(t || '')
+    .replace(/^[—\-–\s]+|[—\-–\s]+$/g, '')
+    .trim();
+
+const isTaskHeader = (t) => {
+  const raw = String(t || '').trim();
+  if (TASK_HEADERS.has(raw)) return true;
+  const n = normalizeHeader(raw);
+  return TASK_HEADERS.has(n);
+};
+
 
 const toYesNo = v => {
   const s = String(v ?? '').trim().toLowerCase();
@@ -105,6 +128,9 @@ const formatRate = (v) => {
 
 const withPerUnitLabel = (rateStr) => {
   if (!rateStr) return '';
+  const s = String(rateStr).toLowerCase();
+  if (s.includes('/kg') || s.includes('kg') || s.includes('/sq.m') || s.includes('sq.m') || s.includes('/piece') || s.includes('piece'))
+    return rateStr;
   return `per unit ${rateStr}`;
 };
 
@@ -112,67 +138,94 @@ const shouldShowPerUnit = (type) =>
   type === 'Car Washing' || type === 'Plumbing' || type === 'Carpentry' || type === 'Electrical Works';
 
 const serviceTaskRates = {
+  'Car Washing': {
+    '5 Seater Sedan (Interior + Carpet)': 3150,
+    '7 Seater MPV (Interior + Carpet)': 3500,
+    '7 - 8 Seater SUV (Interior + Carpet)': 3500,
+    '5 Seater Pick Up (Interior + Carpet)': 3300,
+    '10 Seater Family Van (Interior + Carpet)': 4500,
+    '1 - 2 Seater (Interior + Carpet)': 1500,
+    '5 Seater Sedan (Interior + Exterior)': 3500,
+    '7 Seater MPV (Interior + Exterior)': 3700,
+    '7 - 8 Seater SUV (Interior + Exterior)': 3700,
+    '5 Seater Pick Up (Interior + Exterior)': 3500,
+    '10 Seater Family Van (Interior + Exterior)': 5000
+  },
   Carpentry: {
-    'General Carpentry': 1000,
-    'Furniture Repair': 900,
-    'Wood Polishing': 1200,
-    'Door & Window Fitting': 1500,
-    'Custom Furniture Design': 2000,
-    'Modular Kitchen Installation': 6000,
-    'Flooring & Decking': 3500,
-    'Cabinet & Wardrobe Fixing': 1200,
-    'Wall Paneling & False Ceiling': 4000,
-    'Wood Restoration & Refinishing': 2500
+    'Furniture Setup (Small Items)': 400,
+    'Furniture Setup (Large Items)': 1000,
+    'Basic Door & Lock Repair': 650,
+    'Smart Lock Repair': 1200,
+    'Wall & Ceiling Repair': '₱500/sq.m',
+    'Waterproofing Inspection': 750,
+    'Waterproofing Repair': '₱600/sq.m',
+    'Roofing Inspection': 800,
+    'Roofing Repair': '₱650/sq.m'
   },
   'Electrical Works': {
-    'Wiring Repair': 1000,
-    'Appliance Installation': 800,
-    'Lighting Fixtures': 700,
-    'Circuit Breaker & Fuse Repair': 1200,
-    'CCTV & Security System Setup': 2500,
-    'Fan & Exhaust Installation': 700,
-    'Inverter & Battery Setup': 1800,
-    'Switchboard & Socket Repair': 800,
-    'Electrical Safety Inspection': 1500,
-    'Smart Home Automation': 3000
+    'Electrical Inspection': 500,
+    'Light Fixture Installation': 750,
+    'Light Fixture Repair': 1100,
+    'Wiring Installation': 800,
+    'Wiring Repair': 1200,
+    'Outlet Installation': 850,
+    'Outlet Repair': 1000,
+    'Circuit Breaker Installation': 850,
+    'Circuit Breaker Repair': 1100,
+    'Switch Installation': 800,
+    'Switch Repair': 1000,
+    'Ceiling Fan Installation': 800,
+    'Ceiling Fan Repair': 1000,
+    'Outdoor Lightning Installation': 850,
+    'Outdoor Lightning Repair': 1000,
+    'Doorbell Installation': 800,
+    'Doorbell Repair': 1000,
+    'Refrigerator Repair': 950,
+    'Commercial Freezer Repair': 950,
+    'TV Repair (50" to 90")': 3200,
+    'TV Installation (50" to 90")': 2500,
+    'Washing Machine Repair': 990,
+    'Washing Machine Installation': 1000,
+    'Stand Fan Repair': 380,
+    'Tower Fan Repair': 450,
+    'Dishwasher Repair': 600,
+    'Dishwasher Installation': 1100,
+    'Microwave Repair': 850,
+    'Oven Repair': 850,
+    'Rice Cooker Repair': 600
   },
   Plumbing: {
-    'Leak Fixing': 900,
-    'Pipe Installation': 1500,
-    'Bathroom Fittings': 1200,
-    'Drain Cleaning & Unclogging': 1800,
-    'Water Tank Installation': 2500,
-    'Gas Pipeline Installation': 3500,
-    'Septic Tank & Sewer Repair': 4500,
-    'Water Heater Installation': 2000,
-    'Toilet & Sink Repair': 1000,
-    'Kitchen Plumbing Solutions': 1800
-  },
-  'Car Washing': {
-    'Exterior Wash': 350,
-    'Interior Cleaning': 700,
-    'Wax & Polish': 1200,
-    'Underbody Cleaning': 500,
-    'Engine Bay Cleaning': 900,
-    'Headlight Restoration': 1500,
-    'Ceramic Coating': 12000,
-    'Tire & Rim Cleaning': 400,
-    'Vacuum & Odor Removal': 700,
-    'Paint Protection Film Application': 15000
+    'Plumbing Inspection': 500,
+    'Faucet Leak Repair': 1200,
+    'Grease Trap Cleaning': 1200,
+    'Sink Declogging': 2200,
+    'Pipe Repair (Exposed Pipe)': 2200,
+    'Toilet Repair': 2900,
+    'Drainage Declogging': 4000,
+    'Pipe Line Declogging': 5000,
+    'Water Heater Installation': 1200,
+    'Water Heater Repair': 1500,
+    'Shower Installation': 1200
   },
   Laundry: {
-    'Dry Cleaning': '₱130/kg',
-    Ironing: '₱100/kg',
-    'Wash & Fold': '₱50/kg',
-    'Steam Pressing': '₱130/kg',
-    'Stain Removal Treatment': '₱180/kg',
-    'Curtains & Upholstery Cleaning': '₱400–₱800',
-    'Delicate Fabric Care': '₱90/kg',
-    'Shoe & Leather Cleaning': '₱250/pair',
-    'Express Same-Day Laundry': '₱70/kg',
-    'Eco-Friendly Washing': '₱60/kg'
+    'Regular Clothes (Wash + Dry + Fold)': '₱39/kg (min 8 kg)',
+    Handwash: '₱120/kg',
+    'Towels/Linens/Denim (Wash + Dry + Fold)': '₱75/kg (min 8 kg)',
+    'Blankets/Comforters (Wash + Dry + Fold)': '₱99/kg (max 8 kg)',
+    Barong: '₱400/piece',
+    'Coat (Men-Adult)': '₱700/piece',
+    'Coat (Men-Kids)': '₱400/piece',
+    'Vest (Men)': '₱150/piece',
+    'Vest (Kids)': '₱100/piece',
+    'Polo (Long Sleeves)': '₱240/piece',
+    'Polo (Short Sleeves)': '₱180/piece',
+    'Pants (Men/Women)': '₱250/piece',
+    'Blazer (Women)': '₱650/piece',
+    'Dress (Long)': '₱700/piece',
+    'Dress (Short)': '₱500/piece'
   }
 };
+
 
 const getSelectedTaskRate = (serviceType, serviceTask) => {
   if (!serviceType || !serviceTask) return '';
@@ -210,6 +263,17 @@ const isLaundryRatePerKg = (serviceType, serviceTask) => {
   return s.includes('/kg') || s.includes('per kg');
 };
 
+const closeOtherDropdowns = (except) => {
+  if (except !== 'barangay') setBarangayOpen(false);
+  if (except !== 'st') setStOpen(false);
+  if (except !== 'task') setTaskOpen(false);
+  if (except !== 'tools') setToolsOpen(false);
+  if (except !== 'urgent') setUrgentOpen(false);
+  if (except !== 'pd') { setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }
+  if (except !== 'pt') setPtOpen(false);
+  if (except !== 'workers') setWorkersNeedOpen(false);
+};
+
 const PopList = ({
   items,
   value,
@@ -230,6 +294,18 @@ const PopList = ({
       {items && items.length ? items.map((it) => {
         const isSel = value === it;
         const disabled = disabledLabel && disabledLabel(it);
+        if (disabled) {
+  const headerText = normalizeHeader(it);
+  return (
+    <div key={String(it)} className="py-2">
+      <div className="flex items-center gap-3">
+        <div className="h-px bg-gray-200 flex-1" />
+        <div className="text-xs font-bold text-gray-900">{headerText}</div>
+        <div className="h-px bg-gray-200 flex-1" />
+      </div>
+    </div>
+  );
+}
         const right = typeof rightLabel === 'function' ? (rightLabel(it) || '') : '';
         return (
           <button
@@ -320,6 +396,36 @@ export default function ClientEditServiceRequest() {
 
   const fileRef = useRef(null);
   const clientFileRef = useRef(null);
+
+  const taskTextRef = useRef(null);
+const taskMarqueeRef = useRef(null);
+
+const stopTaskMarquee = () => {
+  if (taskMarqueeRef.current) {
+    clearInterval(taskMarqueeRef.current);
+    taskMarqueeRef.current = null;
+  }
+  if (taskTextRef.current) taskTextRef.current.scrollLeft = 0;
+};
+
+const startTaskMarquee = () => {
+  const el = taskTextRef.current;
+  if (!el) return;
+  if (el.scrollWidth <= el.clientWidth) return;
+  if (taskMarqueeRef.current) return;
+
+  taskMarqueeRef.current = setInterval(() => {
+    const node = taskTextRef.current;
+    if (!node) return;
+    if (node.scrollWidth <= node.clientWidth) return;
+    const max = node.scrollWidth - node.clientWidth;
+    if (node.scrollLeft >= max) node.scrollLeft = 0;
+    else node.scrollLeft += 1;
+  }, 18);
+};
+
+useEffect(() => () => stopTaskMarquee(), []);
+
 
   const sanitizeDecimal = (s) => {
     const x = String(s ?? '').replace(/[^\d.]/g, '');
@@ -614,13 +720,99 @@ export default function ClientEditServiceRequest() {
   };
 
   const serviceTypes = ['Carpentry', 'Electrical Works', 'Plumbing', 'Car Washing', 'Laundry'];
-  const serviceTasks = {
-    Carpentry: ['General Carpentry', 'Furniture Repair', 'Wood Polishing', 'Door & Window Fitting', 'Custom Furniture Design', 'Modular Kitchen Installation', 'Flooring & Decking', 'Cabinet & Wardrobe Fixing', 'Wall Paneling & False Ceiling', 'Wood Restoration & Refinishing'],
-    'Electrical Works': ['Wiring Repair', 'Appliance Installation', 'Lighting Fixtures', 'Circuit Breaker & Fuse Repair', 'CCTV & Security System Setup', 'Fan & Exhaust Installation', 'Inverter & Battery Setup', 'Switchboard & Socket Repair', 'Electrical Safety Inspection', 'Smart Home Automation'],
-    Plumbing: ['Leak Fixing', 'Pipe Installation', 'Bathroom Fittings', 'Drain Cleaning & Unclogging', 'Water Tank Installation', 'Gas Pipeline Installation', 'Septic Tank & Sewer Repair', 'Water Heater Installation', 'Toilet & Sink Repair', 'Kitchen Plumbing Solutions'],
-    'Car Washing': ['Exterior Wash', 'Interior Cleaning', 'Wax & Polish', 'Underbody Cleaning', 'Engine Bay Cleaning', 'Headlight Restoration', 'Ceramic Coating', 'Tire & Rim Cleaning', 'Vacuum & Odor Removal', 'Paint Protection Film Application'],
-    Laundry: ['Dry Cleaning', 'Ironing', 'Wash & Fold', 'Steam Pressing', 'Stain Removal Treatment', 'Curtains & Upholstery Cleaning', 'Delicate Fabric Care', 'Shoe & Leather Cleaning', 'Express Same-Day Laundry', 'Eco-Friendly Washing']
-  };
+ const serviceTasks = {
+  'Car Washing': [
+    '5 Seater Sedan (Interior + Carpet)',
+    '7 Seater MPV (Interior + Carpet)',
+    '7 - 8 Seater SUV (Interior + Carpet)',
+    '5 Seater Pick Up (Interior + Carpet)',
+    '10 Seater Family Van (Interior + Carpet)',
+    '1 - 2 Seater (Interior + Carpet)',
+    '5 Seater Sedan (Interior + Exterior)',
+    '7 Seater MPV (Interior + Exterior)',
+    '7 - 8 Seater SUV (Interior + Exterior)',
+    '5 Seater Pick Up (Interior + Exterior)',
+    '10 Seater Family Van (Interior + Exterior)'
+  ],
+  Carpentry: [
+    'Furniture Setup (Small Items)',
+    'Furniture Setup (Large Items)',
+    'Basic Door & Lock Repair',
+    'Smart Lock Repair',
+    'Wall & Ceiling Repair',
+    'Waterproofing Inspection',
+    'Waterproofing Repair',
+    'Roofing Inspection',
+    'Roofing Repair'
+  ],
+  'Electrical Works': [
+    'Electrical',
+    'Electrical Inspection',
+    'Light Fixture Installation',
+    'Light Fixture Repair',
+    'Wiring Installation',
+    'Wiring Repair',
+    'Outlet Installation',
+    'Outlet Repair',
+    'Circuit Breaker Installation',
+    'Circuit Breaker Repair',
+    'Switch Installation',
+    'Switch Repair',
+    'Ceiling Fan Installation',
+    'Ceiling Fan Repair',
+    'Outdoor Lightning Installation',
+    'Outdoor Lightning Repair',
+    'Doorbell Installation',
+    'Doorbell Repair',
+    'Appliances',
+    'Refrigerator Repair',
+    'Commercial Freezer Repair',
+    'TV Repair (50" to 90")',
+    'TV Installation (50" to 90")',
+    'Washing Machine Repair',
+    'Washing Machine Installation',
+    'Stand Fan Repair',
+    'Tower Fan Repair',
+    'Dishwasher Repair',
+    'Dishwasher Installation',
+    'Microwave Repair',
+    'Oven Repair',
+    'Rice Cooker Repair'
+  ],
+  Plumbing: [
+    'Plumbing Inspection',
+    'Faucet Leak Repair',
+    'Grease Trap Cleaning',
+    'Sink Declogging',
+    'Pipe Repair (Exposed Pipe)',
+    'Toilet Repair',
+    'Drainage Declogging',
+    'Pipe Line Declogging',
+    'Water Heater Installation',
+    'Water Heater Repair',
+    'Shower Installation'
+  ],
+  Laundry: [
+    'Regular Clothes',
+    'Regular Clothes (Wash + Dry + Fold)',
+    'Handwash',
+    'Towels/Linens/Denim (Wash + Dry + Fold)',
+    'Blankets/Comforters (Wash + Dry + Fold)',
+    'Dry Cleaning (Per Piece)',
+    'Barong',
+    'Coat (Men-Adult)',
+    'Coat (Men-Kids)',
+    'Vest (Men)',
+    'Vest (Kids)',
+    'Polo (Long Sleeves)',
+    'Polo (Short Sleeves)',
+    'Pants (Men/Women)',
+    'Blazer (Women)',
+    'Dress (Long)',
+    'Dress (Short)'
+  ]
+};
+
   const sortedServiceTypes = useMemo(() => [...serviceTypes].sort(), []);
 
   const stRef = useRef(null);
@@ -641,6 +833,19 @@ export default function ClientEditServiceRequest() {
   const [workersNeedOpen, setWorkersNeedOpen] = useState(false);
   const [barangayOpen, setBarangayOpen] = useState(false);
   const [barangayQuery, setBarangayQuery] = useState('');
+
+  const peso = (n) => `₱${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 }).format(Number(n) || 0)}`;
+
+  const closeOtherDropdowns = (except) => {
+  if (except !== 'barangay') setBarangayOpen(false);
+  if (except !== 'st') setStOpen(false);
+  if (except !== 'task') setTaskOpen(false);
+  if (except !== 'tools') setToolsOpen(false);
+  if (except !== 'urgent') setUrgentOpen(false);
+  if (except !== 'pd') { setPdOpen(false); setPdMonthOpen(false); setPdYearOpen(false); }
+  if (except !== 'pt') setPtOpen(false);
+  if (except !== 'workers') setWorkersNeedOpen(false);
+};
 
   const barangays = [
     'Alangilan', 'Alijis', 'Banago', 'Bata', 'Cabug', 'Estefania', 'Felisa',
@@ -697,20 +902,24 @@ export default function ClientEditServiceRequest() {
   const [pdMonthOpen, setPdMonthOpen] = useState(false);
   const [pdYearOpen, setPdYearOpen] = useState(false);
 
-  const openPD = () => {
-    if (preferredDate) setPdView(fromYMDLocal(preferredDate));
-    else setPdView(fromYMDLocal(todayStr));
-    setPdOpen(true);
-    setPdMonthOpen(false);
-    setPdYearOpen(false);
-  };
+
+const openPD = () => {
+  closeOtherDropdowns('pd');
+  if (preferredDate) setPdView(fromYMDLocal(preferredDate));
+  else setPdView(fromYMDLocal(todayStr));
+  setPdOpen(true);
+  setPdMonthOpen(false);
+  setPdYearOpen(false);
+};
   const setPDMonthYear = (m, y) => {
     const next = new Date(y, m, 1);
     const minStart = startOfMonth(fromYMDLocal(todayStr));
     setPdView(next < minStart ? minStart : next);
   };
-
-  const openPT = () => setPtOpen(true);
+const openPT = () => {
+  closeOtherDropdowns('pt');
+  setPtOpen(true);
+};
   const to12h = (hhmm) => {
     if (!hhmm) return '';
     const [h, m] = hhmm.split(':').map((x) => parseInt(x, 10));
@@ -797,36 +1006,51 @@ export default function ClientEditServiceRequest() {
   };
 
   useEffect(() => {
-    const onDown = (e) => {
-      const t = e.target;
-      if (pdOpen && pdRef.current && !pdRef.current.contains(t)) {
-        setPdOpen(false);
-        setPdMonthOpen(false);
-        setPdYearOpen(false);
-      }
-      if (ptOpen && ptRef.current && !ptRef.current.contains(t)) {
-        setPtOpen(false);
-      }
-      if (workersNeedOpen && workersNeedRef.current && !workersNeedRef.current.contains(t)) {
-        setWorkersNeedOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [pdOpen, ptOpen, workersNeedOpen]);
+  const onDown = (e) => {
+    const t = e.target;
+
+    if (barangayOpen && barangayRef.current && !barangayRef.current.contains(t)) setBarangayOpen(false);
+
+    if (stOpen && stRef.current && !stRef.current.contains(t)) setStOpen(false);
+
+    if (taskOpen && taskRef.current && !taskRef.current.contains(t)) setTaskOpen(false);
+
+    if (toolsOpen && toolsRef.current && !toolsRef.current.contains(t)) setToolsOpen(false);
+
+    if (urgentOpen && urgentRef.current && !urgentRef.current.contains(t)) setUrgentOpen(false);
+
+    if (pdOpen && pdRef.current && !pdRef.current.contains(t)) {
+      setPdOpen(false);
+      setPdMonthOpen(false);
+      setPdYearOpen(false);
+    }
+
+    if (ptOpen && ptRef.current && !ptRef.current.contains(t)) setPtOpen(false);
+
+    if (workersNeedOpen && workersNeedRef.current && !workersNeedRef.current.contains(t)) setWorkersNeedOpen(false);
+  };
+
+  document.addEventListener('mousedown', onDown);
+  return () => document.removeEventListener('mousedown', onDown);
+}, [barangayOpen, stOpen, taskOpen, toolsOpen, urgentOpen, pdOpen, ptOpen, workersNeedOpen]);
 
   const isLaundry = useMemo(() => String(serviceType || '').toLowerCase() === 'laundry', [serviceType]);
 
-  const workersNeedSafe = useMemo(() => clampInt(workersNeed || 1, 1, MAX_WORKERS), [workersNeed]);
-  const extraWorkerCount = useMemo(() => Math.max(0, workersNeedSafe - INCLUDED_WORKERS), [workersNeedSafe]);
-  const extraWorkersFeeTotalLocal = useMemo(() => extraWorkerCount * EXTRA_WORKER_FEE, [extraWorkerCount]);
+const workersNeedSafe = useMemo(() => clampInt(workersNeed || 1, 1, MAX_WORKERS), [workersNeed]);
+const extraWorkerCount = useMemo(() => Math.max(0, workersNeedSafe - INCLUDED_WORKERS), [workersNeedSafe]);
+const extraWorkersFeeTotalLocal = useMemo(() => extraWorkerCount * EXTRA_WORKER_FEE, [extraWorkerCount]);
 
-  const preferredTimeFeeAmountLocal = useMemo(() => (preferredTime && isNightTimeForFee(preferredTime) ? NIGHT_TIME_FEE : 0), [preferredTime]);
-  const preferredTimeFeeDisplay = useMemo(() => (preferredTimeFeeAmountLocal > 0 ? formatRate(preferredTimeFeeAmountLocal) : ''), [preferredTimeFeeAmountLocal]);
-  const extraWorkersFeeDisplay = useMemo(() => (extraWorkersFeeTotalLocal > 0 ? formatRate(extraWorkersFeeTotalLocal) : ''), [extraWorkersFeeTotalLocal]);
+const preferredTimeFeeAmountLocal = useMemo(() => (preferredTime && isNightTimeForFee(preferredTime) ? NIGHT_TIME_FEE : 0), [preferredTime]);
+const preferredTimeFeeDisplay = useMemo(() => (preferredTimeFeeAmountLocal > 0 ? peso(preferredTimeFeeAmountLocal) : ''), [preferredTimeFeeAmountLocal]);
 
-  const preferredTimeFeeLabelLocal = useMemo(() => (preferredTimeFeeDisplay ? `+ fee ${preferredTimeFeeDisplay}` : ''), [preferredTimeFeeDisplay]);
-  const workersFeeLabelLocal = useMemo(() => (extraWorkersFeeDisplay ? `+ fee ${extraWorkersFeeDisplay}` : ''), [extraWorkersFeeDisplay]);
+const workersFeeAppliesLocal = useMemo(() => (Number(extraWorkersFeeTotalLocal) || 0) > 0, [extraWorkersFeeTotalLocal]);
+const extraWorkersFeeDisplay = useMemo(() => (workersFeeAppliesLocal ? peso(extraWorkersFeeTotalLocal) : ''), [workersFeeAppliesLocal, extraWorkersFeeTotalLocal]);
+
+const preferredTimeFeeLabelLocal = useMemo(() => (preferredTimeFeeDisplay ? `+ fee ${preferredTimeFeeDisplay}` : ''), [preferredTimeFeeDisplay]);
+const workersFeeLabelLocal = useMemo(
+  () => (workersFeeAppliesLocal ? `+ fee ${peso(extraWorkersFeeTotalLocal)}` : ''),
+  [workersFeeAppliesLocal, extraWorkersFeeTotalLocal]
+);
 
   const selectedTaskRateRaw = useMemo(() => {
     if (!serviceType || !serviceTask) return null;
@@ -914,7 +1138,7 @@ export default function ClientEditServiceRequest() {
 
   useEffect(() => { const handler = (e) => { if (loading) e.preventDefault(); }; if (loading) { window.addEventListener('wheel', handler, { passive: false }); window.addEventListener('touchmove', handler, { passive: false }); } return () => { window.removeEventListener('wheel', handler); window.removeEventListener('touchmove', handler); }; }, [loading]);
 
-  const workersNeedOptions = useMemo(() => Array.from({ length: MAX_WORKERS }, (_, i) => String(i + 1)), []);
+  const workersNeedOptions = useMemo(() => Array.from({ length: MAX_WORKERS }, (_, i) => String(i + 1)), [MAX_WORKERS]);
 
   return (
     <>
@@ -1018,7 +1242,7 @@ export default function ClientEditServiceRequest() {
                         <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
                           <button
                             type="button"
-                            onClick={() => setBarangayOpen(s => !s)}
+                            onClick={() => { closeOtherDropdowns('barangay'); setBarangayOpen(s => !s); }}
                             className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
                             aria-expanded={barangayOpen}
                             aria-haspopup="listbox"
@@ -1027,7 +1251,7 @@ export default function ClientEditServiceRequest() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setBarangayOpen(s => !s)}
+                            onClick={() => { closeOtherDropdowns('barangay'); setBarangayOpen(s => !s); }}
                             className="px-3 pr-4 text-gray-600 hover:text-gray-800"
                             aria-label="Open barangay list"
                           >
@@ -1111,10 +1335,10 @@ export default function ClientEditServiceRequest() {
                           {sortedServiceTypes.map((t)=> <option key={t} value={t}>{t}</option>)}
                         </select>
                         <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                          <button type="button" onClick={()=>setStOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
+                          <button type="button" onClick={() => { closeOtherDropdowns('st'); setStOpen(s => !s); }} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
                             {serviceType || 'Select Service Type'}
                           </button>
-                          <button type="button" onClick={()=>setStOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open service type options">
+                          <button type="button" onClick={() => { closeOtherDropdowns('st'); setStOpen(s => !s); }} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open service type options">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
                           </button>
                         </div>
@@ -1135,39 +1359,57 @@ export default function ClientEditServiceRequest() {
                         <span className="block text-sm font-medium text-gray-700 mb-2">Service Task</span>
                         <select value={serviceTask} onChange={e=>setServiceTask(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1} disabled={!serviceType}>
                           <option value=""></option>
-                          {serviceType && (serviceTasks[serviceType] || []).map((t)=> <option key={t} value={t}>{t}</option>)}
+                         {serviceType && (serviceTasks[serviceType] || []).filter((t) => !isTaskHeader(t)).map((t) => (
+  <option key={t} value={t}>{t}</option>
+))}
+
                         </select>
                         <div className={`flex items-center rounded-xl border ${!serviceType ? 'opacity-60 cursor-not-allowed border-gray-300' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
-                          <button type="button" onClick={()=>serviceType && setTaskOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none" disabled={!serviceType}>
-                            {serviceTask ? (
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="truncate">{serviceTask}</span>
-                                <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{getSelectedTaskRate(serviceType, serviceTask)}</span>
-                              </div>
-                            ) : (
-                              <span>Select Service Task</span>
-                            )}
+                          <button type="button" onClick={() => { if (!serviceType) return; closeOtherDropdowns('task'); setTaskOpen(s => !s); }} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none" disabled={!serviceType}>
+                      {serviceTask ? (
+  <div className="flex items-center justify-between gap-3 min-w-0">
+    <span
+      ref={taskTextRef}
+      onMouseEnter={startTaskMarquee}
+      onMouseLeave={stopTaskMarquee}
+      title={serviceTask}
+      className="min-w-0 flex-1 overflow-hidden whitespace-nowrap"
+    >
+      {serviceTask}
+    </span>
+    <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{getSelectedTaskRate(serviceType, serviceTask)}</span>
+  </div>
+) : (
+  <span>Select Service Task</span>
+)}
                           </button>
                           <button type="button" onClick={()=>serviceType && setTaskOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open service task options" disabled={!serviceType}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
                           </button>
                         </div>
-                        {taskOpen && (
-                          <PopList
-                            items={serviceTasks[serviceType] || []}
-                            value={serviceTask}
-                            onSelect={(v)=>{ setServiceTask(v); setTaskOpen(false); }}
-                            emptyLabel="Select a service type first"
-                            fullWidth
-                            title="Select Service Task"
-                            clearable
-                            onClear={()=>{ setServiceTask(''); setTaskOpen(false); }}
-                            rightLabel={(it) => {
-                              const rr = formatRate(serviceTaskRates?.[serviceType]?.[it]);
-                              return shouldShowPerUnit(serviceType) ? withPerUnitLabel(rr) : rr;
-                            }}
-                          />
-                        )}
+             {taskOpen && (
+  <PopList
+    items={serviceTasks[serviceType] || []}
+    value={serviceTask}
+    disabledLabel={(it) => isTaskHeader(it)}
+    onSelect={(v) => {
+      if (isTaskHeader(v)) return;
+      setServiceTask(v);
+      setTaskOpen(false);
+    }}
+    emptyLabel="Select a service type first"
+    fullWidth
+    title="Select Service Task"
+    clearable
+    onClear={() => { setServiceTask(''); setTaskOpen(false); }}
+    rightLabel={(it) => {
+      if (isTaskHeader(it)) return '';
+      const rr = formatRate(serviceTaskRates?.[serviceType]?.[it]);
+      return shouldShowPerUnit(serviceType) ? withPerUnitLabel(rr) : rr;
+    }}
+  />
+)}
+
                       </div>
 
                       <div className="relative md:col-span-2" ref={pdRef}>
@@ -1364,35 +1606,37 @@ export default function ClientEditServiceRequest() {
 
                       <div className="relative md:col-span-2" ref={ptRef}>
                         <span className="block text-sm font-medium text-gray-700 mb-2">Preferred Time</span>
-                        <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                          <button
-                            type="button"
-                            onClick={() => { if (ptOpen) setPtOpen(false); else openPT(); }}
-                            onFocus={() => setPtOpen(true)}
-                            className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
-                          >
-                            {preferredTime ? (
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="truncate">{to12h(preferredTime)}</span>
-                                {preferredTimeFeeLabelLocal ? (
-                                  <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{preferredTimeFeeLabelLocal}</span>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <span>hh:mm AM/PM</span>
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { if (ptOpen) setPtOpen(false); else openPT(); }}
-                            className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                            aria-label="Open time options"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-12.5a.75.75 0 00-1.5 0V10c0 .199.079.39.22.53l2.75 2.75a.75.75 0 101.06-1.06l-2.53-2.53V5.5z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </div>
+                       <div className="flex items-center justify-between rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+  <button
+    type="button"
+    onClick={() => { if (ptOpen) setPtOpen(false); else openPT(); }}
+    className="flex-1 min-w-0 px-4 py-3 text-left rounded-l-xl focus:outline-none"
+    aria-label="Open time options"
+  >
+    {preferredTime ? (
+      <div className="flex items-center justify-between gap-3 min-w-0">
+        <span className="truncate">{to12h(preferredTime)}</span>
+        {preferredTimeFeeLabelLocal ? (
+          <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{preferredTimeFeeLabelLocal}</span>
+        ) : null}
+      </div>
+    ) : (
+      <span>hh:mm AM/PM</span>
+    )}
+  </button>
+
+  <button
+    type="button"
+    onClick={() => { if (ptOpen) setPtOpen(false); else openPT(); }}
+    className="shrink-0 px-3 pr-4 text-gray-600 hover:text-gray-800"
+    aria-label="Open time options"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-12.5a.75.75 0 00-1.5 0V10c0 .199.079.39.22.53l2.75 2.75a.75.75 0 101.06-1.06l-2.53-2.53V5.5z" clipRule="evenodd" />
+    </svg>
+  </button>
+</div>
+
 
                         {ptOpen && (
                           <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-2xl border border-gray-200 bg-white shadow-xl p-3">
@@ -1479,30 +1723,33 @@ export default function ClientEditServiceRequest() {
                           <option value=""></option>
                           {workersNeedOptions.map((n)=> <option key={n} value={n}>{n}</option>)}
                         </select>
-                        <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                          <button
-                            type="button"
-                            onClick={()=>setWorkersNeedOpen(s=>!s)}
-                            className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="truncate">
-                                {workersNeedSafe} worker{workersNeedSafe === 1 ? '' : 's'}
-                              </span>
-                              {workersFeeLabelLocal ? (
-                                <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{workersFeeLabelLocal}</span>
-                              ) : null}
-                            </div>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={()=>setWorkersNeedOpen(s=>!s)}
-                            className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                            aria-label="Open workers need options"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
-                          </button>
-                        </div>
+                       <div className="flex items-center justify-between rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+  <button
+    type="button"
+    onClick={() => { closeOtherDropdowns('workers'); setWorkersNeedOpen(s => !s); }}
+    className="flex-1 min-w-0 px-4 py-3 text-left rounded-l-xl focus:outline-none"
+  >
+    <div className="flex items-center justify-between gap-3 min-w-0">
+      <span className="truncate">
+        {workersNeedSafe} worker{workersNeedSafe === 1 ? '' : 's'}
+      </span>
+      {workersFeeLabelLocal ? (
+        <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{workersFeeLabelLocal}</span>
+      ) : null}
+    </div>
+  </button>
+
+  <button
+    type="button"
+    onClick={() => { closeOtherDropdowns('workers'); setWorkersNeedOpen(s => !s); }}
+    className="shrink-0 px-3 pr-4 text-gray-600 hover:text-gray-800"
+    aria-label="Open workers need options"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+    </svg>
+  </button>
+</div>
 
                         <p className="text-xs text-gray-500 mt-1">
                           Up to <span className="font-medium">{INCLUDED_WORKERS}</span> workers included. Extra worker fee is{' '}
@@ -1534,12 +1781,12 @@ export default function ClientEditServiceRequest() {
                             clearable
                             onClear={()=>{ setWorkersNeed('1'); setWorkersNeedOpen(false); }}
                             renderItem={(v)=> `${v} worker${String(v) === '1' ? '' : 's'}`}
-                            rightLabel={(it) => {
-                              const n = clampInt(it, 1, MAX_WORKERS);
-                              const extra = Math.max(0, n - INCLUDED_WORKERS);
-                              const fee = extra * EXTRA_WORKER_FEE;
-                              return extra > 0 ? `+ fee ${formatRate(fee)}` : '';
-                            }}
+                           rightLabel={(it) => {
+  const n = clampInt(it, 1, MAX_WORKERS);
+  const extra = Math.max(0, n - INCLUDED_WORKERS);
+  const fee = extra * EXTRA_WORKER_FEE;
+  return extra > 0 ? `+ fee ${peso(fee)}` : '';
+}}
                           />
                         )}
                       </div>
