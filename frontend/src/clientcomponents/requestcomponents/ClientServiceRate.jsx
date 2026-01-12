@@ -52,6 +52,49 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const workersRef = useRef(null);
   const [workersOpen, setWorkersOpen] = useState(false);
 
+    const liveServiceTypeRef = useRef('');
+  const liveServiceTaskRef = useRef('');
+  const livePreferredTimeRef = useRef('');
+  const lastDetailsRawRef = useRef(null);
+
+    useEffect(() => {
+    liveServiceTypeRef.current = serviceType;
+  }, [serviceType]);
+
+  useEffect(() => {
+    liveServiceTaskRef.current = serviceTask;
+  }, [serviceTask]);
+
+  useEffect(() => {
+    livePreferredTimeRef.current = preferredTime;
+  }, [preferredTime]);
+
+  useEffect(() => {
+    const tick = () => {
+      const raw = localStorage.getItem(DETAILS_KEY) || '';
+      if (raw === lastDetailsRawRef.current) return;
+      lastDetailsRawRef.current = raw;
+
+      if (!raw) return;
+
+      try {
+        const d = JSON.parse(raw) || {};
+        const st = d.serviceType || d.service_type || '';
+        const sk = d.serviceTask || d.service_task || '';
+        const pt = d.preferredTime || d.preferred_time || '';
+
+        if (st && st !== liveServiceTypeRef.current) setServiceType(st);
+        if (sk && sk !== liveServiceTaskRef.current) setServiceTask(sk);
+        if (pt && pt !== livePreferredTimeRef.current) setPreferredTime(pt);
+      } catch {}
+    };
+
+    tick();
+    const id = setInterval(tick, 350);
+    return () => clearInterval(id);
+  }, []);
+
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       const t = event.target;
@@ -215,18 +258,19 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
         'Vacuum & Odor Removal': 700,
         'Paint Protection Film Application': 15000
       },
-      Laundry: {
-        'Wash & Fold': '₱50/kg',
-        Ironing: '₱100/kg',
-        'Dry Cleaning': '₱130/kg',
-        'Steam Pressing': '₱130/kg',
-        'Stain Removal Treatment': '₱180/kg',
-        'Delicate Fabric Care': '₱90/kg',
-        'Eco-Friendly Washing': '₱60/kg',
-        'Express Same-Day Laundry': '₱70/kg',
-        'Curtains & Upholstery Cleaning': '₱600/pc',
-        'Shoe & Leather Cleaning': '₱250/pair'
-      }
+ Laundry: {
+  'Dry Cleaning': '₱200/5kg',
+  Ironing: '₱150/5kg',
+  'Wash & Fold': '₱120/5kg',
+  'Steam Pressing': '₱180/5kg',
+  'Stain Removal Treatment': '₱200/5kg',
+  'Curtains & Upholstery Cleaning': '₱200/5kg',
+  'Delicate Fabric Care': '₱160/5kg',
+  'Shoe & Leather Cleaning': '₱200/5kg',
+  'Express Same-Day Laundry': '₱180/5kg',
+  'Eco-Friendly Washing': '₱140/5kg'
+}
+
     }),
     []
   );
@@ -332,50 +376,45 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const hasDetails = !!serviceType && !!serviceTask;
   const isFormValid = hasDetails && Number.isFinite(baseRateNum) && baseRateNum > 0 && (Number(units) || 0) >= 1;
 
-  useEffect(() => {
-    const savedDetails = localStorage.getItem(DETAILS_KEY);
-    if (savedDetails) {
+   useEffect(() => {
+    const readJSON = (k) => {
       try {
-        const d = JSON.parse(savedDetails);
-        setServiceType(d.serviceType || '');
-        setServiceTask(d.serviceTask || '');
-        setPreferredTime(d.preferredTime || '');
-        const wn = Number(d.workersNeeded ?? d.workers_needed);
-        const safeWN = Number.isFinite(wn) && wn >= 1 ? clampInt(wn, 1, MAX_WORKERS) : 1;
+        const v = localStorage.getItem(k);
+        if (!v) return null;
+        return JSON.parse(v);
+      } catch {
+        return null;
+      }
+    };
 
-        const ec = Number(d.extra_worker_count);
-        const ef = Number(d.extra_workers_fee);
+    const d = readJSON(DETAILS_KEY) || {};
+    const r = readJSON(STORAGE_KEY) || {};
 
-        setWorkersNeeded(safeWN);
+    const nextServiceType = d.serviceType || d.service_type || r.serviceType || r.service_type || '';
+    const nextServiceTask = d.serviceTask || d.service_task || r.serviceTask || r.service_task || '';
+    const nextPreferredTime = d.preferredTime || d.preferred_time || r.preferredTime || r.preferred_time || '';
 
-        if (Number.isFinite(ec) && ec >= 0) setExtraWorkerCount(ec);
-        else setExtraWorkerCount(Math.max(0, safeWN - INCLUDED_WORKERS));
+    setServiceType(nextServiceType);
+    setServiceTask(nextServiceTask);
+    setPreferredTime(nextPreferredTime);
 
-        if (Number.isFinite(ef) && ef >= 0) setExtraWorkersFeeTotal(ef);
-        else setExtraWorkersFeeTotal(Math.max(0, safeWN - INCLUDED_WORKERS) * EXTRA_WORKER_FEE);
-      } catch {}
-    }
+    const u = Number(r.units ?? d.units);
+    setUnits(Number.isFinite(u) && u >= 1 ? u : 1);
 
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        const u = Number(data.units);
-        setUnits(Number.isFinite(u) && u >= 1 ? u : 1);
-        if (!serviceType && (data.serviceType || '')) setServiceType(data.serviceType || '');
-        if (!serviceTask && (data.serviceTask || '')) setServiceTask(data.serviceTask || '');
-        if (!preferredTime && (data.preferredTime || '')) setPreferredTime(data.preferredTime || '');
+    const wn = Number(r.workersNeeded ?? r.workers_needed ?? d.workersNeeded ?? d.workers_needed);
+    const safeWN = Number.isFinite(wn) && wn >= 1 ? clampInt(wn, 1, MAX_WORKERS) : 1;
 
-        const wn2 = Number(data.workersNeeded ?? data.workers_needed);
-        const safeWN2 = Number.isFinite(wn2) && wn2 >= 1 ? clampInt(wn2, 1, MAX_WORKERS) : null;
-        if (safeWN2 !== null) setWorkersNeeded(safeWN2);
+    const ec = Number(r.extra_worker_count ?? d.extra_worker_count);
+    const ef = Number(r.extra_workers_fee ?? d.extra_workers_fee);
 
-        const ec2 = Number(data.extra_worker_count);
-        const ef2 = Number(data.extra_workers_fee);
-        if (Number.isFinite(ec2) && ec2 >= 0) setExtraWorkerCount(ec2);
-        if (Number.isFinite(ef2) && ef2 >= 0) setExtraWorkersFeeTotal(ef2);
-      } catch {}
-    }
+    setWorkersNeeded(safeWN);
+
+    if (Number.isFinite(ec) && ec >= 0) setExtraWorkerCount(ec);
+    else setExtraWorkerCount(Math.max(0, safeWN - INCLUDED_WORKERS));
+
+    if (Number.isFinite(ef) && ef >= 0) setExtraWorkersFeeTotal(ef);
+    else setExtraWorkersFeeTotal(Math.max(0, safeWN - INCLUDED_WORKERS) * EXTRA_WORKER_FEE);
+
     setHydrated(true);
   }, []);
 

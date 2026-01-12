@@ -178,18 +178,18 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       'Vacuum & Odor Removal': 700,
       'Paint Protection Film Application': 15000
     },
-    Laundry: {
-      'Dry Cleaning': '₱130/kg',
-      Ironing: '₱100/kg',
-      'Wash & Fold': '₱50/kg',
-      'Steam Pressing': '₱130/kg',
-      'Stain Removal Treatment': '₱180/kg',
-      'Curtains & Upholstery Cleaning': '₱400–₱800',
-      'Delicate Fabric Care': '₱90/kg',
-      'Shoe & Leather Cleaning': '₱250/pair',
-      'Express Same-Day Laundry': '₱70/kg',
-      'Eco-Friendly Washing': '₱60/kg'
-    }
+Laundry: {
+  'Dry Cleaning': '₱200/5kg',
+  Ironing: '₱150/5kg',
+  'Wash & Fold': '₱120/5kg',
+  'Steam Pressing': '₱180/5kg',
+  'Stain Removal Treatment': '₱200/5kg',
+  'Curtains & Upholstery Cleaning': '₱200/5kg',
+  'Delicate Fabric Care': '₱160/5kg',
+  'Shoe & Leather Cleaning': '₱200/5kg',
+  'Express Same-Day Laundry': '₱180/5kg',
+  'Eco-Friendly Washing': '₱140/5kg'
+}
   };
 
   const formatRate = (v) => {
@@ -256,28 +256,37 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   }, []);
 
   useEffect(() => {
-    return () => {
-      try {
-        if (localStorage.getItem(PRESERVE_IMAGE_FLAG) === '1') {
-          localStorage.removeItem(PRESERVE_IMAGE_FLAG);
-          return;
-        }
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-        saved.serviceDescription = '';
-        saved.image = null;
-        saved.imageName = '';
-        saved.attachments = [];
-        saved.request_image_url = '';
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-        localStorage.removeItem(IMAGE_CACHE_KEY);
-        localStorage.setItem(IMAGE_CLEARED_FLAG, '1');
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(IMAGE_CACHE_KEY);
-        localStorage.setItem(IMAGE_CLEARED_FLAG, '1');
+  return () => {
+    try {
+      const path =
+        typeof window !== "undefined" && window.location && window.location.pathname
+          ? window.location.pathname
+          : "";
+      const goingDashboard = path === "/clientdashboard" || path.startsWith("/clientdashboard");
+
+      if (!goingDashboard && localStorage.getItem(PRESERVE_IMAGE_FLAG) === "1") {
+        localStorage.removeItem(PRESERVE_IMAGE_FLAG);
+        return;
       }
-    };
-  }, []);
+
+      localStorage.removeItem(PRESERVE_IMAGE_FLAG);
+
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      saved.serviceDescription = "";
+      saved.image = null;
+      saved.imageName = "";
+      saved.attachments = [];
+      saved.request_image_url = "";
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+      localStorage.removeItem(IMAGE_CACHE_KEY);
+      localStorage.setItem(IMAGE_CLEARED_FLAG, "1");
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(IMAGE_CACHE_KEY);
+      localStorage.setItem(IMAGE_CLEARED_FLAG, "1");
+    }
+  };
+}, []);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -384,31 +393,35 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   ]);
 
   useEffect(() => {
-    const clear = () => {
-      localStorage.setItem(IMAGE_REFRESH_FLAG, '1');
-      localStorage.removeItem(GLOBAL_DESC_KEY);
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const data = JSON.parse(saved) || {};
-          data.serviceDescription = '';
-          data.image = null;
-          data.imageName = '';
-          data.attachments = [];
-          data.request_image_url = '';
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        } catch {
-          localStorage.removeItem(STORAGE_KEY);
-        }
-      }
-      localStorage.removeItem(IMAGE_CACHE_KEY);
-      localStorage.removeItem(IMAGE_CLEARED_FLAG);
-      setServiceDescription('');
-      setImage(null);
-      setImageName('');
-      setAttachments([]);
-      setRequestImageUrl('');
-    };
+   const clear = () => {
+  localStorage.setItem(IMAGE_REFRESH_FLAG, "1");
+  localStorage.removeItem(GLOBAL_DESC_KEY);
+  localStorage.removeItem(PRESERVE_IMAGE_FLAG);
+
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const data = JSON.parse(saved) || {};
+      data.serviceDescription = "";
+      data.image = null;
+      data.imageName = "";
+      data.attachments = [];
+      data.request_image_url = "";
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }
+
+  localStorage.removeItem(IMAGE_CACHE_KEY);
+  localStorage.setItem(IMAGE_CLEARED_FLAG, "1");
+
+  setServiceDescription("");
+  setImage(null);
+  setImageName("");
+  setAttachments([]);
+  setRequestImageUrl("");
+};
 
     const onNavCheck = () => {
       if (window.location.pathname === '/clientdashboard' || window.location.pathname.startsWith('/clientdashboard'))
