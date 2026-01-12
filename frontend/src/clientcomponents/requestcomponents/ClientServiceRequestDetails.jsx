@@ -63,134 +63,219 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     } catch {}
   };
 
+const TASK_HEADERS = new Set([
+  'Regular Clothes',
+  'Dry Cleaning (Per Piece)',
+  'Electrical',
+  'Appliances',
+  'Electrical',
+  'Appliances'
+]);
+
+const normalizeHeader = (t) =>
+  String(t || '')
+    .replace(/^[—\-–\s]+|[—\-–\s]+$/g, '')
+    .trim();
+
+const isTaskHeader = (t) => {
+  const raw = String(t || '').trim();
+  if (TASK_HEADERS.has(raw)) return true;
+  const n = normalizeHeader(raw);
+  return TASK_HEADERS.has(n);
+};
+
   const serviceTypes = ['Carpentry', 'Electrical Works', 'Plumbing', 'Car Washing', 'Laundry'];
+
   const serviceTasks = {
-    Carpentry: [
-      'General Carpentry',
-      'Furniture Repair',
-      'Wood Polishing',
-      'Door & Window Fitting',
-      'Custom Furniture Design',
-      'Modular Kitchen Installation',
-      'Flooring & Decking',
-      'Cabinet & Wardrobe Fixing',
-      'Wall Paneling & False Ceiling',
-      'Wood Restoration & Refinishing'
-    ],
-    'Electrical Works': [
-      'Wiring Repair',
-      'Appliance Installation',
-      'Lighting Fixtures',
-      'Circuit Breaker & Fuse Repair',
-      'CCTV & Security System Setup',
-      'Fan & Exhaust Installation',
-      'Inverter & Battery Setup',
-      'Switchboard & Socket Repair',
-      'Electrical Safety Inspection',
-      'Smart Home Automation'
-    ],
-    Plumbing: [
-      'Leak Fixing',
-      'Pipe Installation',
-      'Bathroom Fittings',
-      'Drain Cleaning & Unclogging',
-      'Water Tank Installation',
-      'Gas Pipeline Installation',
-      'Septic Tank & Sewer Repair',
-      'Water Heater Installation',
-      'Toilet & Sink Repair',
-      'Kitchen Plumbing Solutions'
-    ],
     'Car Washing': [
-      'Exterior Wash',
-      'Interior Cleaning',
-      'Wax & Polish',
-      'Underbody Cleaning',
-      'Engine Bay Cleaning',
-      'Headlight Restoration',
-      'Ceramic Coating',
-      'Tire & Rim Cleaning',
-      'Vacuum & Odor Removal',
-      'Paint Protection Film Application'
+      '5 Seater Sedan (Interior + Carpet)',
+      '7 Seater MPV (Interior + Carpet)',
+      '7 - 8 Seater SUV (Interior + Carpet)',
+      '5 Seater Pick Up (Interior + Carpet)',
+      '10 Seater Family Van (Interior + Carpet)',
+      '1 - 2 Seater (Interior + Carpet)',
+      '5 Seater Sedan (Interior + Exterior)',
+      '7 Seater MPV (Interior + Exterior)',
+      '7 - 8 Seater SUV (Interior + Exterior)',
+      '5 Seater Pick Up (Interior + Exterior)',
+      '10 Seater Family Van (Interior + Exterior)'
     ],
-    Laundry: [
-      'Dry Cleaning',
-      'Ironing',
-      'Wash & Fold',
-      'Steam Pressing',
-      'Stain Removal Treatment',
-      'Curtains & Upholstery Cleaning',
-      'Delicate Fabric Care',
-      'Shoe & Leather Cleaning',
-      'Express Same-Day Laundry',
-      'Eco-Friendly Washing'
+    Carpentry: [
+      'Furniture Setup (Small Items)',
+      'Furniture Setup (Large Items)',
+      'Basic Door & Lock Repair',
+      'Smart Lock Repair',
+      'Wall & Ceiling Repair',
+      'Waterproofing Inspection',
+      'Waterproofing Repair',
+      'Roofing Inspection',
+      'Roofing Repair'
+    ],
+    // 2) REPLACE ONLY the "Electrical Works" array inside serviceTasks with this
+
+'Electrical Works': [
+  'Electrical',
+  'Electrical Inspection',
+  'Light Fixture Installation',
+  'Light Fixture Repair',
+  'Wiring Installation',
+  'Wiring Repair',
+  'Outlet Installation',
+  'Outlet Repair',
+  'Circuit Breaker Installation',
+  'Circuit Breaker Repair',
+  'Switch Installation',
+  'Switch Repair',
+  'Ceiling Fan Installation',
+  'Ceiling Fan Repair',
+  'Outdoor Lightning Installation',
+  'Outdoor Lightning Repair',
+  'Doorbell Installation',
+  'Doorbell Repair',
+  'Appliances',
+  'Refrigerator Repair',
+  'Commercial Freezer Repair',
+  'TV Repair (50" to 90")',
+  'TV Installation (50" to 90")',
+  'Washing Machine Repair',
+  'Washing Machine Installation',
+  'Stand Fan Repair',
+  'Tower Fan Repair',
+  'Dishwasher Repair',
+  'Dishwasher Installation',
+  'Microwave Repair',
+  'Oven Repair',
+  'Rice Cooker Repair'
+],
+
+    Plumbing: [
+      'Plumbing Inspection',
+      'Faucet Leak Repair',
+      'Grease Trap Cleaning',
+      'Sink Declogging',
+      'Pipe Repair (Exposed Pipe)',
+      'Toilet Repair',
+      'Drainage Declogging',
+      'Pipe Line Declogging',
+      'Water Heater Installation',
+      'Water Heater Repair',
+      'Shower Installation'
+    ],
+       Laundry: [
+      'Regular Clothes',
+      'Regular Clothes (Wash + Dry + Fold)',
+      'Handwash',
+      'Towels/Linens/Denim (Wash + Dry + Fold)',
+      'Blankets/Comforters (Wash + Dry + Fold)',
+      'Dry Cleaning (Per Piece)',
+      'Barong',
+      'Coat (Men-Adult)',
+      'Coat (Men-Kids)',
+      'Vest (Men)',
+      'Vest (Kids)',
+      'Polo (Long Sleeves)',
+      'Polo (Short Sleeves)',
+      'Pants (Men/Women)',
+      'Blazer (Women)',
+      'Dress (Long)',
+      'Dress (Short)'
     ]
   };
 
+
   const sortedServiceTypes = serviceTypes.sort();
 
-  const serviceTaskRates = {
+    const serviceTaskRates = {
+    'Car Washing': {
+      '5 Seater Sedan (Interior + Carpet)': 3150,
+      '7 Seater MPV (Interior + Carpet)': 3500,
+      '7 - 8 Seater SUV (Interior + Carpet)': 3500,
+      '5 Seater Pick Up (Interior + Carpet)': 3300,
+      '10 Seater Family Van (Interior + Carpet)': 4500,
+      '1 - 2 Seater (Interior + Carpet)': 1500,
+      '5 Seater Sedan (Interior + Exterior)': 3500,
+      '7 Seater MPV (Interior + Exterior)': 3700,
+      '7 - 8 Seater SUV (Interior + Exterior)': 3700,
+      '5 Seater Pick Up (Interior + Exterior)': 3500,
+      '10 Seater Family Van (Interior + Exterior)': 5000
+    },
     Carpentry: {
-      'General Carpentry': 1000,
-      'Furniture Repair': 900,
-      'Wood Polishing': 1200,
-      'Door & Window Fitting': 1500,
-      'Custom Furniture Design': 2000,
-      'Modular Kitchen Installation': 6000,
-      'Flooring & Decking': 3500,
-      'Cabinet & Wardrobe Fixing': 1200,
-      'Wall Paneling & False Ceiling': 4000,
-      'Wood Restoration & Refinishing': 2500
+      'Furniture Setup (Small Items)': 400,
+      'Furniture Setup (Large Items)': 1000,
+      'Basic Door & Lock Repair': 650,
+      'Smart Lock Repair': 1200,
+      'Wall & Ceiling Repair': '₱500/sq.m',
+      'Waterproofing Inspection': 750,
+      'Waterproofing Repair': '₱600/sq.m',
+      'Roofing Inspection': 800,
+      'Roofing Repair': '₱650/sq.m'
     },
     'Electrical Works': {
-      'Wiring Repair': 1000,
-      'Appliance Installation': 800,
-      'Lighting Fixtures': 700,
-      'Circuit Breaker & Fuse Repair': 1200,
-      'CCTV & Security System Setup': 2500,
-      'Fan & Exhaust Installation': 700,
-      'Inverter & Battery Setup': 1800,
-      'Switchboard & Socket Repair': 800,
-      'Electrical Safety Inspection': 1500,
-      'Smart Home Automation': 3000
+      'Electrical Inspection': 500,
+      'Light Fixture Installation': 750,
+      'Light Fixture Repair': 1100,
+      'Wiring Installation': 800,
+      'Wiring Repair': 1200,
+      'Outlet Installation': 850,
+      'Outlet Repair': 1000,
+      'Circuit Breaker Installation': 850,
+      'Circuit Breaker Repair': 1100,
+      'Switch Installation': 800,
+      'Switch Repair': 1000,
+      'Ceiling Fan Installation': 800,
+      'Ceiling Fan Repair': 1000,
+      'Outdoor Lightning Installation': 850,
+      'Outdoor Lightning Repair': 1000,
+      'Doorbell Installation': 800,
+      'Doorbell Repair': 1000,
+
+      'Refrigerator Repair': 950,
+      'Commercial Freezer Repair': 950,
+      'TV Repair (50" to 90")': 3200,
+      'TV Installation (50" to 90")': 2500,
+      'Washing Machine Repair': 990,
+      'Washing Machine Installation': 1000,
+      'Stand Fan Repair': 380,
+      'Tower Fan Repair': 450,
+      'Dishwasher Repair': 600,
+      'Dishwasher Installation': 1100,
+      'Microwave Repair': 850,
+      'Oven Repair': 850,
+      'Rice Cooker Repair': 600
     },
     Plumbing: {
-      'Leak Fixing': 900,
-      'Pipe Installation': 1500,
-      'Bathroom Fittings': 1200,
-      'Drain Cleaning & Unclogging': 1800,
-      'Water Tank Installation': 2500,
-      'Gas Pipeline Installation': 3500,
-      'Septic Tank & Sewer Repair': 4500,
-      'Water Heater Installation': 2000,
-      'Toilet & Sink Repair': 1000,
-      'Kitchen Plumbing Solutions': 1800
+      'Plumbing Inspection': 500,
+      'Faucet Leak Repair': 1200,
+      'Grease Trap Cleaning': 1200,
+      'Sink Declogging': 2200,
+      'Pipe Repair (Exposed Pipe)': 2200,
+      'Toilet Repair': 2900,
+      'Drainage Declogging': 4000,
+      'Pipe Line Declogging': 5000,
+      'Water Heater Installation': 1200,
+      'Water Heater Repair': 1500,
+      'Shower Installation': 1200
     },
-    'Car Washing': {
-      'Exterior Wash': 350,
-      'Interior Cleaning': 700,
-      'Wax & Polish': 1200,
-      'Underbody Cleaning': 500,
-      'Engine Bay Cleaning': 900,
-      'Headlight Restoration': 1500,
-      'Ceramic Coating': 12000,
-      'Tire & Rim Cleaning': 400,
-      'Vacuum & Odor Removal': 700,
-      'Paint Protection Film Application': 15000
-    },
-Laundry: {
-  'Dry Cleaning': '₱200/5kg',
-  Ironing: '₱150/5kg',
-  'Wash & Fold': '₱120/5kg',
-  'Steam Pressing': '₱180/5kg',
-  'Stain Removal Treatment': '₱200/5kg',
-  'Curtains & Upholstery Cleaning': '₱200/5kg',
-  'Delicate Fabric Care': '₱160/5kg',
-  'Shoe & Leather Cleaning': '₱200/5kg',
-  'Express Same-Day Laundry': '₱180/5kg',
-  'Eco-Friendly Washing': '₱140/5kg'
-}
+    Laundry: {
+      'Regular Clothes (Wash + Dry + Fold)': '₱39/kg (min 8 kg)',
+      Handwash: '₱120/kg',
+      'Towels/Linens/Denim (Wash + Dry + Fold)': '₱75/kg (min 8 kg)',
+      'Blankets/Comforters (Wash + Dry + Fold)': '₱99/kg (max 8 kg)',
+
+      Barong: '₱400/piece',
+      'Coat (Men-Adult)': '₱700/piece',
+      'Coat (Men-Kids)': '₱400/piece',
+      'Vest (Men)': '₱150/piece',
+      'Vest (Kids)': '₱100/piece',
+      'Polo (Long Sleeves)': '₱240/piece',
+      'Polo (Short Sleeves)': '₱180/piece',
+      'Pants (Men/Women)': '₱250/piece',
+      'Blazer (Women)': '₱650/piece',
+      'Dress (Long)': '₱700/piece',
+      'Dress (Short)': '₱500/piece'
+    }
   };
+
 
   const formatRate = (v) => {
     if (v === null || v === undefined || v === '') return '';
@@ -202,6 +287,9 @@ Laundry: {
 
   const withPerUnitLabel = (rateStr) => {
     if (!rateStr) return '';
+    const s = String(rateStr).toLowerCase();
+    if (s.includes('/kg') || s.includes('kg') || s.includes('/sq.m') || s.includes('sq.m') || s.includes('/piece') || s.includes('piece'))
+      return rateStr;
     return `per unit ${rateStr}`;
   };
 
@@ -223,6 +311,8 @@ Laundry: {
   const urgentRef = useRef(null);
   const pdRef = useRef(null);
   const ptRef = useRef(null);
+  const taskTextRef = useRef(null);
+const taskMarqueeRef = useRef(null);
 
   const [stOpen, setStOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
@@ -232,6 +322,34 @@ Laundry: {
   const [ptOpen, setPtOpen] = useState(false);
   const [pdMonthOpen, setPdMonthOpen] = useState(false);
   const [pdYearOpen, setPdYearOpen] = useState(false);
+
+  const stopTaskMarquee = () => {
+  if (taskMarqueeRef.current) {
+    clearInterval(taskMarqueeRef.current);
+    taskMarqueeRef.current = null;
+  }
+  if (taskTextRef.current) taskTextRef.current.scrollLeft = 0;
+};
+
+const startTaskMarquee = () => {
+  const el = taskTextRef.current;
+  if (!el) return;
+  if (el.scrollWidth <= el.clientWidth) return;
+  if (taskMarqueeRef.current) return;
+
+  taskMarqueeRef.current = setInterval(() => {
+    const node = taskTextRef.current;
+    if (!node) return;
+    if (node.scrollWidth <= node.clientWidth) return;
+    const max = node.scrollWidth - node.clientWidth;
+    if (node.scrollLeft >= max) node.scrollLeft = 0;
+    else node.scrollLeft += 1;
+  }, 18);
+};
+
+useEffect(() => {
+  return () => stopTaskMarquee();
+}, []);
 
   const handleClickOutside = (event) => {
     const t = event.target;
@@ -827,40 +945,47 @@ Laundry: {
         <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
           {items && items.length ? (
             items.map((it) => {
-              const isSel = value === it;
-              const disabled = disabledLabel && disabledLabel(it);
-              const colorClass = disabled
-                ? 'text-gray-300 cursor-not-allowed'
-                : timeMode
-                  ? `hover:bg-blue-50 ${isGreenTime(it) ? 'text-green-600' : isRedTime(it) ? 'text-red-600' : 'text-gray-700'}`
-                  : 'hover:bg-blue-50 text-gray-700';
-              const right = !timeMode && typeof rightLabel === 'function' ? rightLabel(it) || '' : '';
-              return (
-                <button
-                  key={it}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => !disabled && onSelect(it)}
-                  className={[
-                    'text-left py-2 px-3 rounded-lg text-sm',
-                    right ? 'flex items-center justify-between gap-3' : '',
-                    colorClass,
-                    isSel && !disabled ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
-                  ].join(' ')}
-                >
-                  <span className="truncate">{timeMode ? to12h(it) : it}</span>
-                  {right ? (
-                    <span
-                      className={`shrink-0 text-xs font-semibold ${
-                        isSel && !disabled ? 'text-white/90' : 'text-[#008cfc]'
-                      }`}
-                    >
-                      {right}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })
+  const isSel = value === it;
+  const disabled = disabledLabel && disabledLabel(it);
+  const headerText = normalizeHeader(it);
+
+  if (disabled) {
+    return (
+      <div key={it} className="py-2">
+        <div className="flex items-center gap-3">
+          <div className="h-px bg-gray-200 flex-1" />
+          <div className="text-xs font-bold text-gray-900">{headerText}</div>
+          <div className="h-px bg-gray-200 flex-1" />
+        </div>
+      </div>
+    );
+  }
+
+  const colorClass = timeMode
+    ? `hover:bg-blue-50 ${isGreenTime(it) ? 'text-green-600' : isRedTime(it) ? 'text-red-600' : 'text-gray-700'}`
+    : 'hover:bg-blue-50 text-gray-700';
+
+  const right = !timeMode && typeof rightLabel === 'function' ? rightLabel(it) || '' : '';
+
+  return (
+    <button
+      key={it}
+      type="button"
+      onClick={() => onSelect(it)}
+      className={[
+        'text-left py-2 px-3 rounded-lg text-sm',
+        right ? 'flex items-center justify-between gap-3' : '',
+        colorClass,
+        isSel ? 'bg-blue-600 text-white hover:bg-blue-600' : ''
+      ].join(' ')}
+    >
+      <span className="truncate">{timeMode ? to12h(it) : it}</span>
+      {right ? (
+        <span className={`shrink-0 text-xs font-semibold ${isSel ? 'text-white/90' : 'text-[#008cfc]'}`}>{right}</span>
+      ) : null}
+    </button>
+  );
+})
           ) : (
             <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
           )}
@@ -1000,7 +1125,8 @@ Laundry: {
                       disabled={!serviceType}
                     >
                       <option value=""></option>
-                      {serviceType && serviceTasks[serviceType].map((t) => (
+                      {serviceType &&
+  (serviceTasks[serviceType] || []).filter((t) => !isTaskHeader(t)).map((t) => (
                         <option key={t} value={t}>
                           {t}
                         </option>
@@ -1019,10 +1145,18 @@ Laundry: {
                         disabled={!serviceType}
                       >
                         {serviceTask ? (
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="truncate">{serviceTask}</span>
-                            <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{getSelectedTaskRate()}</span>
-                          </div>
+                          <div className="flex items-center justify-between gap-3 min-w-0">
+  <span
+    ref={taskTextRef}
+    onMouseEnter={startTaskMarquee}
+    onMouseLeave={stopTaskMarquee}
+    title={serviceTask}
+    className="min-w-0 flex-1 overflow-hidden whitespace-nowrap"
+  >
+    {serviceTask}
+  </span>
+  <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{getSelectedTaskRate()}</span>
+</div>
                         ) : (
                           <span>Select Service Task</span>
                         )}
@@ -1045,28 +1179,32 @@ Laundry: {
                     </div>
                     {attempted && !serviceTask && <p className="text-xs text-red-600 mt-1">Please select a service task.</p>}
 
-                    {taskOpen && (
-                      <PopList
-                        items={serviceTasks[serviceType] || []}
-                        value={serviceTask}
-                        onSelect={(v) => {
-                          setServiceTask(v);
-                          setTaskOpen(false);
-                        }}
-                        emptyLabel="Select a service type first"
-                        fullWidth
-                        title="Select Service Task"
-                        clearable
-                        onClear={() => {
-                          setServiceTask('');
-                          setTaskOpen(false);
-                        }}
-                        rightLabel={(it) => {
-                          const rr = formatRate(serviceTaskRates?.[serviceType]?.[it]);
-                          return shouldShowPerUnit(serviceType) ? withPerUnitLabel(rr) : rr;
-                        }}
-                      />
-                    )}
+                   {taskOpen && (
+  <PopList
+    items={serviceTasks[serviceType] || []}
+    value={serviceTask}
+    disabledLabel={(it) => isTaskHeader(it)}
+    onSelect={(v) => {
+      if (isTaskHeader(v)) return;
+      setServiceTask(v);
+      setTaskOpen(false);
+    }}
+    emptyLabel="Select a service type first"
+    fullWidth
+    title="Select Service Task"
+    clearable
+    onClear={() => {
+      setServiceTask('');
+      setTaskOpen(false);
+    }}
+    rightLabel={(it) => {
+      if (isTaskHeader(it)) return '';
+      const rr = formatRate(serviceTaskRates?.[serviceType]?.[it]);
+      return shouldShowPerUnit(serviceType) ? withPerUnitLabel(rr) : rr;
+    }}
+  />
+)}
+
                   </div>
 
                   <div className="relative" ref={pdRef}>

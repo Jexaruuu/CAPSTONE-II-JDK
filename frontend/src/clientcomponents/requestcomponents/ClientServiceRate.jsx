@@ -1,5 +1,4 @@
-// ClientServiceRate.jsx
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const STORAGE_KEY = 'clientServiceRate';
@@ -9,9 +8,8 @@ const MIN_LAUNDRY_KG = 8;
 
 const INCLUDED_WORKERS = 2;
 const EXTRA_WORKER_FEE = 150;
-const MAX_WORKERS = 6;
-
-const MIN_UNITS_FOR_EXTRA_WORKERS = 5;
+const MAX_WORKERS = 5;
+const MIN_UNITS_FOR_EXTRA_WORKERS = 1;
 
 const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const [attempted, setAttempted] = useState(false);
@@ -28,6 +26,55 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const [workersNeeded, setWorkersNeeded] = useState(1);
   const [extraWorkerCount, setExtraWorkerCount] = useState(0);
   const [extraWorkersFeeTotal, setExtraWorkersFeeTotal] = useState(0);
+
+  const preserveQuantityRef = useRef(false);
+
+const resetQuantity = useCallback(() => {
+  const patch = (k) => {
+    try {
+      const raw = localStorage.getItem(k);
+      if (!raw) return;
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj !== 'object') return;
+
+      obj.units = 1;
+
+      if ('workersNeeded' in obj) obj.workersNeeded = 1;
+      if ('workers_needed' in obj) obj.workers_needed = 1;
+      if ('extra_worker_count' in obj) obj.extra_worker_count = 0;
+      if ('extra_workers_fee' in obj) obj.extra_workers_fee = 0;
+
+      localStorage.setItem(k, JSON.stringify(obj));
+    } catch {}
+  };
+
+  patch(STORAGE_KEY);
+  patch(DETAILS_KEY);
+}, []);
+
+const onBackClick = () => {
+  preserveQuantityRef.current = false;
+  resetQuantity();
+  setUnits(1);
+  setWorkersNeeded(1);
+  setExtraWorkerCount(0);
+  setExtraWorkersFeeTotal(0);
+  setWorkersOpen(false);
+
+  jumpTop();
+  setIsLoadingBack(true);
+  setTimeout(() => {
+    if (typeof handleBack === 'function') handleBack();
+  }, 2000);
+};
+
+useEffect(() => {
+  return () => {
+    if (preserveQuantityRef.current) return;
+    resetQuantity();
+  };
+}, [resetQuantity]);
+
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -209,71 +256,96 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   };
 
   const serviceTaskRates = useMemo(
-    () => ({
-      Carpentry: {
-        'General Carpentry': 1000,
-        'Furniture Repair': 900,
-        'Wood Polishing': 1200,
-        'Door & Window Fitting': 1500,
-        'Custom Furniture Design': 2000,
-        'Modular Kitchen Installation': 6000,
-        'Flooring & Decking': 3500,
-        'Cabinet & Wardrobe Fixing': 1200,
-        'Wall Paneling & False Ceiling': 4000,
-        'Wood Restoration & Refinishing': 2500
-      },
-      'Electrical Works': {
-        'Wiring Repair': 1000,
-        'Appliance Installation': 800,
-        'Lighting Fixtures': 700,
-        'Circuit Breaker & Fuse Repair': 1200,
-        'CCTV & Security System Setup': 2500,
-        'Fan & Exhaust Installation': 700,
-        'Inverter & Battery Setup': 1800,
-        'Switchboard & Socket Repair': 800,
-        'Electrical Safety Inspection': 1500,
-        'Smart Home Automation': 3000
-      },
-      Plumbing: {
-        'Leak Fixing': 900,
-        'Pipe Installation': 1500,
-        'Bathroom Fittings': 1200,
-        'Drain Cleaning & Unclogging': 1800,
-        'Water Tank Installation': 2500,
-        'Gas Pipeline Installation': 3500,
-        'Septic Tank & Sewer Repair': 4500,
-        'Water Heater Installation': 2000,
-        'Toilet & Sink Repair': 1000,
-        'Kitchen Plumbing Solutions': 1800
-      },
-      'Car Washing': {
-        'Exterior Wash': 350,
-        'Interior Cleaning': 700,
-        'Wax & Polish': 1200,
-        'Underbody Cleaning': 500,
-        'Engine Bay Cleaning': 900,
-        'Headlight Restoration': 1500,
-        'Ceramic Coating': 12000,
-        'Tire & Rim Cleaning': 400,
-        'Vacuum & Odor Removal': 700,
-        'Paint Protection Film Application': 15000
-      },
- Laundry: {
-  'Dry Cleaning': '₱200/5kg',
-  Ironing: '₱150/5kg',
-  'Wash & Fold': '₱120/5kg',
-  'Steam Pressing': '₱180/5kg',
-  'Stain Removal Treatment': '₱200/5kg',
-  'Curtains & Upholstery Cleaning': '₱200/5kg',
-  'Delicate Fabric Care': '₱160/5kg',
-  'Shoe & Leather Cleaning': '₱200/5kg',
-  'Express Same-Day Laundry': '₱180/5kg',
-  'Eco-Friendly Washing': '₱140/5kg'
-}
-
-    }),
-    []
-  );
+  () => ({
+    'Car Washing': {
+      '5 Seater Sedan (Interior + Carpet)': 3150,
+      '7 Seater MPV (Interior + Carpet)': 3500,
+      '7 - 8 Seater SUV (Interior + Carpet)': 3500,
+      '5 Seater Pick Up (Interior + Carpet)': 3300,
+      '10 Seater Family Van (Interior + Carpet)': 4500,
+      '1 - 2 Seater (Interior + Carpet)': 1500,
+      '5 Seater Sedan (Interior + Exterior)': 3500,
+      '7 Seater MPV (Interior + Exterior)': 3700,
+      '7 - 8 Seater SUV (Interior + Exterior)': 3700,
+      '5 Seater Pick Up (Interior + Exterior)': 3500,
+      '10 Seater Family Van (Interior + Exterior)': 5000
+    },
+    Carpentry: {
+      'Furniture Setup (Small Items)': 400,
+      'Furniture Setup (Large Items)': 1000,
+      'Basic Door & Lock Repair': 650,
+      'Smart Lock Repair': 1200,
+      'Wall & Ceiling Repair': '₱500/sq.m',
+      'Waterproofing Inspection': 750,
+      'Waterproofing Repair': '₱600/sq.m',
+      'Roofing Inspection': 800,
+      'Roofing Repair': '₱650/sq.m'
+    },
+    'Electrical Works': {
+      'Electrical Inspection': 500,
+      'Light Fixture Installation': 750,
+      'Light Fixture Repair': 1100,
+      'Wiring Installation': 800,
+      'Wiring Repair': 1200,
+      'Outlet Installation': 850,
+      'Outlet Repair': 1000,
+      'Circuit Breaker Installation': 850,
+      'Circuit Breaker Repair': 1100,
+      'Switch Installation': 800,
+      'Switch Repair': 1000,
+      'Ceiling Fan Installation': 800,
+      'Ceiling Fan Repair': 1000,
+      'Outdoor Lightning Installation': 850,
+      'Outdoor Lightning Repair': 1000,
+      'Doorbell Installation': 800,
+      'Doorbell Repair': 1000,
+      'Refrigerator Repair': 950,
+      'Commercial Freezer Repair': 950,
+      'TV Repair (50" to 90")': 3200,
+      'TV Installation (50" to 90")': 2500,
+      'Washing Machine Repair': 990,
+      'Washing Machine Installation': 1000,
+      'Stand Fan Repair': 380,
+      'Tower Fan Repair': 450,
+      'Dishwasher Repair': 600,
+      'Dishwasher Installation': 1100,
+      'Microwave Repair': 850,
+      'Oven Repair': 850,
+      'Rice Cooker Repair': 600
+    },
+    Plumbing: {
+      'Plumbing Inspection': 500,
+      'Faucet Leak Repair': 1200,
+      'Grease Trap Cleaning': 1200,
+      'Sink Declogging': 2200,
+      'Pipe Repair (Exposed Pipe)': 2200,
+      'Toilet Repair': 2900,
+      'Drainage Declogging': 4000,
+      'Pipe Line Declogging': 5000,
+      'Water Heater Installation': 1200,
+      'Water Heater Repair': 1500,
+      'Shower Installation': 1200
+    },
+    Laundry: {
+      'Regular Clothes (Wash + Dry + Fold)': '₱39/kg (min 8 kg)',
+      Handwash: '₱120/kg',
+      'Towels/Linens/Denim (Wash + Dry + Fold)': '₱75/kg (min 8 kg)',
+      'Blankets/Comforters (Wash + Dry + Fold)': '₱99/kg (max 8 kg)',
+      Barong: '₱400/piece',
+      'Coat (Men-Adult)': '₱700/piece',
+      'Coat (Men-Kids)': '₱400/piece',
+      'Vest (Men)': '₱150/piece',
+      'Vest (Kids)': '₱100/piece',
+      'Polo (Long Sleeves)': '₱240/piece',
+      'Polo (Short Sleeves)': '₱180/piece',
+      'Pants (Men/Women)': '₱250/piece',
+      'Blazer (Women)': '₱650/piece',
+      'Dress (Long)': '₱700/piece',
+      'Dress (Short)': '₱500/piece'
+    }
+  }),
+  []
+);
 
   const formatRate = (v) => {
     if (v === null || v === undefined || v === '') return '';
@@ -286,10 +358,27 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
   const shouldShowPerUnit = (type) =>
     type === 'Car Washing' || type === 'Plumbing' || type === 'Carpentry' || type === 'Electrical Works';
 
-  const withPerUnitLabel = (rateStr) => {
-    if (!rateStr) return '';
-    return `per unit ${rateStr}`;
-  };
+const withPerUnitLabel = (rateStr) => {
+  if (!rateStr) return '';
+  const s = String(rateStr).toLowerCase();
+  if (
+    s.includes('/kg') ||
+    s.includes('kg') ||
+    s.includes('/sq.m') ||
+    s.includes('sq.m') ||
+    s.includes('/piece') ||
+    s.includes('piece') ||
+    s.includes('/pc') ||
+    s.includes('/pair') ||
+    s.includes('pair') ||
+    s.includes('/load') ||
+    s.includes('load') ||
+    s.includes('/bag') ||
+    s.includes('bag')
+  )
+    return rateStr;
+  return `per unit ${rateStr}`;
+};
 
   const parseNumericRate = (v) => {
     if (v === null || v === undefined || v === '') return null;
@@ -517,46 +606,41 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
     };
   }, [isLoadingBack]);
 
-  const handleReviewClick = () => {
-    setAttempted(true);
-    if (!isFormValid) return;
-    jumpTop();
-    setIsLoadingNext(true);
-    setTimeout(() => {
-      const statePayload = {
-        title,
-        service_type: serviceType,
-        service_task: serviceTask,
-        units: inputUnitsSafe,
-        quantity_unit: quantityUnit,
-        billable_units: billableUnits,
-        minimum_quantity: isLaundry && quantityUnit === 'kg' ? MIN_LAUNDRY_KG : null,
-        minimum_applied: !!minApplied,
-        base_rate_raw: baseRateRaw,
-        base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
-        subtotal: computedSubtotal,
-        preferred_time_fee: nightFee,
-        workers_needed: workersNeededSafe,
-        extra_worker_count: Number(extraWorkerCount) || 0,
-        extra_workers_fee: Number(extraWorkersFeeTotal) || 0,
-        total: computedTotal
-      };
+ const handleReviewClick = () => {
+  setAttempted(true);
+  if (!isFormValid) return;
 
-      if (typeof handleNext === 'function') {
-        handleNext();
-      } else {
-        navigate('/clientreviewservicerequest', { state: statePayload });
-      }
-    }, 2000);
-  };
+  preserveQuantityRef.current = true;
 
-  const onBackClick = () => {
-    jumpTop();
-    setIsLoadingBack(true);
-    setTimeout(() => {
-      if (typeof handleBack === 'function') handleBack();
-    }, 2000);
-  };
+  jumpTop();
+  setIsLoadingNext(true);
+  setTimeout(() => {
+    const statePayload = {
+      title,
+      service_type: serviceType,
+      service_task: serviceTask,
+      units: inputUnitsSafe,
+      quantity_unit: quantityUnit,
+      billable_units: billableUnits,
+      minimum_quantity: isLaundry && quantityUnit === 'kg' ? MIN_LAUNDRY_KG : null,
+      minimum_applied: !!minApplied,
+      base_rate_raw: baseRateRaw,
+      base_rate_numeric: Number.isFinite(baseRateNum) ? baseRateNum : null,
+      subtotal: computedSubtotal,
+      preferred_time_fee: nightFee,
+      workers_needed: workersNeededSafe,
+      extra_worker_count: Number(extraWorkerCount) || 0,
+      extra_workers_fee: Number(extraWorkersFeeTotal) || 0,
+      total: computedTotal
+    };
+
+    if (typeof handleNext === 'function') {
+      handleNext();
+    } else {
+      navigate('/clientreviewservicerequest', { state: statePayload });
+    }
+  }, 2000);
+};
 
   const decUnits = () => setUnits((u) => Math.max(1, (Number(u) || 1) - 1));
   const incUnits = () => setUnits((u) => Math.min(999, (Number(u) || 1) + 1));
@@ -628,118 +712,121 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                       {attempted && !serviceTask && <p className="text-xs text-red-600 mt-1">Please go back and select a service task.</p>}
                     </div>
 
-                    <div className="relative" ref={workersRef}>
-                      <div className="text-sm font-medium text-gray-700 mb-2">Workers Needed</div>
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+  <div className="relative" ref={workersRef}>
+    <div className="text-sm font-medium text-gray-700 mb-2">Workers Needed</div>
 
-                      <select
-                        value={workersNeededSafe}
-                        onChange={(e) => applyWorkersNeeded(e.target.value)}
-                        className="hidden"
-                        aria-hidden="true"
-                        tabIndex={-1}
-                        disabled={!allowExtraWorkers}
-                      >
-                        {workerOptions.map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
-                        ))}
-                      </select>
+    <select
+      value={workersNeededSafe}
+      onChange={(e) => applyWorkersNeeded(e.target.value)}
+      className="hidden"
+      aria-hidden="true"
+      tabIndex={-1}
+      disabled={!allowExtraWorkers}
+    >
+      {workerOptions.map((n) => (
+        <option key={n} value={n}>
+          {n}
+        </option>
+      ))}
+    </select>
 
-                      <div
-                        className={`flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40 ${
-                          !allowExtraWorkers ? 'opacity-60 cursor-not-allowed' : ''
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => allowExtraWorkers && setWorkersOpen((s) => !s)}
-                          className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
-                          disabled={!allowExtraWorkers}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="truncate text-gray-900">
-                              {workersNeededSafe} worker{workersNeededSafe === 1 ? '' : 's'}
-                            </span>
-                            {allowExtraWorkers && workersFeeApplies ? (
-                              <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{`+ fee ${peso(extraWorkersFeeTotal)}`}</span>
-                            ) : null}
-                          </div>
-                        </button>
+    <div
+      className={`flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40 ${
+        !allowExtraWorkers ? 'opacity-60 cursor-not-allowed' : ''
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => allowExtraWorkers && setWorkersOpen((s) => !s)}
+        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
+        disabled={!allowExtraWorkers}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <span className="truncate text-gray-900">
+            {workersNeededSafe} worker{workersNeededSafe === 1 ? '' : 's'}
+          </span>
+          {allowExtraWorkers && workersFeeApplies ? (
+            <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{`+ fee ${peso(extraWorkersFeeTotal)}`}</span>
+          ) : null}
+        </div>
+      </button>
 
-                        <button
-                          type="button"
-                          onClick={() => allowExtraWorkers && setWorkersOpen((s) => !s)}
-                          className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                          aria-label="Open workers options"
-                          disabled={!allowExtraWorkers}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path
-                              fillRule="evenodd"
-                              d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </button>
-                      </div>
+      <button
+        type="button"
+        onClick={() => allowExtraWorkers && setWorkersOpen((s) => !s)}
+        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+        aria-label="Open workers options"
+        disabled={!allowExtraWorkers}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path
+            fillRule="evenodd"
+            d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+    </div>
 
-                      <p className="text-xs text-gray-500 mt-1">
-                        {allowExtraWorkers ? (
-                          <>
-                            Up to <span className="font-medium">{INCLUDED_WORKERS}</span> workers included. Extra worker fee is{' '}
-                            <span className="font-medium">{peso(EXTRA_WORKER_FEE)}</span> per added worker.
-                          </>
-                        ) : (
-                          <>
-                            Add workers is available when units is <span className="font-medium">{MIN_UNITS_FOR_EXTRA_WORKERS}</span> and above.
-                          </>
-                        )}
-                      </p>
+    <p className="text-xs text-gray-500 mt-1">
+      {allowExtraWorkers ? (
+        <>
+          Up to <span className="font-medium">{INCLUDED_WORKERS}</span> workers included. Extra worker fee is{' '}
+          <span className="font-medium">{peso(EXTRA_WORKER_FEE)}</span> per added worker.
+        </>
+      ) : (
+        <>
+          Add workers is available when units is <span className="font-medium">{MIN_UNITS_FOR_EXTRA_WORKERS}</span> and above.
+        </>
+      )}
+    </p>
 
-                      <div className="mt-2 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs text-gray-700">Selected workers</span>
-                          <span className="text-xs font-semibold text-[#008cfc]">
-                            {workersNeededSafe} {workersNeededSafe === 1 ? 'worker' : 'workers'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3 mt-1">
-                          <span className="text-xs text-gray-700">Extra workers fee</span>
-                          <span
-                            className={`text-xs font-semibold ${
-                              allowExtraWorkers && workersFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'
-                            }`}
-                          >
-                            {allowExtraWorkers && workersFeeApplies ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
-                          </span>
-                        </div>
-                      </div>
+    {allowExtraWorkers && workersOpen && (
+      <PopList
+        items={workerOptions}
+        value={workersNeededSafe}
+        onSelect={(v) => {
+          applyWorkersNeeded(v);
+          setWorkersOpen(false);
+        }}
+        fullWidth
+        title="Select Number of Workers"
+        clearable
+        onClear={() => {
+          applyWorkersNeeded(1);
+          setWorkersOpen(false);
+        }}
+        rightLabel={(it) => {
+          const n = clampInt(it, 1, MAX_WORKERS);
+          const extra = Math.max(0, n - INCLUDED_WORKERS);
+          const fee = extra * EXTRA_WORKER_FEE;
+          return extra > 0 ? `+ fee ${peso(fee)}` : '';
+        }}
+      />
+    )}
+  </div>
 
-                      {allowExtraWorkers && workersOpen && (
-                        <PopList
-                          items={workerOptions}
-                          value={workersNeededSafe}
-                          onSelect={(v) => {
-                            applyWorkersNeeded(v);
-                            setWorkersOpen(false);
-                          }}
-                          fullWidth
-                          title="Select Number of Workers"
-                          clearable
-                          onClear={() => {
-                            applyWorkersNeeded(1);
-                            setWorkersOpen(false);
-                          }}
-                          rightLabel={(it) => {
-                            const n = clampInt(it, 1, MAX_WORKERS);
-                            const extra = Math.max(0, n - INCLUDED_WORKERS);
-                            const fee = extra * EXTRA_WORKER_FEE;
-                            return extra > 0 ? `+ fee ${peso(fee)}` : '';
-                          }}
-                        />
-                      )}
-                    </div>
+  <div className="mt-2 md:mt-7 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-xs text-gray-700">Selected workers</span>
+      <span className="text-xs font-semibold text-[#008cfc]">
+        {workersNeededSafe} {workersNeededSafe === 1 ? 'worker' : 'workers'}
+      </span>
+    </div>
+    <div className="flex items-center justify-between gap-3 mt-1">
+      <span className="text-xs text-gray-700">Extra workers fee</span>
+      <span
+        className={`text-xs font-semibold ${
+          allowExtraWorkers && workersFeeApplies ? 'text-[#008cfc]' : 'text-gray-400'
+        }`}
+      >
+        {allowExtraWorkers && workersFeeApplies ? `+ ${peso(extraWorkersFeeTotal)}` : '—'}
+      </span>
+    </div>
+  </div>
+</div>
+
 
                     <div className="md:col-span-2">
                       <div className="flex items-center justify-between mb-2">
