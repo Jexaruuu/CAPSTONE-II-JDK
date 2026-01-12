@@ -24,7 +24,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const [preferredTime, setPreferredTime] = useState('');
   const [isUrgent, setIsUrgent] = useState('');
   const [toolsProvided, setToolsProvided] = useState('');
-  const [workersNeeded, setWorkersNeeded] = useState(1);
   const [image, setImage] = useState(null);
   const [imageName, setImageName] = useState('');
   const [attachments, setAttachments] = useState([]);
@@ -37,12 +36,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const fileRef = useRef(null);
-
-  const clampInt = (v, min, max) => {
-    const n = parseInt(String(v), 10);
-    if (!Number.isFinite(n)) return min;
-    return Math.min(max, Math.max(min, n));
-  };
 
   const getTodayLocalDateString = () => {
     const now = new Date();
@@ -230,7 +223,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const urgentRef = useRef(null);
   const pdRef = useRef(null);
   const ptRef = useRef(null);
-  const workersRef = useRef(null);
 
   const [stOpen, setStOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
@@ -240,7 +232,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const [ptOpen, setPtOpen] = useState(false);
   const [pdMonthOpen, setPdMonthOpen] = useState(false);
   const [pdYearOpen, setPdYearOpen] = useState(false);
-  const [workersOpen, setWorkersOpen] = useState(false);
 
   const handleClickOutside = (event) => {
     const t = event.target;
@@ -255,7 +246,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       setPdYearOpen(false);
     }
     if (ptRef.current && !ptRef.current.contains(t)) setPtOpen(false);
-    if (workersRef.current && !workersRef.current.contains(t)) setWorkersOpen(false);
   };
 
   useEffect(() => {
@@ -314,7 +304,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
         setPreferredTime(data.preferredTime || '');
         setIsUrgent(data.isUrgent || '');
         setToolsProvided(data.toolsProvided || '');
-        setWorkersNeeded(clampInt(data.workersNeeded ?? data.workers_needed ?? 1, 1, MAX_WORKERS));
         if (!forceRefresh) {
           const img =
             data.image ||
@@ -350,10 +339,9 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     setHydrated(true);
   }, []);
 
-  const workersNeededSafe = clampInt(workersNeeded, 1, MAX_WORKERS);
-  const extraWorkerCount = Math.max(0, workersNeededSafe - INCLUDED_WORKERS);
-  const extraWorkersFeeTotal = extraWorkerCount * EXTRA_WORKER_FEE;
-  const workersFeeLabel = extraWorkerCount > 0 ? `+ fee ${formatRate(extraWorkersFeeTotal)}` : '';
+  const workersNeededFixed = 1;
+  const extraWorkerCount = 0;
+  const extraWorkersFeeTotal = 0;
 
   useEffect(() => {
     if (!hydrated) return;
@@ -364,12 +352,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       preferredTime,
       isUrgent,
       toolsProvided,
-      workersNeeded: workersNeededSafe,
-      workers_needed: workersNeededSafe,
-      worker_needed: workersNeededSafe,
-      number_of_workers: workersNeededSafe,
-      num_workers: workersNeededSafe,
-      manpower: workersNeededSafe,
+      workersNeeded: workersNeededFixed,
       included_workers: INCLUDED_WORKERS,
       extra_worker_fee_per_worker: EXTRA_WORKER_FEE,
       max_workers: MAX_WORKERS,
@@ -394,9 +377,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     preferredTime,
     isUrgent,
     toolsProvided,
-    workersNeededSafe,
-    extraWorkerCount,
-    extraWorkersFeeTotal,
     serviceDescription,
     image,
     imageName,
@@ -431,7 +411,8 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
     };
 
     const onNavCheck = () => {
-      if (window.location.pathname === '/clientdashboard' || window.location.pathname.startsWith('/clientdashboard')) clear();
+      if (window.location.pathname === '/clientdashboard' || window.location.pathname.startsWith('/clientdashboard'))
+        clear();
     };
 
     const onClick = (e) => {
@@ -605,15 +586,7 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
   const isPreferredDateValid = preferredDate && preferredDate >= todayStr;
 
   const isFormValid =
-    serviceType &&
-    serviceTask &&
-    isPreferredDateValid &&
-    preferredTime &&
-    isUrgent &&
-    toolsProvided &&
-    workersNeededSafe >= 1 &&
-    serviceDescription.trim() &&
-    !!image;
+    serviceType && serviceTask && isPreferredDateValid && preferredTime && isUrgent && toolsProvided && serviceDescription.trim() && !!image;
 
   const isPastDate = preferredDate && preferredDate < todayStr;
 
@@ -894,8 +867,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
       </div>
     );
   };
-
-  const workerOptions = Array.from({ length: MAX_WORKERS }, (_, i) => i + 1);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
@@ -1412,102 +1383,6 @@ const ClientServiceRequestDetails = ({ title, setTitle, handleNext, handleBack }
                           </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="relative" ref={workersRef}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Number of Workers Needed</label>
-                    <select
-                      value={workersNeededSafe}
-                      onChange={(e) => setWorkersNeeded(clampInt(e.target.value, 1, MAX_WORKERS))}
-                      className="hidden"
-                      aria-hidden="true"
-                      tabIndex={-1}
-                    >
-                      {workerOptions.map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </select>
-
-                    <div
-                      className={`flex items-center rounded-xl border ${
-                        attempted && !workersNeededSafe ? 'border-red-500' : 'border-gray-300'
-                      } focus-within:ring-2 focus-within:ring-[#008cfc]/40`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setWorkersOpen((s) => !s)}
-                        className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="truncate">
-                            {workersNeededSafe} worker{workersNeededSafe === 1 ? '' : 's'}
-                          </span>
-                          {workersFeeLabel ? (
-                            <span className="shrink-0 text-xs font-semibold text-[#008cfc]">{workersFeeLabel}</span>
-                          ) : null}
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setWorkersOpen((s) => !s)}
-                        className="px-3 pr-4 text-gray-600 hover:text-gray-800"
-                        aria-label="Open workers options"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path
-                            fillRule="evenodd"
-                            d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-
-                    <p className="text-xs text-gray-500 mt-1">
-                      Up to <span className="font-medium">{INCLUDED_WORKERS}</span> workers included. Extra worker fee is{' '}
-                      <span className="font-medium">{formatRate(EXTRA_WORKER_FEE)}</span> per added worker.
-                    </p>
-
-                    <div className="mt-2 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs text-gray-700">Selected workers</span>
-                        <span className="text-xs font-semibold text-[#008cfc]">
-                          {workersNeededSafe} {workersNeededSafe === 1 ? 'worker' : 'workers'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 mt-1">
-                        <span className="text-xs text-gray-700">Extra workers fee</span>
-                        <span className={`text-xs font-semibold ${extraWorkersFeeTotal > 0 ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                          {extraWorkersFeeTotal > 0 ? `+ ${formatRate(extraWorkersFeeTotal)}` : '—'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {workersOpen && (
-                      <PopList
-                        items={workerOptions.map((n) => n)}
-                        value={workersNeededSafe}
-                        onSelect={(v) => {
-                          setWorkersNeeded(clampInt(v, 1, MAX_WORKERS));
-                          setWorkersOpen(false);
-                        }}
-                        fullWidth
-                        title="Select Number of Workers"
-                        clearable
-                        onClear={() => {
-                          setWorkersNeeded(1);
-                          setWorkersOpen(false);
-                        }}
-                        rightLabel={(it) => {
-                          const n = clampInt(it, 1, MAX_WORKERS);
-                          const extra = Math.max(0, n - INCLUDED_WORKERS);
-                          const fee = extra * EXTRA_WORKER_FEE;
-                          return extra > 0 ? `+ fee ${formatRate(fee)}` : '';
-                        }}
-                      />
                     )}
                   </div>
 
