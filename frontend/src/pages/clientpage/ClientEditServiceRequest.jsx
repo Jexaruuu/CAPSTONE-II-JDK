@@ -271,6 +271,8 @@ const inferUnitModeFromRate = (serviceType, serviceTask) => {
   return shouldShowPerUnit(serviceType) ? 'units' : 'units';
 };
 
+const validateEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
+
 export default function ClientEditServiceRequest() {
   const { id } = useParams();
   const gid = decodeURIComponent(id || '');
@@ -305,6 +307,14 @@ export default function ClientEditServiceRequest() {
   const [street, setStreet] = useState('');
   const [additionalAddress, setAdditionalAddress] = useState('');
 
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
+  const [emailAddress, setEmailAddress] = useState('');
+  const [nameLocked, setNameLocked] = useState(true);
+  const [emailLocked, setEmailLocked] = useState(true);
+  const [contactLocked, setContactLocked] = useState(true);
+
   const [imageUrl, setImageUrl] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [imageDataUrl, setImageDataUrl] = useState(null);
@@ -312,6 +322,7 @@ export default function ClientEditServiceRequest() {
   const [clientImageUrl, setClientImageUrl] = useState('');
   const [clientImageFile, setClientImageFile] = useState(null);
   const [clientImageDataUrl, setClientImageDataUrl] = useState(null);
+  const [clientImageName, setClientImageName] = useState('');
 
   const [logoBroken, setLogoBroken] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -407,6 +418,24 @@ export default function ClientEditServiceRequest() {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
+
+  useEffect(() => {
+    const loadMe = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/clients/me`, { withCredentials: true, headers: headersWithU });
+        const fn = String(data?.first_name || '').trim();
+        const ln = String(data?.last_name || '').trim();
+        const em = String(data?.email_address || data?.email || '').trim();
+        const ph = String(data?.phone || data?.contact_number || '').trim();
+        if (fn) setFirstName(fn);
+        if (ln) setLastName(ln);
+        if (fn && ln) setNameLocked(true);
+        if (em) { setEmailAddress(em); setEmailLocked(true); }
+        if (ph) { setContactNumber(String(ph).replace(/\D/g, '').slice(-10)); setContactLocked(true); }
+      } catch {}
+    };
+    loadMe();
+  }, [headersWithU]);
 
   useEffect(() => {
     const load = async () => {
@@ -572,9 +601,17 @@ export default function ClientEditServiceRequest() {
     const f = e.target.files?.[0];
     if (!f) return;
     setClientImageFile(f);
+    setClientImageName(f.name || '');
     const du = await readAsDataUrl(f);
     setClientImageDataUrl(du);
-    if (du) setClientImageUrl('');
+    if (du) setClientImageUrl(clientImageUrl || '');
+  };
+
+  const clearClientPickedImage = () => {
+    setClientImageFile(null);
+    setClientImageDataUrl(null);
+    setClientImageName('');
+    try { if (clientFileRef.current) clientFileRef.current.value = ''; } catch {}
   };
 
   const toNumOrNull = (v) => {
@@ -1100,7 +1137,7 @@ export default function ClientEditServiceRequest() {
   }, [computedTotalAmountLocal, totalRatePhp]);
 
   const isComplete = useMemo(() => {
-    const req = [serviceType, serviceTask, preferredDate, preferredTime, workersNeed, isUrgent, toolsProvided, description, barangay, street];
+    const req = [serviceType, serviceTask, preferredDate, preferredTime, workersNeed, isUrgent, toolsProvided, description, barangay, street, additionalAddress];
     const allFilled = req.every(v => String(v ?? '').trim() !== '');
     if (!allFilled) return false;
 
@@ -1129,7 +1166,7 @@ export default function ClientEditServiceRequest() {
     const n = parseInt(String(units).replace(/[^\d]/g, ''), 10);
     if (!Number.isFinite(n) || n <= 0) return false;
     return true;
-  }, [serviceType, serviceTask, preferredDate, preferredTime, workersNeed, isUrgent, toolsProvided, description, barangay, street, units, unitKg, sqM, pieces, unitMode]);
+  }, [serviceType, serviceTask, preferredDate, preferredTime, workersNeed, isUrgent, toolsProvided, description, barangay, street, additionalAddress, units, unitKg, sqM, pieces, unitMode]);
 
   const canSave = isDirty && isComplete && !saving;
 
@@ -1175,6 +1212,12 @@ export default function ClientEditServiceRequest() {
     return units || '—';
   }, [unitMode, unitKg, sqM, pieces, units]);
 
+  const requestImagePreview = imageDataUrl || imageUrl || '';
+  const requestImageName = useMemo(() => {
+    if (imageFile && imageFile.name) return imageFile.name;
+    return requestImagePreview ? 'Current image' : '';
+  }, [imageFile, requestImagePreview]);
+
   return (
     <>
       <ClientNavigation />
@@ -1212,73 +1255,85 @@ export default function ClientEditServiceRequest() {
 
         <div className="mx-auto w-full max-w-[1420px] px-6">
           <div className="space-y-6 mt-5">
+
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4">
-                <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Request Details</h3>
+                <div>
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-900">Personal Information</h3>
+                <span style={{ display: 'none' }} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+                  <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+                  Client
+                </span>
+              </div>
               </div>
               <div className="border-t border-gray-100" />
+
               <div className="px-6 py-6">
-                {error && <div className="mb-4 text-sm text-red-600">{error}</div>}
-                {ok && <div className="mb-4 text-sm text-emerald-700">{ok}</div>}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-12 gap-y-6">
+                  <div className="lg:col-span-2">
+                    <p className="text-base text-gray-600 mb-6">Review your client details and address information.</p>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[340px,1fr] gap-6 items-start">
-                  <div className="space-y-5">
-                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-                      <div className="text-base font-semibold text-gray-900 mb-3">Client Profile</div>
-                      <div className="w-full aspect-square rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50 grid place-items-center">
-                        {clientImageDataUrl ? (
-                          <img src={clientImageDataUrl} alt="" className="w-full h-full object-cover object-center" />
-                        ) : clientImageUrl ? (
-                          <img src={clientImageUrl} alt="" className="w-full h-full object-cover object-center" />
-                        ) : (
-                          <span className="text-sm text-gray-500">No profile</span>
-                        )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                        <input
+                          type="text"
+                          value={firstName}
+                          readOnly={nameLocked}
+                          aria-readonly={nameLocked}
+                          className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40 ${nameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                        />
                       </div>
-                      <div className="mt-3">
-                        <input ref={clientFileRef} type="file" accept="image/*" className="hidden" onChange={onPickClientImage} />
-                        <button
-                          type="button"
-                          onClick={() => clientFileRef.current?.click()}
-                          className="w-full h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
-                        >
-                          Change Profile Picture
-                        </button>
-                      </div>
-                    </div>
 
-                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-                      <div className="text-base font-semibold text-gray-900 mb-3">Request Image</div>
-                      <div className="w-full aspect-square rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50 grid place-items-center">
-                        {imageDataUrl ? (
-                          <img src={imageDataUrl} alt="" className="w-full h-full object-cover object-center" />
-                        ) : imageUrl ? (
-                          <img src={imageUrl} alt="" className="w-full h-full object-cover object-center" />
-                        ) : (
-                          <span className="text-sm text-gray-500">No image</span>
-                        )}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                        <input
+                          type="text"
+                          value={lastName}
+                          readOnly={nameLocked}
+                          aria-readonly={nameLocked}
+                          className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40 ${nameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                        />
                       </div>
-                      <div className="mt-3">
-                        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
-                        <button
-                          type="button"
-                          onClick={() => fileRef.current?.click()}
-                          className="w-full h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
-                        >
-                          Change Request Image
-                        </button>
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="relative" ref={barangayRef}>
-                        <span className="block text-sm font-medium text-gray-700 mb-2">Barangay</span>
-                        <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number</label>
+                        <div className={`flex items-center rounded-xl border border-gray-300 ${contactLocked ? 'bg-gray-100' : ''} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
+                          <div className="w-8 h-5 ml-3 mr-2 rounded-md">
+                            <img src="/philippines.png" alt="Philippine Flag" className="w/full h/full object-contain rounded-md" />
+                          </div>
+                          <span className="text-gray-700 text-sm mr-3">+63</span>
+                          <span className="h-6 w-px bg-gray-200 mr-2" />
+                          <input
+                            type="text"
+                            value={contactNumber}
+                            readOnly={contactLocked}
+                            aria-readonly={contactLocked}
+                            className={`w-full px-4 py-3 bg-transparent outline-none rounded-r-xl ${contactLocked ? 'cursor-not-allowed' : ''}`}
+                            placeholder="9XXXXXXXXX"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                        <input
+                          type="email"
+                          value={emailAddress}
+                          readOnly={emailLocked}
+                          aria-readonly={emailLocked}
+                          className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40 ${emailLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                          placeholder="Email Address"
+                        />
+                      </div>
+
+                      <div className="relative md:col-span-2" ref={barangayRef}>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
+                        <div className="flex items-center rounded-xl border border-gray-300">
                           <button
                             type="button"
                             onClick={() => { closeOtherDropdowns('barangay'); setBarangayOpen(s => !s); }}
-                            className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none"
+                            className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
                             aria-expanded={barangayOpen}
                             aria-haspopup="listbox"
                           >
@@ -1295,11 +1350,9 @@ export default function ClientEditServiceRequest() {
                             </svg>
                           </button>
                         </div>
+
                         {barangayOpen && (
-                          <div
-                            className="absolute z-50 mt-2 left-0 w-[30rem] max-w-[100vw] rounded-xl border border-gray-200 bg-white shadow-xl p-3"
-                            role="listbox"
-                          >
+                          <div className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-3" role="listbox">
                             <div className="px-2 pb-2">
                               <input
                                 value={barangayQuery}
@@ -1342,26 +1395,99 @@ export default function ClientEditServiceRequest() {
                           </div>
                         )}
                       </div>
-                      <div className="grid gap-2">
-                        <span className="block text-sm font-medium text-gray-700">Street</span>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Street</label>
                         <input
+                          type="text"
                           value={street}
-                          onChange={(e)=>setStreet(e.target.value)}
-                          placeholder="Street"
+                          onChange={(e) => setStreet(e.target.value)}
+                          placeholder="House No. and Street"
                           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
                         />
                       </div>
-                      <div className="grid gap-2">
-                        <span className="block text-sm font-medium text-gray-700">Additional Address</span>
-                        <input
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Additional Address (Landmark etc.)</label>
+                        <textarea
                           value={additionalAddress}
-                          onChange={(e)=>setAdditionalAddress(e.target.value)}
-                          placeholder="Unit/Building/Notes"
+                          onChange={(e) => setAdditionalAddress(e.target.value)}
+                          placeholder="Additional Address (Required)"
                           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008cfc]/40"
                         />
                       </div>
                     </div>
+                  </div>
 
+                  <div className="lg:col-span-1">
+                    <div className="text-xl md:text-2xl font-semibold mb-3 text-center">Client Profile Picture</div>
+                    <p className="text-base text-gray-600 text-center mb-5">Upload your picture here.</p>
+                    <div className="flex flex-col items-center gap-5">
+                      {!clientImageDataUrl && !clientImageUrl ? (
+                        <div className="w-36 h-36 md:w-40 md:h-40 rounded-full grid place-items-center bg-gray-200">
+                          <span className="text-white text-2xl">+</span>
+                        </div>
+                      ) : (
+                        <img
+                          src={clientImageDataUrl || clientImageUrl}
+                          alt="Profile Preview"
+                          className="w-36 h-36 md:w-40 md:h-40 rounded-full object-cover ring-2 ring-blue-100 shadow-sm"
+                        />
+                      )}
+
+                      <div className="w-full flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => clientFileRef.current?.click()}
+                          className="rounded-md bg-[#008cfc] px-4 py-2 text-sm font-medium text-white hover:bg-[#0077d6] transition w-full shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                        >
+                          Choose Photo
+                        </button>
+
+                        {clientImageDataUrl ? (
+                          <button
+                            type="button"
+                            onClick={clearClientPickedImage}
+                            className="rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+
+                        <input
+                          ref={clientFileRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={onPickClientImage}
+                        />
+                      </div>
+
+                      {clientImageName ? (
+                        <p className="text-xs text-gray-600 truncate text-center">Selected: {clientImageName}</p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4">
+                <div>
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Request Details</h3>
+                  <p className="text-sm text-gray-600 mt-1">Update your service type, schedule, requirements, and request image.</p>
+                </div>
+              </div>
+              <div className="border-t border-gray-100" />
+
+              <div className="px-6 py-6">
+                {error && <div className="mb-4 text-sm text-red-600">{error}</div>}
+                {ok && <div className="mb-4 text-sm text-emerald-700">{ok}</div>}
+
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr,380px] gap-6 items-start">
+                  <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                       <div className="relative" ref={stRef}>
                         <span className="block text-sm font-medium text-gray-700 mb-2">Service Type</span>
@@ -1831,10 +1957,10 @@ export default function ClientEditServiceRequest() {
                           <option value="No">No</option>
                         </select>
                         <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                          <button type="button" onClick={()=>setToolsOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
+                          <button type="button" onClick={()=>{ closeOtherDropdowns('tools'); setToolsOpen(s=>!s); }} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
                             {toolsProvided || 'Select Yes or No'}
                           </button>
-                          <button type="button" onClick={()=>setToolsOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open tools provided options">
+                          <button type="button" onClick={()=>{ closeOtherDropdowns('tools'); setToolsOpen(s=>!s); }} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open tools provided options">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
                           </button>
                         </div>
@@ -1859,10 +1985,10 @@ export default function ClientEditServiceRequest() {
                           <option value="No">No</option>
                         </select>
                         <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
-                          <button type="button" onClick={()=>setUrgentOpen(s=>!s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
+                          <button type="button" onClick={()=>{ closeOtherDropdowns('urgent'); setUrgentOpen(s=>!s); }} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none">
                             {isUrgent || 'Select Yes or No'}
                           </button>
-                          <button type="button" onClick={()=>setUrgentOpen(s=>!s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open urgent options">
+                          <button type="button" onClick={()=>{ closeOtherDropdowns('urgent'); setUrgentOpen(s=>!s); }} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open urgent options">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" /></svg>
                           </button>
                         </div>
@@ -1904,9 +2030,72 @@ export default function ClientEditServiceRequest() {
                         />
                       </div>
                     </div>
-
-                    <div className="mt-4 hidden" />
                   </div>
+
+                  <aside className="space-y-4">
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="px-5 py-4 border-b border-gray-100">
+                        <div className="text-base font-semibold text-gray-900">Request Image</div>
+                        <div className="text-sm text-gray-600 mt-1">Upload or change your request image.</div>
+                      </div>
+
+                      <div className="p-5">
+                        <div className="w-full rounded-2xl border border-dashed border-gray-300 bg-gray-50 overflow-hidden">
+                          <div className="w-full aspect-square grid place-items-center">
+                            {requestImagePreview ? (
+                              <img src={requestImagePreview} alt="" className="w-full h-full object-cover object-center" />
+                            ) : (
+                              <div className="text-center px-6">
+                                <div className="mx-auto w-14 h-14 rounded-2xl bg-white border border-gray-200 grid place-items-center shadow-sm">
+                                  <span className="text-2xl text-gray-500">+</span>
+                                </div>
+                                <div className="mt-3 text-sm font-semibold text-gray-800">No image selected</div>
+                                <div className="mt-1 text-xs text-gray-500">Choose a clear photo for faster matching.</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex items-center gap-2">
+                          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
+                          <button
+                            type="button"
+                            onClick={() => fileRef.current?.click()}
+                            className="w-full h-11 px-4 rounded-xl bg-[#008cfc] text-white hover:bg-blue-700 transition font-medium"
+                          >
+                            Choose Image
+                          </button>
+                        </div>
+
+                        {requestImageName ? (
+                          <div className="mt-3 text-xs text-gray-600 truncate">
+                            Selected: <span className="font-medium">{requestImageName}</span>
+                          </div>
+                        ) : null}
+
+                        <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs text-gray-700">Selected task rate</span>
+                            <span className="text-xs font-semibold text-[#008cfc]">
+                              {serviceType && serviceTask ? getSelectedTaskRate(serviceType, serviceTask) : '—'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 mt-1">
+                            <span className="text-xs text-gray-700">Night time fee</span>
+                            <span className={`text-xs font-semibold ${preferredTimeFeeDisplay ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                              {preferredTimeFeeDisplay ? `+ ${preferredTimeFeeDisplay}` : '—'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 mt-1">
+                            <span className="text-xs text-gray-700">Extra workers fee</span>
+                            <span className={`text-xs font-semibold ${extraWorkersFeeDisplay ? 'text-[#008cfc]' : 'text-gray-400'}`}>
+                              {extraWorkersFeeDisplay ? `+ ${extraWorkersFeeDisplay}` : '—'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </aside>
                 </div>
               </div>
             </div>

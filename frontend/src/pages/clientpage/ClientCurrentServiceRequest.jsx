@@ -123,6 +123,35 @@ const isExpiredDT = (dateVal, timeVal) => {
   return d.getTime() < now.getTime();
 };
 
+const toIntOrNull = (v) => {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "number" && Number.isFinite(v)) {
+    const n = Math.floor(v);
+    return n >= 1 ? n : null;
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  const n = Number(s);
+  if (Number.isFinite(n)) {
+    const nn = Math.floor(n);
+    return nn >= 1 ? nn : null;
+  }
+  const m = s.match(/\d+/);
+  if (!m) return null;
+  const nn = Math.floor(Number(m[0]));
+  return Number.isFinite(nn) && nn >= 1 ? nn : null;
+};
+
+const toNumberOrNull = (v) => {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  const s = String(v);
+  const m = s.match(/-?\d+(\.\d+)?/);
+  if (!m) return null;
+  const n = Number(m[0]);
+  return Number.isFinite(n) ? n : null;
+};
+
 const RateText = ({ rate }) => {
   const t = String(rate?.rate_type || "").toLowerCase();
   const from = rate?.rate_from;
@@ -201,36 +230,78 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
   const d = item.details || {};
   const rate = item.rate || {};
   const Icon = iconForService(d.service_type || d.service_task);
+
   const hasUrgency = d.is_urgent !== undefined && d.is_urgent !== null && String(d.is_urgent).trim() !== "";
   const urgentBool = toBoolStrict(d.is_urgent);
+
   const statusLower = String(item.status || "").toLowerCase();
   const userCancelled = !!item.user_cancelled;
   const isCancelled = statusLower === "cancelled" || userCancelled;
-  const isPending = statusLower === "pending";
   const isApproved = statusLower === "approved";
   const isDeclined = statusLower === "declined";
   const isExpiredReq = isExpiredDT(d.preferred_date, d.preferred_time);
+
   const profileUrl = React.useMemo(() => {
     const u = item?.info?.profile_picture_url || "";
     if (u) return u;
     const name = item?.info?.first_name || "Client";
     return avatarFromName(name);
   }, [item]);
+
   const createdAgo = item.created_at ? timeAgo(item.created_at) : "";
 
   const workersNeedText = (() => {
     const v = d.workers_needed ?? d.workers_need ?? null;
-    if (v === null || v === undefined) return "-";
-    const s = String(v).trim();
-    return s ? s : "-";
+    const n = toIntOrNull(v);
+    return n === null ? "-" : String(n);
   })();
 
-  const unitsText = (() => {
-    const u = rate?.units ?? null;
-    const kg = rate?.unit_kg ?? null;
-    if (u !== null && u !== undefined && String(u).trim() !== "") return String(u).trim();
-    if (kg !== null && kg !== undefined && String(kg).trim() !== "") return `${String(kg).trim()} kg`;
-    return "-";
+  const quantityDisplay = (() => {
+    const details = d || {};
+    const serviceType = String(details?.service_type || "");
+    const task = String(details?.service_task || "");
+    const taskLow = task.toLowerCase();
+
+    const sq = toNumberOrNull(rate?.sq_m ?? rate?.sqm ?? null);
+    const pcs = toIntOrNull(rate?.pieces ?? rate?.pcs ?? null);
+
+    const unitsRaw = rate?.units ?? rate?.unit ?? details?.units ?? details?.unit ?? null;
+    const units = toIntOrNull(unitsRaw);
+
+    const kgRaw = rate?.unit_kg ?? rate?.unitKg ?? details?.unit_kg ?? details?.unitKg ?? null;
+    const kgNum = toNumberOrNull(kgRaw);
+
+    const isSqFromTask = /(sq\.?\s*m|sqm|m2|square\s*meter)/i.test(taskLow);
+    const isPiecesFromTask = /(per\s*piece|pieces?|pcs?\b)/i.test(taskLow);
+
+    let kind = "";
+    if (sq !== null && sq > 0) kind = "sq_m";
+    else if (pcs !== null && pcs > 0) kind = "pieces";
+    else if (isSqFromTask) kind = "sq_m";
+    else if (isPiecesFromTask) kind = "pieces";
+
+    const fmtNum = (n) =>
+      Number.isFinite(n) ? new Intl.NumberFormat("en-PH", { maximumFractionDigits: 2 }).format(n) : "-";
+
+    if (kind === "sq_m") {
+      const val = sq !== null && sq > 0 ? sq : units !== null ? units : null;
+      return { label: "Sq. m", value: val === null ? "-" : fmtNum(Number(val)) };
+    }
+
+    if (kind === "pieces") {
+      const val = pcs !== null && pcs > 0 ? pcs : units !== null ? units : null;
+      return { label: "Pieces", value: val === null ? "-" : String(val) };
+    }
+
+    if (serviceType.toLowerCase() === "laundry") {
+      if (kgNum !== null && kgNum > 0 && units !== null) return { label: "Units", value: `${String(units)} (${fmtNum(kgNum)} kg)` };
+      if (kgNum !== null && kgNum > 0) return { label: "Units", value: `${fmtNum(kgNum)} kg` };
+      if (units !== null) return { label: "Units", value: String(units) };
+      return { label: "Units", value: "-" };
+    }
+
+    if (units !== null) return { label: "Units", value: String(units) };
+    return { label: "Units", value: "-" };
   })();
 
   const totalRateText = (() => {
@@ -243,7 +314,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
   })();
 
   return (
-    <div className="relative overflow-hidden bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl">
+    <div className="relative overflow-hidden bg-white border border-gray-300 rounded-md p-6 shadow-sm transition-all duration-300">
       <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
       <div className="relative z-10">
         <div className="flex items-start justify-between gap-4">
@@ -252,49 +323,52 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
               <img
                 src={profileUrl}
                 alt=""
-                className="w-16 h-16 rounded-full object-cover border border-blue-300"
-                onError={(e) => { e.currentTarget.src = avatarFromName(item?.info?.first_name || "Client"); }}
+                className="w-20 h-20 rounded-full object-cover border border-blue-300"
+                onError={(e) => {
+                  e.currentTarget.src = avatarFromName(item?.info?.first_name || "Client");
+                }}
               />
             </div>
+
             <div className="min-w-0">
               <div className="text-xl md:text-2xl font-semibold truncate">
                 <span className="text-gray-700">Service Type:</span>{" "}
                 <span className="text-gray-900">{d.service_type || "Service"}</span>
               </div>
+
               <div className="mt-1 text-base md:text-lg truncate">
                 <span className="font-semibold text-gray-700">Service Task:</span>{" "}
                 <span className="text-[#008cfc] font-semibold">{d.service_task || "Task"}</span>
               </div>
-              <div className="mt-1 text-base text-gray-500">
-                {createdAgo ? `Created ${createdAgo}` : ""}
-              </div>
+
+              <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo}` : ""}</div>
+
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
                 <div className="space-y-1.5">
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
                     <span className="text-gray-700 font-semibold">Preferred Date:</span>
                     <span className="text-[#008cfc] font-semibold">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
                   </div>
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
                     <span className="text-gray-700 font-semibold">Preferred Time:</span>
                     <span className="text-[#008cfc] font-semibold">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
                   </div>
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
                     <span className="text-gray-700 font-semibold">Urgency:</span>
-                    <span className="text-[#008cfc] font-semibold">
-                      {hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}
-                    </span>
+                    <span className="text-[#008cfc] font-semibold">{hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}</span>
                   </div>
                 </div>
+
                 <div className="space-y-1.5 md:pl-10">
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    <span className="text-gray-700 font-semibold">Workers Need:</span>
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Workers Needed:</span>
                     <span className="text-[#008cfc] font-semibold">{workersNeedText}</span>
                   </div>
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    <span className="text-gray-700 font-semibold">Units:</span>
-                    <span className="text-[#008cfc] font-semibold">{unitsText}</span>
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">{quantityDisplay.label}:</span>
+                    <span className="text-[#008cfc] font-semibold">{quantityDisplay.value}</span>
                   </div>
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
                     <span className="text-gray-700 font-semibold">Total Rate:</span>
                     <span className="text-[#008cfc] font-semibold">{totalRateText}</span>
                   </div>
@@ -304,7 +378,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <div className="h-10 w-10 rounded-lg border flex items-center justify-center border-gray-300 text-[#008cfc]">
+            <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
               <Icon className="h-5 w-5" />
             </div>
           </div>
@@ -314,7 +388,10 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
           {(isDeclined || isCancelled) ? (
             <Link
               to={`/current-service-request/${encodeURIComponent(item.id)}`}
-              onClick={(e) => { e.preventDefault(); onReason(item); }}
+              onClick={(e) => {
+                e.preventDefault();
+                onReason(item);
+              }}
               className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
             >
               View Reason
@@ -323,13 +400,17 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
             !isExpiredReq && (
               <Link
                 to={`/current-service-request/${encodeURIComponent(item.id)}`}
-                onClick={(e) => { e.preventDefault(); onView(item.id); }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onView(item.id);
+                }}
                 className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
               >
                 View
               </Link>
             )
           )}
+
           {isApproved && !isCancelled && !isDeclined && !isExpiredReq && (
             <button
               type="button"
@@ -407,7 +488,7 @@ export default function ClientCurrentServiceRequest() {
 
   const excludeHidden = (arr) => {
     const hidden = getHiddenSet();
-    return (arr || []).filter(r => !hidden.has(String(r.id)));
+    return (arr || []).filter((r) => !hidden.has(String(r.id)));
   };
 
   const enrichProfiles = async (arr) => {
@@ -425,8 +506,8 @@ export default function ClientCurrentServiceRequest() {
             ...it.info,
             profile_picture_url: info.profile_picture_url || it.info?.profile_picture_url || null,
             first_name: it.info?.first_name || info.first_name || null,
-            last_name: it.info?.last_name || info.last_name || null
-          }
+            last_name: it.info?.last_name || info.last_name || null,
+          },
         };
       } catch {}
     }
@@ -440,7 +521,9 @@ export default function ClientCurrentServiceRequest() {
         withCredentials: true,
       });
       const arr = Array.isArray(data?.items) ? data.items : [];
-      const ids = arr.map(r => r.details?.request_group_id || r.info?.request_group_id || r.rate?.request_group_id || r.id).filter(Boolean);
+      const ids = arr
+        .map((r) => r.details?.request_group_id || r.info?.request_group_id || r.rate?.request_group_id || r.id)
+        .filter(Boolean);
       return new Set(ids.map(String));
     } catch {
       return new Set();
@@ -448,7 +531,7 @@ export default function ClientCurrentServiceRequest() {
   };
 
   const applyCancelledOverride = (arr, cancelledSet) => {
-    return arr.map(r => cancelledSet.has(String(r.id)) ? { ...r, status: "cancelled" } : r);
+    return arr.map((r) => (cancelledSet.has(String(r.id)) ? { ...r, status: "cancelled" } : r));
   };
 
   const getClientEmail = () => {
@@ -494,7 +577,7 @@ export default function ClientCurrentServiceRequest() {
             reason_choice: r.reason_choice || null,
             reason_other: r.reason_other || null,
             decided_at: r.decided_at || null,
-            canceled_at: r.canceled_at || r.cancelled_at || null
+            canceled_at: r.canceled_at || r.cancelled_at || null,
           };
         });
         const withAvatars = await enrichProfiles(normalized);
@@ -519,7 +602,7 @@ export default function ClientCurrentServiceRequest() {
             decision_reason: r.decision_reason || null,
             reason_choice: r.reason_choice || null,
             reason_other: r.reason_other || null,
-            decided_at: r.decided_at || null
+            decided_at: r.decided_at || null,
           };
         });
         const cancelledIds = await getCancelledIds();
@@ -546,15 +629,19 @@ export default function ClientCurrentServiceRequest() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = items;
-    if (statusFilter === "pending") list = list.filter((i) => (i.status || "").toLowerCase() === "pending" && !i.user_cancelled && !isExpiredDT(i?.details?.preferred_date, i?.details?.preferred_time));
+    if (statusFilter === "pending")
+      list = list.filter(
+        (i) => (i.status || "").toLowerCase() === "pending" && !i.user_cancelled && !isExpiredDT(i?.details?.preferred_date, i?.details?.preferred_time)
+      );
     if (statusFilter === "approved") list = list.filter((i) => (i.status || "").toLowerCase() === "approved" && !i.user_cancelled);
     if (statusFilter === "declined") list = list.filter((i) => (i.status || "").toLowerCase() === "declined" && !i.user_cancelled);
-    if (statusFilter === "cancelled") list = list.filter((i) => ((i.status || "").toLowerCase() === "cancelled") || i.user_cancelled);
-    if (statusFilter === "expired") list = list.filter((i) => {
-      const expired = isExpiredDT(i?.details?.preferred_date, i?.details?.preferred_time);
-      const st = String(i.status || "").toLowerCase();
-      return expired && st !== "declined" && st !== "cancelled" && st !== "canceled";
-    });
+    if (statusFilter === "cancelled") list = list.filter((i) => (String(i.status || "").toLowerCase() === "cancelled") || i.user_cancelled);
+    if (statusFilter === "expired")
+      list = list.filter((i) => {
+        const expired = isExpiredDT(i?.details?.preferred_date, i?.details?.preferred_time);
+        const st = String(i.status || "").toLowerCase();
+        return expired && st !== "declined" && st !== "cancelled" && st !== "canceled";
+      });
     if (!q) return list;
     return list.filter((i) => {
       const s1 = (i.details?.service_type || "").toLowerCase();
@@ -659,7 +746,7 @@ export default function ClientCurrentServiceRequest() {
   };
 
   const onReason = async (item) => {
-    const isCancel = (String(item?.status || "").toLowerCase() === "cancelled") || !!item?.user_cancelled;
+    const isCancel = String(item?.status || "").toLowerCase() === "cancelled" || !!item?.user_cancelled;
     let row = item;
     if (isCancel && !item?.canceled_at) {
       try {
@@ -678,7 +765,7 @@ export default function ClientCurrentServiceRequest() {
             canceled_at: match.canceled_at || match.cancelled_at || null,
             reason_choice: item.reason_choice || match.reason_choice || null,
             reason_other: item.reason_other || match.reason_other || null,
-            decision_reason: item.decision_reason || match.decision_reason || null
+            decision_reason: item.decision_reason || match.decision_reason || null,
           };
         }
       } catch {}
@@ -717,7 +804,9 @@ export default function ClientCurrentServiceRequest() {
     } catch {}
     pushHiddenId(id);
     removeFromList(id);
-    try { window.dispatchEvent(new CustomEvent('client-request-deleted', { detail: { id: String(id) } })); } catch {}
+    try {
+      window.dispatchEvent(new CustomEvent("client-request-deleted", { detail: { id: String(id) } }));
+    } catch {}
     setShowDelete(false);
     setDeleteTarget(null);
     setDeleting(false);
@@ -743,7 +832,9 @@ export default function ClientCurrentServiceRequest() {
       setShowDeleteDone(true);
       setDeleteTarget(null);
     } finally {
-      try { window.dispatchEvent(new CustomEvent('client-request-deleted', { detail: { id: String(id) } })); } catch {}
+      try {
+        window.dispatchEvent(new CustomEvent("client-request-deleted", { detail: { id: String(id) } }));
+      } catch {}
       setDeleting(false);
     }
   };
@@ -754,9 +845,7 @@ export default function ClientCurrentServiceRequest() {
 
       <div className="flex-1 flex flex-col">
         <header className="mx-auto w-full max-w-[1525px] px-6 pt-6 md:pt-8">
-          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-            Service Requests Status
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Service Requests Status</h1>
         </header>
 
         <div className="mx-auto w-full max-w-[1525px] px-6 mt-6">
@@ -767,35 +856,45 @@ export default function ClientCurrentServiceRequest() {
                 <button
                   type="button"
                   onClick={() => setStatusFilter("all")}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "all" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                    statusFilter === "all" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
                   All
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "pending" ? "all" : "pending"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "pending" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                    statusFilter === "pending" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
                   Pending Requests
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "approved" ? "all" : "approved"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "approved" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                    statusFilter === "approved" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
                   Approved Requests
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "declined" ? "all" : "declined"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "declined" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                    statusFilter === "declined" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
                   Declined Requests
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "cancelled" ? "all" : "cancelled"))}
-                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${statusFilter === "cancelled" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                    statusFilter === "cancelled" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
                   Canceled Requests
                 </button>
@@ -803,15 +902,14 @@ export default function ClientCurrentServiceRequest() {
                   type="button"
                   onClick={() => setStatusFilter((v) => (v === "expired" ? "all" : "expired"))}
                   className={`inline-flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
-                    statusFilter === "expired"
-                      ? "border-[#008cfc] bg-[#008cfc] text-white"
-                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    statusFilter === "expired" ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   Expired Requests
                 </button>
               </div>
             </div>
+
             <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
               <div className="mt-6 flex items-center h-10 border border-gray-300 rounded-md px-3 gap-2 bg-white">
                 <span className="text-gray-500 text-lg">🔍︎</span>
@@ -844,9 +942,7 @@ export default function ClientCurrentServiceRequest() {
               <div className="mt-5 h-3 w-52 bg-gray-200 rounded" />
             </div>
           ) : paginated.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-gray-600">
-              No service requests found.
-            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-gray-600">No service requests found.</div>
           ) : (
             paginated.map((item) => {
               const expired = isExpiredDT(item?.details?.preferred_date, item?.details?.preferred_time);
@@ -902,16 +998,16 @@ export default function ClientCurrentServiceRequest() {
                       key={`${p}-${idx}`}
                       onClick={() => setPage(p)}
                       className={`h-9 min-w-9 px-3 rounded-md border text-sm ${
-                        p === page
-                          ? "border-[#008cfc] bg-[#008cfc] text-white"
-                          : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                        p === page ? "border-[#008cfc] bg-[#008cfc] text-white" : "border-gray-300 text-gray-700 hover:bg-gray-50"
                       }`}
                       aria-current={p === page ? "page" : undefined}
                     >
                       {p}
                     </button>
                   ) : (
-                    <span key={`dots-${idx}`} className="px-1 text-gray-500 select-none">…</span>
+                    <span key={`dots-${idx}`} className="px-1 text-gray-500 select-none">
+                      …
+                    </span>
                   )
                 )}
                 <button
@@ -937,8 +1033,14 @@ export default function ClientCurrentServiceRequest() {
           aria-label="Opening request"
           tabIndex={-1}
           autoFocus
-          onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -951,12 +1053,7 @@ export default function ClientCurrentServiceRequest() {
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
@@ -975,7 +1072,7 @@ export default function ClientCurrentServiceRequest() {
       {showReason && (
         <>
           {(() => {
-            const isCancel = (String(reasonTarget?.status || "").toLowerCase() === "cancelled") || !!reasonTarget?.user_cancelled;
+            const isCancel = String(reasonTarget?.status || "").toLowerCase() === "cancelled" || !!reasonTarget?.user_cancelled;
             const headGrad = isCancel ? "from-orange-50" : "from-red-50";
             const borderCol = isCancel ? "border-orange-300" : "border-red-300";
             const titleCol = isCancel ? "text-orange-700" : "text-red-700";
@@ -991,13 +1088,7 @@ export default function ClientCurrentServiceRequest() {
             const createdStr = reasonTarget?.created_at ? new Date(reasonTarget.created_at).toLocaleString() : "-";
             const canceledStr = (reasonTarget?.canceled_at || reasonTarget?.decided_at) ? new Date(reasonTarget.canceled_at || reasonTarget.decided_at).toLocaleString() : "-";
             return (
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label={title}
-                tabIndex={-1}
-                className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
-              >
+              <div role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4">
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
                 <div className={`relative w-full max-w-[720px] max-h-[80vh] rounded-2xl border ${borderCol} bg-white shadow-2xl overflow-auto`}>
                   <div className={`px-6 py-4 bg-gradient-to-r ${headGrad} to-white ${isCancel ? "border-b border-orange-200" : "border-b border-red-200"}`}>
@@ -1005,7 +1096,7 @@ export default function ClientCurrentServiceRequest() {
                       <h3 className={`text-lg font-semibold ${titleCol}`}>{title}</h3>
                       <span className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${badgeBg} ${badgeText} ${badgeBorder}`}>
                         <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                        {(reasonTarget?.details?.service_type || "Request")}
+                        {reasonTarget?.details?.service_type || "Request"}
                       </span>
                     </div>
                     {isCancel ? (
@@ -1014,41 +1105,33 @@ export default function ClientCurrentServiceRequest() {
                         <span>Canceled {canceledStr}</span>
                       </div>
                     ) : (
-                      <div className="mt-1 text-sm text-gray-600">
-                        Created {createdStr}
-                      </div>
+                      <div className="mt-1 text-sm text-gray-600">Created {createdStr}</div>
                     )}
                   </div>
                   <div className="p-6">
                     <div className={`rounded-xl border ${panelBorder} ${panelBg} p-4`}>
                       <div className={`text-[11px] font-semibold tracking-widest ${isCancel ? "text-orange-700" : "text-red-700"} uppercase`}>Reason</div>
-                      <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
-                        {getReasonText(reasonTarget)}
-                      </div>
+                      <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">{getReasonText(reasonTarget)}</div>
                     </div>
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="rounded-xl border border-gray-200 bg-white p-4">
                         <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Service Task</div>
-                        <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                          {reasonTarget?.details?.service_task || "-"}
-                        </div>
+                        <div className="mt-1 text-[15px] font-semibold text-gray-900">{reasonTarget?.details?.service_task || "-"}</div>
                         <div className="text-sm text-gray-600">{reasonTarget?.details?.service_type || "-"}</div>
                       </div>
                       <div className="rounded-xl border border-gray-200 bg-white p-4">
                         <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">Preferred Schedule</div>
-                        <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                          {reasonTarget?.details?.preferred_date ? formatDate(reasonTarget.details.preferred_date) : "-"}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {reasonTarget?.details?.preferred_time ? formatTime12(reasonTarget.details.preferred_time) : "-"}
-                        </div>
+                        <div className="mt-1 text-[15px] font-semibold text-gray-900">{reasonTarget?.details?.preferred_date ? formatDate(reasonTarget.details.preferred_date) : "-"}</div>
+                        <div className="text-sm text-gray-600">{reasonTarget?.details?.preferred_time ? formatTime12(reasonTarget.details.preferred_time) : "-"}</div>
                       </div>
                     </div>
                   </div>
                   <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
                     <button
                       type="button"
-                      onClick={() => { setShowReason(false); }}
+                      onClick={() => {
+                        setShowReason(false);
+                      }}
                       className={`w-full inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium ${closeBorder} ${closeText} ${closeHover}`}
                     >
                       Close
@@ -1062,13 +1145,7 @@ export default function ClientCurrentServiceRequest() {
       )}
 
       {showDelete && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Delete service request"
-          tabIndex={-1}
-          className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
-        >
+        <div role="dialog" aria-modal="true" aria-label="Delete service request" tabIndex={-1} className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDelete(false)} />
           <div className="relative w-full max-w-[460px] rounded-2xl border border-red-300 bg-white shadow-2xl overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r from-red-50 to-white border-b border-red-200">
@@ -1081,9 +1158,7 @@ export default function ClientCurrentServiceRequest() {
                 <div className="mt-2 text-[15px] font-semibold text-gray-900">
                   {(deleteTarget?.details?.service_type || "Request")} — {(deleteTarget?.details?.service_task || "-")}
                 </div>
-                <div className="text-sm text-gray-600">
-                  ID: {deleteTarget?.id}
-                </div>
+                <div className="text-sm text-gray-600">ID: {deleteTarget?.id}</div>
               </div>
             </div>
             <div className="px-6 pb-5 pt-3 border-t border-gray-200 bg-white">
@@ -1154,11 +1229,11 @@ export default function ClientCurrentServiceRequest() {
               <div
                 className="absolute inset-0 animate-spin rounded-full"
                 style={{
-                  borderWidth: '8px',
-                  borderStyle: 'solid',
-                  borderColor: '#008cfc22',
-                  borderTopColor: '#008cfc',
-                  borderRadius: '9999px'
+                  borderWidth: "8px",
+                  borderStyle: "solid",
+                  borderColor: "#008cfc22",
+                  borderTopColor: "#008cfc",
+                  borderRadius: "9999px",
                 }}
               />
               <div className="absolute inset-4 rounded-full border-2 border-[#008cfc33]" />
@@ -1223,22 +1298,17 @@ export default function ClientCurrentServiceRequest() {
               <div
                 className="absolute inset-0 animate-spin rounded-full"
                 style={{
-                  borderWidth: '10px',
-                  borderStyle: 'solid',
-                  borderColor: '#008cfc22',
-                  borderTopColor: '#008cfc',
-                  borderRadius: '9999px'
+                  borderWidth: "10px",
+                  borderStyle: "solid",
+                  borderColor: "#008cfc22",
+                  borderTopColor: "#008cfc",
+                  borderRadius: "9999px",
                 }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
