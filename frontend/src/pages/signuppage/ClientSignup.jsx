@@ -31,6 +31,10 @@ This Client Policy works together with the Worker Policy to keep services safe, 
 - By using JDK HOMECARE, you acknowledge that fees paid through the platform are generally non-refundable once a service booking is confirmed or processed.
 - Disputes, failed service attempts, or cancellations may be reviewed by JDK HOMECARE support, but any refund or credit is not guaranteed and may be provided only when required by applicable law or when JDK HOMECARE determines it is appropriate.
 - You agree to provide accurate details and cooperate with verification requests (e.g., messages, timestamps, photos) during dispute review.
+
+6. Correct Worker Selection Responsibility
+- You must select the correct worker/person needed for your desired job based on service type, requirements, and job expectations.
+- JDK HOMECARE is not responsible for issues caused by selecting the wrong worker/person for the job due to client mistake or incorrect selection details.
 `;
 
 const CLIENT_NDA_AGREEMENT_TEXT = `JDK HOMECARE Non-Disclosure Agreement (NDA)
@@ -483,18 +487,10 @@ const ClientSignUpPage = () => {
                   />
                 </div>
                 <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <li className={passwordRules.len ? 'text-emerald-600' : 'text-gray-500'}>
-                    At least 8 characters
-                  </li>
-                  <li className={passwordRules.upper ? 'text-emerald-600' : 'text-gray-500'}>
-                    One uppercase letter
-                  </li>
-                  <li className={passwordRules.num ? 'text-emerald-600' : 'text-gray-500'}>
-                    One number
-                  </li>
-                  <li className={passwordRules.special ? 'text-emerald-600' : 'text-gray-500'}>
-                    One special character
-                  </li>
+                  <li className={passwordRules.len ? 'text-emerald-600' : 'text-gray-500'}>At least 8 characters</li>
+                  <li className={passwordRules.upper ? 'text-emerald-600' : 'text-gray-500'}>One uppercase letter</li>
+                  <li className={passwordRules.num ? 'text-emerald-600' : 'text-gray-500'}>One number</li>
+                  <li className={passwordRules.special ? 'text-emerald-600' : 'text-gray-500'}>One special character</li>
                 </ul>
               </div>
             </div>
@@ -570,9 +566,7 @@ const ClientSignUpPage = () => {
               </Link>
               .
               {!privacyRead && (
-                <span className="block text-xs text-gray-500 mt-1">
-                  Please read the Privacy Policy to enable this checkbox.
-                </span>
+                <span className="block text-xs text-gray-500 mt-1">Please read the Privacy Policy to enable this checkbox.</span>
               )}
             </span>
           </label>
@@ -614,9 +608,7 @@ const ClientSignUpPage = () => {
               </Link>
               .
               {!policyNdaReady && (
-                <span className="block text-xs text-gray-500 mt-1">
-                  Please read and agree to both links to enable this checkbox.
-                </span>
+                <span className="block text-xs text-gray-500 mt-1">Please read and agree to both links to enable this checkbox.</span>
               )}
             </span>
           </label>
@@ -672,11 +664,7 @@ const ClientSignUpPage = () => {
             {otpError && <div className="text-red-600 text-center mt-3">{otpError}</div>}
 
             <div className="flex items-center justify-between mt-4">
-              <button
-                onClick={() => setOtpOpen(false)}
-                className="px-4 py-2 rounded-md border border-gray-300"
-                disabled={otpVerifying}
-              >
+              <button onClick={() => setOtpOpen(false)} className="px-4 py-2 rounded-md border border-gray-300" disabled={otpVerifying}>
                 Cancel
               </button>
               <div className="flex items-center gap-3">
@@ -756,11 +744,7 @@ const ClientSignUpPage = () => {
             </div>
 
             <div className="mt-4 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setPrivacyOpen(false)}
-                className="px-4 py-2 rounded-md border border-gray-300"
-              >
+              <button type="button" onClick={() => setPrivacyOpen(false)} className="px-4 py-2 rounded-md border border-gray-300">
                 Cancel
               </button>
               <button type="button" onClick={agreePrivacy} className="px-4 py-2 rounded-md bg-[#008cfc] text-white">
@@ -823,24 +807,22 @@ const ClientSignUpPage = () => {
 
               <p className="mt-4 font-semibold">5. No Refund Agreement</p>
               <ul className="list-disc pl-5 mt-2 space-y-1">
-                <li>
-                  By using JDK HOMECARE, you acknowledge that fees paid through the platform are generally non-refundable once a service booking is confirmed or processed.
-                </li>
+                <li>By using JDK HOMECARE, you acknowledge that fees paid through the platform are generally non-refundable once a service booking is confirmed or processed.</li>
                 <li>
                   Disputes, failed service attempts, or cancellations may be reviewed by JDK HOMECARE support, but any refund or credit is not guaranteed and may be provided only when required by applicable law or when JDK HOMECARE determines it is appropriate.
                 </li>
-                <li>
-                  You agree to provide accurate details and cooperate with verification requests (e.g., messages, timestamps, photos) during dispute review.
-                </li>
+                <li>You agree to provide accurate details and cooperate with verification requests (e.g., messages, timestamps, photos) during dispute review.</li>
+              </ul>
+
+              <p className="mt-4 font-semibold">6. Correct Worker Selection Responsibility</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>You must select the correct worker/person needed for your desired job based on service type, requirements, and job expectations.</li>
+                <li>JDK HOMECARE is not responsible for issues caused by selecting the wrong worker/person for the job due to client mistake or incorrect selection details.</li>
               </ul>
             </div>
 
             <div className="mt-4 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setPolicyOpen(false)}
-                className="px-4 py-2 rounded-md border border-gray-300"
-              >
+              <button type="button" onClick={() => setPolicyOpen(false)} className="px-4 py-2 rounded-md border border-gray-300">
                 Cancel
               </button>
               <button type="button" onClick={agreePolicy} className="px-4 py-2 rounded-md bg-[#008cfc] text-white">
@@ -878,9 +860,7 @@ const ClientSignUpPage = () => {
               <ul className="list-disc pl-5 mt-2 space-y-1">
                 <li>You agree not to disclose confidential information to any third party.</li>
                 <li>You agree to use confidential information only for platform-related purposes.</li>
-                <li>
-                  You agree to take reasonable steps to protect confidentiality (e.g., not sharing screenshots, data exports, or private messages).
-                </li>
+                <li>You agree to take reasonable steps to protect confidentiality (e.g., not sharing screenshots, data exports, or private messages).</li>
               </ul>
 
               <p className="mt-4 font-semibold">3. Exceptions</p>
@@ -896,11 +876,7 @@ const ClientSignUpPage = () => {
             </div>
 
             <div className="mt-4 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setNdaOpen(false)}
-                className="px-4 py-2 rounded-md border border-gray-300"
-              >
+              <button type="button" onClick={() => setNdaOpen(false)} className="px-4 py-2 rounded-md border border-gray-300">
                 Cancel
               </button>
               <button type="button" onClick={agreeNda} className="px-4 py-2 rounded-md bg-[#008cfc] text-white">

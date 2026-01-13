@@ -658,9 +658,7 @@ const WorkerSignUpPage = () => {
                 <li>
                   We may share limited information with clients only as necessary to fulfill a service request (e.g., name and service-related details).
                 </li>
-                <li>
-                  We do not sell your personal information. We may share information when required by law or to protect our users and platform.
-                </li>
+                <li>We do not sell your personal information. We may share information when required by law or to protect our users and platform.</li>
               </ul>
 
               <p className="mt-4 font-semibold">4. Data Retention</p>
@@ -747,6 +745,17 @@ const WorkerSignUpPage = () => {
                 </li>
                 <li>
                   You agree to provide accurate details and cooperate with verification requests (e.g., messages, timestamps, photos) during dispute review.
+                </li>
+              </ul>
+
+              <p className="mt-4 font-semibold">6. Payment Responsibility for Multi-Worker Requests</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>You acknowledge that some client service requests may require multiple workers.</li>
+                <li>
+                  You agree that you are responsible for handling and ensuring proper payment collection/settlement from the client based on the service request details when the request requires multiple workers.
+                </li>
+                <li>
+                  You must follow the platform’s rules and records for pricing and payment, and you must not request or accept off-platform payment arrangements.
                 </li>
               </ul>
             </div>
