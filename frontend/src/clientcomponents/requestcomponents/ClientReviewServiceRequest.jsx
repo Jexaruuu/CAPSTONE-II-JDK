@@ -610,6 +610,19 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       setSubmitError('');
       setIsSubmitting(true);
 
+      const unitKindFrom = (serviceTaskRaw, quantityUnitRaw) => {
+  const q = String(quantityUnitRaw || '').trim().toLowerCase();
+  if (q) {
+    if (q === 'sq.m' || q === 'sqm' || q === 'sq m' || q === 'square meter' || q === 'square meters' || q === 'm2') return 'sq_m';
+    if (q === 'piece' || q === 'pieces' || q === 'pc' || q === 'pcs' || q === 'per piece') return 'pieces';
+  }
+  const t = String(serviceTaskRaw || '').toLowerCase();
+  if (/(sq\.?\s*m|sqm|m2|square\s*meter)/i.test(t)) return 'sq_m';
+  if (/(per\s*piece|pieces?|pcs?\b)/i.test(t)) return 'pieces';
+  return '';
+};
+
+
       const infoDraft = (() => {
         try {
           return JSON.parse(localStorage.getItem('clientInformationForm') || '{}');
@@ -743,6 +756,10 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       })();
 
       const unitKgForDb = isLaundryDraft && quantityUnitForDb === 'kg' ? unitsForDb : null;
+      const serviceTaskRaw = String(detailsDraft?.serviceTask || service_task || '').trim();
+const unitKind = unitKindFrom(serviceTaskRaw, quantityUnitForDb);
+const sqMForDb = unitKind === 'sq_m' ? Number(unitsForDb) : null;
+const piecesForDb = unitKind === 'pieces' ? Number(unitsForDb) : null;
 
       const preferredTimeFeeForDb = (() => {
         const candidates = [rateDraft?.preferred_time_fee, preferredTimeFee, preferred_time_fee_state, savedRate?.preferred_time_fee];
@@ -1028,21 +1045,24 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
         minimum_applied: normalized.metadata.minimum_applied,
         payment_method: normalizedPaymentForDb,
         workers_need: workersNeedValue,
-        workers_needed: workersNeedValue
+        workers_needed: workersNeedValue,
+        sq_m: sqMForDb,
+pieces: piecesForDb,
       };
-
-      const clientServiceRatePayload = {
-        preferred_time_fee: preferredTimeFeeForDb,
-        extra_workers_fee: extraWorkersFeeForPayload,
-        units: unitsForDb,
-        unit_kg: unitKgForDb,
-        quantity_unit: quantityUnitForDb,
-        billable_units: Number.isFinite(Number(billableUnits)) ? Number(billableUnits) : null,
-        minimum_quantity: Number.isFinite(Number(minimumQty)) ? Number(minimumQty) : null,
-        minimum_applied: !!minimumApplied,
-        payment_method: normalizedPaymentForDb,
-        total_rate: totalRateForDb
-      };
+const clientServiceRatePayload = {
+  preferred_time_fee: preferredTimeFeeForDb,
+  extra_workers_fee: extraWorkersFeeForPayload,
+  units: unitsForDb,
+  unit_kg: unitKgForDb,
+  sq_m: sqMForDb,
+  pieces: piecesForDb,
+  quantity_unit: quantityUnitForDb,
+  billable_units: Number.isFinite(Number(billableUnits)) ? Number(billableUnits) : null,
+  minimum_quantity: Number.isFinite(Number(minimumQty)) ? Number(minimumQty) : null,
+  minimum_applied: !!minimumApplied,
+  payment_method: normalizedPaymentForDb,
+  total_rate: totalRateForDb
+};
 
       const jsonBody = {
         client_id: normalized.client_id,

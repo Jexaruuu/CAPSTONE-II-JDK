@@ -178,6 +178,8 @@ function pickRateForResponse(rateRow) {
   return {
     units: r.units ?? null,
     unit_kg: r.unit_kg ?? null,
+    sq_m: r.sq_m ?? r.sqm ?? null,
+    pieces: r.pieces ?? null,
     payment_method: r.payment_method ?? null,
     preferred_time_fee_php: r.preferred_time_fee_php ?? null,
     extra_workers_fee_php: r.extra_workers_fee_php ?? null,
@@ -300,9 +302,13 @@ function computeRateNumbers(details, rate) {
 
   const units = toIntOrNull(rate?.units ?? null);
   const unit_kg = toNumberOrNull(rate?.unit_kg ?? null);
+  const sq_m = toNumberOrNull(rate?.sq_m ?? rate?.sqm ?? null);
+  const pieces = toIntOrNull(rate?.pieces ?? null);
 
   let qty = null;
-  if (String(service_type || '').toLowerCase() === 'laundry') {
+  if (sq_m !== null && sq_m > 0) qty = sq_m;
+  else if (pieces !== null && pieces > 0) qty = pieces;
+  else if (String(service_type || '').toLowerCase() === 'laundry') {
     const kg = toNumberOrNull(unit_kg ?? units);
     qty = kg !== null && kg > 0 ? kg : null;
   } else {
@@ -334,6 +340,8 @@ function computeRateNumbers(details, rate) {
   return {
     units: units ?? null,
     unit_kg: unit_kg ?? null,
+    sq_m: sq_m ?? null,
+    pieces: pieces ?? null,
     preferredTimeFee,
     extraWorkersFee,
     total
@@ -356,6 +364,18 @@ function normalizePaymentMethod(raw, fallback) {
   const low = s.toLowerCase();
   if (low === 'gcash' || low.includes('gcash') || low.includes('maya') || low === 'paymaya') return 'GCash';
   return 'Cash';
+}
+
+function normalizeUnitKind(service_task, quantity_unit) {
+  const q = String(quantity_unit ?? '').trim().toLowerCase();
+  if (q) {
+    if (q === 'sq.m' || q === 'sqm' || q === 'sq m' || q === 'square meter' || q === 'square meters' || q === 'm2') return 'sq_m';
+    if (q === 'piece' || q === 'pieces' || q === 'pc' || q === 'pcs' || q === 'per piece') return 'pieces';
+  }
+  const t = String(service_task ?? '').toLowerCase();
+  if (/(sq\.?\s*m|sqm|m2|square\s*meter)/i.test(t)) return 'sq_m';
+  if (/(per\s*piece|pieces?|pcs?\b)/i.test(t)) return 'pieces';
+  return '';
 }
 
 async function upsertClientServiceRateByGroup(gid, fields, seedBase) {
@@ -647,6 +667,25 @@ exports.submitFullRequest = async (req, res) => {
       return n === null ? null : n >= 0 ? n : null;
     })();
 
+    const quantityUnitRaw = pick({ rateSrc, metadata, src }, ['rateSrc.quantity_unit', 'rateSrc.quantityUnit', 'metadata.quantity_unit', 'metadata.quantityUnit'], '');
+    const unitKind = normalizeUnitKind(detailsRow.service_task, quantityUnitRaw);
+
+    const sqMVal = (() => {
+      const v = pick({ rateSrc, metadata, src }, ['rateSrc.sq_m', 'rateSrc.sqm', 'rateSrc.sqM', 'metadata.sq_m', 'metadata.sqm', 'src.sq_m', 'src.sqm'], null);
+      const n = toNumberOrNull(v);
+      if (n !== null && n > 0) return n;
+      if (unitKind === 'sq_m') return toNumberOrNull(unitsVal);
+      return null;
+    })();
+
+    const piecesVal = (() => {
+      const v = pick({ rateSrc, metadata, src }, ['rateSrc.pieces', 'rateSrc.piece', 'rateSrc.pcs', 'metadata.pieces', 'metadata.pcs', 'src.pieces', 'src.pcs'], null);
+      const n = toIntOrNull(v);
+      if (n !== null && n > 0) return n;
+      if (unitKind === 'pieces') return toIntOrNull(unitsVal);
+      return null;
+    })();
+
     const preferredTimeFeeVal = toNonNegNumber(
       pick(
         { src, rateSrc, metadata },
@@ -681,6 +720,8 @@ exports.submitFullRequest = async (req, res) => {
       email_address: infoRow.email_address,
       units: unitsVal,
       unit_kg: unitKgVal,
+      sq_m: sqMVal,
+      pieces: piecesVal,
       payment_method: paymentMethod || null,
       preferred_time_fee_php: pesoPH(preferredTimeFeeVal),
       extra_workers_fee_php: pesoPH(extraWorkersFeeVal),
@@ -728,6 +769,8 @@ exports.submitFullRequest = async (req, res) => {
         rate: {
           units: unitsVal,
           unit_kg: unitKgVal,
+          sq_m: sqMVal,
+          pieces: piecesVal,
           payment_method: rateRow.payment_method,
           preferred_time_fee_php: rateRow.preferred_time_fee_php,
           extra_workers_fee_php: rateRow.extra_workers_fee_php,
@@ -1081,15 +1124,19 @@ exports.updateByGroup = async (req, res) => {
     const incomingRate = src.rate || src.client_service_rate || src.clientServiceRate || metadata.rate || metadata.client_service_rate || {};
     const unitsIncoming = pick({ incomingRate }, ['incomingRate.units', 'incomingRate.unit', 'incomingRate.rate_units'], undefined);
     const unitKgIncoming = pick({ incomingRate }, ['incomingRate.unit_kg', 'incomingRate.unitKg'], undefined);
+    const sqMIncoming = pick({ incomingRate }, ['incomingRate.sq_m', 'incomingRate.sqm', 'incomingRate.sqM'], undefined);
+    const piecesIncoming = pick({ incomingRate }, ['incomingRate.pieces', 'incomingRate.pcs', 'incomingRate.piece'], undefined);
 
     const unitsFinal = unitsIncoming !== undefined ? toIntOrNull(unitsIncoming) : (current.rate?.units ?? null);
     const unitKgFinal = unitKgIncoming !== undefined ? toNumberOrNull(unitKgIncoming) : (current.rate?.unit_kg ?? null);
+    const sqMFinal = sqMIncoming !== undefined ? toNumberOrNull(sqMIncoming) : (current.rate?.sq_m ?? current.rate?.sqm ?? null);
+    const piecesFinal = piecesIncoming !== undefined ? toIntOrNull(piecesIncoming) : (current.rate?.pieces ?? null);
 
     const pmRaw =
       pick({ incomingRate, src }, ['incomingRate.payment_method', 'incomingRate.paymentMethod', 'src.payment_method', 'src.paymentMethod'], undefined);
     const payment_method = normalizePaymentMethod(pmRaw, current.rate?.payment_method ?? null);
 
-    const computedNums = computeRateNumbers(newDetails, { units: unitsFinal, unit_kg: unitKgFinal });
+    const computedNums = computeRateNumbers(newDetails, { units: unitsFinal, unit_kg: unitKgFinal, sq_m: sqMFinal, pieces: piecesFinal });
 
     const ptFeeNumIn =
       pick({ incomingRate }, ['incomingRate.preferred_time_fee', 'incomingRate.preferredTimeFee'], undefined);
@@ -1129,6 +1176,8 @@ exports.updateByGroup = async (req, res) => {
     const rateFields = {
       units: unitsFinal ?? null,
       unit_kg: unitKgFinal ?? null,
+      sq_m: sqMFinal ?? null,
+      pieces: piecesFinal ?? null,
       payment_method: payment_method ?? null,
       preferred_time_fee_php: preferred_time_fee_php ?? null,
       extra_workers_fee_php: extra_workers_fee_php ?? null,
@@ -1224,6 +1273,8 @@ exports.updatePaymentMethodByGroup = async (req, res) => {
         email_address: current.info?.email_address ?? src.email_address ?? null,
         units: current.rate?.units ?? 1,
         unit_kg: current.rate?.unit_kg ?? null,
+        sq_m: current.rate?.sq_m ?? current.rate?.sqm ?? null,
+        pieces: current.rate?.pieces ?? null,
         payment_method: payment_method,
         preferred_time_fee_php: current.rate?.preferred_time_fee_php ?? null,
         extra_workers_fee_php: current.rate?.extra_workers_fee_php ?? null,

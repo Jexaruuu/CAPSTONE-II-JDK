@@ -131,13 +131,15 @@ async function insertClientServiceRate(row) {
     email_address: base.email_address ?? null,
     units: base.units ?? null,
     unit_kg: base.unit_kg ?? null,
+    sq_m: base.sq_m ?? base.sqm ?? null,
+    pieces: base.pieces ?? null,
     payment_method: base.payment_method ?? null,
     preferred_time_fee_php: base.preferred_time_fee_php ?? null,
     extra_workers_fee_php: base.extra_workers_fee_php ?? null,
     total_rate_php: base.total_rate_php ?? null
   };
 
-  const optionalCols = ['units', 'unit_kg', 'payment_method', 'preferred_time_fee_php', 'extra_workers_fee_php', 'total_rate_php'];
+  const optionalCols = ['units', 'unit_kg', 'sq_m', 'pieces', 'payment_method', 'preferred_time_fee_php', 'extra_workers_fee_php', 'total_rate_php'];
 
   let payload = { ...payloadBase };
   for (let i = 0; i < optionalCols.length + 2; i++) {

@@ -420,23 +420,28 @@ const withPerUnitLabel = (rateStr) => {
     return shouldShowPerUnit(serviceType) ? withPerUnitLabel(r) : r;
   }, [baseRateRaw, serviceType]);
 
-  const quantityUnit = useMemo(() => {
-    if (!isLaundry) return 'unit';
-    const s = String(baseRateRaw || '').toLowerCase();
-    if (s.includes('/pair') || s.includes('pair')) return 'pair';
-    if (s.includes('/pc') || s.includes('/piece') || s.includes('piece')) return 'pc';
-    if (s.includes('/load') || s.includes('load')) return 'load';
-    if (s.includes('/bag') || s.includes('bag')) return 'bag';
-    if (s.includes('/kg') || s.includes('kg')) return 'kg';
-    return 'item';
-  }, [isLaundry, baseRateRaw]);
+const quantityUnit = useMemo(() => {
+  const s = String(baseRateRaw || '').toLowerCase();
 
-  const unitLabel = useMemo(() => {
-    const n = Math.max(1, Number(units) || 1);
-    if (quantityUnit === 'kg') return 'kg';
-    if (quantityUnit === 'pc') return n === 1 ? 'pc' : 'pcs';
-    return n === 1 ? quantityUnit : `${quantityUnit}s`;
-  }, [quantityUnit, units]);
+  if (s.includes('sq.m') || s.includes('sqm')) return 'sq.m';
+
+  if (!isLaundry) return 'unit';
+
+  if (s.includes('/pair') || s.includes('pair')) return 'pair';
+  if (s.includes('/pc') || s.includes('/piece') || s.includes('piece')) return 'pc';
+  if (s.includes('/load') || s.includes('load')) return 'load';
+  if (s.includes('/bag') || s.includes('bag')) return 'bag';
+  if (s.includes('/kg') || s.includes('kg')) return 'kg';
+  return 'item';
+}, [isLaundry, baseRateRaw]);
+
+const unitLabel = useMemo(() => {
+  const n = Math.max(1, Number(units) || 1);
+  if (quantityUnit === 'kg') return 'kg';
+  if (quantityUnit === 'sq.m') return 'sq.m';
+  if (quantityUnit === 'pc') return n === 1 ? 'pc' : 'pcs';
+  return n === 1 ? quantityUnit : `${quantityUnit}s`;
+}, [quantityUnit, units]);
 
   const billableUnits = useMemo(() => {
     if (isLaundry && quantityUnit === 'kg') return Math.max(MIN_LAUNDRY_KG, inputUnitsSafe);
@@ -863,7 +868,8 @@ const withPerUnitLabel = (rateStr) => {
                     <div className="md:col-span-2">
                       <div className="flex items-center justify-between mb-2">
                         <div className="text-sm font-medium text-gray-700">
-                          {isLaundry ? `How many ${quantityUnit === 'kg' ? 'kg' : unitLabel}?` : 'How many units?'}
+                          {isLaundry ? `How many ${quantityUnit === 'kg' ? 'kg' : unitLabel}?` : quantityUnit === 'sq.m' ? 'How many sq.m?' : 'How many units?'}
+
                         </div>
                         {attempted && hasDetails && !(Number.isFinite(baseRateNum) && baseRateNum > 0) ? (
                           <span className="text-xs text-red-600">Rate not available for this task</span>
@@ -977,7 +983,8 @@ const withPerUnitLabel = (rateStr) => {
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-gray-600">{isLaundry ? 'Quantity' : 'Units'}</span>
+                      <span className="text-sm text-gray-600">{isLaundry ? 'Quantity' : quantityUnit === 'sq.m' ? 'Sq.m' : 'Units'}</span>
+
                       <span className="text-sm font-semibold text-gray-900">
                         {inputUnitsSafe} {unitLabel}
                       </span>
