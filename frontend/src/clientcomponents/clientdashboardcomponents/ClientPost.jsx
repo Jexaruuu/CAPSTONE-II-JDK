@@ -1,3 +1,4 @@
+// ClientPost.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
@@ -662,26 +663,67 @@ const ClientPost = () => {
     return n === null ? '-' : String(n);
   }, [currentItem]);
 
-  const unitsText = useMemo(() => {
-    const v =
-      currentItem?.rate?.units ??
-      currentItem?.rate?.unit ??
-      currentItem?.details?.units ??
-      currentItem?.details?.unit ??
+  const quantityDisplay = useMemo(() => {
+    const rate = currentItem?.rate || {};
+    const details = currentItem?.details || {};
+    const serviceType = String(details?.service_type || '');
+    const task = String(details?.service_task || '');
+    const taskLow = task.toLowerCase();
+
+    const sq = toNumberOrNull(rate?.sq_m ?? rate?.sqm ?? null);
+    const pcs = toIntOrNull(rate?.pieces ?? rate?.pcs ?? null);
+
+    const unitsRaw =
+      rate?.units ??
+      rate?.unit ??
+      details?.units ??
+      details?.unit ??
       currentItem?.metadata?.units ??
       currentItem?.metadata?.unit ??
       null;
-    const n = toIntOrNull(v);
-    const kg =
-      currentItem?.rate?.unit_kg ??
-      currentItem?.rate?.unitKg ??
-      currentItem?.details?.unit_kg ??
-      currentItem?.details?.unitKg ??
+    const units = toIntOrNull(unitsRaw);
+
+    const kgRaw =
+      rate?.unit_kg ??
+      rate?.unitKg ??
+      details?.unit_kg ??
+      details?.unitKg ??
       null;
-    const kgNum = toNumberOrNull(kg);
-    if (n === null) return '-';
-    if (kgNum === null) return String(n);
-    return `${String(n)} (${kgNum} kg)`;
+    const kgNum = toNumberOrNull(kgRaw);
+
+    const isSqFromTask = /(sq\.?\s*m|sqm|m2|square\s*meter)/i.test(taskLow);
+    const isPiecesFromTask = /(per\s*piece|pieces?|pcs?\b)/i.test(taskLow);
+
+    let kind = '';
+    if (sq !== null && sq > 0) kind = 'sq_m';
+    else if (pcs !== null && pcs > 0) kind = 'pieces';
+    else if (isSqFromTask) kind = 'sq_m';
+    else if (isPiecesFromTask) kind = 'pieces';
+
+    const fmtNum = (n) =>
+      Number.isFinite(n)
+        ? new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 }).format(n)
+        : '-';
+
+    if (kind === 'sq_m') {
+      const val = sq !== null && sq > 0 ? sq : units !== null ? units : null;
+      return { label: 'Sq. m', value: val === null ? '-' : fmtNum(val) };
+    }
+
+    if (kind === 'pieces') {
+      const val = pcs !== null && pcs > 0 ? pcs : units !== null ? units : null;
+      return { label: 'Pieces', value: val === null ? '-' : String(val) };
+    }
+
+    if (serviceType.toLowerCase() === 'laundry') {
+      if (kgNum !== null && kgNum > 0 && units !== null) return { label: 'Units', value: `${String(units)} (${fmtNum(kgNum)} kg)` };
+      if (kgNum !== null && kgNum > 0) return { label: 'Units', value: `${fmtNum(kgNum)} kg` };
+      if (units !== null) return { label: 'Units', value: String(units) };
+      return { label: 'Units', value: '-' };
+    }
+
+    if (units !== null) return { label: 'Units', value: String(units) };
+    return { label: 'Units', value: '-' };
   }, [currentItem]);
 
   const totalRateText = useMemo(() => {
@@ -835,8 +877,8 @@ const ClientPost = () => {
                           <span className="text-[#008cfc] font-semibold">{workersNeededText}</span>
                         </div>
                         <div className="flex flex-wrap gap-x-1 gap-y-1">
-                          <span className="text-gray-700 font-semibold">Units:</span>
-                          <span className="text-[#008cfc] font-semibold">{unitsText}</span>
+                          <span className="text-gray-700 font-semibold">{quantityDisplay.label}:</span>
+                          <span className="text-[#008cfc] font-semibold">{quantityDisplay.value}</span>
                         </div>
                         <div className="flex flex-wrap gap-x-1 gap-y-1">
                           <span className="text-gray-700 font-semibold">Total Rate:</span>
