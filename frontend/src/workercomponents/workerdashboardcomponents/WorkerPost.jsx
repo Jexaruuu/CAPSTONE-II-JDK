@@ -88,6 +88,17 @@ function timeAgo(input) {
   return `${y} year${y === 1 ? '' : 's'}`;
 }
 
+function formatDate(iso) {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const opts = { month: 'short', day: 'numeric', year: 'numeric' };
+    return d.toLocaleDateString(undefined, opts);
+  } catch {
+    return '';
+  }
+}
+
 function WorkerPost() {
   const [loading, setLoading] = useState(true);
   const [approved, setApproved] = useState([]);
@@ -520,6 +531,16 @@ function WorkerPost() {
 
   const toolsClassLocal = 'text-[#008cfc] font-semibold';
 
+  const updatedValueLocal = useMemo(() => {
+    const u =
+      currentApp?.updated_at ||
+      currentApp?.decided_at ||
+      currentApp?.decidedAt ||
+      currentApp?.created_at ||
+      '';
+    return u ? formatDate(u) : '';
+  }, [currentApp]);
+
   const getGroupId = (it) => {
     const g =
       it?.application_group_id ??
@@ -799,7 +820,8 @@ function WorkerPost() {
                       <span className="text-[#008cfc] font-semibold">{currentServiceTasks || '-'}</span>
                     </div>
                     <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo} ago` : ''}</div>
-                    <div className="mt-4 grid grid-cols-1 gap-y-3 gap-x-12 text-base text-gray-700">
+
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
                       <div className="space-y-1.5">
                         <div className="flex flex-wrap gap-x-2 gap-y-1">
                           <span className="text-gray-700 font-semibold">Barangay:</span>
@@ -820,9 +842,19 @@ function WorkerPost() {
                           <span className={toolsClassLocal}>{toolsTextLocal}</span>
                         </div>
                       </div>
+
+                      <div className="space-y-1.5 md:pl-10">
+                        <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          <span className="text-gray-700 font-semibold">Updated:</span>
+                          <span className="text-[#008cfc] font-semibold">
+                            {updatedValueLocal ? updatedValueLocal : createdAt ? formatDate(createdAt) : '-'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
+
                 <div className="flex items-center gap-2 shrink-0">
                   {false && isApproved && (
                     <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
@@ -858,6 +890,7 @@ function WorkerPost() {
                   </div>
                 </div>
               </div>
+
               <div className="-mt-9 flex justify-end gap-2">
                 <button
                   type="button"

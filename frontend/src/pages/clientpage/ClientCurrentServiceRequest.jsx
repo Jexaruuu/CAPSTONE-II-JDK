@@ -178,7 +178,7 @@ const iconForService = (serviceType) => {
 const formatRateType = (t) => {
   const s = String(t || "").replace(/_/g, " ").trim().toLowerCase();
   if (!s) return "-";
-  return s.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  return s.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 };
 
 const avatarFromName = (name) => `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "Client")}`;
@@ -280,8 +280,7 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
     else if (isSqFromTask) kind = "sq_m";
     else if (isPiecesFromTask) kind = "pieces";
 
-    const fmtNum = (n) =>
-      Number.isFinite(n) ? new Intl.NumberFormat("en-PH", { maximumFractionDigits: 2 }).format(n) : "-";
+    const fmtNum = (n) => (Number.isFinite(n) ? new Intl.NumberFormat("en-PH", { maximumFractionDigits: 2 }).format(n) : "-");
 
     if (kind === "sq_m") {
       const val = sq !== null && sq > 0 ? sq : units !== null ? units : null;
@@ -313,105 +312,53 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
     return out ? out : "-";
   })();
 
-  return (
-    <div className="relative overflow-hidden bg-white border border-gray-300 rounded-md p-6 shadow-sm transition-all duration-300">
-      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
-      <div className="relative z-10">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4 min-w-0">
-            <div className="shrink-0">
-              <img
-                src={profileUrl}
-                alt=""
-                className="w-20 h-20 rounded-full object-cover border border-blue-300"
-                onError={(e) => {
-                  e.currentTarget.src = avatarFromName(item?.info?.first_name || "Client");
-                }}
-              />
-            </div>
+  const ActionArea = () => {
+    const showReasonBtn = isDeclined || isCancelled;
+    const showViewBtn = !showReasonBtn && !isExpiredReq;
+    const showDisabledView = !showReasonBtn && isExpiredReq;
 
-            <div className="min-w-0">
-              <div className="text-xl md:text-2xl font-semibold truncate">
-                <span className="text-gray-700">Service Type:</span>{" "}
-                <span className="text-gray-900">{d.service_type || "Service"}</span>
-              </div>
-
-              <div className="mt-1 text-base md:text-lg truncate">
-                <span className="font-semibold text-gray-700">Service Task:</span>{" "}
-                <span className="text-[#008cfc] font-semibold">{d.service_task || "Task"}</span>
-              </div>
-
-              <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo}` : ""}</div>
-
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap gap-x-1 gap-y-1">
-                    <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                    <span className="text-[#008cfc] font-semibold">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-x-1 gap-y-1">
-                    <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                    <span className="text-[#008cfc] font-semibold">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-x-1 gap-y-1">
-                    <span className="text-gray-700 font-semibold">Urgency:</span>
-                    <span className="text-[#008cfc] font-semibold">{hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 md:pl-10">
-                  <div className="flex flex-wrap gap-x-1 gap-y-1">
-                    <span className="text-gray-700 font-semibold">Workers Needed:</span>
-                    <span className="text-[#008cfc] font-semibold">{workersNeedText}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-x-1 gap-y-1">
-                    <span className="text-gray-700 font-semibold">{quantityDisplay.label}:</span>
-                    <span className="text-[#008cfc] font-semibold">{quantityDisplay.value}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-x-1 gap-y-1">
-                    <span className="text-gray-700 font-semibold">Total Rate:</span>
-                    <span className="text-[#008cfc] font-semibold">{totalRateText}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
-              <Icon className="h-5 w-5" />
-            </div>
-          </div>
+    return (
+      <div className="flex flex-col items-end justify-between h-full">
+        <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
+          <Icon className="h-5 w-5" />
         </div>
 
-        <div className="-mt-9 flex justify-end gap-2">
-          {(isDeclined || isCancelled) ? (
+        <div className="flex flex-col items-end gap-2 pt-4">
+          {showReasonBtn ? (
             <Link
               to={`/current-service-request/${encodeURIComponent(item.id)}`}
               onClick={(e) => {
                 e.preventDefault();
                 onReason(item);
               }}
-              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+              className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
             >
               View Reason
             </Link>
+          ) : showViewBtn ? (
+            <Link
+              to={`/current-service-request/${encodeURIComponent(item.id)}`}
+              onClick={(e) => {
+                e.preventDefault();
+                onView(item.id);
+              }}
+              className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+            >
+              View
+            </Link>
+          ) : showDisabledView ? (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed"
+            >
+              View
+            </button>
           ) : (
-            !isExpiredReq && (
-              <Link
-                to={`/current-service-request/${encodeURIComponent(item.id)}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  onView(item.id);
-                }}
-                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-              >
-                View
-              </Link>
-            )
+            <span className="h-[38px]" />
           )}
 
-          {isApproved && !isCancelled && !isDeclined && !isExpiredReq && (
+          {isApproved && !isCancelled && !isDeclined && !isExpiredReq ? (
             <button
               type="button"
               onClick={() => onEdit(item)}
@@ -419,7 +366,79 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
             >
               Edit Request
             </button>
+          ) : (
+            <span className="h-10" />
           )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="relative bg-white border border-gray-300 rounded-md p-6 shadow-sm transition-all duration-300 min-h-[220px]">
+      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+      <div className="relative z-10 flex items-start justify-between gap-6">
+        <div className="flex items-start gap-4 min-w-0 flex-1">
+          <div className="shrink-0">
+            <img
+              src={profileUrl}
+              alt=""
+              className="w-20 h-20 rounded-full object-cover border border-blue-300"
+              onError={(e) => {
+                e.currentTarget.src = avatarFromName(item?.info?.first_name || "Client");
+              }}
+            />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="text-xl md:text-2xl font-semibold truncate">
+              <span className="text-gray-700">Service Type:</span>{" "}
+              <span className="text-gray-900">{d.service_type || "Service"}</span>
+            </div>
+
+            <div className="mt-1 text-base md:text-lg truncate">
+              <span className="font-semibold text-gray-700">Service Task:</span>{" "}
+              <span className="text-[#008cfc] font-semibold">{d.service_task || "Task"}</span>
+            </div>
+
+            <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo}` : ""}</div>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap gap-x-1 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Preferred Date:</span>
+                  <span className="text-[#008cfc] font-semibold">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-1 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Preferred Time:</span>
+                  <span className="text-[#008cfc] font-semibold">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-1 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Urgency:</span>
+                  <span className="text-[#008cfc] font-semibold">{hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 md:pl-10">
+                <div className="flex flex-wrap gap-x-1 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Workers Needed:</span>
+                  <span className="text-[#008cfc] font-semibold">{workersNeedText}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-1 gap-y-1">
+                  <span className="text-gray-700 font-semibold">{quantityDisplay.label}:</span>
+                  <span className="text-[#008cfc] font-semibold">{quantityDisplay.value}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-1 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Total Rate:</span>
+                  <span className="text-[#008cfc] font-semibold">{totalRateText}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="shrink-0 w-44 self-stretch flex justify-end">
+          <ActionArea />
         </div>
       </div>
     </div>
@@ -635,7 +654,7 @@ export default function ClientCurrentServiceRequest() {
       );
     if (statusFilter === "approved") list = list.filter((i) => (i.status || "").toLowerCase() === "approved" && !i.user_cancelled);
     if (statusFilter === "declined") list = list.filter((i) => (i.status || "").toLowerCase() === "declined" && !i.user_cancelled);
-    if (statusFilter === "cancelled") list = list.filter((i) => (String(i.status || "").toLowerCase() === "cancelled") || i.user_cancelled);
+    if (statusFilter === "cancelled") list = list.filter((i) => String(i.status || "").toLowerCase() === "cancelled" || i.user_cancelled);
     if (statusFilter === "expired")
       list = list.filter((i) => {
         const expired = isExpiredDT(i?.details?.preferred_date, i?.details?.preferred_time);
@@ -963,15 +982,7 @@ export default function ClientCurrentServiceRequest() {
                       </span>
                     )}
                   </div>
-                  <Card
-                    item={item}
-                    onEdit={onEdit}
-                    onOpenMenu={() => {}}
-                    onView={onView}
-                    onReason={onReason}
-                    onDelete={openDelete}
-                    dotStep={dotStep}
-                  />
+                  <Card item={item} onEdit={onEdit} onOpenMenu={() => {}} onView={onView} onReason={onReason} onDelete={openDelete} dotStep={dotStep} />
                 </div>
               );
             })
@@ -1086,7 +1097,7 @@ export default function ClientCurrentServiceRequest() {
             const closeHover = isCancel ? "hover:bg-orange-50" : "hover:bg-red-50";
             const title = isCancel ? "Cancellation Reason" : "Decline Reason";
             const createdStr = reasonTarget?.created_at ? new Date(reasonTarget.created_at).toLocaleString() : "-";
-            const canceledStr = (reasonTarget?.canceled_at || reasonTarget?.decided_at) ? new Date(reasonTarget.canceled_at || reasonTarget.decided_at).toLocaleString() : "-";
+            const canceledStr = reasonTarget?.canceled_at || reasonTarget?.decided_at ? new Date(reasonTarget.canceled_at || reasonTarget.decided_at).toLocaleString() : "-";
             return (
               <div role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4">
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReason(false)} />
@@ -1156,7 +1167,7 @@ export default function ClientCurrentServiceRequest() {
               <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
                 <div className="text-[11px] font-semibold tracking-widest text-red-700 uppercase">You are deleting</div>
                 <div className="mt-2 text-[15px] font-semibold text-gray-900">
-                  {(deleteTarget?.details?.service_type || "Request")} — {(deleteTarget?.details?.service_task || "-")}
+                  {deleteTarget?.details?.service_type || "Request"} — {deleteTarget?.details?.service_task || "-"}
                 </div>
                 <div className="text-sm text-gray-600">ID: {deleteTarget?.id}</div>
               </div>
@@ -1202,18 +1213,10 @@ export default function ClientCurrentServiceRequest() {
               <div className="text-lg font-semibold text-gray-900">Are you sure do you get to delete this request?</div>
             </div>
             <div className="mt-6 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition"
-              >
+              <button type="button" onClick={() => setShowDeleteConfirm(false)} className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition">
                 No
               </button>
-              <button
-                type="button"
-                onClick={confirmDeleteNow}
-                className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
-              >
+              <button type="button" onClick={confirmDeleteNow} className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition">
                 Yes
               </button>
             </div>
@@ -1272,11 +1275,7 @@ export default function ClientCurrentServiceRequest() {
               <div className="text-lg font-semibold text-gray-900">Request Successfully Deleted</div>
             </div>
             <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => setShowDeleteDone(false)}
-                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
-              >
+              <button type="button" onClick={() => setShowDeleteDone(false)} className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition">
                 Done
               </button>
             </div>

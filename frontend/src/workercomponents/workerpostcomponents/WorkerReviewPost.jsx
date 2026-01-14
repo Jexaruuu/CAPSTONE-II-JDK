@@ -72,6 +72,50 @@ function buildAppU() {
   }
 }
 
+const looksLikeBase64 = (s) => {
+  const x = String(s || '').trim();
+  if (!x) return false;
+  if (x.startsWith('data:') || x.startsWith('http://') || x.startsWith('https://') || x.startsWith('blob:') || x.startsWith('/')) return false;
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(x)) return false;
+  return x.length >= 200;
+};
+
+const coerceImageToDataUrl = (raw, mime = 'image/jpeg') => {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (s.startsWith('data:')) return s;
+  if (looksLikeBase64(s)) return `data:${mime};base64,${s}`;
+  return '';
+};
+
+const pickPicAny = (...vals) => {
+  for (const v of vals) {
+    if (!v) continue;
+    if (typeof v === 'string') {
+      const s = v.trim();
+      if (s) return s;
+    } else if (typeof v === 'object') {
+      const o = v || {};
+      const s =
+        o.data_url ||
+        o.dataUrl ||
+        o.dataURL ||
+        o.base64 ||
+        o.url ||
+        o.uri ||
+        o.link ||
+        o.href ||
+        o.profile_picture ||
+        o.profilePicture ||
+        o.profile_picture_url ||
+        o.profilePictureUrl ||
+        '';
+      if (typeof s === 'string' && s.trim()) return s.trim();
+    }
+  }
+  return '';
+};
+
 const WorkerReviewPost = ({ handleBack }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -82,6 +126,10 @@ const WorkerReviewPost = ({ handleBack }) => {
   const [submitError, setSubmitError] = useState('');
   const [applicationGroupId, setApplicationGroupId] = useState(null);
   const [workerIdState, setWorkerIdState] = useState(null);
+
+  const [resolvedProfileSrc, setResolvedProfileSrc] = useState('');
+  const [resolvedProfileDataUrl, setResolvedProfileDataUrl] = useState('');
+  const [resolvedProfileHttpUrl, setResolvedProfileHttpUrl] = useState('');
 
   useEffect(() => {
     try {
@@ -208,6 +256,67 @@ const WorkerReviewPost = ({ handleBack }) => {
     }
   };
 
+  useEffect(() => {
+    let alive = true;
+
+    const run = async () => {
+      const raw = pickPicAny(
+        s.profile_picture_data_url,
+        s.profile_picture,
+        s.profilePicture,
+        s.profile_picture_url,
+        s.profilePictureUrl,
+        profile_picture,
+        profile_picture_url_preview,
+        savedInfo.profilePictureDataUrl,
+        savedInfo.profile_picture_data_url,
+        savedInfo.profilePicture,
+        savedInfo.profile_picture,
+        savedInfo.profilePictureUrl,
+        savedInfo.profile_picture_url
+      );
+
+      const cleaned = String(raw || '').trim();
+      let finalSrc = '';
+      let dataUrl = '';
+      let httpUrl = '';
+
+      if (cleaned) {
+        if (/^https?:\/\//i.test(cleaned)) {
+          finalSrc = cleaned;
+          httpUrl = cleaned;
+        } else if (cleaned.startsWith('data:')) {
+          finalSrc = cleaned;
+          dataUrl = cleaned;
+        } else if (cleaned.startsWith('blob:')) {
+          const du = await blobToDataUrl(cleaned);
+          if (du && du.startsWith('data:')) {
+            finalSrc = du;
+            dataUrl = du;
+          }
+        } else {
+          const du = coerceImageToDataUrl(cleaned, 'image/jpeg');
+          if (du && du.startsWith('data:')) {
+            finalSrc = du;
+            dataUrl = du;
+          }
+        }
+      }
+
+      if (!finalSrc) finalSrc = '';
+      if (alive) {
+        setResolvedProfileSrc(finalSrc);
+        setResolvedProfileDataUrl(dataUrl);
+        setResolvedProfileHttpUrl(httpUrl);
+      }
+    };
+
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [s, profile_picture, profile_picture_url_preview, savedInfo]);
+
   const normalizeDocsForSubmit = (arr) => {
     const kindMap = (s0 = '') => {
       const t = String(s0).toLowerCase().replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -268,7 +377,7 @@ const WorkerReviewPost = ({ handleBack }) => {
 
     const pull = (v) => {
       if (!v) return { url: '', data_url: '', guess: '' };
-      if (typeof v === 'string') return { url: /^https?:\/\//i.test(v) ? v : '', data_url: v.startsWith('data:') ? v : '', guess: '' };
+      if (typeof v === 'string') return { url: /^https?:\/\//i.test(v) ? v : '', data_url: v.startsWith('data:') ? v : coerceImageToDataUrl(v, 'image/jpeg'), guess: '' };
       const url =
         typeof v.url === 'string' && /^https?:\/\//i.test(v.url)
           ? v.url
@@ -277,7 +386,7 @@ const WorkerReviewPost = ({ handleBack }) => {
           : typeof v.href === 'string' && /^https?:\/\//i.test(v.href)
           ? v.href
           : '';
-      const data_url = pickDataUrl(v);
+      const data_url = pickDataUrl(v) || coerceImageToDataUrl(v?.base64 || '', 'image/jpeg');
       const guess = v.kind || v.type || v.label || v.name || v.field || v.filename || v.fileName || v.title || v.meta?.kind || v.meta?.label || v.meta?.name || '';
       return { url, data_url, guess: String(guess || '') };
     };
@@ -332,9 +441,7 @@ const WorkerReviewPost = ({ handleBack }) => {
 
   const LabelValue = ({ label, value, emptyAs = '-' }) => {
     const isElement = React.isValidElement(value);
-    const isEmpty =
-      !isElement &&
-      (value === null || value === undefined || (typeof value === 'string' && value.trim() === ''));
+    const isEmpty = !isElement && (value === null || value === undefined || (typeof value === 'string' && value.trim() === ''));
     const display = isElement ? value : isEmpty ? emptyAs : value;
     const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
@@ -375,7 +482,9 @@ const WorkerReviewPost = ({ handleBack }) => {
 
   const buildServiceTaskObject = (serviceTaskRaw, serviceTypesRaw) => {
     const out = {};
-    if (Array.isArray(serviceTypesRaw)) serviceTypesRaw.forEach((t) => { out[String(t).trim()] = out[String(t).trim()] || []; });
+    if (Array.isArray(serviceTypesRaw)) serviceTypesRaw.forEach((t) => {
+      out[String(t).trim()] = out[String(t).trim()] || [];
+    });
     if (Array.isArray(serviceTaskRaw)) {
       serviceTaskRaw.forEach((it) => {
         const cat = String(it?.category || '').trim();
@@ -412,23 +521,47 @@ const WorkerReviewPost = ({ handleBack }) => {
       setIsSubmitting(true);
 
       const infoDraft = (() => {
-        try { return JSON.parse(localStorage.getItem('workerInformationForm') || '{}'); } catch { return {}; }
+        try {
+          return JSON.parse(localStorage.getItem('workerInformationForm') || '{}');
+        } catch {
+          return {};
+        }
       })();
       const workDraft = (() => {
-        try { return JSON.parse(localStorage.getItem('workerWorkInformation') || '{}'); } catch { return {}; }
+        try {
+          return JSON.parse(localStorage.getItem('workerWorkInformation') || '{}');
+        } catch {
+          return {};
+        }
       })();
       const docsDraftA = (() => {
-        try { return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]'); } catch { return []; }
+        try {
+          return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]');
+        } catch {
+          return [];
+        }
       })();
       const docsDraftB = (() => {
-        try { return JSON.parse(localStorage.getItem('workerDocuments') || '[]'); } catch { return []; }
+        try {
+          return JSON.parse(localStorage.getItem('workerDocuments') || '[]');
+        } catch {
+          return [];
+        }
       })();
       const agreeDraft = (() => {
-        try { return JSON.parse(localStorage.getItem('workerAgreements') || '{}'); } catch { return {}; }
+        try {
+          return JSON.parse(localStorage.getItem('workerAgreements') || '{}');
+        } catch {
+          return {};
+        }
       })();
 
       const workerAuth = (() => {
-        try { return JSON.parse(localStorage.getItem('workerAuth') || '{}'); } catch { return {}; }
+        try {
+          return JSON.parse(localStorage.getItem('workerAuth') || '{}');
+        } catch {
+          return {};
+        }
       })();
 
       const authUidVal =
@@ -448,8 +581,8 @@ const WorkerReviewPost = ({ handleBack }) => {
           email: (infoDraft.email || '').trim(),
           street: infoDraft.street || '',
           barangay: infoDraft.barangay || '',
-          profilePicture: infoDraft.profilePicture || '',
-          profilePictureName: infoDraft.profilePictureName || '',
+          profilePicture: infoDraft.profilePicture || infoDraft.profile_picture || '',
+          profilePictureName: infoDraft.profilePictureName || infoDraft.profile_picture_name || '',
           profilePictureUrl: infoDraft.profilePictureUrl || infoDraft.profile_picture_url || '',
           birthDate: infoDraft.date_of_birth || '',
           age: infoDraft.age || computeAge(infoDraft.date_of_birth || '')
@@ -471,12 +604,32 @@ const WorkerReviewPost = ({ handleBack }) => {
 
       let profilePicData = '';
       let profilePicUrl = '';
-      const picRaw = String(initialPayload.info.profilePicture || profile_picture || '').trim();
-      if (picRaw.startsWith('data:')) profilePicData = picRaw;
-      else if (picRaw.startsWith('blob:')) profilePicData = await blobToDataUrl(picRaw);
 
-      if (!profilePicData) {
-        const urlCandidate = initialPayload.info.profilePictureUrl || profile_picture_url_preview || '';
+      const picCandidate = pickPicAny(
+        infoDraft.profilePictureDataUrl,
+        infoDraft.profile_picture_data_url,
+        initialPayload.info.profilePicture,
+        initialPayload.info.profilePictureUrl,
+        s.profile_picture_data_url,
+        profile_picture,
+        profile_picture_url_preview,
+        resolvedProfileDataUrl,
+        resolvedProfileHttpUrl,
+        resolvedProfileSrc
+      );
+
+      if (picCandidate) {
+        if (picCandidate.startsWith('data:')) profilePicData = picCandidate;
+        else if (picCandidate.startsWith('blob:')) profilePicData = await blobToDataUrl(picCandidate);
+        else if (/^https?:\/\//i.test(picCandidate)) profilePicUrl = picCandidate;
+        else {
+          const du = coerceImageToDataUrl(picCandidate, 'image/jpeg');
+          if (du) profilePicData = du;
+        }
+      }
+
+      if (!profilePicData && !profilePicUrl) {
+        const urlCandidate = pickPicAny(initialPayload.info.profilePictureUrl, profile_picture_url_preview, resolvedProfileHttpUrl);
         if (urlCandidate && /^https?:\/\//i.test(urlCandidate)) profilePicUrl = urlCandidate;
       }
 
@@ -498,7 +651,7 @@ const WorkerReviewPost = ({ handleBack }) => {
       const docsDraftProcessed = await Promise.all(
         (docsCandidatesMerged || []).map(async (d) => {
           if (!d) return d;
-          const u = typeof d === 'string' ? d : (d.url || d.link || d.href || '');
+          const u = typeof d === 'string' ? d : d.url || d.link || d.href || '';
           if (typeof u === 'string' && u.startsWith('blob:')) {
             const du = await blobToDataUrl(u);
             if (typeof d === 'string') return { data_url: du };
@@ -510,7 +663,11 @@ const WorkerReviewPost = ({ handleBack }) => {
 
       const docsObjPrepared = await (async () => {
         const readJson = (k, d) => {
-          try { return JSON.parse(localStorage.getItem(k) || d); } catch { return JSON.parse(d); }
+          try {
+            return JSON.parse(localStorage.getItem(k) || d);
+          } catch {
+            return JSON.parse(d);
+          }
         };
         const objCanon = readJson('worker_required_documents', '{}');
         const objCanonAlt = readJson('workerRequiredDocuments', '{}');
@@ -544,8 +701,17 @@ const WorkerReviewPost = ({ handleBack }) => {
 
         const hasAny = (b) => {
           const keys = [
-            'primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate',
-            'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate'
+            'primary_id_front',
+            'primary_id_back',
+            'secondary_id',
+            'nbi_police_clearance',
+            'proof_of_address',
+            'medical_certificate',
+            'tesda_carpentry_certificate',
+            'tesda_electrician_certificate',
+            'tesda_plumbing_certificate',
+            'tesda_carwashing_certificate',
+            'tesda_laundry_certificate'
           ];
           return keys.some((k) => !!String(b?.[k] || '').trim());
         };
@@ -554,14 +720,26 @@ const WorkerReviewPost = ({ handleBack }) => {
         if (!hasAny(base)) base = mapAnyToCanon(objMeta);
 
         const keys = [
-          'primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate',
-          'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate'
+          'primary_id_front',
+          'primary_id_back',
+          'secondary_id',
+          'nbi_police_clearance',
+          'proof_of_address',
+          'medical_certificate',
+          'tesda_carpentry_certificate',
+          'tesda_electrician_certificate',
+          'tesda_plumbing_certificate',
+          'tesda_carwashing_certificate',
+          'tesda_laundry_certificate'
         ];
 
         for (const k of keys) {
           const v = base[k];
           if (typeof v === 'string' && v.startsWith('blob:')) {
             const du = await blobToDataUrl(v);
+            if (du) base[k] = du;
+          } else if (typeof v === 'string' && looksLikeBase64(v)) {
+            const du = coerceImageToDataUrl(v, 'image/jpeg');
             if (du) base[k] = du;
           }
         }
@@ -571,8 +749,17 @@ const WorkerReviewPost = ({ handleBack }) => {
 
       const docsObjHasAny = (() => {
         const keys = [
-          'primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate',
-          'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate'
+          'primary_id_front',
+          'primary_id_back',
+          'secondary_id',
+          'nbi_police_clearance',
+          'proof_of_address',
+          'medical_certificate',
+          'tesda_carpentry_certificate',
+          'tesda_electrician_certificate',
+          'tesda_plumbing_certificate',
+          'tesda_carwashing_certificate',
+          'tesda_laundry_certificate'
         ];
         return keys.some((k) => !!String(docsObjPrepared?.[k] || '').trim());
       })();
@@ -589,10 +776,19 @@ const WorkerReviewPost = ({ handleBack }) => {
           if (!out[k]) out[k] = val;
         });
 
-        const srcObj = (savedDocsObj && typeof savedDocsObj === 'object') ? savedDocsObj : {};
+        const srcObj = savedDocsObj && typeof savedDocsObj === 'object' ? savedDocsObj : {};
         [
-          'primary_id_front','primary_id_back','secondary_id','nbi_police_clearance','proof_of_address','medical_certificate',
-          'tesda_carpentry_certificate','tesda_electrician_certificate','tesda_plumbing_certificate','tesda_carwashing_certificate','tesda_laundry_certificate'
+          'primary_id_front',
+          'primary_id_back',
+          'secondary_id',
+          'nbi_police_clearance',
+          'proof_of_address',
+          'medical_certificate',
+          'tesda_carpentry_certificate',
+          'tesda_electrician_certificate',
+          'tesda_plumbing_certificate',
+          'tesda_carwashing_certificate',
+          'tesda_laundry_certificate'
         ].forEach((k) => {
           const v = srcObj[k] || srcObj[k.replace(/_([a-z])/g, (_, c) => c.toUpperCase())];
           if (typeof v === 'string' && v && !out[k]) out[k] = v;
@@ -741,7 +937,8 @@ const WorkerReviewPost = ({ handleBack }) => {
         }
       );
 
-      setApplicationGroupId(res?.data?.application?.request_group_id || res?.data?.request_group_id || null);
+      const gid = res?.data?.application?.request_group_id || res?.data?.request_group_id || null;
+      setApplicationGroupId(gid);
       setShowSuccess(true);
       localStorage.setItem(CONFIRM_FLAG, '1');
     } catch (err) {
@@ -790,9 +987,7 @@ const WorkerReviewPost = ({ handleBack }) => {
   }, [isSubmitting, showSuccess, isLoadingBack]);
 
   const TaskPill = ({ children }) => (
-    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 text-xs md:text-sm px-2.5 py-1">
-      {children}
-    </span>
+    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 text-xs md:text-sm px-2.5 py-1">{children}</span>
   );
 
   const TaskGroup = ({ title, items = [] }) => (
@@ -821,6 +1016,8 @@ const WorkerReviewPost = ({ handleBack }) => {
     const uniq = Array.from(new Set(clean));
     return uniq.length ? uniq.join(', ') : '-';
   };
+
+  const displayProfileSrc = resolvedProfileSrc || (typeof profile_picture_url_preview === 'string' && /^https?:\/\//i.test(profile_picture_url_preview) ? profile_picture_url_preview : '') || fallbackProfile;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
@@ -867,22 +1064,16 @@ const WorkerReviewPost = ({ handleBack }) => {
                 </div>
                 <div className="md:col-span-1 flex flex-col items-center">
                   <div className="text-sm font-medium text-gray-700 mb-3">Worker Profile Picture</div>
-                  {profile_picture || profile_picture_url_preview ? (
-                    <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
-                      <img
-                        src={profile_picture || profile_picture_url_preview || fallbackProfile}
-                        alt="Profile"
-                        className="h-full w-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = fallbackProfile;
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-32 h-32 md:w-40 md:h-40 rounded-full grid place-items-center bg-gray-50 text-gray-400 border border-dashed">
-                      <span className="text-sm">No Image</span>
-                    </div>
-                  )}
+                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
+                    <img
+                      src={displayProfileSrc}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = fallbackProfile;
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -918,7 +1109,9 @@ const WorkerReviewPost = ({ handleBack }) => {
                 <div className="px-6 py-5 space-y-3 flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-gray-700">Worker:</span>
-                    <span className="text-base font-semibold text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
+                    <span className="text-base font-semibold text-[#008cfc]">
+                      {first_name || '-'} {last_name || ''}
+                    </span>
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-gray-700">Services:</span>
@@ -933,9 +1126,7 @@ const WorkerReviewPost = ({ handleBack }) => {
                     <span className="text-base font-semibold text-[#008cfc]">{tools_provided || '-'}</span>
                   </div>
                 </div>
-                {submitError ? (
-                  <div className="px-6 py-3 text-sm text-red-700 bg-red-50 border-t border-red-100">{submitError}</div>
-                ) : null}
+                {submitError ? <div className="px-6 py-3 text-sm text-red-700 bg-red-50 border-t border-red-100">{submitError}</div> : null}
                 <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
                   <button
                     type="button"
@@ -993,12 +1184,7 @@ const WorkerReviewPost = ({ handleBack }) => {
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
@@ -1047,12 +1233,7 @@ const WorkerReviewPost = ({ handleBack }) => {
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
@@ -1089,12 +1270,7 @@ const WorkerReviewPost = ({ handleBack }) => {
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
             <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBroken ? (
-                <img
-                  src="/jdklogo.png"
-                  alt="JDK Homecare Logo"
-                  className="w-16 h-16 object-contain"
-                  onError={() => setLogoBroken(true)}
-                />
+                <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
               ) : (
                 <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
                   <span className="font-bold text-[#008cfc]">JDK</span>

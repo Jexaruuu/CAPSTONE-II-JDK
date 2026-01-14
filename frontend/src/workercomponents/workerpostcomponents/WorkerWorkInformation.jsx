@@ -78,68 +78,89 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     };
   }, [openTaskKey]);
 
-  const serviceTypes = ['Carpenter', 'Electrician', 'Plumber', 'Carwasher', 'Laundry'];
+  const serviceTypes = ['Carpenter', 'Electrician', 'Plumber', 'Carwasher', 'Laundry', 'Appliance'];
 
   const jobTasks = {
-    Carpenter: [
-      'General Carpentry',
-      'Furniture Repair',
-      'Wood Polishing',
-      'Door & Window Fitting',
-      'Custom Furniture Design',
-      'Modular Kitchen Installation',
-      'Flooring & Decking',
-      'Cabinet & Wardrobe Fixing',
-      'Wall Paneling & False Ceiling',
-      'Wood Restoration & Refinishing'
+    Carwasher: [
+      'Interior detailing & vacuuming',
+      'Seat and fabric stain treatment',
+      'Carpet shampoo / extraction cleaning',
+      'Dashboard & panel deep cleaning',
+      'Odor removal / deodorizing',
+      'Exterior wash & rinse technique',
+      'Wax / protectant application',
+      'Tire & rim detailing',
+      'Vehicle size handling (small car / sedan / MPV / SUV / pickup / van)'
     ],
-    Laundry: [
-      'Dry Cleaning',
-      'Ironing',
-      'Wash & Fold',
-      'Steam Pressing',
-      'Stain Removal Treatment',
-      'Curtains & Upholstery Cleaning',
-      'Delicate Fabric Care',
-      'Shoe & Leather Cleaning',
-      'Express Same-Day Laundry',
-      'Eco-Friendly Washing'
+    Carpenter: [
+      'Furniture assembly & installation',
+      'Door alignment & hardware fixing',
+      'Basic lockset servicing',
+      'Smart lock installation & troubleshooting',
+      'Wall patching & surface repair',
+      'Ceiling patching & minor restoration',
+      'Leak source checking',
+      'Waterproofing application',
+      'Roof checking & minor roof repair work',
+      'Area-based work measurement'
     ],
     Electrician: [
-      'Wiring Repair',
-      'Appliance Installation',
-      'Lighting Fixtures',
-      'Circuit Breaker & Fuse Repair',
-      'CCTV & Security System Setup',
-      'Fan & Exhaust Installation',
-      'Inverter & Battery Setup',
-      'Switchboard & Socket Repair',
-      'Electrical Safety Inspection',
-      'Smart Home Automation'
+      'Electrical safety check & diagnostics',
+      'Lighting setup & replacement work',
+      'Lighting fault troubleshooting',
+      'Wiring routing & termination',
+      'Wiring fault tracing & repair',
+      'Outlet installation & testing',
+      'Outlet troubleshooting & replacement',
+      'Breaker panel handling',
+      'Breaker issue troubleshooting',
+      'Switch installation & replacement',
+      'Switch troubleshooting',
+      'Fan mounting & balancing',
+      'Fan troubleshooting',
+      'Outdoor lighting setup',
+      'Outdoor lighting troubleshooting',
+      'Doorbell wiring & setup',
+      'Doorbell troubleshooting'
+    ],
+    Appliance: [
+      'Refrigerator troubleshooting',
+      'Freezer troubleshooting',
+      'TV mounting & setup',
+      'TV diagnostics',
+      'Washer installation & hook-up',
+      'Washer troubleshooting',
+      'Electric fan troubleshooting',
+      'Dishwasher installation & hook-up',
+      'Dishwasher troubleshooting',
+      'Microwave troubleshooting',
+      'Oven troubleshooting',
+      'Rice cooker troubleshooting'
     ],
     Plumber: [
-      'Leak Fixinging',
-      'Pipe Installation',
-      'Bathroom Fittings',
-      'Drain Cleaning & Unclogging',
-      'Water Tank Installation',
-      'Gas Pipeline Installation',
-      'Septic Tank & Sewer Repair',
-      'Water Heater Installation',
-      'Toilet & Sink Repair',
-      'Kitchen Plumbing Solutions'
+      'Plumbing checkup & leak assessment',
+      'Faucet servicing & leak repair',
+      'Grease trap maintenance & cleaning',
+      'Sink blockage clearing',
+      'Drain clearing',
+      'Pipe servicing for exposed lines',
+      'Toilet troubleshooting & servicing',
+      'Heavy blockage clearing',
+      'Deep line clearing',
+      'Water heater installation',
+      'Water heater troubleshooting',
+      'Shower fixture installation'
     ],
-    Carwasher: [
-      'Exterior Wash',
-      'Interior Detailing',
-      'Wax & Polish',
-      'Underbody Cleaning',
-      'Engine Bay Cleaning',
-      'Headlight Restoration',
-      'Ceramic Coating',
-      'Tire & Rim Cleaning',
-      'Vacuum & Odor Removal',
-      'Paint Protection Film Application'
+    Laundry: [
+      'Standard wash–dry–fold workflow',
+      'Delicates / careful fabric handling',
+      'Handwash processing',
+      'Heavy fabric washing',
+      'Bulky item washing',
+      'Stain spotting & pre-treatment',
+      'Garment finishing',
+      'Per-piece garment handling',
+      'Label-based sorting & item tracking'
     ]
   };
 

@@ -160,6 +160,7 @@ const StatusBadge = ({ status }) => {
 const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
   const info = item.info || {};
   const work = item.work || {};
+
   const serviceTypesRaw = Array.isArray(work?.service_types)
     ? work.service_types
     : typeof work?.service_types === "string"
@@ -167,28 +168,29 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
     : work?.service_type
     ? [work.service_type]
     : [];
+
   const serviceTypes = serviceTypesRaw.map((x) => String(x || "").trim()).filter(Boolean);
   const primaryService = serviceTypes[0] || work.primary_service || "";
-  const iconSources = serviceTypes.length ? serviceTypes : [primaryService || work?.work_description];
+  const Icon = iconForService(primaryService || work?.work_description);
+
   const serviceTypesText = serviceTypes.length ? serviceTypes.join(" • ") : (primaryService || "Service");
+
   const statusLower = String(item.status || "").toLowerCase();
-  const isPending = statusLower === "pending";
   const isApproved = statusLower === "approved";
   const isDeclined = statusLower === "declined";
   const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
-  const cardBase =
-    "bg-white border border-gray-300 rounded-2xl p-6 shadow-sm transition-all duration-300";
-  const cardState = "hover:border-[#008cfc] hover:ring-2 hover:ring-[#008cfc] hover:shadow-xl";
-  const profileUrl =
-    info?.profile_picture_url || avatarFromName(info?.first_name || "Worker");
+
+  const profileUrl = info?.profile_picture_url || avatarFromName(info?.first_name || "Worker");
   const createdAgo = item.created_at ? timeAgo(item.created_at) : "";
   const address = buildLocation(info, work);
+
   const yearsExp =
     work?.years_experience !== undefined &&
     work?.years_experience !== null &&
     work?.years_experience !== ""
       ? String(work.years_experience)
       : "";
+
   const tools = work?.tools_provided;
 
   const buildServiceTasksText = (w) => {
@@ -214,136 +216,47 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
     return out.length ? out.join(" • ") : "-";
   };
 
-  return (
-    <div className={`${cardBase} ${cardState} relative overflow-hidden`}>
-      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
-      <div className="relative z-10">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4 min-w-0">
-            <div className="shrink-0">
-              <img
-                src={profileUrl}
-                alt=""
-                className="w-16 h-16 rounded-full object-cover border border-blue-300"
-                onError={(e) => {
-                  e.currentTarget.src = avatarFromName(
-                    info?.first_name || "Worker"
-                  );
-                }}
-              />
-            </div>
-            <div className="min-w-0">
-              <div className="text-xl md:text-2xl font-semibold truncate">
-                <span className="text-gray-700">Service Type:</span>{" "}
-                <span className="text-gray-900">{serviceTypesText}</span>
-              </div>
-              <div className="mt-1 text-base md:text-lg truncate">
-                <span className="font-semibold text-gray-700">Service Tasks:</span>{" "}
-                <span className="text-[#008cfc] font-semibold">{buildServiceTasksText(work)}</span>
-              </div>
-              <div className="mt-1 text-base text-gray-500">
-                {createdAgo ? `Created ${createdAgo}` : ""}
-              </div>
-              <div className="mt-4 grid grid-cols-1 gap-y-3 gap-x-12 text-base text-gray-700">
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    <span className="text-gray-700 font-semibold">Barangay:</span>
-                    <span className="text-[#008cfc] font-semibold">
-                      {address || "-"}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    <span className="text-gray-700 font-semibold">
-                      Years of Experience:
-                    </span>
-                    <span className="text-[#008cfc] font-semibold">
-                      {yearsExp ? yearsExp : "-"}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    <span className="text-gray-700 font-semibold">
-                      Tools Provided:
-                    </span>
-                    <span className="text-[#008cfc] font-semibold">
-                      {typeof tools === "boolean"
-                        ? tools
-                          ? "Yes"
-                          : "No"
-                        : String(tools || "").trim() || "-"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+  const rateTypeText = formatRateType(item?.rate?.rate_type);
+  const rateTextNode = <RateText rate={item?.rate || {}} />;
 
-          <div className="flex items-center gap-2 shrink-0">
-            {false && isCancelled && (
-              <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-orange-50 text-orange-700 border-orange-200">
-                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                Canceled Application
-              </span>
-            )}
-            {false && !isCancelled && isDeclined && (
-              <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border-red-200">
-                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                Declined Application
-              </span>
-            )}
-            {false && !isCancelled && !isDeclined && isApproved && (
-              <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                Approved Application
-              </span>
-            )}
-            {false && !isCancelled && !isDeclined && isPending && (
-              <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
-                <span className="relative inline-flex">
-                  <span className="absolute inline-flex h-3 w-3 rounded-full bg-current opacity-30 animate-ping" />
-                  <span className="relative inline-flex h-3 w-3 rounded-full bg-current" />
-                </span>
-                Pending Application
-              </span>
-            )}
-            <div className="flex items-center gap-2">
-              {iconSources.map((st, idx) => {
-                const IconComp = iconForService(st);
-                return (
-                  <div
-                    key={`${st}-${idx}`}
-                    className="h-10 w-10 rounded-lg border flex items-center justify-center border-gray-300 text-[#008cfc]"
-                  >
-                    <IconComp className="h-5 w-5" />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+  const ActionArea = () => {
+    const showReasonBtn = isDeclined || isCancelled;
+    const showViewBtn = !showReasonBtn;
+
+    return (
+      <div className="flex flex-col items-end justify-between h-full">
+        <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
+          <Icon className="h-5 w-5" />
         </div>
 
-        <div className="-mt-9 flex justify-end gap-2">
-          {isDeclined || isCancelled ? (
+        <div className="flex flex-col items-end gap-2 pt-4">
+          {showReasonBtn ? (
             <Link
               to={`/workerviewapplication?id=${encodeURIComponent(item.id)}`}
               onClick={(e) => {
                 e.preventDefault();
                 onReason(item);
               }}
-              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+              className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
             >
               View Reason
             </Link>
-          ) : (
+          ) : showViewBtn ? (
             <Link
               to={`/current-work-post/${encodeURIComponent(item.id)}`}
-              onClick={(e) => { e.preventDefault(); onView(item); }}
-              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+              onClick={(e) => {
+                e.preventDefault();
+                onView(item);
+              }}
+              className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
             >
               View
             </Link>
+          ) : (
+            <span className="h-[38px]" />
           )}
 
-          {isApproved && !isCancelled && !isDeclined && (
+          {isApproved && !isCancelled && !isDeclined ? (
             <button
               type="button"
               onClick={() => onEdit(item)}
@@ -351,7 +264,76 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
             >
               Edit Application
             </button>
+          ) : (
+            <span className="h-10" />
           )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="relative bg-white border border-gray-300 rounded-md p-6 shadow-sm transition-all duration-300 min-h-[220px]">
+      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+
+      <div className="relative z-10 flex items-start justify-between gap-6">
+        <div className="flex items-start gap-4 min-w-0 flex-1">
+          <div className="shrink-0">
+            <img
+              src={profileUrl}
+              alt=""
+              className="w-20 h-20 rounded-full object-cover border border-blue-300"
+              onError={(e) => {
+                e.currentTarget.src = avatarFromName(info?.first_name || "Worker");
+              }}
+            />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="text-xl md:text-2xl font-semibold truncate">
+              <span className="text-gray-700">Service Type:</span>{" "}
+              <span className="text-gray-900">{serviceTypesText}</span>
+            </div>
+
+            <div className="mt-1 text-base md:text-lg truncate">
+              <span className="font-semibold text-gray-700">Service Tasks:</span>{" "}
+              <span className="text-[#008cfc] font-semibold">{buildServiceTasksText(work)}</span>
+            </div>
+
+            <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo}` : ""}</div>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap gap-x-1 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Barangay:</span>
+                  <span className="text-[#008cfc] font-semibold">{address || "-"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-1 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Years of Experience:</span>
+                  <span className="text-[#008cfc] font-semibold">{yearsExp ? yearsExp : "-"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-1 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Tools Provided:</span>
+                  <span className="text-[#008cfc] font-semibold">
+                    {typeof tools === "boolean" ? (tools ? "Yes" : "No") : String(tools || "").trim() || "-"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 md:pl-10">
+                <div className="flex flex-wrap gap-x-1 gap-y-1">
+                  <span className="text-gray-700 font-semibold">Updated:</span>
+                  <span className="text-[#008cfc] font-semibold">
+                    {item?.updated_at ? formatDate(item.updated_at) : item?.created_at ? formatDate(item.created_at) : "-"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="shrink-0 w-44 self-stretch flex justify-end">
+          <ActionArea />
         </div>
       </div>
     </div>

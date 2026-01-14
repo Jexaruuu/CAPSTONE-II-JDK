@@ -43,6 +43,7 @@ function toBoolStrict(v) {
   if (['no', 'n', 'false', 'f'].includes(s)) return false;
   return false;
 }
+
 const yesNo = (b) => (b ? 'Yes' : 'No');
 
 function pick(obj, keys, alt = null) {
@@ -114,6 +115,21 @@ function extFromMime(m) {
   if (mime === 'image/svg+xml') return 'svg';
   if (mime === 'application/pdf') return 'pdf';
   return 'bin';
+}
+
+function extFromDataUrl(dataUrl) {
+  const m = /^data:([^;]+);base64,/.exec(String(dataUrl || '').trim());
+  const mime = (m ? m[1] : '').toLowerCase();
+  return extFromMime(mime) || 'jpg';
+}
+
+function isFallbackProfileUrl(v) {
+  const s = String(v || '').trim().toLowerCase();
+  if (!s) return true;
+  if (s === '/fallback-profile.png') return true;
+  if (s.endsWith('/fallback-profile.png')) return true;
+  if (s.includes('fallback-profile.png')) return true;
+  return false;
 }
 
 async function safeUploadDataUrl(bucket, dataUrl, path) {
@@ -237,7 +253,16 @@ exports.submitFullApplication = async (req, res) => {
     const first_name = pick(src, ['first_name', 'firstName', 'info.first_name', 'info.firstName', 'metadata.first_name', 'metadata.firstName']);
     const last_name = pick(src, ['last_name', 'lastName', 'info.last_name', 'info.lastName', 'metadata.last_name', 'metadata.lastName']);
     const email_address = pick(src, ['email_address', 'email', 'info.email_address', 'info.email', 'metadata.email']);
-    const contact_number = pick(src, ['contact_number', 'phone', 'mobile', 'info.contact_number', 'info.phone', 'info.mobile', 'metadata.contact_number', 'metadata.phone']);
+    const contact_number = pick(src, [
+      'contact_number',
+      'phone',
+      'mobile',
+      'info.contact_number',
+      'info.phone',
+      'info.mobile',
+      'metadata.contact_number',
+      'metadata.phone'
+    ]);
     const street = pick(src, ['street', 'info.street', 'metadata.street'], 'N/A');
     const barangay = pick(src, ['barangay', 'info.barangay', 'metadata.barangay'], 'N/A');
     const date_of_birth = pick(src, ['date_of_birth', 'birthDate', 'info.date_of_birth', 'info.birthDate', 'metadata.date_of_birth']);
@@ -330,26 +355,36 @@ exports.submitFullApplication = async (req, res) => {
 
     let profileUpload = null;
     let profileDirect = null;
+
     const rawProfile = profile_picture_data_any || profile_picture_any || '';
-    if (rawProfile) {
-      const s = String(rawProfile);
-      if (/^data:/i.test(s)) {
+    const rawProfileStr = typeof rawProfile === 'string' ? rawProfile.trim() : '';
+
+    if (rawProfileStr && !isFallbackProfileUrl(rawProfileStr)) {
+      if (/^data:/i.test(rawProfileStr)) {
         try {
-          const up = await safeUploadDataUrl(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', s, `${request_group_id}-profile`);
+          const up = await safeUploadDataUrl(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', rawProfileStr, `${request_group_id}-profile`);
           profileUpload = up?.url ? up : null;
         } catch {
-          profileUpload = null;
+          const ext = extFromDataUrl(rawProfileStr);
+          profileUpload = {
+            url: rawProfileStr,
+            name: profile_picture_name || `profile-${Date.now()}.${ext}`
+          };
         }
-      } else if (/^https?:\/\//i.test(s)) {
-        if (!/\/fallback-profile\.png$/i.test(s)) profileDirect = s;
+      } else if (/^https?:\/\//i.test(rawProfileStr)) {
+        if (!/\/fallback-profile\.png$/i.test(rawProfileStr)) profileDirect = rawProfileStr;
       } else {
-        const coerced = coerceDataUrl(s, 'image/jpeg');
+        const coerced = coerceDataUrl(rawProfileStr, 'image/jpeg');
         if (coerced) {
           try {
             const up = await safeUploadDataUrl(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', coerced, `${request_group_id}-profile`);
             profileUpload = up?.url ? up : null;
           } catch {
-            profileUpload = null;
+            const ext = extFromDataUrl(coerced);
+            profileUpload = {
+              url: coerced,
+              name: profile_picture_name || `profile-${Date.now()}.${ext}`
+            };
           }
         }
       }
@@ -371,7 +406,7 @@ exports.submitFullApplication = async (req, res) => {
       profile_picture_name: profileUpload?.name || profile_picture_name || null
     };
 
-    if (!infoRow.profile_picture_url) {
+    if (!infoRow.profile_picture_url || isFallbackProfileUrl(infoRow.profile_picture_url)) {
       infoRow.profile_picture_url = fallbackProfile.profile_picture_url;
       infoRow.profile_picture_name = fallbackProfile.profile_picture_name;
     }
@@ -525,7 +560,8 @@ exports.submitFullApplication = async (req, res) => {
       if (/^tesda_electrician_certificate$/.test(r) || /^tesda_electrician_certificate$/.test(ff)) return 'tesda_electrician_certificate';
       if (/^tesda_electrical_certificate$/.test(r) || /^tesda_electrical_certificate$/.test(ff)) return 'tesda_electrician_certificate';
       if (/^tesda_eim_certificate$/.test(r) || /^tesda_eim_certificate$/.test(ff)) return 'tesda_electrician_certificate';
-      if (/^tesda_electrical_installation.*certificate$/.test(r) || /^tesda_electrical_installation.*certificate$/.test(ff)) return 'tesda_electrician_certificate';
+      if (/^tesda_electrical_installation.*certificate$/.test(r) || /^tesda_electrical_installation.*certificate$/.test(ff))
+        return 'tesda_electrician_certificate';
 
       if (/^tesda_plumbing_certificate$/.test(r) || /^tesda_plumbing_certificate$/.test(ff)) return 'tesda_plumbing_certificate';
       if (/^tesda_plumber_certificate$/.test(r) || /^tesda_plumber_certificate$/.test(ff)) return 'tesda_plumbing_certificate';
@@ -711,10 +747,22 @@ exports.submitFullApplication = async (req, res) => {
       await trySet('medical_certificate', m.medical_certificate || m.medical_certificates || m.medicalCertificate);
 
       await trySet('tesda_carpentry_certificate', m.tesda_carpentry_certificate || m.tesdaCarpentryCertificate);
-      await trySet('tesda_electrician_certificate', m.tesda_electrician_certificate || m.tesdaElectricianCertificate || m.tesda_electrical_certificate || m.tesdaElectricalCertificate);
+      await trySet(
+        'tesda_electrician_certificate',
+        m.tesda_electrician_certificate ||
+          m.tesdaElectricianCertificate ||
+          m.tesda_electrical_certificate ||
+          m.tesdaElectricalCertificate
+      );
       await trySet('tesda_plumbing_certificate', m.tesda_plumbing_certificate || m.tesdaPlumbingCertificate);
       await trySet('tesda_carwashing_certificate', m.tesda_carwashing_certificate || m.tesdaCarwashingCertificate);
-      await trySet('tesda_laundry_certificate', m.tesda_laundry_certificate || m.tesdaLaundryCertificate || m.tesda_housekeeping_certificate || m.tesdaHousekeepingCertificate);
+      await trySet(
+        'tesda_laundry_certificate',
+        m.tesda_laundry_certificate ||
+          m.tesdaLaundryCertificate ||
+          m.tesda_housekeeping_certificate ||
+          m.tesdaHousekeepingCertificate
+      );
     }
 
     if (fallbackDocs) {
@@ -1153,18 +1201,38 @@ exports.updateByGroup = async (req, res) => {
       let profile_picture_url = existing?.profile_picture_url || null;
       let profile_picture_name = existing?.profile_picture_name || null;
 
-      if (profileAny) {
-        const s = String(profileAny);
-        if (/^data:/i.test(s)) {
-          const up = await safeUploadDataUrl(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', s, `${gid}-profile`);
-          profile_picture_url = up?.url || profile_picture_url || null;
-          profile_picture_name = up?.name || profile_picture_name || null;
-        } else if (/^https?:\/\//i.test(s)) {
-          if (!/\/fallback-profile\.png$/i.test(s)) profile_picture_url = s;
+      const profileAnyStr = typeof profileAny === 'string' ? profileAny.trim() : '';
+
+      if (profileAnyStr && !isFallbackProfileUrl(profileAnyStr)) {
+        if (/^data:/i.test(profileAnyStr)) {
+          try {
+            const up = await safeUploadDataUrl(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', profileAnyStr, `${gid}-profile`);
+            profile_picture_url = up?.url || profile_picture_url || null;
+            profile_picture_name = up?.name || profile_picture_name || null;
+          } catch {
+            const ext = extFromDataUrl(profileAnyStr);
+            profile_picture_url = profileAnyStr;
+            profile_picture_name = profile_picture_name || `profile-${Date.now()}.${ext}`;
+          }
+        } else if (/^https?:\/\//i.test(profileAnyStr)) {
+          if (!/\/fallback-profile\.png$/i.test(profileAnyStr)) profile_picture_url = profileAnyStr;
+        } else {
+          const coerced = coerceDataUrl(profileAnyStr, 'image/jpeg');
+          if (coerced) {
+            try {
+              const up = await safeUploadDataUrl(process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments', coerced, `${gid}-profile`);
+              profile_picture_url = up?.url || profile_picture_url || null;
+              profile_picture_name = up?.name || profile_picture_name || null;
+            } catch {
+              const ext = extFromDataUrl(coerced);
+              profile_picture_url = coerced;
+              profile_picture_name = profile_picture_name || `profile-${Date.now()}.${ext}`;
+            }
+          }
         }
       }
 
-      if (!profile_picture_url) {
+      if (!profile_picture_url || isFallbackProfileUrl(profile_picture_url)) {
         profile_picture_url = fallbackProfile.profile_picture_url;
         profile_picture_name = fallbackProfile.profile_picture_name;
       }
@@ -1239,7 +1307,10 @@ exports.updateByGroup = async (req, res) => {
             : 'No'
           : existing?.tools_provided ?? null;
 
-      const work_description = d.work_description !== undefined && String(d.work_description).trim() !== '' ? d.work_description : existing?.work_description ?? null;
+      const work_description =
+        d.work_description !== undefined && String(d.work_description).trim() !== ''
+          ? d.work_description
+          : existing?.work_description ?? null;
 
       const row = {
         request_group_id: gid,
@@ -1280,6 +1351,7 @@ exports.updateByGroup = async (req, res) => {
         tesda_carwashing_certificate: '',
         tesda_laundry_certificate: ''
       };
+
       const setUrl = async (k, v) => {
         if (!v) return;
         const raw = unwrapDocValue(v);
