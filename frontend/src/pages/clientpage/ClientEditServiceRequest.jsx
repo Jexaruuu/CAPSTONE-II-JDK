@@ -10,7 +10,7 @@ const NIGHT_TIME_FEE = 200;
 
 const INCLUDED_WORKERS = 1;
 const EXTRA_WORKER_FEE = 150;
-const MAX_WORKERS = 5;
+const HARD_MAX_WORKERS = 6;
 
 const TASK_HEADERS = new Set([
   'Regular Clothes',
@@ -453,7 +453,7 @@ export default function ClientEditServiceRequest() {
         const pd = normalizeYMD(d.preferred_date || '');
         const pt = normalizeHM(d.preferred_time || '');
         const wnRaw = String((d.workers_needed ?? d.workers_need ?? d.workersNeed) ?? '').trim();
-        const wnSafe = wnRaw ? String(clampInt(wnRaw, 1, MAX_WORKERS)) : '';
+        const wnSafe = wnRaw ? String(clampInt(wnRaw, 1, HARD_MAX_WORKERS)) : '';
         const u = String(r.units ?? '').trim();
         const uk = String(r.unit_kg ?? r.unitKg ?? '').trim();
         const sm = String(r.sq_m ?? r.sqM ?? '').trim();
@@ -634,7 +634,7 @@ export default function ClientEditServiceRequest() {
     setError('');
     try {
       const rt = rateType || normalizeRateType(rateType, { rate_from: rateFrom, rate_to: rateTo, rate_value: rateValue });
-      const wn = clampInt(workersNeed || 1, 1, MAX_WORKERS);
+      const wn = workersNeedSafe;
       const mode = inferUnitModeFromRate(serviceType, serviceTask);
       const payload = {
         info: {
@@ -1046,22 +1046,6 @@ export default function ClientEditServiceRequest() {
     return units || '';
   }, [unitMode, units, unitKg, sqM, pieces]);
 
-  const workersNeedSafe = useMemo(() => clampInt(workersNeed || 1, 1, MAX_WORKERS), [workersNeed]);
-  const extraWorkerCount = useMemo(() => Math.max(0, workersNeedSafe - INCLUDED_WORKERS), [workersNeedSafe]);
-  const extraWorkersFeeTotalLocal = useMemo(() => extraWorkerCount * EXTRA_WORKER_FEE, [extraWorkerCount]);
-
-  const preferredTimeFeeAmountLocal = useMemo(() => (preferredTime && isNightTimeForFee(preferredTime) ? NIGHT_TIME_FEE : 0), [preferredTime]);
-  const preferredTimeFeeDisplay = useMemo(() => (preferredTimeFeeAmountLocal > 0 ? peso(preferredTimeFeeAmountLocal) : ''), [preferredTimeFeeAmountLocal]);
-
-  const workersFeeAppliesLocal = useMemo(() => (Number(extraWorkersFeeTotalLocal) || 0) > 0, [extraWorkersFeeTotalLocal]);
-  const extraWorkersFeeDisplay = useMemo(() => (workersFeeAppliesLocal ? peso(extraWorkersFeeTotalLocal) : ''), [workersFeeAppliesLocal, extraWorkersFeeTotalLocal]);
-
-  const preferredTimeFeeLabelLocal = useMemo(() => (preferredTimeFeeDisplay ? `+ fee ${preferredTimeFeeDisplay}` : ''), [preferredTimeFeeDisplay]);
-  const workersFeeLabelLocal = useMemo(
-    () => (workersFeeAppliesLocal ? `+ fee ${peso(extraWorkersFeeTotalLocal)}` : ''),
-    [workersFeeAppliesLocal, extraWorkersFeeTotalLocal]
-  );
-
   const selectedTaskRateRaw = useMemo(() => {
     if (!serviceType || !serviceTask) return null;
     return serviceTaskRates?.[serviceType]?.[serviceTask] ?? null;
@@ -1085,6 +1069,115 @@ export default function ClientEditServiceRequest() {
     const u = parseInt(String(units || '').replace(/[^\d]/g, ''), 10);
     return Number.isFinite(u) && u > 0 ? u : null;
   }, [unitMode, unitKg, sqM, pieces, units]);
+
+  const qtyForWorkers = useMemo(() => {
+    const q = qtyForPricing;
+    if (!Number.isFinite(q) || q === null) return 1;
+    if (unitMode === 'kg' || unitMode === 'sq_m') return Math.max(1, Math.ceil(Number(q) || 1));
+    return Math.max(1, parseInt(String(q).replace(/[^\d]/g, ''), 10) || 1);
+  }, [qtyForPricing, unitMode]);
+
+  const maxWorkersAllowed = useMemo(() => {
+    const qty = qtyForWorkers;
+    const t = String(serviceType || '').trim();
+    if (!t) return 1;
+
+    if (t === 'Car Washing') {
+      return qty >= 2 ? 5 : 1;
+    }
+
+    if (t === 'Plumbing') {
+      return qty > 3 ? 5 : 1;
+    }
+
+    if (t === 'Electrical Works') {
+      if (qty <= 1) return 1;
+      if (qty > 5) return 5;
+      return 3;
+    }
+
+    if (t === 'Carpentry') {
+      if (unitMode === 'sq_m') {
+        if (qty < 5) return 1;
+        if (qty === 5) return 3;
+        return 6;
+      }
+
+      if (qty <= 1) return 1;
+      if (qty === 5) return 3;
+      if (qty > 5) return 6;
+      return 3;
+    }
+
+    if (t === 'Laundry') {
+      if (unitMode === 'kg') {
+        if (qty <= 8) return 1;
+        if (qty >= 10 && qty <= 15) return 3;
+        if (qty > 15) return 5;
+        return 1;
+      }
+
+      if (unitMode === 'pieces') {
+        if (qty <= 5) return 1;
+        if (qty >= 6 && qty <= 10) return 3;
+        if (qty > 10) return 5;
+        return 1;
+      }
+
+      return qty > 1 ? 5 : 1;
+    }
+
+    return qty > 1 ? 5 : 1;
+  }, [serviceType, unitMode, qtyForWorkers]);
+
+  const allowExtraWorkers = useMemo(() => maxWorkersAllowed > 1, [maxWorkersAllowed]);
+
+  const maxWorkersNow = useMemo(() => Math.max(1, Math.min(HARD_MAX_WORKERS, maxWorkersAllowed)), [maxWorkersAllowed]);
+
+  const workersNeedSafe = useMemo(() => {
+    const raw = String(workersNeed || '').trim();
+    const base = raw ? parseInt(raw, 10) : 1;
+    if (!allowExtraWorkers) return 1;
+    return clampInt(base, 1, maxWorkersNow);
+  }, [workersNeed, allowExtraWorkers, maxWorkersNow]);
+
+  useEffect(() => {
+    if (!allowExtraWorkers) {
+      if (String(workersNeedSafe) !== '1') setWorkersNeed('1');
+      if (workersNeedOpen) setWorkersNeedOpen(false);
+      return;
+    }
+    const clamped = clampInt(workersNeedSafe, 1, maxWorkersNow);
+    if (clamped !== workersNeedSafe) setWorkersNeed(String(clamped));
+    if (workersNeedOpen && maxWorkersNow <= 1) setWorkersNeedOpen(false);
+  }, [allowExtraWorkers, maxWorkersNow, workersNeedSafe, workersNeedOpen]);
+
+  const workerOptions = useMemo(
+    () => Array.from({ length: maxWorkersNow }, (_, i) => String(i + 1)),
+    [maxWorkersNow]
+  );
+
+  const extraWorkerCount = useMemo(() => {
+    if (!allowExtraWorkers) return 0;
+    return Math.max(0, workersNeedSafe - INCLUDED_WORKERS);
+  }, [allowExtraWorkers, workersNeedSafe]);
+
+  const extraWorkersFeeTotalLocal = useMemo(() => {
+    if (!allowExtraWorkers) return 0;
+    return extraWorkerCount * EXTRA_WORKER_FEE;
+  }, [allowExtraWorkers, extraWorkerCount]);
+
+  const preferredTimeFeeAmountLocal = useMemo(() => (preferredTime && isNightTimeForFee(preferredTime) ? NIGHT_TIME_FEE : 0), [preferredTime]);
+  const preferredTimeFeeDisplay = useMemo(() => (preferredTimeFeeAmountLocal > 0 ? peso(preferredTimeFeeAmountLocal) : ''), [preferredTimeFeeAmountLocal]);
+
+  const workersFeeAppliesLocal = useMemo(() => (Number(extraWorkersFeeTotalLocal) || 0) > 0, [extraWorkersFeeTotalLocal]);
+  const extraWorkersFeeDisplay = useMemo(() => (workersFeeAppliesLocal ? peso(extraWorkersFeeTotalLocal) : ''), [workersFeeAppliesLocal, extraWorkersFeeTotalLocal]);
+
+  const preferredTimeFeeLabelLocal = useMemo(() => (preferredTimeFeeDisplay ? `+ fee ${preferredTimeFeeDisplay}` : ''), [preferredTimeFeeDisplay]);
+  const workersFeeLabelLocal = useMemo(
+    () => (workersFeeAppliesLocal ? `+ fee ${peso(extraWorkersFeeTotalLocal)}` : ''),
+    [workersFeeAppliesLocal, extraWorkersFeeTotalLocal]
+  );
 
   const baseAmountLocal = useMemo(() => {
     if (!serviceType || !serviceTask) return null;
@@ -1137,7 +1230,7 @@ export default function ClientEditServiceRequest() {
   }, [computedTotalAmountLocal, totalRatePhp]);
 
   const isComplete = useMemo(() => {
-    const req = [serviceType, serviceTask, preferredDate, preferredTime, workersNeed, isUrgent, toolsProvided, description, barangay, street, additionalAddress];
+    const req = [serviceType, serviceTask, preferredDate, preferredTime, String(workersNeedSafe), isUrgent, toolsProvided, description, barangay, street, additionalAddress];
     const allFilled = req.every(v => String(v ?? '').trim() !== '');
     if (!allFilled) return false;
 
@@ -1166,7 +1259,7 @@ export default function ClientEditServiceRequest() {
     const n = parseInt(String(units).replace(/[^\d]/g, ''), 10);
     if (!Number.isFinite(n) || n <= 0) return false;
     return true;
-  }, [serviceType, serviceTask, preferredDate, preferredTime, workersNeed, isUrgent, toolsProvided, description, barangay, street, additionalAddress, units, unitKg, sqM, pieces, unitMode]);
+  }, [serviceType, serviceTask, preferredDate, preferredTime, workersNeedSafe, isUrgent, toolsProvided, description, barangay, street, additionalAddress, units, unitKg, sqM, pieces, unitMode]);
 
   const canSave = isDirty && isComplete && !saving;
 
@@ -1178,8 +1271,6 @@ export default function ClientEditServiceRequest() {
   useEffect(()=>{ const lock=loading; const html=document.documentElement; const body=document.body; const prevHtml=html.style.overflow; const prevBody=body.style.overflow; if(lock){ html.style.overflow="hidden"; body.style.overflow="hidden"; } else { html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; } return()=>{ html.style.overflow=prevHtml||""; body.style.overflow=prevBody||""; }; },[loading]);
 
   useEffect(() => { const handler = (e) => { if (loading) e.preventDefault(); }; if (loading) { window.addEventListener('wheel', handler, { passive: false }); window.addEventListener('touchmove', handler, { passive: false }); } return () => { window.removeEventListener('wheel', handler); window.removeEventListener('touchmove', handler); }; }, [loading]);
-
-  const workersNeedOptions = useMemo(() => Array.from({ length: MAX_WORKERS }, (_, i) => String(i + 1)), [MAX_WORKERS]);
 
   const onUnitChange = (val) => {
     if (unitMode === 'kg') {
@@ -1877,15 +1968,16 @@ export default function ClientEditServiceRequest() {
 
                       <div className="relative md:col-span-2" ref={workersNeedRef}>
                         <span className="block text-sm font-medium text-gray-700 mb-2">Workers Need</span>
-                        <select value={String(workersNeedSafe)} onChange={(e)=>setWorkersNeed(String(clampInt(e.target.value, 1, MAX_WORKERS)))} className="hidden" aria-hidden="true" tabIndex={-1}>
+                        <select value={String(workersNeedSafe)} onChange={(e)=>setWorkersNeed(String(clampInt(e.target.value, 1, maxWorkersNow)))} className="hidden" aria-hidden="true" tabIndex={-1}>
                           <option value=""></option>
-                          {workersNeedOptions.map((n)=> <option key={n} value={n}>{n}</option>)}
+                          {workerOptions.map((n)=> <option key={n} value={n}>{n}</option>)}
                         </select>
-                        <div className="flex items-center justify-between rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#008cfc]/40">
+                        <div className={`flex items-center justify-between rounded-xl border ${allowExtraWorkers ? 'border-gray-300' : 'border-gray-200 bg-gray-100'} focus-within:ring-2 focus-within:ring-[#008cfc]/40`}>
                           <button
                             type="button"
-                            onClick={() => { closeOtherDropdowns('workers'); setWorkersNeedOpen(s => !s); }}
-                            className="flex-1 min-w-0 px-4 py-3 text-left rounded-l-xl focus:outline-none"
+                            onClick={() => { if (!allowExtraWorkers) return; closeOtherDropdowns('workers'); setWorkersNeedOpen(s => !s); }}
+                            className={`flex-1 min-w-0 px-4 py-3 text-left rounded-l-xl focus:outline-none ${allowExtraWorkers ? '' : 'cursor-not-allowed'}`}
+                            disabled={!allowExtraWorkers}
                           >
                             <div className="flex items-center justify-between gap-3 min-w-0">
                               <span className="truncate">
@@ -1899,9 +1991,10 @@ export default function ClientEditServiceRequest() {
 
                           <button
                             type="button"
-                            onClick={() => { closeOtherDropdowns('workers'); setWorkersNeedOpen(s => !s); }}
-                            className="shrink-0 px-3 pr-4 text-gray-600 hover:text-gray-800"
+                            onClick={() => { if (!allowExtraWorkers) return; closeOtherDropdowns('workers'); setWorkersNeedOpen(s => !s); }}
+                            className={`shrink-0 px-3 pr-4 text-gray-600 hover:text-gray-800 ${allowExtraWorkers ? '' : 'opacity-40 cursor-not-allowed'}`}
                             aria-label="Open workers need options"
+                            disabled={!allowExtraWorkers}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                               <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
@@ -1931,16 +2024,16 @@ export default function ClientEditServiceRequest() {
 
                         {workersNeedOpen && (
                           <PopList
-                            items={workersNeedOptions}
+                            items={workerOptions}
                             value={String(workersNeedSafe)}
-                            onSelect={(v)=>{ setWorkersNeed(String(clampInt(v, 1, MAX_WORKERS))); setWorkersNeedOpen(false); }}
+                            onSelect={(v)=>{ setWorkersNeed(String(clampInt(v, 1, maxWorkersNow))); setWorkersNeedOpen(false); }}
                             fullWidth
                             title="Select Workers Need"
                             clearable
                             onClear={()=>{ setWorkersNeed('1'); setWorkersNeedOpen(false); }}
                             renderItem={(v)=> `${v} worker${String(v) === '1' ? '' : 's'}`}
                             rightLabel={(it) => {
-                              const n = clampInt(it, 1, MAX_WORKERS);
+                              const n = clampInt(it, 1, maxWorkersNow);
                               const extra = Math.max(0, n - INCLUDED_WORKERS);
                               const fee = extra * EXTRA_WORKER_FEE;
                               return extra > 0 ? `+ fee ${peso(fee)}` : '';
@@ -2072,27 +2165,6 @@ export default function ClientEditServiceRequest() {
                             Selected: <span className="font-medium">{requestImageName}</span>
                           </div>
                         ) : null}
-
-                        <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-xs text-gray-700">Selected task rate</span>
-                            <span className="text-xs font-semibold text-[#008cfc]">
-                              {serviceType && serviceTask ? getSelectedTaskRate(serviceType, serviceTask) : '—'}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between gap-3 mt-1">
-                            <span className="text-xs text-gray-700">Night time fee</span>
-                            <span className={`text-xs font-semibold ${preferredTimeFeeDisplay ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                              {preferredTimeFeeDisplay ? `+ ${preferredTimeFeeDisplay}` : '—'}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between gap-3 mt-1">
-                            <span className="text-xs text-gray-700">Extra workers fee</span>
-                            <span className={`text-xs font-semibold ${extraWorkersFeeDisplay ? 'text-[#008cfc]' : 'text-gray-400'}`}>
-                              {extraWorkersFeeDisplay ? `+ ${extraWorkersFeeDisplay}` : '—'}
-                            </span>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </aside>

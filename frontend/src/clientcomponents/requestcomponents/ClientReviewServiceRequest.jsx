@@ -535,43 +535,43 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
   };
 
   const workersNeeded = useMemo(() => {
-  const candidates = [
+    const candidates = [
+      workers_needed_state,
+      workersNeeded_state,
+      worker_needed_state,
+      number_of_workers_state,
+      num_workers_state,
+      manpower_state,
+      savedDetails?.workers_need,
+      savedDetails?.workers_needed,
+      savedDetails?.workersNeeded,
+      savedDetails?.worker_needed,
+      savedDetails?.number_of_workers,
+      savedDetails?.num_workers,
+      savedDetails?.manpower,
+      savedRate?.workers_need,
+      savedRate?.workers_needed,
+      savedRate?.workersNeeded,
+      savedRate?.worker_needed,
+      savedRate?.number_of_workers,
+      savedRate?.num_workers,
+      savedRate?.manpower
+    ];
+    for (const c of candidates) {
+      const n = parseWorkersNeeded(c);
+      if (n) return n;
+    }
+    return null;
+  }, [
     workers_needed_state,
     workersNeeded_state,
     worker_needed_state,
     number_of_workers_state,
     num_workers_state,
     manpower_state,
-    savedDetails?.workers_need,
-    savedDetails?.workers_needed,
-    savedDetails?.workersNeeded,
-    savedDetails?.worker_needed,
-    savedDetails?.number_of_workers,
-    savedDetails?.num_workers,
-    savedDetails?.manpower,
-    savedRate?.workers_need,
-    savedRate?.workers_needed,
-    savedRate?.workersNeeded,
-    savedRate?.worker_needed,
-    savedRate?.number_of_workers,
-    savedRate?.num_workers,
-    savedRate?.manpower
-  ];
-  for (const c of candidates) {
-    const n = parseWorkersNeeded(c);
-    if (n) return n;
-  }
-  return null;
-}, [
-  workers_needed_state,
-  workersNeeded_state,
-  worker_needed_state,
-  number_of_workers_state,
-  num_workers_state,
-  manpower_state,
-  savedDetails,
-  savedRate
-]);
+    savedDetails,
+    savedRate
+  ]);
 
   const workersNeededDisplay = useMemo(() => {
     if (!workersNeeded) return '-';
@@ -611,17 +611,17 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       setIsSubmitting(true);
 
       const unitKindFrom = (serviceTaskRaw, quantityUnitRaw) => {
-  const q = String(quantityUnitRaw || '').trim().toLowerCase();
-  if (q) {
-    if (q === 'sq.m' || q === 'sqm' || q === 'sq m' || q === 'square meter' || q === 'square meters' || q === 'm2') return 'sq_m';
-    if (q === 'piece' || q === 'pieces' || q === 'pc' || q === 'pcs' || q === 'per piece') return 'pieces';
-  }
-  const t = String(serviceTaskRaw || '').toLowerCase();
-  if (/(sq\.?\s*m|sqm|m2|square\s*meter)/i.test(t)) return 'sq_m';
-  if (/(per\s*piece|pieces?|pcs?\b)/i.test(t)) return 'pieces';
-  return '';
-};
-
+        const q = String(quantityUnitRaw || '').trim().toLowerCase();
+        if (q) {
+          if (q === 'sq.m' || q === 'sqm' || q === 'sq m' || q === 'square meter' || q === 'square meters' || q === 'm2')
+            return 'sq_m';
+          if (q === 'piece' || q === 'pieces' || q === 'pc' || q === 'pcs' || q === 'per piece') return 'pieces';
+        }
+        const t = String(serviceTaskRaw || '').toLowerCase();
+        if (/(sq\.?\s*m|sqm|m2|square\s*meter)/i.test(t)) return 'sq_m';
+        if (/(per\s*piece|pieces?|pcs?\b)/i.test(t)) return 'pieces';
+        return '';
+      };
 
       const infoDraft = (() => {
         try {
@@ -653,43 +653,43 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
       })();
 
       const workersNeedValue = (() => {
-  const candidates = [
-    workersNeeded,
-    rateDraft?.workers_need,
-    rateDraft?.workers_needed,
-    rateDraft?.workersNeeded,
-    rateDraft?.worker_needed,
-    rateDraft?.number_of_workers,
-    rateDraft?.num_workers,
-    rateDraft?.manpower,
-    detailsDraft?.workers_need,
-    detailsDraft?.workers_needed,
-    detailsDraft?.workersNeeded,
-    detailsDraft?.worker_needed,
-    detailsDraft?.number_of_workers,
-    detailsDraft?.num_workers,
-    detailsDraft?.manpower,
-    savedDetails?.workers_need,
-    savedDetails?.workers_needed,
-    savedDetails?.workersNeeded,
-    savedDetails?.worker_needed,
-    savedDetails?.number_of_workers,
-    savedDetails?.num_workers,
-    savedDetails?.manpower,
-    s?.workers_need,
-    s?.workers_needed,
-    s?.workersNeeded,
-    s?.worker_needed,
-    s?.number_of_workers,
-    s?.num_workers,
-    s?.manpower
-  ];
-  for (const c of candidates) {
-    const n = parseWorkersNeeded(c);
-    if (n) return n;
-  }
-  return null;
-})();
+        const candidates = [
+          workersNeeded,
+          rateDraft?.workers_need,
+          rateDraft?.workers_needed,
+          rateDraft?.workersNeeded,
+          rateDraft?.worker_needed,
+          rateDraft?.number_of_workers,
+          rateDraft?.num_workers,
+          rateDraft?.manpower,
+          detailsDraft?.workers_need,
+          detailsDraft?.workers_needed,
+          detailsDraft?.workersNeeded,
+          detailsDraft?.worker_needed,
+          detailsDraft?.number_of_workers,
+          detailsDraft?.num_workers,
+          detailsDraft?.manpower,
+          savedDetails?.workers_need,
+          savedDetails?.workers_needed,
+          savedDetails?.workersNeeded,
+          savedDetails?.worker_needed,
+          savedDetails?.number_of_workers,
+          savedDetails?.num_workers,
+          savedDetails?.manpower,
+          s?.workers_need,
+          s?.workers_needed,
+          s?.workersNeeded,
+          s?.worker_needed,
+          s?.number_of_workers,
+          s?.num_workers,
+          s?.manpower
+        ];
+        for (const c of candidates) {
+          const n = parseWorkersNeeded(c);
+          if (n) return n;
+        }
+        return null;
+      })();
 
       const extraWorkersFeeForPayload = (() => {
         const candidates = [
@@ -757,9 +757,9 @@ const ClientReviewServiceRequest = ({ title, setTitle, handleNext, handleBack })
 
       const unitKgForDb = isLaundryDraft && quantityUnitForDb === 'kg' ? unitsForDb : null;
       const serviceTaskRaw = String(detailsDraft?.serviceTask || service_task || '').trim();
-const unitKind = unitKindFrom(serviceTaskRaw, quantityUnitForDb);
-const sqMForDb = unitKind === 'sq_m' ? Number(unitsForDb) : null;
-const piecesForDb = unitKind === 'pieces' ? Number(unitsForDb) : null;
+      const unitKind = unitKindFrom(serviceTaskRaw, quantityUnitForDb);
+      const sqMForDb = unitKind === 'sq_m' ? Number(unitsForDb) : null;
+      const piecesForDb = unitKind === 'pieces' ? Number(unitsForDb) : null;
 
       const preferredTimeFeeForDb = (() => {
         const candidates = [rateDraft?.preferred_time_fee, preferredTimeFee, preferred_time_fee_state, savedRate?.preferred_time_fee];
@@ -1047,22 +1047,23 @@ const piecesForDb = unitKind === 'pieces' ? Number(unitsForDb) : null;
         workers_need: workersNeedValue,
         workers_needed: workersNeedValue,
         sq_m: sqMForDb,
-pieces: piecesForDb,
+        pieces: piecesForDb
       };
-const clientServiceRatePayload = {
-  preferred_time_fee: preferredTimeFeeForDb,
-  extra_workers_fee: extraWorkersFeeForPayload,
-  units: unitsForDb,
-  unit_kg: unitKgForDb,
-  sq_m: sqMForDb,
-  pieces: piecesForDb,
-  quantity_unit: quantityUnitForDb,
-  billable_units: Number.isFinite(Number(billableUnits)) ? Number(billableUnits) : null,
-  minimum_quantity: Number.isFinite(Number(minimumQty)) ? Number(minimumQty) : null,
-  minimum_applied: !!minimumApplied,
-  payment_method: normalizedPaymentForDb,
-  total_rate: totalRateForDb
-};
+
+      const clientServiceRatePayload = {
+        preferred_time_fee: preferredTimeFeeForDb,
+        extra_workers_fee: extraWorkersFeeForPayload,
+        units: unitsForDb,
+        unit_kg: unitKgForDb,
+        sq_m: sqMForDb,
+        pieces: piecesForDb,
+        quantity_unit: quantityUnitForDb,
+        billable_units: Number.isFinite(Number(billableUnits)) ? Number(billableUnits) : null,
+        minimum_quantity: Number.isFinite(Number(minimumQty)) ? Number(minimumQty) : null,
+        minimum_applied: !!minimumApplied,
+        payment_method: normalizedPaymentForDb,
+        total_rate: totalRateForDb
+      };
 
       const jsonBody = {
         client_id: normalized.client_id,
@@ -1150,12 +1151,10 @@ const clientServiceRatePayload = {
 
   const showBreakdown = Number.isFinite(Number(totalForDisplay)) && Number(totalForDisplay) >= 0;
 
-   const showAddedWorkersFee = Number(extraWorkersFeeTotal) > 0;
+  const showAddedWorkersFee = Number(extraWorkersFeeTotal) > 0;
 
   const extraWorkersFeeNode = (
-    <span className="text-[15px] md:text-base font-semibold text-[#008cfc]">
-      {`+ ${peso(extraWorkersFeeTotal)}`}
-    </span>
+    <span className="text-[15px] md:text-base font-semibold text-[#008cfc]">{`+ ${peso(extraWorkersFeeTotal)}`}</span>
   );
 
   return (
@@ -1188,7 +1187,9 @@ const clientServiceRatePayload = {
         {!location.pathname.includes('/clientpostrequest') && (
           <div className="mt-8 mb-6">
             <div className="text-xs text-gray-500 tracking-wide">4 of 4 | Post a Service Request</div>
-            <h2 className="text-[28px] md:text-[32px] font-semibold tracking-tight mt-2 text-gray-900">Step 4: Review and Submit</h2>
+            <h2 className="text-[28px] md:text-[32px] font-semibold tracking-tight mt-2 text-gray-900">
+              Step 4: Review and Submit
+            </h2>
           </div>
         )}
 
@@ -1238,7 +1239,7 @@ const clientServiceRatePayload = {
                     <div className="space-y-5">
                       <LabelValue label="Service Type" value={service_type} />
                       <LabelValue label="Service Task" value={service_task} />
-                       <LabelValue label="Workers Needed" value={workersNeededDisplay} />
+                      <LabelValue label="Workers Needed" value={workersNeededDisplay} />
                       {showAddedWorkersFee ? <LabelValue label="Added Workers Fee" value={extraWorkersFeeNode} /> : null}
                       <LabelValue label="Preferred Date" value={preferred_date_display} />
                       <LabelValue label="Preferred Time" value={preferred_time_display} />
@@ -1300,7 +1301,7 @@ const clientServiceRatePayload = {
                 <div className="px-6 py-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
                     {showBreakdown ? (
-                                   <div className="md:col-span-2">
+                      <div className="md:col-span-2">
                         <div className="mt-2 rounded-2xl border border-gray-200 bg-gray-50/40 p-5">
                           <div className="flex items-center justify-between">
                             <div className="text-sm font-semibold text-gray-900">Cost Breakdown</div>
@@ -1341,7 +1342,6 @@ const clientServiceRatePayload = {
                           </div>
                         </div>
                       </div>
-
                     ) : (
                       <div className="md:col-span-2">
                         <div className="rounded-xl border border-gray-200 bg-gray-50/40 px-4 py-3 text-sm text-gray-700 flex items-center justify-between gap-3">
@@ -1395,13 +1395,12 @@ const clientServiceRatePayload = {
                       <span className="text-base font-semibold text-[#008cfc]">{workersNeededDisplay}</span>
                     </div>
 
-                                       {showAddedWorkersFee ? (
+                    {showAddedWorkersFee ? (
                       <div className="flex items-baseline gap-2">
                         <span className="text-sm font-medium text-gray-700">Added Workers Fee:</span>
                         <span className="text-base font-semibold text-[#008cfc]">{`+ ${peso(extraWorkersFeeTotal)}`}</span>
                       </div>
                     ) : null}
-
 
                     <div className="flex items-baseline gap-2">
                       <span className="text-sm font-medium text-gray-700">Schedule:</span>
@@ -1744,11 +1743,6 @@ const clientServiceRatePayload = {
             <div className="mt-6 text-center">
               <div className="text-xl font-semibold text-gray-900">Request Submitted</div>
               <div className="mt-1 text-sm text-gray-600">Your service request has been successfully submitted.</div>
-              {requestGroupId ? (
-                <div className="mt-3 text-xs text-gray-500">
-                  Reference: <span className="font-semibold text-gray-800">{String(requestGroupId)}</span>
-                </div>
-              ) : null}
             </div>
 
             <div className="mt-6">

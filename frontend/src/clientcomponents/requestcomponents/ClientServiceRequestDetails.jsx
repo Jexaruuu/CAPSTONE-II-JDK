@@ -260,7 +260,7 @@ const isTaskHeader = (t) => {
       'Regular Clothes (Wash + Dry + Fold)': '₱39/kg (min 8 kg)',
       Handwash: '₱120/kg',
       'Towels/Linens/Denim (Wash + Dry + Fold)': '₱75/kg (min 8 kg)',
-      'Blankets/Comforters (Wash + Dry + Fold)': '₱99/kg (max 8 kg)',
+      'Blankets/Comforters (Wash + Dry + Fold)': '₱99/kg (min 8 kg)',
 
       Barong: '₱400/piece',
       'Coat (Men-Adult)': '₱700/piece',
