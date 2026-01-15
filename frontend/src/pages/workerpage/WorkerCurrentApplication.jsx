@@ -219,121 +219,106 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
   const rateTypeText = formatRateType(item?.rate?.rate_type);
   const rateTextNode = <RateText rate={item?.rate || {}} />;
 
-  const ActionArea = () => {
-    const showReasonBtn = isDeclined || isCancelled;
-    const showViewBtn = !showReasonBtn;
+  const showReasonBtn = isDeclined || isCancelled;
 
-    return (
-      <div className="flex flex-col items-end justify-between h-full">
-        <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
-          <Icon className="h-5 w-5" />
+  return (
+    <div className="relative bg-white border border-gray-300 rounded-md p-6 shadow-sm transition-all duration-300 min-h-[220px]">
+      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+
+      <div className="relative z-10">
+        <div className="flex items-start justify-between gap-6">
+          <div className="flex items-start gap-4 min-w-0 flex-1">
+            <div className="shrink-0">
+              <img
+                src={profileUrl}
+                alt=""
+                className="w-20 h-20 rounded-full object-cover border border-blue-300"
+                onError={(e) => {
+                  e.currentTarget.src = avatarFromName(info?.first_name || "Worker");
+                }}
+              />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="text-xl md:text-2xl font-semibold truncate">
+                <span className="text-gray-700">Service Type:</span>{" "}
+                <span className="text-gray-900">{serviceTypesText}</span>
+              </div>
+
+              <div className="mt-1 text-base md:text-lg truncate">
+                <span className="font-semibold text-gray-700">Service Tasks:</span>{" "}
+                <span className="text-[#008cfc] font-semibold">{buildServiceTasksText(work)}</span>
+              </div>
+
+              <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo}` : ""}</div>
+
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Barangay:</span>
+                    <span className="text-[#008cfc] font-semibold">{address || "-"}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Years of Experience:</span>
+                    <span className="text-[#008cfc] font-semibold">{yearsExp ? yearsExp : "-"}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Tools Provided:</span>
+                    <span className="text-[#008cfc] font-semibold">
+                      {typeof tools === "boolean" ? (tools ? "Yes" : "No") : String(tools || "").trim() || "-"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 md:pl-10">
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Updated:</span>
+                    <span className="text-[#008cfc] font-semibold">
+                      {item?.updated_at ? formatDate(item.updated_at) : item?.created_at ? formatDate(item.created_at) : "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
+              <Icon className="h-5 w-5" />
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2 pt-4">
+        <div className="-mt-9 flex justify-end gap-2">
           {showReasonBtn ? (
-            <Link
-              to={`/workerviewapplication?id=${encodeURIComponent(item.id)}`}
-              onClick={(e) => {
-                e.preventDefault();
-                onReason(item);
-              }}
-              className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+            <button
+              type="button"
+              onClick={() => onReason(item)}
+              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
             >
               View Reason
-            </Link>
-          ) : showViewBtn ? (
-            <Link
-              to={`/current-work-post/${encodeURIComponent(item.id)}`}
-              onClick={(e) => {
-                e.preventDefault();
-                onView(item);
-              }}
-              className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onView(item)}
+              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
             >
               View
-            </Link>
-          ) : (
-            <span className="h-[38px]" />
+            </button>
           )}
 
           {isApproved && !isCancelled && !isDeclined ? (
             <button
               type="button"
               onClick={() => onEdit(item)}
-              className="h-10 px-4 rounded-md transition bg-[#008cfc] text-white hover:bg-blue-700"
+              className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
             >
               Edit Application
             </button>
           ) : (
             <span className="h-10" />
           )}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="relative bg-white border border-gray-300 rounded-md p-6 shadow-sm transition-all duration-300 min-h-[220px]">
-      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
-
-      <div className="relative z-10 flex items-start justify-between gap-6">
-        <div className="flex items-start gap-4 min-w-0 flex-1">
-          <div className="shrink-0">
-            <img
-              src={profileUrl}
-              alt=""
-              className="w-20 h-20 rounded-full object-cover border border-blue-300"
-              onError={(e) => {
-                e.currentTarget.src = avatarFromName(info?.first_name || "Worker");
-              }}
-            />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <div className="text-xl md:text-2xl font-semibold truncate">
-              <span className="text-gray-700">Service Type:</span>{" "}
-              <span className="text-gray-900">{serviceTypesText}</span>
-            </div>
-
-            <div className="mt-1 text-base md:text-lg truncate">
-              <span className="font-semibold text-gray-700">Service Tasks:</span>{" "}
-              <span className="text-[#008cfc] font-semibold">{buildServiceTasksText(work)}</span>
-            </div>
-
-            <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo}` : ""}</div>
-
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap gap-x-1 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Barangay:</span>
-                  <span className="text-[#008cfc] font-semibold">{address || "-"}</span>
-                </div>
-                <div className="flex flex-wrap gap-x-1 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Years of Experience:</span>
-                  <span className="text-[#008cfc] font-semibold">{yearsExp ? yearsExp : "-"}</span>
-                </div>
-                <div className="flex flex-wrap gap-x-1 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Tools Provided:</span>
-                  <span className="text-[#008cfc] font-semibold">
-                    {typeof tools === "boolean" ? (tools ? "Yes" : "No") : String(tools || "").trim() || "-"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 md:pl-10">
-                <div className="flex flex-wrap gap-x-1 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Updated:</span>
-                  <span className="text-[#008cfc] font-semibold">
-                    {item?.updated_at ? formatDate(item.updated_at) : item?.created_at ? formatDate(item.created_at) : "-"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="shrink-0 w-44 self-stretch flex justify-end">
-          <ActionArea />
         </div>
       </div>
     </div>
