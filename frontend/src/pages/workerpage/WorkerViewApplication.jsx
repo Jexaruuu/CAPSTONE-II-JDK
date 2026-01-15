@@ -8,12 +8,7 @@ const CONFIRM_FLAG = 'workerApplicationJustViewed';
 const GLOBAL_DESC_KEY = 'workerApplicationDescription';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-const REASONS = [
-  'Change of plans',
-  'Schedule conflict',
-  'Rate not suitable',
-  'Applied by mistake'
-];
+const REASONS = ['Change of plans', 'Schedule conflict', 'Rate not suitable', 'Applied by mistake'];
 
 const WorkerViewApplication = () => {
   const location = useLocation();
@@ -51,13 +46,7 @@ const WorkerViewApplication = () => {
   const headersWithU = useMemo(() => {
     try {
       const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
-      const au =
-        a.auth_uid ||
-        a.authUid ||
-        a.uid ||
-        a.id ||
-        localStorage.getItem('auth_uid') ||
-        '';
+      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
       const e =
         a.email ||
         localStorage.getItem('worker_email') ||
@@ -83,17 +72,13 @@ const WorkerViewApplication = () => {
         const fromSession = (() => {
           try {
             const raw =
-              sessionStorage.getItem('wa_view_payload') ||
-              sessionStorage.getItem('worker_app_view_payload') ||
-              'null';
+              sessionStorage.getItem('wa_view_payload') || sessionStorage.getItem('worker_app_view_payload') || 'null';
             return JSON.parse(raw);
           } catch {
             return null;
           }
         })();
-        const fromState =
-          location.state &&
-          (location.state.row || location.state.item || location.state.data);
+        const fromState = location.state && (location.state.row || location.state.item || location.state.data);
         const data = fromSession || fromState || null;
         if (!data) {
           try {
@@ -105,7 +90,9 @@ const WorkerViewApplication = () => {
             const items = Array.isArray(resp?.items) ? resp.items : [];
             const pick = items.find(r => String(r.request_group_id) === String(id)) || items[0] || null;
             if (!cancelled) setRow(pick);
-            try { if (pick) sessionStorage.setItem('wa_view_payload', JSON.stringify(pick)); } catch {}
+            try {
+              if (pick) sessionStorage.setItem('wa_view_payload', JSON.stringify(pick));
+            } catch {}
           } catch {
             if (!cancelled) setRow(null);
           } finally {
@@ -207,27 +194,26 @@ const WorkerViewApplication = () => {
     return undefined;
   })();
 
-  const service_types =
-    workR.service_types ?? detailsR.service_types ?? s.service_types ?? savedWork.serviceTypes;
+  const service_types = workR.service_types ?? detailsR.service_types ?? s.service_types ?? savedWork.serviceTypes;
 
-  const normalizeTasks = (raw) => {
+  const normalizeTasks = raw => {
     if (!raw) return [];
     if (Array.isArray(raw)) {
       if (raw.length && typeof raw[0] === 'object' && raw[0] !== null && ('category' in raw[0] || 'tasks' in raw[0])) {
         const out = [];
-        raw.forEach((it) => {
+        raw.forEach(it => {
           const arr = Array.isArray(it?.tasks) ? it.tasks : [];
-          out.push(...arr.map((x) => String(x || '').trim()).filter(Boolean));
+          out.push(...arr.map(x => String(x || '').trim()).filter(Boolean));
         });
         return Array.from(new Set(out));
       }
-      return raw.map((x) => String(x || '').trim()).filter(Boolean);
+      return raw.map(x => String(x || '').trim()).filter(Boolean);
     }
-    if (typeof raw === 'string') return raw.split(',').map((x) => x.trim()).filter(Boolean);
+    if (typeof raw === 'string') return raw.split(',').map(x => x.trim()).filter(Boolean);
     if (typeof raw === 'object') {
       const out = [];
-      Object.values(raw).forEach((v) => {
-        if (Array.isArray(v)) out.push(...v.map((x) => String(x || '').trim()).filter(Boolean));
+      Object.values(raw).forEach(v => {
+        if (Array.isArray(v)) out.push(...v.map(x => String(x || '').trim()).filter(Boolean));
         else if (typeof v === 'string') out.push(String(v).trim());
       });
       return Array.from(new Set(out));
@@ -237,28 +223,21 @@ const WorkerViewApplication = () => {
 
   const service_tasks_list = normalizeTasks(
     workR.service_task ??
-    workR.service_tasks ??
-    detailsR.service_task ??
-    detailsR.service_tasks ??
-    workR.selected_tasks ??
-    workR.selected_task ??
-    selectedTasksFromJobDetails ??
-    s.service_tasks ??
-    savedWork.serviceTasks ??
-    savedWork.service_task
+      workR.service_tasks ??
+      detailsR.service_task ??
+      detailsR.service_tasks ??
+      workR.selected_tasks ??
+      workR.selected_task ??
+      selectedTasksFromJobDetails ??
+      s.service_tasks ??
+      savedWork.serviceTasks ??
+      savedWork.service_task
   );
 
   const years_experience =
-    workR.years_experience ??
-    detailsR.years_experience ??
-    s.years_experience ??
-    savedWork.yearsExperience;
+    workR.years_experience ?? detailsR.years_experience ?? s.years_experience ?? savedWork.yearsExperience;
 
-  const tools_provided =
-    workR.tools_provided ??
-    detailsR.tools_provided ??
-    s.tools_provided ??
-    savedWork.toolsProvided;
+  const tools_provided = workR.tools_provided ?? detailsR.tools_provided ?? s.tools_provided ?? savedWork.toolsProvided;
 
   const application_description =
     workR.description ??
@@ -286,7 +265,7 @@ const WorkerViewApplication = () => {
     savedWork.image ||
     '';
 
-  const formatTime12h = (t) => {
+  const formatTime12h = t => {
     if (!t || typeof t !== 'string' || !t.includes(':')) return t || '-';
     const [hh, mm] = t.split(':');
     let h = parseInt(hh, 10);
@@ -297,7 +276,7 @@ const WorkerViewApplication = () => {
     return `${h}:${mm} ${suffix}`;
   };
 
-  const formatDateMDY = (d) => {
+  const formatDateMDY = d => {
     if (!d) return d || '-';
     const tryDate = new Date(d);
     if (!Number.isNaN(tryDate.getTime())) {
@@ -314,7 +293,7 @@ const WorkerViewApplication = () => {
     return d;
   };
 
-  const toBoolStrict = (v) => {
+  const toBoolStrict = v => {
     if (typeof v === 'boolean') return v;
     if (v === 1 || v === '1') return true;
     if (v === 0 || v === '0') return false;
@@ -324,9 +303,9 @@ const WorkerViewApplication = () => {
     return false;
   };
 
-  const yesNo = (b) => (b ? 'Yes' : 'No');
+  const yesNo = b => (b ? 'Yes' : 'No');
 
-  const normalizeLocalPH10 = (v) => {
+  const normalizeLocalPH10 = v => {
     let d = String(v || '').replace(/\D/g, '');
     if (d.startsWith('63')) d = d.slice(2);
     if (d.startsWith('0')) d = d.slice(1);
@@ -351,17 +330,16 @@ const WorkerViewApplication = () => {
     const isElement = React.isValidElement(value);
     const mapped = typeof value === 'boolean' ? yesNo(value) : value;
     const isEmpty =
-      !isElement &&
-      (mapped === null ||
-        mapped === undefined ||
-        (typeof mapped === 'string' && mapped.trim() === ''));
+      !isElement && (mapped === null || mapped === undefined || (typeof mapped === 'string' && mapped.trim() === ''));
     const display = isElement ? value : isEmpty ? emptyAs : mapped;
     const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-[15px] md:text-base font-medium text-gray-700">{labelText}</span>
         {isElement ? (
-          <div className="inline-flex items-center gap-2 text-[15px] md:text-base text-[#008cfc] font-semibold">{display}</div>
+          <div className="inline-flex items-center gap-2 text-[15px] md:text-base text-[#008cfc] font-semibold">
+            {display}
+          </div>
         ) : (
           <span className="text-[15px] md:text-base font-semibold text-[#008cfc]">{display}</span>
         )}
@@ -376,7 +354,7 @@ const WorkerViewApplication = () => {
       localStorage.setItem(CONFIRM_FLAG, '1');
       window.dispatchEvent(new Event('worker-application-viewed'));
     } catch {}
-    await new Promise((r) => setTimeout(r, 350));
+    await new Promise(r => setTimeout(r, 350));
     setTimeout(() => {
       jumpTop();
       if (window.history.length > 1) navigate(-1);
@@ -398,14 +376,14 @@ const WorkerViewApplication = () => {
     }
     setCancelErr('');
     setShowCancel(false);
-    await new Promise((r) => setTimeout(r, 30));
+    await new Promise(r => setTimeout(r, 30));
     setSubmittingCancel(true);
     try {
       try {
         const key = 'workerApplications';
         const raw = localStorage.getItem(key) || '[]';
         const base = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
-        const updated = base.map((app) => {
+        const updated = base.map(app => {
           const appId = String(app.id ?? app.request_group_id ?? '');
           if (appId !== String(id || '')) return app;
           return {
@@ -450,7 +428,7 @@ const WorkerViewApplication = () => {
           { withCredentials: true, headers: headersWithU }
         );
       } catch {}
-      setRow((prev) =>
+      setRow(prev =>
         prev
           ? {
               ...prev,
@@ -477,8 +455,8 @@ const WorkerViewApplication = () => {
     navigate('/workerdashboard', { replace: true, state: { cancelled: id } });
   };
 
-  const schedule_date = (fx?.details?.preferred_date || fx?.work?.preferred_date || '');
-  const schedule_time = (fx?.details?.preferred_time || fx?.work?.preferred_time || '');
+  const schedule_date = fx?.details?.preferred_date || fx?.work?.preferred_date || '';
+  const schedule_time = fx?.details?.preferred_time || fx?.work?.preferred_time || '';
 
   return (
     <>
@@ -489,7 +467,14 @@ const WorkerViewApplication = () => {
           <div className="mx-auto w-full max-w-[1420px] px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 grid place-items-center rounded-xl border border-blue-100 bg-white shadow-sm">
-                <img src="/jdklogo.png" alt="" className="h-6 w-6 object-contain" onError={(e)=>{e.currentTarget.style.display='none'}} />
+                <img
+                  src="/jdklogo.png"
+                  alt=""
+                  className="h-6 w-6 object-contain"
+                  onError={e => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
               </div>
               <div className="text-2xl md:text-3xl font-semibold text-gray-900">View Worker Application</div>
             </div>
@@ -520,11 +505,7 @@ const WorkerViewApplication = () => {
                     <div className="text-sm font-medium text-gray-700 mb-3">Worker Profile Picture</div>
                     {profile_picture ? (
                       <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-2 ring-blue-100 bg-white shadow-sm">
-                        <img
-                          src={profile_picture}
-                          alt="Profile"
-                          className="h-full w-full object-cover"
-                        />
+                        <img src={profile_picture} alt="Profile" className="h-full w-full object-cover" />
                       </div>
                     ) : (
                       <div className="w-32 h-32 md:w-40 md:h-40 rounded-full grid place-items-center bg-gray-50 text-gray-400 border border-dashed">
@@ -536,87 +517,45 @@ const WorkerViewApplication = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
-                  <div className="flex items-center justify-between px-6 py-4">
-                    <h3 className="text-lg md:text-xl font-semibold text-gray-900">Work Details</h3>
-                  </div>
-                  <div className="border-t border-gray-100" />
-                  <div className="px-6 py-6">
-                    <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                      <LabelValue label="Service Type" value={
-                        Array.isArray(service_types) ? service_types.join(', ') : (service_types || '-')
-                      } />
-                      <LabelValue
-                        label="Years of Experience"
-                        value={years_experience ? `${years_experience}` : '-'}
-                      />
-                      <LabelValue label="Selected Task" value={
-                        service_tasks_list.length ? service_tasks_list.join(', ') : '-'
-                      } />
-                      <LabelValue
-                        label="Tools Provided"
-                        value={toBoolStrict(tools_provided) ? 'Yes' : 'No'}
-                      />
-                      <div className="md:col-span-2">
-                        <LabelValue label="Work Description" value={application_description || '-'} />
-                      </div>
-                    </div>
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4">
+                <h3 className="text-lg md:text-xl font-semibold text-gray-900">Work Details</h3>
+              </div>
+              <div className="border-t border-gray-100" />
+              <div className="px-6 py-6">
+                <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                  <LabelValue
+                    label="Service Type"
+                    value={Array.isArray(service_types) ? service_types.join(', ') : service_types || '-'}
+                  />
+                  <LabelValue label="Years of Experience" value={years_experience ? `${years_experience}` : '-'} />
+                  <LabelValue
+                    label="Service Task"
+                    value={service_tasks_list.length ? service_tasks_list.join(', ') : '-'}
+                  />
+                  <LabelValue label="Tools Provided" value={toBoolStrict(tools_provided) ? 'Yes' : 'No'} />
+                  <div className="md:col-span-2">
+                    <LabelValue label="Work Description" value={application_description || '-'} />
                   </div>
                 </div>
               </div>
+            </div>
 
-              <aside className="lg:col-span-1 flex flex-col">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden flex flex-col">
-                  <div className="px-6 py-4 flex items-center justify-between">
-                    <div className="text-base font-semibold text-gray-900">Summary</div>
-                  </div>
-                  <div className="border-t border-gray-100" />
-                  <div className="px-6 py-5 space-y-4 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-sm font-medium text-gray-600">Worker:</span>
-                      <span className="text-base font-semibold text-[#008cfc]">{first_name || '-'} {last_name || ''}</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-sm font-medium text-gray-600">Services:</span>
-                      <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">
-                        {Array.isArray(service_types) ? service_types.join(', ') : (service_types || '-')}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-sm font-medium text-gray-600">Experience:</span>
-                      <span className="text-base font-semibold text-[#008cfc]">
-                        {years_experience ? `${years_experience} year${Number(years_experience) === 1 ? '' : 's'}` : '-'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-sm font-medium text-gray-600">Tools:</span>
-                      <span className="text-base font-semibold text-[#008cfc]">
-                        {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="px-6 py-4 border-t border-gray-100">
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        type="button"
-                        onClick={handleDone}
-                        className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-                      >
-                        Done View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCancel}
-                        className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
-                      >
-                        Cancel Application
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </aside>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={handleDone}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
+                Done View
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+              >
+                Cancel Application
+              </button>
             </div>
           </div>
         </div>
@@ -628,8 +567,14 @@ const WorkerViewApplication = () => {
             aria-label="Loading application"
             tabIndex={-1}
             autoFocus
-            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onKeyDown={e => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={e => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -637,7 +582,13 @@ const WorkerViewApplication = () => {
               <div className="relative mx-auto w-40 h-40">
                 <div
                   className="absolute inset-0 animate-spin rounded-full"
-                  style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+                  style={{
+                    borderWidth: '10px',
+                    borderStyle: 'solid',
+                    borderColor: '#008cfc22',
+                    borderTopColor: '#008cfc',
+                    borderRadius: '9999px'
+                  }}
                 />
                 <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -687,14 +638,19 @@ const WorkerViewApplication = () => {
               </div>
               <div className="px-6 py-5 space-y-4">
                 <div className="grid grid-cols-1 gap-2">
-                  {REASONS.map((r) => (
-                    <label key={r} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${reason===r?'border-blue-400 ring-1 ring-blue-200 bg-blue-50':'border-gray-200 hover:bg-gray-50'}`}>
+                  {REASONS.map(r => (
+                    <label
+                      key={r}
+                      className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
+                        reason === r ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="cancel-reason"
                         className="h-4 w-4"
                         checked={reason === r}
-                        onChange={() => setReason((curr) => (curr === r ? '' : r))}
+                        onChange={() => setReason(curr => (curr === r ? '' : r))}
                         disabled={submittingCancel}
                       />
                       <span className="text-sm md:text-base">{r}</span>
@@ -706,7 +662,7 @@ const WorkerViewApplication = () => {
                   <div className="text-sm font-semibold text-gray-700">Other</div>
                   <textarea
                     value={otherReason}
-                    onChange={(e) => setOtherReason(e.target.value)}
+                    onChange={e => setOtherReason(e.target.value)}
                     disabled={submittingCancel}
                     placeholder="Type your reason here"
                     className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -744,8 +700,14 @@ const WorkerViewApplication = () => {
             aria-label="Please wait a moment"
             tabIndex={-1}
             autoFocus
-            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onKeyDown={e => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={e => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -753,7 +715,13 @@ const WorkerViewApplication = () => {
               <div className="relative mx-auto w-40 h-40">
                 <div
                   className="absolute inset-0 animate-spin rounded-full"
-                  style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+                  style={{
+                    borderWidth: '10px',
+                    borderStyle: 'solid',
+                    borderColor: '#008cfc22',
+                    borderTopColor: '#008cfc',
+                    borderRadius: '9999px'
+                  }}
                 />
                 <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -786,8 +754,14 @@ const WorkerViewApplication = () => {
             aria-label="Application cancelled"
             tabIndex={-1}
             autoFocus
-            onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onKeyDown={e => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={e => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             className="fixed inset-0 z-[2147483647] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -835,11 +809,25 @@ const WorkerViewApplication = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
               <div className="relative mx-auto w-40 h-40">
-                <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
+                <div
+                  className="absolute inset-0 animate-spin rounded-full"
+                  style={{
+                    borderWidth: '10px',
+                    borderStyle: 'solid',
+                    borderColor: '#008cfc22',
+                    borderTopColor: '#008cfc',
+                    borderRadius: '9999px'
+                  }}
+                />
                 <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   {!logoBroken ? (
-                    <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={()=>setLogoBroken(true)} />
+                    <img
+                      src="/jdklogo.png"
+                      alt="JDK Homecare Logo"
+                      className="w-20 h-20 object-contain"
+                      onError={() => setLogoBroken(true)}
+                    />
                   ) : (
                     <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                       <span className="font-bold text-[#008cfc]">JDK</span>
