@@ -155,6 +155,31 @@ const ClientViewServiceRequest = () => {
   const detR = fx.details || {};
   const rateR = fx.rate || {};
 
+  const requestIdDisplay = useMemo(() => {
+    const candidates = [
+      fx?.request_group_id,
+      fx?.requestGroupId,
+      fx?.request_group,
+      fx?.group_id,
+      fx?.groupId,
+      fx?.request_id,
+      fx?.requestId,
+      fx?.id,
+      detR?.request_group_id,
+      detR?.requestGroupId,
+      s?.request_group_id,
+      s?.requestGroupId,
+      s?.id,
+      id
+    ];
+    for (const c of candidates) {
+      if (c === null || c === undefined) continue;
+      const str = String(c).trim();
+      if (str) return str;
+    }
+    return '-';
+  }, [fx, detR, s, id]);
+
   const first_name = infoR.first_name ?? s.first_name ?? savedInfo.firstName;
   const last_name = infoR.last_name ?? s.last_name ?? savedInfo.lastName;
   const contact_number = infoR.contact_number ?? s.contact_number ?? savedInfo.contactNumber;
@@ -926,6 +951,13 @@ const ClientViewServiceRequest = () => {
           </div>
 
           <div className="space-y-6 mt-5">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+              <div className="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm md:text-base font-semibold text-gray-700">Request ID:</div>
+                <div className="text-sm md:text-base font-semibold text-[#008cfc] break-all">{requestIdDisplay}</div>
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4">
                 <h3 className="text-lg md:text-xl font-semibold text-gray-900">Personal Information</h3>

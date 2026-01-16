@@ -1,4 +1,3 @@
-// ClientPost.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
@@ -213,13 +212,7 @@ const ClientPost = () => {
   const buildAppU = () => {
     try {
       const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
-      const au =
-        a.auth_uid ||
-        a.authUid ||
-        a.uid ||
-        a.id ||
-        localStorage.getItem('auth_uid') ||
-        '';
+      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
       const e =
         a.email ||
         localStorage.getItem('client_email') ||
@@ -292,7 +285,10 @@ const ClientPost = () => {
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
 
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
 
     return () => {
@@ -645,6 +641,18 @@ const ClientPost = () => {
   const urgentTextLocal = urgentBoolLocal === null ? '-' : urgentBoolLocal ? 'Yes' : 'No';
   const urgentClassMirror = 'text-[#008cfc] font-semibold';
 
+  const requestIdText = useMemo(() => {
+    const id =
+      currentItem?.id ??
+      currentItem?.request_group_id ??
+      currentItem?.details?.request_group_id ??
+      currentItem?.info?.request_group_id ??
+      currentItem?.rate?.request_group_id ??
+      '';
+    const s = String(id || '').trim();
+    return s ? s : '-';
+  }, [currentItem]);
+
   const profileUrl = useMemo(() => {
     const u = currentItem?.info?.profile_picture_url || '';
     if (u) return u;
@@ -804,9 +812,14 @@ const ClientPost = () => {
               </>
             )}
           </div>
+
           {hasCurrent && (
             <div className="flex items-center gap-2">
+              <span className="text-gray-700 font-semibold">Request ID:</span>
+              <span className="text-[#008cfc] font-semibold">{requestIdText}</span>
+              <span className="text-gray-300">|</span>
               <span className="text-gray-700 font-semibold">Status:</span>
+
               {isApproved && (
                 <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
                   <span className="h-3 w-3 rounded-md bg-current opacity-30" />
@@ -888,6 +901,7 @@ const ClientPost = () => {
                     </div>
                   </div>
                 </div>
+
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="flex items-center gap-2">
                     {(() => {
@@ -911,6 +925,7 @@ const ClientPost = () => {
                   </div>
                 </div>
               </div>
+
               <div className="-mt-9 flex justify-end gap-2">
                 <Link
                   to={`/current-service-request/${encodeURIComponent(currentItem?.id || '')}`}
@@ -919,22 +934,21 @@ const ClientPost = () => {
                 >
                   View
                 </Link>
+
                 {(isPending || isApproved) && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (navLoading || editLoading) return;
-                        setEditLoading(true);
-                        setTimeout(() => {
-                          navigate(`/edit-service-request/${encodeURIComponent(currentItem?.id || '')}`);
-                        }, 2000);
-                      }}
-                      className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
-                    >
-                      Edit Request
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navLoading || editLoading) return;
+                      setEditLoading(true);
+                      setTimeout(() => {
+                        navigate(`/edit-service-request/${encodeURIComponent(currentItem?.id || '')}`);
+                      }, 2000);
+                    }}
+                    className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+                  >
+                    Edit Request
+                  </button>
                 )}
               </div>
             </div>
@@ -995,7 +1009,7 @@ const ClientPost = () => {
                   const iconTone = 'border-gray-400 text-[#008cfc]';
 
                   const urgentText =
-                    urgentFlag === true ? 'Yes' : urgentFlag === false ? 'No' : (item?.details?.urgency || item?.details?.urgency_level || item?.details?.priority || '-') ;
+                    urgentFlag === true ? 'Yes' : urgentFlag === false ? 'No' : (item?.details?.urgency || item?.details?.urgency_level || item?.details?.priority || '-');
 
                   const urgentClass =
                     urgentFlag === true
@@ -1243,7 +1257,7 @@ const ClientPost = () => {
         <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteDone(false)} />
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items中心 justify-center bg-gradient-to-br from-blue-50 to-white">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBroken ? (
                 <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
               ) : (

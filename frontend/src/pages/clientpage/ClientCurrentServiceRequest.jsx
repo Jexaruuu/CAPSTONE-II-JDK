@@ -312,50 +312,106 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
     return out ? out : "-";
   })();
 
-  const ActionArea = () => {
-    const showReasonBtn = isDeclined || isCancelled;
-    const showViewBtn = !showReasonBtn && !isExpiredReq;
-    const showDisabledView = !showReasonBtn && isExpiredReq;
+  const showReasonBtn = isDeclined || isCancelled;
+  const showDisabledView = !showReasonBtn && isExpiredReq;
 
-    return (
-      <div className="flex flex-col items-end justify-between h-full">
-        <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
-          <Icon className="h-5 w-5" />
+  return (
+    <div className="relative bg-white border border-gray-300 rounded-md p-6 shadow-sm transition-all duration-300 min-h-[220px]">
+      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
+
+      <div className="relative z-10">
+        <div className="flex items-start justify-between gap-6">
+          <div className="flex items-start gap-4 min-w-0 flex-1">
+            <div className="shrink-0">
+              <img
+                src={profileUrl}
+                alt=""
+                className="w-20 h-20 rounded-full object-cover border border-blue-300"
+                onError={(e) => {
+                  e.currentTarget.src = avatarFromName(item?.info?.first_name || "Client");
+                }}
+              />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="text-xl md:text-2xl font-semibold truncate">
+                <span className="text-gray-700">Service Type:</span>{" "}
+                <span className="text-gray-900">{d.service_type || "Service"}</span>
+              </div>
+
+              <div className="mt-1 text-base md:text-lg truncate">
+                <span className="font-semibold text-gray-700">Service Task:</span>{" "}
+                <span className="text-[#008cfc] font-semibold">{d.service_task || "Task"}</span>
+              </div>
+
+              <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo}` : ""}</div>
+
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Preferred Date:</span>
+                    <span className="text-[#008cfc] font-semibold">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Preferred Time:</span>
+                    <span className="text-[#008cfc] font-semibold">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Urgency:</span>
+                    <span className="text-[#008cfc] font-semibold">{hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 md:pl-10">
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Workers Needed:</span>
+                    <span className="text-[#008cfc] font-semibold">{workersNeedText}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">{quantityDisplay.label}:</span>
+                    <span className="text-[#008cfc] font-semibold">{quantityDisplay.value}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-1 gap-y-1">
+                    <span className="text-gray-700 font-semibold">Total Rate:</span>
+                    <span className="text-[#008cfc] font-semibold">{totalRateText}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="h-10 w-10 rounded-lg border border-gray-300 text-[#008cfc] flex items-center justify-center">
+              <Icon className="h-5 w-5" />
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2 pt-4">
+        <div className="-mt-9 flex justify-end gap-2">
           {showReasonBtn ? (
-            <Link
-              to={`/current-service-request/${encodeURIComponent(item.id)}`}
-              onClick={(e) => {
-                e.preventDefault();
-                onReason(item);
-              }}
-              className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+            <button
+              type="button"
+              onClick={() => onReason(item)}
+              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
             >
               View Reason
-            </Link>
-          ) : showViewBtn ? (
-            <Link
-              to={`/current-service-request/${encodeURIComponent(item.id)}`}
-              onClick={(e) => {
-                e.preventDefault();
-                onView(item.id);
-              }}
-              className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-            >
-              View
-            </Link>
+            </button>
           ) : showDisabledView ? (
             <button
               type="button"
               disabled
-              className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed"
+              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed"
             >
               View
             </button>
           ) : (
-            <span className="h-[38px]" />
+            <button
+              type="button"
+              onClick={() => onView(item.id)}
+              className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+            >
+              View
+            </button>
           )}
 
           {isApproved && !isCancelled && !isDeclined && !isExpiredReq ? (
@@ -369,76 +425,6 @@ const Card = ({ item, onEdit, onOpenMenu, onView, onReason, onDelete, dotStep })
           ) : (
             <span className="h-10" />
           )}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="relative bg-white border border-gray-300 rounded-md p-6 shadow-sm transition-all duration-300 min-h-[220px]">
-      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:400px] bg-[position:right_50%] opacity-10 pointer-events-none" />
-      <div className="relative z-10 flex items-start justify-between gap-6">
-        <div className="flex items-start gap-4 min-w-0 flex-1">
-          <div className="shrink-0">
-            <img
-              src={profileUrl}
-              alt=""
-              className="w-20 h-20 rounded-full object-cover border border-blue-300"
-              onError={(e) => {
-                e.currentTarget.src = avatarFromName(item?.info?.first_name || "Client");
-              }}
-            />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <div className="text-xl md:text-2xl font-semibold truncate">
-              <span className="text-gray-700">Service Type:</span>{" "}
-              <span className="text-gray-900">{d.service_type || "Service"}</span>
-            </div>
-
-            <div className="mt-1 text-base md:text-lg truncate">
-              <span className="font-semibold text-gray-700">Service Task:</span>{" "}
-              <span className="text-[#008cfc] font-semibold">{d.service_task || "Task"}</span>
-            </div>
-
-            <div className="mt-1 text-sm text-gray-500">{createdAgo ? `Created ${createdAgo}` : ""}</div>
-
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12 md:gap-x-16 text-base text-gray-700">
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap gap-x-1 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Preferred Date:</span>
-                  <span className="text-[#008cfc] font-semibold">{d.preferred_date ? formatDate(d.preferred_date) : "-"}</span>
-                </div>
-                <div className="flex flex-wrap gap-x-1 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Preferred Time:</span>
-                  <span className="text-[#008cfc] font-semibold">{d.preferred_time ? formatTime12(d.preferred_time) : "-"}</span>
-                </div>
-                <div className="flex flex-wrap gap-x-1 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Urgency:</span>
-                  <span className="text-[#008cfc] font-semibold">{hasUrgency ? (urgentBool ? "Yes" : "No") : "-"}</span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 md:pl-10">
-                <div className="flex flex-wrap gap-x-1 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Workers Needed:</span>
-                  <span className="text-[#008cfc] font-semibold">{workersNeedText}</span>
-                </div>
-                <div className="flex flex-wrap gap-x-1 gap-y-1">
-                  <span className="text-gray-700 font-semibold">{quantityDisplay.label}:</span>
-                  <span className="text-[#008cfc] font-semibold">{quantityDisplay.value}</span>
-                </div>
-                <div className="flex flex-wrap gap-x-1 gap-y-1">
-                  <span className="text-gray-700 font-semibold">Total Rate:</span>
-                  <span className="text-[#008cfc] font-semibold">{totalRateText}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="shrink-0 w-44 self-stretch flex justify-end">
-          <ActionArea />
         </div>
       </div>
     </div>
