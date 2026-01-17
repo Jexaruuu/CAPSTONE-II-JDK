@@ -353,6 +353,20 @@ export default function ClientEditServiceRequest() {
     if (taskTextRef.current) taskTextRef.current.scrollLeft = 0;
   };
 
+  useEffect(() => {
+  const loadRequestStatusId = async () => {
+    try {
+      const { data } = await axios.get(
+        `${API_BASE}/api/clientservicerequests/request-status-id/by-group/${encodeURIComponent(gid)}`,
+        { withCredentials: true, headers: headersWithU }
+      );
+      if (data?.id) setRequestId(String(data.id));
+    } catch {}
+  };
+
+  if (gid) loadRequestStatusId();
+}, [gid, headersWithU]);
+
   const startTaskMarquee = () => {
     const el = taskTextRef.current;
     if (!el) return;
@@ -461,22 +475,23 @@ export default function ClientEditServiceRequest() {
         const sm = String(r.sq_m ?? r.sqM ?? '').trim();
         const pc = String(r.pieces ?? r.piece ?? '').trim();
 
-        setRequestId(
-          String(
-            d.request_id ||
-              d.requestId ||
-              d.service_request_id ||
-              d.serviceRequestId ||
-              data?.request_id ||
-              data?.requestId ||
-              data?.service_request_id ||
-              data?.serviceRequestId ||
-              data?.group_id ||
-              data?.groupId ||
-              gid ||
-              ''
-          )
-        );
+      setRequestId(
+  String(
+    data?.client_service_request_status_id ||
+      d.request_id ||
+      d.requestId ||
+      d.service_request_id ||
+      d.serviceRequestId ||
+      data?.request_id ||
+      data?.requestId ||
+      data?.service_request_id ||
+      data?.serviceRequestId ||
+      data?.group_id ||
+      data?.groupId ||
+      gid ||
+      ''
+  )
+);
 
         setServiceType(d.service_type || '');
         setServiceTask(d.service_task || '');

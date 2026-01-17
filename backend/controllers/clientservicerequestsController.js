@@ -399,12 +399,36 @@ async function upsertClientServiceRateByGroup(gid, fields, seedBase) {
   return combined?.rate || null;
 }
 
+exports.requestStatusIdByGroup = async (req, res) => {
+  try {
+    const gid = String(req.params.groupId || '').trim();
+    if (!gid) return res.status(400).json({ message: 'groupId is required' });
+
+    const { data, error } = await supabaseAdmin
+      .from('client_service_request_status')
+      .select('id, request_group_id, created_at')
+      .eq('request_group_id', gid)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      id: data?.id || null,
+      request_group_id: data?.request_group_id || gid
+    });
+  } catch (err) {
+    return res.status(500).json({ message: friendlyError(err) });
+  }
+};
+
 exports.listOpen = async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '50', 10), 1), 200);
     const { data: rows, error } = await supabaseAdmin
       .from('client_service_request_status')
-      .select('request_group_id,status,created_at,details')
+      .select('id,request_group_id,status,created_at,details')
       .eq('status', 'approved')
       .order('created_at', { ascending: false })
       .limit(limit * 2);
@@ -435,7 +459,7 @@ exports.listOpen = async (req, res) => {
           info.profile_picture_url = await publicOrSignedUrl(bucket, info.profile_picture_name);
         }
         return {
-          id: r.request_group_id,
+          id: r.id,
           request_group_id: r.request_group_id,
           created_at: r.created_at,
           status: r.status,
@@ -893,10 +917,17 @@ exports.listCurrent = async (req, res) => {
     }
 
     let statusMap = {};
+    let statusIdMap = {};
     if (targetGroups.length) {
-      const { data: pend } = await supabaseAdmin.from('client_service_request_status').select('request_group_id,status,created_at,details').in('request_group_id', targetGroups);
+      const { data: pend } = await supabaseAdmin
+        .from('client_service_request_status')
+        .select('id,request_group_id,status,created_at,details')
+        .in('request_group_id', targetGroups);
       (Array.isArray(pend) ? pend : []).forEach((r) => {
-        statusMap[r.request_group_id] = String(r.status || 'pending').toLowerCase();
+        const gid = r.request_group_id;
+        if (!gid) return;
+        statusMap[gid] = String(r.status || 'pending').toLowerCase();
+        statusIdMap[gid] = r.id || null;
       });
     }
 
@@ -923,6 +954,8 @@ exports.listCurrent = async (req, res) => {
         const gid = row.details?.request_group_id || row.info?.request_group_id || '';
         const base = {
           id: gid,
+          request_group_id: gid,
+          client_service_request_status_id: statusIdMap[gid] || null,
           client_id: row.info?.client_id || null,
           auth_uid: row.info?.auth_uid || null,
           created_at: d.created_at || row.info?.created_at || new Date().toISOString(),
@@ -982,8 +1015,22 @@ exports.byGroup = async (req, res) => {
   try {
     const gid = String(req.params.groupId || '').trim();
     if (!gid) return res.status(400).json({ message: 'groupId is required' });
+
     const row = await getCombinedByGroupId(gid);
     if (!row) return res.status(404).json({ message: 'Not found' });
+
+    let statusId = null;
+    try {
+      const { data } = await supabaseAdmin
+        .from('client_service_request_status')
+        .select('id, request_group_id, created_at')
+        .eq('request_group_id', gid)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      statusId = data?.id || null;
+    } catch {}
+
     const d = row.details || {};
     const bucket = process.env.SUPABASE_BUCKET_SERVICE_IMAGES || 'csr-attachments';
     if (!d.request_image_url && d.image_name) {
@@ -998,7 +1045,11 @@ exports.byGroup = async (req, res) => {
       if (row.details.workers_needed === undefined) row.details.workers_needed = null;
     }
     row.rate = pickRateForResponse(row.rate);
-    return res.status(200).json(row);
+
+    return res.status(200).json({
+      ...row,
+      client_service_request_status_id: statusId
+    });
   } catch {
     return res.status(500).json({ message: 'Failed to load request' });
   }

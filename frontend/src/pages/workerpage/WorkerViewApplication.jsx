@@ -82,13 +82,43 @@ const WorkerViewApplication = () => {
         const data = fromSession || fromState || null;
         if (!data) {
           try {
-            const { data: resp } = await axios.get(`${API_BASE}/api/workerapplications`, {
-              withCredentials: true,
-              headers: headersWithU,
-              params: { scope: 'current', groupId: id }
-            });
-            const items = Array.isArray(resp?.items) ? resp.items : [];
-            const pick = items.find(r => String(r.request_group_id) === String(id)) || items[0] || null;
+            const tryParams = [
+              { scope: 'current', id },
+              { scope: 'current', application_id: id },
+              { scope: 'current', applicationId: id },
+              { scope: 'current', worker_application_id: id },
+              { scope: 'current', workerApplicationId: id },
+              { scope: 'current', applicationId: id, id },
+              { scope: 'current', groupId: id }
+            ];
+
+            let pick = null;
+            for (const params of tryParams) {
+              try {
+                const { data: resp } = await axios.get(`${API_BASE}/api/workerapplications`, {
+                  withCredentials: true,
+                  headers: headersWithU,
+                  params
+                });
+
+                const items = Array.isArray(resp?.items) ? resp.items : Array.isArray(resp) ? resp : [];
+                const wanted = String(id);
+
+                pick =
+                  items.find(r => String(r?.id ?? '').trim() === wanted) ||
+                  items.find(r => String(r?.application_id ?? '').trim() === wanted) ||
+                  items.find(r => String(r?.worker_application_id ?? '').trim() === wanted) ||
+                  items.find(r => String(r?.applicationId ?? '').trim() === wanted) ||
+                  items.find(r => String(r?.workerApplicationId ?? '').trim() === wanted) ||
+                  items.find(r => String(r?.request_group_id ?? '').trim() === wanted) ||
+                  items.find(r => String(r?.group_id ?? '').trim() === wanted) ||
+                  items[0] ||
+                  null;
+
+                if (pick) break;
+              } catch {}
+            }
+
             if (!cancelled) setRow(pick);
             try {
               if (pick) sessionStorage.setItem('wa_view_payload', JSON.stringify(pick));
@@ -171,6 +201,7 @@ const WorkerViewApplication = () => {
 
   const applicationIdDisplay = useMemo(() => {
     const candidates = [
+      fx?.id,
       fx?.application_id,
       fx?.applicationId,
       fx?.worker_application_id,
@@ -182,18 +213,17 @@ const WorkerViewApplication = () => {
       fx?.groupId,
       fx?.request_id,
       fx?.requestId,
-      fx?.id,
       detailsR?.application_id,
       detailsR?.applicationId,
       detailsR?.request_group_id,
       detailsR?.requestGroupId,
       workR?.request_group_id,
       workR?.requestGroupId,
+      s?.id,
       s?.application_id,
       s?.applicationId,
       s?.request_group_id,
       s?.requestGroupId,
-      s?.id,
       id
     ];
     for (const c of candidates) {
@@ -419,7 +449,7 @@ const WorkerViewApplication = () => {
         const raw = localStorage.getItem(key) || '[]';
         const base = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
         const updated = base.map(app => {
-          const appId = String(app.id ?? app.request_group_id ?? '');
+          const appId = String(app.id ?? app.application_id ?? app.request_group_id ?? '');
           if (appId !== String(id || '')) return app;
           return {
             ...app,
@@ -455,6 +485,8 @@ const WorkerViewApplication = () => {
           `${API_BASE}/api/workerapplications/cancel`,
           {
             request_group_id: id,
+            application_id: id,
+            id,
             reason_choice: reason || null,
             reason_other: otherReason || null,
             worker_id: workerIdState || null,

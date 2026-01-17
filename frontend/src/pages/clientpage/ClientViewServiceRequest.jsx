@@ -39,6 +39,8 @@ const ClientViewServiceRequest = () => {
   const [savingPayment, setSavingPayment] = useState(false);
   const [paymentSaveErr, setPaymentSaveErr] = useState('');
 
+  const [requestStatusId, setRequestStatusId] = useState(null);
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
@@ -111,6 +113,33 @@ const ClientViewServiceRequest = () => {
   }, [id, headersWithU]);
 
   useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!id) return;
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/clientservicerequests/request-status-id/by-group/${encodeURIComponent(id)}`, {
+          withCredentials: true,
+          headers: headersWithU
+        });
+        const found =
+          data?.id ||
+          data?.client_service_request_status_id ||
+          data?.request_status_id ||
+          data?.service_request_status_id ||
+          data?.status_id ||
+          null;
+        if (!cancelled) setRequestStatusId(found ? String(found) : null);
+      } catch {
+        if (!cancelled) setRequestStatusId(null);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, headersWithU]);
+
+  useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
     if (loading || showCancel || submittingCancel || leavingDone || showCancelSuccess || showPaymentModal || savingPayment) {
@@ -154,23 +183,36 @@ const ClientViewServiceRequest = () => {
   const infoR = fx.info || {};
   const detR = fx.details || {};
   const rateR = fx.rate || {};
+  const statusR =
+    fx.status ||
+    fx.request_status ||
+    fx.statusRow ||
+    fx.service_request_status ||
+    fx.client_service_request_status ||
+    fx.client_service_request_status_row ||
+    {};
 
   const requestIdDisplay = useMemo(() => {
     const candidates = [
-      fx?.request_group_id,
-      fx?.requestGroupId,
-      fx?.request_group,
-      fx?.group_id,
-      fx?.groupId,
+      requestStatusId,
+      statusR?.id,
+      statusR?.client_service_request_status_id,
+      statusR?.request_status_id,
+      statusR?.service_request_status_id,
+      statusR?.csr_status_id,
+      fx?.id,
       fx?.request_id,
       fx?.requestId,
-      fx?.id,
-      detR?.request_group_id,
-      detR?.requestGroupId,
-      s?.request_group_id,
-      s?.requestGroupId,
-      s?.id,
-      id
+      detR?.id,
+      detR?.request_id,
+      detR?.requestId,
+      rateR?.request_id,
+      rateR?.requestId,
+      s?.request_status_id,
+      s?.client_service_request_status_id,
+      s?.request_id,
+      s?.requestId,
+      s?.id
     ];
     for (const c of candidates) {
       if (c === null || c === undefined) continue;
@@ -178,7 +220,7 @@ const ClientViewServiceRequest = () => {
       if (str) return str;
     }
     return '-';
-  }, [fx, detR, s, id]);
+  }, [requestStatusId, statusR, fx, detR, rateR, s]);
 
   const first_name = infoR.first_name ?? s.first_name ?? savedInfo.firstName;
   const last_name = infoR.last_name ?? s.last_name ?? savedInfo.lastName;
@@ -223,8 +265,13 @@ const ClientViewServiceRequest = () => {
     const suffix = h >= 12 ? 'PM' : 'AM';
     h = h % 12;
     if (h === 0) h = 12;
-    return `${h}:${mm} ${suffix}`;
+    return `${h}:${confirmNaN(mm)} ${suffix}`;
   };
+
+  function confirmNaN(v) {
+    const s2 = String(v ?? '').trim();
+    return s2 ? s2 : '00';
+  }
 
   const formatDateMDY = (d) => {
     if (!d) return d || '-';
@@ -631,7 +678,10 @@ const ClientViewServiceRequest = () => {
     const fromRaw = formatRate(baseRateRaw || '');
     if (fromRaw) {
       if (rate_type === 'Hourly Rate' && rate_from && rate_to) {
-        return `₱${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 }).format(Number(rate_from) || 0)}–₱${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 }).format(Number(rate_to) || 0)} per hour`;
+        return `₱${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 }).format(Number(rate_from) || 0)}–₱${new Intl.NumberFormat(
+          'en-PH',
+          { maximumFractionDigits: 0 }
+        ).format(Number(rate_to) || 0)} per hour`;
       }
       if (rate_type === 'By the Job Rate' && rate_value) {
         return `₱${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 }).format(Number(rate_value) || 0)} per job`;
@@ -1086,7 +1136,7 @@ const ClientViewServiceRequest = () => {
                                 </div>
                                 {isLaundry && quantityUnit === 'kg' && minimumApplied && Number.isFinite(Number(billableUnits)) && billableUnits !== rateUnits ? (
                                   <div className="mt-1 text-xs text-gray-500 font-semibold">
-                                    billed as {billableUnits} kg{minimumQty ? ` • min ${minimumQty}kg` : ''}
+                                    billed as {billableUnits} kg{minimumQty ? ` • min ${minimumQty}kg` : ''})
                                   </div>
                                 ) : null}
                               </div>

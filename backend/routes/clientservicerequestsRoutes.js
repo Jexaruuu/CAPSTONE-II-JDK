@@ -10,7 +10,8 @@ const {
   deleteRequest,
   updateByGroup,
   listOpen,
-  updatePaymentMethodByGroup
+  updatePaymentMethodByGroup,
+  requestStatusIdByGroup
 } = require('../controllers/clientservicerequestsController');
 
 router.post('/submit', submitFullRequest);
@@ -18,6 +19,7 @@ router.post('/cancel', cancelRequest);
 router.get('/approved', listApproved);
 router.get('/details', detailsByEmail);
 router.get('/by-group/:groupId', byGroup);
+router.get('/request-status-id/by-group/:groupId', requestStatusIdByGroup);
 router.put('/by-group/:groupId', updateByGroup);
 router.put('/by-group/:groupId/payment-method', updatePaymentMethodByGroup);
 router.get('/', listCurrent);

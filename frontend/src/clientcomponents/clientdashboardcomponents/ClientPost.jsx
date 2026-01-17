@@ -643,11 +643,17 @@ const ClientPost = () => {
 
   const requestIdText = useMemo(() => {
     const id =
+      currentItem?.client_service_request_status_id ??
+      currentItem?.client_service_request_status?.id ??
+      currentItem?.service_request_status_id ??
+      currentItem?.request_status_id ??
+      currentItem?.status_id ??
+      currentItem?.status?.id ??
+      currentItem?.details?.client_service_request_status_id ??
+      currentItem?.details?.service_request_status_id ??
+      currentItem?.details?.request_status_id ??
+      currentItem?.details?.status_id ??
       currentItem?.id ??
-      currentItem?.request_group_id ??
-      currentItem?.details?.request_group_id ??
-      currentItem?.info?.request_group_id ??
-      currentItem?.rate?.request_group_id ??
       '';
     const s = String(id || '').trim();
     return s ? s : '-';

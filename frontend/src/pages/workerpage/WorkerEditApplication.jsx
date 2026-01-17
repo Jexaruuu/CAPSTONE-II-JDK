@@ -321,9 +321,9 @@ export default function WorkerEditApplication() {
   const [recIds, setRecIds] = useState({ groupId: gid, appId: '' });
 
   const requestId = useMemo(() => {
-    const rid = String(recIds?.groupId || gid || '').trim();
+    const rid = String(recIds?.appId || '').trim();
     return rid || '';
-  }, [recIds, gid]);
+  }, [recIds]);
 
   useEffect(() => {
     const handleClickOutside = event => {
@@ -1241,7 +1241,7 @@ export default function WorkerEditApplication() {
             <div className="flex items-center justify-end gap-4">
               {requestId ? (
                 <div className="text-right">
-                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Request ID</div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Application ID</div>
                   <div className="text-sm font-semibold text-gray-900">{requestId}</div>
                 </div>
               ) : null}
