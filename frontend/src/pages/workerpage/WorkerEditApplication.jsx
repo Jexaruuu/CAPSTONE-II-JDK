@@ -320,6 +320,11 @@ export default function WorkerEditApplication() {
 
   const [recIds, setRecIds] = useState({ groupId: gid, appId: '' });
 
+  const requestId = useMemo(() => {
+    const rid = String(recIds?.groupId || gid || '').trim();
+    return rid || '';
+  }, [recIds, gid]);
+
   useEffect(() => {
     const handleClickOutside = event => {
       const t = event.target;
@@ -1233,8 +1238,15 @@ export default function WorkerEditApplication() {
               <div className="text-2xl md:text-3xl font-semibold text-gray-900">Edit Work Application</div>
             </div>
 
-            <div className="hidden">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-end gap-4">
+              {requestId ? (
+                <div className="text-right">
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Request ID</div>
+                  <div className="text-sm font-semibold text-gray-900">{requestId}</div>
+                </div>
+              ) : null}
+
+              <div className="hidden">
                 <button
                   type="button"
                   onClick={onCancel}
@@ -1492,7 +1504,9 @@ export default function WorkerEditApplication() {
                         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickProfile} />
                       </div>
 
-                      {profileName ? <p className="text-xs text-gray-600 truncate text-center">Selected: {profileName}</p> : null}
+                      {profileName ? (
+                        <p className="text-xs text-gray-600 truncate text-center">Selected: {profileName}</p>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -1820,7 +1834,7 @@ export default function WorkerEditApplication() {
                   </div>
                 </div>
 
-                <div className="mt-6 flex items-center justify-end gap-2 lg:hidden">
+                <div className="hidden">
                   <button
                     type="button"
                     onClick={onCancel}
@@ -1838,6 +1852,24 @@ export default function WorkerEditApplication() {
                   </button>
                 </div>
               </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="inline-flex items-center rounded-lg border px-4 py-2.5 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(true)}
+                disabled={!canSave}
+                className="inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
             </div>
           </div>
         </div>

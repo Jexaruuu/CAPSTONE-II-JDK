@@ -500,6 +500,22 @@ function WorkerPost() {
   const createdAt = currentApp?.created_at || '';
   const createdAgo = createdAt ? timeAgo(createdAt) : '';
 
+  const applicationIdText = useMemo(() => {
+    const id =
+      currentApp?.id ??
+      currentApp?.request_group_id ??
+      currentApp?.application_group_id ??
+      currentApp?.group_id ??
+      currentApp?.groupId ??
+      currentApp?.details?.request_group_id ??
+      currentApp?.details?.application_group_id ??
+      currentApp?.work?.request_group_id ??
+      currentApp?.work_information?.request_group_id ??
+      '';
+    const s = String(id || '').trim();
+    return s ? s : '-';
+  }, [currentApp]);
+
   const profileUrl = useMemo(() => {
     const u = currentApp?.info?.profile_picture_url || '';
     if (u) return u;
@@ -770,8 +786,12 @@ function WorkerPost() {
               </>
             )}
           </div>
+
           {hasCurrent && (
             <div className="flex items-center gap-2">
+              <span className="text-gray-700 font-semibold">Application ID:</span>
+              <span className="text-[#008cfc] font-semibold">{applicationIdText}</span>
+              <span className="text-gray-300">|</span>
               <span className="text-gray-700 font-semibold">Status:</span>
               {isApproved && (
                 <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">

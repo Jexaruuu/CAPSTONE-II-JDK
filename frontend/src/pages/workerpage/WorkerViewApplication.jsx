@@ -169,6 +169,41 @@ const WorkerViewApplication = () => {
   const rateR = fx.rate || {};
   const docsR = Array.isArray(fx.documents) ? fx.documents : fx.docs || [];
 
+  const applicationIdDisplay = useMemo(() => {
+    const candidates = [
+      fx?.application_id,
+      fx?.applicationId,
+      fx?.worker_application_id,
+      fx?.workerApplicationId,
+      fx?.request_group_id,
+      fx?.requestGroupId,
+      fx?.request_group,
+      fx?.group_id,
+      fx?.groupId,
+      fx?.request_id,
+      fx?.requestId,
+      fx?.id,
+      detailsR?.application_id,
+      detailsR?.applicationId,
+      detailsR?.request_group_id,
+      detailsR?.requestGroupId,
+      workR?.request_group_id,
+      workR?.requestGroupId,
+      s?.application_id,
+      s?.applicationId,
+      s?.request_group_id,
+      s?.requestGroupId,
+      s?.id,
+      id
+    ];
+    for (const c of candidates) {
+      if (c === null || c === undefined) continue;
+      const str = String(c).trim();
+      if (str) return str;
+    }
+    return '-';
+  }, [fx, detailsR, workR, s, id]);
+
   const first_name = infoR.first_name ?? s.first_name ?? savedInfo.firstName;
   const last_name = infoR.last_name ?? s.last_name ?? savedInfo.lastName;
   const contact_number = infoR.contact_number ?? s.contact_number ?? savedInfo.contactNumber;
@@ -485,6 +520,13 @@ const WorkerViewApplication = () => {
         <div className="mx-auto w-full max-w-[1420px] px-6">
           <div className="space-y-6 mt-5">
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+              <div className="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm md:text-base font-semibold text-gray-700">Application ID:</div>
+                <div className="text-sm md:text-base font-semibold text-[#008cfc] break-all">{applicationIdDisplay}</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4">
                 <h3 className="text-lg md:text-xl font-semibold text-gray-900">Personal Information</h3>
               </div>
@@ -541,18 +583,18 @@ const WorkerViewApplication = () => {
               </div>
             </div>
 
-            <div className="flex gap-2 justify-end">
+            <div className="flex flex-wrap items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={handleDone}
-                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+                className="inline-flex items-center justify-center h-10 px-4 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 whitespace-nowrap"
               >
                 Done View
               </button>
               <button
                 type="button"
                 onClick={handleCancel}
-                className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+                className="inline-flex items-center justify-center h-10 px-5 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 whitespace-nowrap"
               >
                 Cancel Application
               </button>
@@ -623,7 +665,10 @@ const WorkerViewApplication = () => {
             autoFocus
             className="fixed inset-0 z-[2147483646] flex items-center justify-center"
           >
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !submittingCancel && setShowCancel(false)} />
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => !submittingCancel && setShowCancel(false)}
+            />
             <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
               <div className="px-6 pt-6">
                 <div className="flex items-start gap-3">
@@ -642,7 +687,9 @@ const WorkerViewApplication = () => {
                     <label
                       key={r}
                       className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
-                        reason === r ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+                        reason === r
+                          ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50'
+                          : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
                       <input
