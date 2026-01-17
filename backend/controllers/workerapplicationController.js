@@ -242,12 +242,80 @@ function tryParseJsonObject(v) {
   }
 }
 
+function parseStoredMulti(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map((x) => unwrapDocValue(x)).filter(Boolean);
+  if (typeof v === 'object') {
+    const got = unwrapDocValue(v);
+    return got ? [got] : [];
+  }
+  const s = String(v || '').trim();
+  if (!s) return [];
+  if (s.startsWith('[')) {
+    try {
+      const j = JSON.parse(s);
+      if (Array.isArray(j)) return j.map((x) => String(x || '').trim()).filter(Boolean);
+    } catch {}
+  }
+  if (s.includes('|')) return s.split('|').map((x) => String(x || '').trim()).filter(Boolean);
+  if (s.includes('\n')) return s.split('\n').map((x) => String(x || '').trim()).filter(Boolean);
+  return [s];
+}
+
+function storeMultiValue(arr) {
+  const uniq = Array.from(new Set((arr || []).map((x) => String(x || '').trim()).filter(Boolean)));
+  if (!uniq.length) return '';
+  if (uniq.length === 1) return uniq[0];
+  return JSON.stringify(uniq);
+}
+
 async function finalizeRequiredDocsUploads(request_group_id, docCols) {
   const bucket = process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments';
   const keys = Object.keys(docCols || {});
   for (const k of keys) {
     if (k === 'request_group_id' || k === 'worker_id' || k === 'auth_uid' || k === 'email_address') continue;
-    const v = String(docCols[k] || '').trim();
+
+    const isTesda = /^tesda_.*_certificate$/i.test(k);
+    const rawVal = docCols[k];
+
+    if (isTesda) {
+      const list = parseStoredMulti(rawVal);
+      if (!list.length) continue;
+
+      const out = [];
+      for (let i = 0; i < list.length; i++) {
+        const v0 = String(list[i] || '').trim();
+        if (!v0) continue;
+        if (/^https?:\/\//i.test(v0)) {
+          out.push(v0);
+          continue;
+        }
+
+        let du = '';
+        if (/^data:/i.test(v0)) du = v0;
+        else {
+          const coerced = coerceDataUrl(v0, 'image/jpeg');
+          if (coerced && /^data:/i.test(coerced)) du = coerced;
+        }
+        if (!du) {
+          out.push(v0);
+          continue;
+        }
+
+        try {
+          const up = await safeUploadDataUrl(bucket, du, `${request_group_id}-${k}-${i + 1}`);
+          if (up?.url) out.push(up.url);
+          else out.push(v0);
+        } catch {
+          out.push(v0);
+        }
+      }
+
+      docCols[k] = storeMultiValue(out);
+      continue;
+    }
+
+    const v = String(rawVal || '').trim();
     if (!v) continue;
     if (/^https?:\/\//i.test(v)) continue;
 
@@ -622,26 +690,56 @@ exports.submitFullApplication = async (req, res) => {
       if ((/(^primary_id_front$|^primary\-id\-front$)/.test(r))) return 'primary_id_front';
       if (/(^primary_id_back$|^primary\-id\-back$)/.test(r)) return 'primary_id_back';
       if (/(^nbi_police_clearance$|^nbi\-police\-clearance$)/.test(r)) return 'nbi_police_clearance';
-      if (/(^proof_of_address$|^proof\-of\-address$)/.test(r)) return 'proof_of_address';
-      if (/(^medical_certificate$|^medical_certificates$|^medical\-certificate$)/.test(r)) return 'medical_certificate';
+      if (/^proof_of_address$|^proof\-of\-address$/.test(r)) return 'proof_of_address';
+      if (/^medical_certificate$|^medical_certificates$|^medical\-certificate$/.test(r)) return 'medical_certificate';
       return null;
     };
 
-    const setVal = async (k, v, force = false) => {
+    const addVal = async (k, v, force = false) => {
       if (!k) return;
-      if (!force && docCols[k]) return;
-      const raw = unwrapDocValue(v);
-      if (!raw) return;
+      const isTesda = /^tesda_.*_certificate$/i.test(k);
 
-      if (/^https?:\/\//i.test(raw)) {
-        docCols[k] = raw;
+      const pullMany = (vv) => {
+        if (!vv) return [];
+        if (Array.isArray(vv)) return vv.flatMap((x) => pullMany(x));
+        if (typeof vv === 'object') {
+          const got = unwrapDocValue(vv);
+          return got ? [got] : [];
+        }
+        const got = String(vv || '').trim();
+        if (!got) return [];
+        if (got.startsWith('[')) {
+          try {
+            const j = JSON.parse(got);
+            if (Array.isArray(j)) return j.map((x) => String(x || '').trim()).filter(Boolean);
+          } catch {}
+        }
+        return [got];
+      };
+
+      const incoming = pullMany(v);
+      if (!incoming.length) return;
+
+      if (!force && docCols[k] && !isTesda) return;
+      if (!force && docCols[k] && isTesda) return;
+
+      if (!isTesda) {
+        const raw = incoming[0];
+        if (!raw) return;
+
+        if (/^https?:\/\//i.test(raw)) {
+          docCols[k] = raw;
+          return;
+        }
+
+        const du = coerceDataUrl(raw, 'image/jpeg') || (raw.startsWith('data:') ? raw : '');
+        if (du && /^data:/i.test(du)) docCols[k] = du;
         return;
       }
 
-      const du = coerceDataUrl(raw, 'image/jpeg') || (raw.startsWith('data:') ? raw : '');
-      if (du && /^data:/i.test(du)) {
-        docCols[k] = du;
-      }
+      const existing = parseStoredMulti(docCols[k]);
+      const merged = storeMultiValue(existing.concat(incoming));
+      if (merged) docCols[k] = merged;
     };
 
     const docObjMerged = mergePlainObjects(
@@ -670,10 +768,17 @@ exports.submitFullApplication = async (req, res) => {
       const parsed = tryParseJsonObject(certCarrier);
       const srcVal = parsed || certCarrier;
 
+      const push = (k, val) => {
+        if (!k || !/^tesda_.*_certificate$/i.test(k)) return;
+        const list = parseStoredMulti(val);
+        if (!list.length) return;
+        out[k] = (out[k] || []).concat(list);
+      };
+
       if (Array.isArray(srcVal)) {
         srcVal.forEach((it) => {
           const k = aliasToKey(it?.kind || it?.label || it?.name || it?.type || '', it?.filename || it?.fileName || it?.name || '');
-          if (k && /^tesda_.*_certificate$/i.test(k)) out[k] = unwrapDocValue(it);
+          push(k, it);
         });
         return out;
       }
@@ -681,7 +786,7 @@ exports.submitFullApplication = async (req, res) => {
       if (srcVal && typeof srcVal === 'object') {
         Object.entries(srcVal).forEach(([k0, v0]) => {
           const kGuess = aliasToKey(k0, k0) || aliasToKey(v0?.label || v0?.kind || v0?.name || '', v0?.filename || v0?.fileName || v0?.name || '');
-          if (kGuess && /^tesda_.*_certificate$/i.test(kGuess)) out[kGuess] = unwrapDocValue(v0);
+          push(kGuess, v0);
         });
         return out;
       }
@@ -738,17 +843,37 @@ exports.submitFullApplication = async (req, res) => {
       docObjMerged.laundry ||
       docObjMerged.housekeeping;
 
-    await setVal('tesda_carpentry_certificate', carpIncoming, hasIncoming(carpIncoming));
-    await setVal('tesda_electrician_certificate', elecIncoming, hasIncoming(elecIncoming));
-    await setVal('tesda_plumbing_certificate', plumIncoming, hasIncoming(plumIncoming));
-    await setVal('tesda_carwashing_certificate', carwashIncoming, hasIncoming(carwashIncoming));
-    await setVal('tesda_laundry_certificate', laundryIncoming, hasIncoming(laundryIncoming));
+    await addVal('tesda_carpentry_certificate', carpIncoming, hasIncoming(carpIncoming));
+    await addVal('tesda_electrician_certificate', elecIncoming, hasIncoming(elecIncoming));
+    await addVal('tesda_plumbing_certificate', plumIncoming, hasIncoming(plumIncoming));
+    await addVal('tesda_carwashing_certificate', carwashIncoming, hasIncoming(carwashIncoming));
+    await addVal('tesda_laundry_certificate', laundryIncoming, hasIncoming(laundryIncoming));
 
-    await setVal('tesda_carpentry_certificate', extractedCerts.tesda_carpentry_certificate, hasIncoming(extractedCerts.tesda_carpentry_certificate));
-    await setVal('tesda_electrician_certificate', extractedCerts.tesda_electrician_certificate, hasIncoming(extractedCerts.tesda_electrician_certificate));
-    await setVal('tesda_plumbing_certificate', extractedCerts.tesda_plumbing_certificate, hasIncoming(extractedCerts.tesda_plumbing_certificate));
-    await setVal('tesda_carwashing_certificate', extractedCerts.tesda_carwashing_certificate, hasIncoming(extractedCerts.tesda_carwashing_certificate));
-    await setVal('tesda_laundry_certificate', extractedCerts.tesda_laundry_certificate, hasIncoming(extractedCerts.tesda_laundry_certificate));
+    await addVal('tesda_carpentry_certificate', extractedCerts.tesda_carpentry_certificate || [], true);
+    await addVal('tesda_electrician_certificate', extractedCerts.tesda_electrician_certificate || [], true);
+    await addVal('tesda_plumbing_certificate', extractedCerts.tesda_plumbing_certificate || [], true);
+    await addVal('tesda_carwashing_certificate', extractedCerts.tesda_carwashing_certificate || [], true);
+    await addVal('tesda_laundry_certificate', extractedCerts.tesda_laundry_certificate || [], true);
+
+    const setVal = async (k, v, force = false) => {
+      if (!k) return;
+      const isTesda = /^tesda_.*_certificate$/i.test(k);
+      if (isTesda) return addVal(k, v, force);
+
+      if (!force && docCols[k]) return;
+      const raw = unwrapDocValue(v);
+      if (!raw) return;
+
+      if (/^https?:\/\//i.test(raw)) {
+        docCols[k] = raw;
+        return;
+      }
+
+      const du = coerceDataUrl(raw, 'image/jpeg') || (raw.startsWith('data:') ? raw : '');
+      if (du && /^data:/i.test(du)) {
+        docCols[k] = du;
+      }
+    };
 
     for (let i = 0; i < docsIn.length; i++) {
       const d = docsIn[i] || {};
@@ -1385,14 +1510,26 @@ exports.updateByGroup = async (req, res) => {
 
       const setUrl = async (k, v) => {
         if (!v) return;
-        const raw = unwrapDocValue(v);
-        if (!raw) return;
-        if (typeof raw === 'string' && /^https?:\/\//i.test(raw)) shape[k] = raw;
-        else if (typeof raw === 'string' && /^data:/i.test(raw)) shape[k] = raw;
-        else {
-          const du = coerceDataUrl(raw, 'image/jpeg');
-          if (du && /^data:/i.test(du)) shape[k] = du;
+
+        const isTesda = /^tesda_.*_certificate$/i.test(k);
+        const list = parseStoredMulti(v);
+        if (!list.length) return;
+
+        if (!isTesda) {
+          const raw = unwrapDocValue(list[0]);
+          if (!raw) return;
+          if (typeof raw === 'string' && /^https?:\/\//i.test(raw)) shape[k] = raw;
+          else if (typeof raw === 'string' && /^data:/i.test(raw)) shape[k] = raw;
+          else {
+            const du = coerceDataUrl(raw, 'image/jpeg');
+            if (du && /^data:/i.test(du)) shape[k] = du;
+          }
+          return;
         }
+
+        const existing = parseStoredMulti(shape[k]);
+        const merged = storeMultiValue(existing.concat(list));
+        if (merged) shape[k] = merged;
       };
 
       await setUrl('primary_id_front', docs.primary_id_front || docs.front || docs.primaryFront);
