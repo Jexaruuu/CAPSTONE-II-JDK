@@ -286,6 +286,8 @@ export default function ClientEditServiceRequest() {
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
 
+  const [requestId, setRequestId] = useState('');
+
   const [serviceType, setServiceType] = useState('');
   const [serviceTask, setServiceTask] = useState('');
   const [preferredDate, setPreferredDate] = useState('');
@@ -458,6 +460,23 @@ export default function ClientEditServiceRequest() {
         const uk = String(r.unit_kg ?? r.unitKg ?? '').trim();
         const sm = String(r.sq_m ?? r.sqM ?? '').trim();
         const pc = String(r.pieces ?? r.piece ?? '').trim();
+
+        setRequestId(
+          String(
+            d.request_id ||
+              d.requestId ||
+              d.service_request_id ||
+              d.serviceRequestId ||
+              data?.request_id ||
+              data?.requestId ||
+              data?.service_request_id ||
+              data?.serviceRequestId ||
+              data?.group_id ||
+              data?.groupId ||
+              gid ||
+              ''
+          )
+        );
 
         setServiceType(d.service_type || '');
         setServiceTask(d.service_task || '');
@@ -1322,24 +1341,14 @@ export default function ClientEditServiceRequest() {
               </div>
               <div className="text-2xl md:text-3xl font-semibold text-gray-900">Edit Service Request</div>
             </div>
-            <div className="hidden">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={()=>setConfirmOpen(true)}
-                  disabled={saving || !isDirty || !isComplete}
-                  className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
-                >
-                  {saving ? 'Saving…' : 'Save Changes'}
-                </button>
-              </div>
+
+            <div className="flex items-center justify-end">
+              {requestId ? (
+                <div className="text-right">
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Request ID</div>
+                  <div className="text-sm font-semibold text-gray-900">{requestId}</div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -2205,19 +2214,21 @@ export default function ClientEditServiceRequest() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={onCancel}
-                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+                disabled={saving || loading || cancelLoading || showSaving || showSuccess}
+                className="w-full sm:w-auto h-[48px] px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
               >
                 Cancel
               </button>
+
               <button
                 type="button"
-                onClick={()=>setConfirmOpen(true)}
+                onClick={() => setConfirmOpen(true)}
                 disabled={saving || !isDirty || !isComplete}
-                className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
+                className="inline-flex w-full sm:w-auto items-center justify-center h-11 rounded-xl bg-[#008cfc] px-7 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0077d6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>
