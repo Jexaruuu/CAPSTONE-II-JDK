@@ -256,6 +256,18 @@ const WorkerReviewPost = ({ handleBack }) => {
     }
   };
 
+  const ensureBase64DataUrl = async (v, mime = 'image/jpeg') => {
+    const raw = String(v || '').trim();
+    if (!raw) return '';
+    if (raw.startsWith('data:')) return raw;
+    if (raw.startsWith('blob:')) {
+      const du = await blobToDataUrl(raw);
+      return typeof du === 'string' && du.startsWith('data:') ? du : '';
+    }
+    if (looksLikeBase64(raw)) return `data:${mime};base64,${raw}`;
+    return raw;
+  };
+
   useEffect(() => {
     let alive = true;
 
@@ -377,7 +389,12 @@ const WorkerReviewPost = ({ handleBack }) => {
 
     const pull = (v) => {
       if (!v) return { url: '', data_url: '', guess: '' };
-      if (typeof v === 'string') return { url: /^https?:\/\//i.test(v) ? v : '', data_url: v.startsWith('data:') ? v : coerceImageToDataUrl(v, 'image/jpeg'), guess: '' };
+      if (typeof v === 'string')
+        return {
+          url: /^https?:\/\//i.test(v) ? v : '',
+          data_url: v.startsWith('data:') ? v : coerceImageToDataUrl(v, 'image/jpeg'),
+          guess: ''
+        };
       const url =
         typeof v.url === 'string' && /^https?:\/\//i.test(v.url)
           ? v.url
@@ -482,9 +499,10 @@ const WorkerReviewPost = ({ handleBack }) => {
 
   const buildServiceTaskObject = (serviceTaskRaw, serviceTypesRaw) => {
     const out = {};
-    if (Array.isArray(serviceTypesRaw)) serviceTypesRaw.forEach((t) => {
-      out[String(t).trim()] = out[String(t).trim()] || [];
-    });
+    if (Array.isArray(serviceTypesRaw))
+      serviceTypesRaw.forEach((t) => {
+        out[String(t).trim()] = out[String(t).trim()] || [];
+      });
     if (Array.isArray(serviceTaskRaw)) {
       serviceTaskRaw.forEach((it) => {
         const cat = String(it?.category || '').trim();
@@ -619,11 +637,11 @@ const WorkerReviewPost = ({ handleBack }) => {
       );
 
       if (picCandidate) {
-        if (picCandidate.startsWith('data:')) profilePicData = picCandidate;
-        else if (picCandidate.startsWith('blob:')) profilePicData = await blobToDataUrl(picCandidate);
-        else if (/^https?:\/\//i.test(picCandidate)) profilePicUrl = picCandidate;
+        const resolved = await ensureBase64DataUrl(picCandidate, 'image/jpeg');
+        if (resolved.startsWith('data:')) profilePicData = resolved;
+        else if (/^https?:\/\//i.test(resolved)) profilePicUrl = resolved;
         else {
-          const du = coerceImageToDataUrl(picCandidate, 'image/jpeg');
+          const du = coerceImageToDataUrl(resolved, 'image/jpeg');
           if (du) profilePicData = du;
         }
       }
@@ -651,11 +669,21 @@ const WorkerReviewPost = ({ handleBack }) => {
       const docsDraftProcessed = await Promise.all(
         (docsCandidatesMerged || []).map(async (d) => {
           if (!d) return d;
-          const u = typeof d === 'string' ? d : d.url || d.link || d.href || '';
-          if (typeof u === 'string' && u.startsWith('blob:')) {
+          if (typeof d === 'string') {
+            const resolved = await ensureBase64DataUrl(d, 'image/jpeg');
+            return resolved.startsWith('data:') ? { data_url: resolved } : d;
+          }
+          const u = typeof d.url === 'string' ? d.url : typeof d.link === 'string' ? d.link : typeof d.href === 'string' ? d.href : '';
+          if (u && u.startsWith('blob:')) {
             const du = await blobToDataUrl(u);
-            if (typeof d === 'string') return { data_url: du };
             return { ...d, data_url: du, url: '' };
+          }
+          if (typeof d.data_url === 'string' && d.data_url.startsWith('blob:')) {
+            const du = await blobToDataUrl(d.data_url);
+            return { ...d, data_url: du };
+          }
+          if (typeof d.base64 === 'string' && looksLikeBase64(d.base64)) {
+            return { ...d, data_url: `data:image/jpeg;base64,${d.base64}` };
           }
           return d;
         })
@@ -669,16 +697,42 @@ const WorkerReviewPost = ({ handleBack }) => {
             return JSON.parse(d);
           }
         };
+
         const objCanon = readJson('worker_required_documents', '{}');
         const objCanonAlt = readJson('workerRequiredDocuments', '{}');
         const objData = readJson('workerDocumentsData', '{}');
         const objMeta = readJson('workerDocuments', '{}');
 
         const pickOne = (v) => {
-          if (Array.isArray(v)) return String(v.find(Boolean) || '');
-          if (v == null) return '';
-          return String(v);
-        };
+  const take = (x) => {
+    if (!x) return '';
+    if (typeof x === 'string') return x;
+    if (typeof x === 'object') {
+      return (
+        x.data_url ||
+        x.dataUrl ||
+        x.dataURL ||
+        x.base64 ||
+        x.url ||
+        x.link ||
+        x.href ||
+        ''
+      );
+    }
+    return String(x);
+  };
+
+  if (Array.isArray(v)) {
+    for (const item of v) {
+      const got = take(item);
+      if (got && String(got).trim()) return String(got);
+    }
+    return '';
+  }
+
+  return String(take(v) || '');
+};
+
 
         const mapAnyToCanon = (o) => {
           if (!o || typeof o !== 'object') return {};
@@ -735,13 +789,10 @@ const WorkerReviewPost = ({ handleBack }) => {
 
         for (const k of keys) {
           const v = base[k];
-          if (typeof v === 'string' && v.startsWith('blob:')) {
-            const du = await blobToDataUrl(v);
-            if (du) base[k] = du;
-          } else if (typeof v === 'string' && looksLikeBase64(v)) {
-            const du = coerceImageToDataUrl(v, 'image/jpeg');
-            if (du) base[k] = du;
-          }
+          const resolved = await ensureBase64DataUrl(v, 'image/jpeg');
+          if (resolved.startsWith('data:')) base[k] = resolved;
+          else if (looksLikeBase64(resolved)) base[k] = `data:image/jpeg;base64,${resolved}`;
+          else base[k] = resolved || '';
         }
 
         return base;
@@ -766,18 +817,19 @@ const WorkerReviewPost = ({ handleBack }) => {
 
       const documentsNormalized = docsObjHasAny ? normalizeDocsForSubmit(docsObjPrepared) : normalizeDocsForSubmit(docsDraftProcessed);
 
-      const docsObject = (() => {
+      const docsObject = await (async () => {
         const out = {};
-        (documentsNormalized || []).forEach((d) => {
+        for (const d of documentsNormalized || []) {
           const k = d?.kind || '';
-          if (!k) return;
+          if (!k) continue;
           const val = d?.data_url || d?.url || '';
-          if (!val) return;
-          if (!out[k]) out[k] = val;
-        });
+          if (!val) continue;
+          const resolved = await ensureBase64DataUrl(val, 'image/jpeg');
+          out[k] = resolved || val;
+        }
 
         const srcObj = savedDocsObj && typeof savedDocsObj === 'object' ? savedDocsObj : {};
-        [
+        const keys = [
           'primary_id_front',
           'primary_id_back',
           'secondary_id',
@@ -789,13 +841,33 @@ const WorkerReviewPost = ({ handleBack }) => {
           'tesda_plumbing_certificate',
           'tesda_carwashing_certificate',
           'tesda_laundry_certificate'
-        ].forEach((k) => {
+        ];
+
+        for (const k of keys) {
           const v = srcObj[k] || srcObj[k.replace(/_([a-z])/g, (_, c) => c.toUpperCase())];
-          if (typeof v === 'string' && v && !out[k]) out[k] = v;
-        });
+          if (typeof v === 'string' && v && !out[k]) {
+            const resolved = await ensureBase64DataUrl(v, 'image/jpeg');
+            out[k] = resolved || v;
+          }
+        }
 
         if ('certificates' in out) delete out.certificates;
 
+        return out;
+      })();
+
+      const certificatesObject = (() => {
+        const out = {};
+        [
+          'tesda_carpentry_certificate',
+          'tesda_electrician_certificate',
+          'tesda_plumbing_certificate',
+          'tesda_carwashing_certificate',
+          'tesda_laundry_certificate'
+        ].forEach((k) => {
+          const v = docsObject?.[k] || '';
+          if (typeof v === 'string' && v.trim()) out[k] = v;
+        });
         return out;
       })();
 
@@ -832,6 +904,7 @@ const WorkerReviewPost = ({ handleBack }) => {
         service_description: (service_description || '').trim(),
         documents: documentsNormalized,
         required_documents_object: docsObject,
+        certificates: certificatesObject,
         agreements: {
           consent_background_checks: !!initialPayload.agreements.consent_background_checks,
           consent_terms_privacy: !!initialPayload.agreements.consent_terms_privacy,
@@ -841,7 +914,8 @@ const WorkerReviewPost = ({ handleBack }) => {
           profile_picture_name: initialPayload.info.profilePictureName || '',
           auth_uid: authUidVal,
           profile_picture_data_url: profilePicData || '',
-          profile_picture_url: profilePicUrl || ''
+          profile_picture_url: profilePicUrl || '',
+          certificates: certificatesObject
         }
       };
 
@@ -910,10 +984,13 @@ const WorkerReviewPost = ({ handleBack }) => {
         ...normalized.required_documents_object,
         worker_id: normalized.worker_id,
         email_address: normalized.email_address,
-        auth_uid: normalized.metadata.auth_uid
+        auth_uid: normalized.metadata.auth_uid,
+        certificates: normalized.certificates
       };
 
-      if ('certificates' in requiredDocsPayload) delete requiredDocsPayload.certificates;
+      if ('certificates' in requiredDocsPayload && (!requiredDocsPayload.certificates || typeof requiredDocsPayload.certificates !== 'object')) {
+        delete requiredDocsPayload.certificates;
+      }
 
       const res = await axios.post(
         `${API_BASE}/api/workerapplications/submit`,
@@ -922,6 +999,8 @@ const WorkerReviewPost = ({ handleBack }) => {
           details: workPayload,
           documents: normalized.documents,
           required_documents: requiredDocsPayload,
+          required_documents_object: normalized.required_documents_object,
+          certificates: normalized.certificates,
           agreements: normalized.agreements,
           email_address: normalized.email_address,
           worker_id: normalized.worker_id,
@@ -1017,7 +1096,10 @@ const WorkerReviewPost = ({ handleBack }) => {
     return uniq.length ? uniq.join(', ') : '-';
   };
 
-  const displayProfileSrc = resolvedProfileSrc || (typeof profile_picture_url_preview === 'string' && /^https?:\/\//i.test(profile_picture_url_preview) ? profile_picture_url_preview : '') || fallbackProfile;
+  const displayProfileSrc =
+    resolvedProfileSrc ||
+    (typeof profile_picture_url_preview === 'string' && /^https?:\/\//i.test(profile_picture_url_preview) ? profile_picture_url_preview : '') ||
+    fallbackProfile;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(0,140,252,0.06),transparent_45%),linear-gradient(to_bottom,white,white)] pb-24">
@@ -1115,7 +1197,9 @@ const WorkerReviewPost = ({ handleBack }) => {
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-gray-700">Services:</span>
-                    <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{formatList(service_types)}</span>
+                    <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">
+                      {formatList(service_types)}
+                    </span>
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-gray-700">Experience:</span>

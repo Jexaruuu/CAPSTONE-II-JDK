@@ -242,6 +242,31 @@ function tryParseJsonObject(v) {
   }
 }
 
+async function finalizeRequiredDocsUploads(request_group_id, docCols) {
+  const bucket = process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments';
+  const keys = Object.keys(docCols || {});
+  for (const k of keys) {
+    if (k === 'request_group_id' || k === 'worker_id' || k === 'auth_uid' || k === 'email_address') continue;
+    const v = String(docCols[k] || '').trim();
+    if (!v) continue;
+    if (/^https?:\/\//i.test(v)) continue;
+
+    let du = '';
+    if (/^data:/i.test(v)) du = v;
+    else {
+      const coerced = coerceDataUrl(v, 'image/jpeg');
+      if (coerced && /^data:/i.test(coerced)) du = coerced;
+    }
+    if (!du) continue;
+
+    try {
+      const up = await safeUploadDataUrl(bucket, du, `${request_group_id}-${k}`);
+      if (up?.url) docCols[k] = up.url;
+    } catch {}
+  }
+  return docCols;
+}
+
 exports.submitFullApplication = async (req, res) => {
   try {
     const src = req.body || {};
@@ -287,7 +312,13 @@ exports.submitFullApplication = async (req, res) => {
       'metadata.profile_picture_data_url',
       'metadata.profilePictureDataUrl'
     ]);
-    const profile_picture_name = pick(src, ['profile_picture_name', 'profilePictureName', 'info.profile_picture_name', 'info.profilePictureName', 'metadata.profile_picture_name']);
+    const profile_picture_name = pick(src, [
+      'profile_picture_name',
+      'profilePictureName',
+      'info.profile_picture_name',
+      'info.profilePictureName',
+      'metadata.profile_picture_name'
+    ]);
     const profile_picture_data_any = pick(src, [
       'profile_picture_data_url',
       'profilePictureDataUrl',
@@ -300,7 +331,11 @@ exports.submitFullApplication = async (req, res) => {
     const service_types = pick(src, ['service_types', 'details.service_types', 'details.serviceTypes', 'work.service_types', 'work.serviceTypes'], []);
     const service_task_raw = pick(src, ['service_task', 'details.service_task', 'details.serviceTask', 'work.service_task', 'work.serviceTask'], {});
     const years_experience = pick(src, ['years_experience', 'details.years_experience', 'details.yearsExperience', 'work.years_experience', 'work.yearsExperience']);
-    const tools_provided = pick(src, ['tools_provided', 'details.tools_provided', 'details.toolsProvided', 'work.tools_provided', 'work.toolsProvided', 'metadata.tools_provided', 'metadata.toolsProvided'], 'No');
+    const tools_provided = pick(
+      src,
+      ['tools_provided', 'details.tools_provided', 'details.toolsProvided', 'work.tools_provided', 'work.toolsProvided', 'metadata.tools_provided', 'metadata.toolsProvided'],
+      'No'
+    );
     const work_description = pick(src, ['work_description', 'service_description', 'details.work_description', 'details.service_description', 'work.service_description', 'work.serviceDescription']);
 
     let effectiveWorkerId = worker_id_in != null && String(worker_id_in).trim() !== '' ? Number(worker_id_in) : null;
@@ -366,10 +401,7 @@ exports.submitFullApplication = async (req, res) => {
           profileUpload = up?.url ? up : null;
         } catch {
           const ext = extFromDataUrl(rawProfileStr);
-          profileUpload = {
-            url: rawProfileStr,
-            name: profile_picture_name || `profile-${Date.now()}.${ext}`
-          };
+          profileUpload = { url: rawProfileStr, name: profile_picture_name || `profile-${Date.now()}.${ext}` };
         }
       } else if (/^https?:\/\//i.test(rawProfileStr)) {
         if (!/\/fallback-profile\.png$/i.test(rawProfileStr)) profileDirect = rawProfileStr;
@@ -381,10 +413,7 @@ exports.submitFullApplication = async (req, res) => {
             profileUpload = up?.url ? up : null;
           } catch {
             const ext = extFromDataUrl(coerced);
-            profileUpload = {
-              url: coerced,
-              name: profile_picture_name || `profile-${Date.now()}.${ext}`
-            };
+            profileUpload = { url: coerced, name: profile_picture_name || `profile-${Date.now()}.${ext}` };
           }
         }
       }
@@ -478,8 +507,6 @@ exports.submitFullApplication = async (req, res) => {
     if (missingDetails.length) return res.status(400).json({ message: `Missing required worker_work_information fields: ${missingDetails.join(', ')}` });
 
     await insertWorkerWorkInformation(detailsRow);
-
-    const bucket = process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments';
 
     const rawDocsA =
       src.documents ||
@@ -605,17 +632,15 @@ exports.submitFullApplication = async (req, res) => {
       if (!force && docCols[k]) return;
       const raw = unwrapDocValue(v);
       if (!raw) return;
+
       if (/^https?:\/\//i.test(raw)) {
         docCols[k] = raw;
         return;
       }
+
       const du = coerceDataUrl(raw, 'image/jpeg') || (raw.startsWith('data:') ? raw : '');
       if (du && /^data:/i.test(du)) {
-        try {
-          const up = await safeUploadDataUrl(bucket, du, `${request_group_id}-${k}-${Date.now()}`);
-          const url = up?.url || '';
-          if (url) docCols[k] = url;
-        } catch {}
+        docCols[k] = du;
       }
     };
 
@@ -664,62 +689,66 @@ exports.submitFullApplication = async (req, res) => {
       return out;
     })();
 
-    await setVal('tesda_carpentry_certificate', docObjMerged.tesda_carpentry_certificate || docObjMerged.tesdaCarpentryCertificate || docObjMerged.carpentry_certificate || docObjMerged.carpentry);
-    await setVal(
-      'tesda_electrician_certificate',
-      docObjMerged.tesda_electrician_certificate ||
-        docObjMerged.tesdaElectricianCertificate ||
-        docObjMerged.electrician_certificate ||
-        docObjMerged.electrical_certificate ||
-        docObjMerged.tesda_electrical_certificate ||
-        docObjMerged.tesdaElectricalCertificate ||
-        docObjMerged.tesda_eim_certificate ||
-        docObjMerged.tesdaEimCertificate ||
-        docObjMerged.eim_certificate ||
-        docObjMerged.eim ||
-        docObjMerged.electrical_installation_certificate ||
-        docObjMerged.electricalInstallationCertificate
-    );
-    await setVal(
-      'tesda_plumbing_certificate',
-      docObjMerged.tesda_plumbing_certificate ||
-        docObjMerged.tesdaPlumbingCertificate ||
-        docObjMerged.plumbing_certificate ||
-        docObjMerged.plumber_certificate ||
-        docObjMerged.plumbing ||
-        docObjMerged.tesda_plumber_certificate ||
-        docObjMerged.tesdaPlumberCertificate
-    );
-    await setVal(
-      'tesda_carwashing_certificate',
-      docObjMerged.tesda_carwashing_certificate ||
-        docObjMerged.tesdaCarwashingCertificate ||
-        docObjMerged.carwashing_certificate ||
-        docObjMerged.carwash_certificate ||
-        docObjMerged.tesda_car_washing_certificate ||
-        docObjMerged.tesdaCarWashingCertificate ||
-        docObjMerged.automotive_certificate ||
-        docObjMerged.automotive ||
-        docObjMerged.carwashing ||
-        docObjMerged.carwash
-    );
-    await setVal(
-      'tesda_laundry_certificate',
-      docObjMerged.tesda_laundry_certificate ||
-        docObjMerged.tesdaLaundryCertificate ||
-        docObjMerged.laundry_certificate ||
-        docObjMerged.housekeeping_certificate ||
-        docObjMerged.tesda_housekeeping_certificate ||
-        docObjMerged.tesdaHousekeepingCertificate ||
-        docObjMerged.laundry ||
-        docObjMerged.housekeeping
-    );
+    const hasIncoming = (v) => {
+      const raw = unwrapDocValue(v);
+      return !!(raw && String(raw).trim());
+    };
 
-    await setVal('tesda_carpentry_certificate', extractedCerts.tesda_carpentry_certificate, false);
-    await setVal('tesda_electrician_certificate', extractedCerts.tesda_electrician_certificate, false);
-    await setVal('tesda_plumbing_certificate', extractedCerts.tesda_plumbing_certificate, false);
-    await setVal('tesda_carwashing_certificate', extractedCerts.tesda_carwashing_certificate, false);
-    await setVal('tesda_laundry_certificate', extractedCerts.tesda_laundry_certificate, false);
+    const carpIncoming =
+      docObjMerged.tesda_carpentry_certificate || docObjMerged.tesdaCarpentryCertificate || docObjMerged.carpentry_certificate || docObjMerged.carpentry;
+    const elecIncoming =
+      docObjMerged.tesda_electrician_certificate ||
+      docObjMerged.tesdaElectricianCertificate ||
+      docObjMerged.electrician_certificate ||
+      docObjMerged.electrical_certificate ||
+      docObjMerged.tesda_electrical_certificate ||
+      docObjMerged.tesdaElectricalCertificate ||
+      docObjMerged.tesda_eim_certificate ||
+      docObjMerged.tesdaEimCertificate ||
+      docObjMerged.eim_certificate ||
+      docObjMerged.eim ||
+      docObjMerged.electrical_installation_certificate ||
+      docObjMerged.electricalInstallationCertificate;
+    const plumIncoming =
+      docObjMerged.tesda_plumbing_certificate ||
+      docObjMerged.tesdaPlumbingCertificate ||
+      docObjMerged.plumbing_certificate ||
+      docObjMerged.plumber_certificate ||
+      docObjMerged.plumbing ||
+      docObjMerged.tesda_plumber_certificate ||
+      docObjMerged.tesdaPlumberCertificate;
+    const carwashIncoming =
+      docObjMerged.tesda_carwashing_certificate ||
+      docObjMerged.tesdaCarwashingCertificate ||
+      docObjMerged.carwashing_certificate ||
+      docObjMerged.carwash_certificate ||
+      docObjMerged.tesda_car_washing_certificate ||
+      docObjMerged.tesdaCarWashingCertificate ||
+      docObjMerged.automotive_certificate ||
+      docObjMerged.automotive ||
+      docObjMerged.carwashing ||
+      docObjMerged.carwash;
+    const laundryIncoming =
+      docObjMerged.tesda_laundry_certificate ||
+      docObjMerged.tesdaLaundryCertificate ||
+      docObjMerged.laundry_certificate ||
+      docObjMerged.housekeeping_certificate ||
+      docObjMerged.tesda_housekeeping_certificate ||
+      docObjMerged.tesdaHousekeepingCertificate ||
+      docObjMerged.laundry ||
+      docObjMerged.housekeeping;
+
+    await setVal('tesda_carpentry_certificate', carpIncoming, hasIncoming(carpIncoming));
+    await setVal('tesda_electrician_certificate', elecIncoming, hasIncoming(elecIncoming));
+    await setVal('tesda_plumbing_certificate', plumIncoming, hasIncoming(plumIncoming));
+    await setVal('tesda_carwashing_certificate', carwashIncoming, hasIncoming(carwashIncoming));
+    await setVal('tesda_laundry_certificate', laundryIncoming, hasIncoming(laundryIncoming));
+
+    await setVal('tesda_carpentry_certificate', extractedCerts.tesda_carpentry_certificate, hasIncoming(extractedCerts.tesda_carpentry_certificate));
+    await setVal('tesda_electrician_certificate', extractedCerts.tesda_electrician_certificate, hasIncoming(extractedCerts.tesda_electrician_certificate));
+    await setVal('tesda_plumbing_certificate', extractedCerts.tesda_plumbing_certificate, hasIncoming(extractedCerts.tesda_plumbing_certificate));
+    await setVal('tesda_carwashing_certificate', extractedCerts.tesda_carwashing_certificate, hasIncoming(extractedCerts.tesda_carwashing_certificate));
+    await setVal('tesda_laundry_certificate', extractedCerts.tesda_laundry_certificate, hasIncoming(extractedCerts.tesda_laundry_certificate));
 
     for (let i = 0; i < docsIn.length; i++) {
       const d = docsIn[i] || {};
@@ -771,6 +800,8 @@ exports.submitFullApplication = async (req, res) => {
         if (!docCols[k]) docCols[k] = fallbackDocs[k] || '';
       });
     }
+
+    await finalizeRequiredDocsUploads(request_group_id, docCols);
 
     try {
       await insertWorkerRequiredDocumentsSafe(docCols);
@@ -1333,7 +1364,7 @@ exports.updateByGroup = async (req, res) => {
     const upsertDocs = async () => {
       const docs = payload.required_documents || payload.documents || null;
       if (!docs) return null;
-      const bucket = process.env.SUPABASE_BUCKET_WORKER_ATTACHMENTS || 'wa-attachments';
+
       const shape = {
         request_group_id: gid,
         worker_id: worker_id || null,
@@ -1357,15 +1388,10 @@ exports.updateByGroup = async (req, res) => {
         const raw = unwrapDocValue(v);
         if (!raw) return;
         if (typeof raw === 'string' && /^https?:\/\//i.test(raw)) shape[k] = raw;
-        else if (typeof raw === 'string' && /^data:/i.test(raw)) {
-          const up = await safeUploadDataUrl(bucket, raw, `${gid}-${k}-${Date.now()}`);
-          shape[k] = up?.url || '';
-        } else {
+        else if (typeof raw === 'string' && /^data:/i.test(raw)) shape[k] = raw;
+        else {
           const du = coerceDataUrl(raw, 'image/jpeg');
-          if (du && /^data:/i.test(du)) {
-            const up = await safeUploadDataUrl(bucket, du, `${gid}-${k}-${Date.now()}`);
-            shape[k] = up?.url || '';
-          }
+          if (du && /^data:/i.test(du)) shape[k] = du;
         }
       };
 
@@ -1378,7 +1404,15 @@ exports.updateByGroup = async (req, res) => {
 
       const certParsed = tryParseJsonObject(docs.certificates || docs.certs) || null;
 
-      await setUrl('tesda_carpentry_certificate', docs.tesda_carpentry_certificate || docs.tesdaCarpentryCertificate || docs.carpentry_certificate || docs.carpentry || certParsed?.tesda_carpentry_certificate || certParsed?.Carpenter);
+      await setUrl(
+        'tesda_carpentry_certificate',
+        docs.tesda_carpentry_certificate ||
+          docs.tesdaCarpentryCertificate ||
+          docs.carpentry_certificate ||
+          docs.carpentry ||
+          certParsed?.tesda_carpentry_certificate ||
+          certParsed?.Carpenter
+      );
       await setUrl(
         'tesda_electrician_certificate',
         docs.tesda_electrician_certificate ||
@@ -1430,6 +1464,8 @@ exports.updateByGroup = async (req, res) => {
           certParsed?.tesda_laundry_certificate ||
           certParsed?.Laundry
       );
+
+      await finalizeRequiredDocsUploads(gid, shape);
 
       const { data: existId } = await supabaseAdmin.from('worker_required_documents').select('id').eq('request_group_id', gid).limit(1).maybeSingle();
       if (existId?.id) await supabaseAdmin.from('worker_required_documents').update(shape).eq('id', existId.id);

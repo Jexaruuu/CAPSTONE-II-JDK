@@ -78,7 +78,22 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     };
   }, [openTaskKey]);
 
-  const serviceTypes = ['Carpenter', 'Electrician', 'Plumber', 'Carwasher', 'Laundry', 'Appliance'];
+  const serviceTypes = ['Carpenter', 'Electrician', 'Plumber', 'Carwasher', 'Laundry'];
+
+  const applianceTasks = [
+    'Refrigerator troubleshooting',
+    'Freezer troubleshooting',
+    'TV mounting & setup',
+    'TV diagnostics',
+    'Washer installation & hook-up',
+    'Washer troubleshooting',
+    'Electric fan troubleshooting',
+    'Dishwasher installation & hook-up',
+    'Dishwasher troubleshooting',
+    'Microwave troubleshooting',
+    'Oven troubleshooting',
+    'Rice cooker troubleshooting'
+  ];
 
   const jobTasks = {
     Carwasher: [
@@ -121,21 +136,8 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       'Outdoor lighting setup',
       'Outdoor lighting troubleshooting',
       'Doorbell wiring & setup',
-      'Doorbell troubleshooting'
-    ],
-    Appliance: [
-      'Refrigerator troubleshooting',
-      'Freezer troubleshooting',
-      'TV mounting & setup',
-      'TV diagnostics',
-      'Washer installation & hook-up',
-      'Washer troubleshooting',
-      'Electric fan troubleshooting',
-      'Dishwasher installation & hook-up',
-      'Dishwasher troubleshooting',
-      'Microwave troubleshooting',
-      'Oven troubleshooting',
-      'Rice cooker troubleshooting'
+      'Doorbell troubleshooting',
+      ...applianceTasks
     ],
     Plumber: [
       'Plumbing checkup & leak assessment',
@@ -164,7 +166,17 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     ]
   };
 
-  const PopList = ({ items, value, onSelect, title = 'Select', fullWidth = false, emptyLabel = 'No options', disabledLabel, hideSearch = false, rightLabel }) => {
+  const PopList = ({
+    items,
+    value,
+    onSelect,
+    title = 'Select',
+    fullWidth = false,
+    emptyLabel = 'No options',
+    disabledLabel,
+    hideSearch = false,
+    rightLabel
+  }) => {
     const [q, setQ] = useState('');
     const filtered = hideSearch ? items || [] : (items || []).filter((it) => it.toLowerCase().includes(q.toLowerCase()));
     return (
@@ -187,7 +199,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             filtered.map((it) => {
               const isSel = value === it;
               const isDisabled = disabledLabel && disabledLabel(it);
-              const right = typeof rightLabel === 'function' ? (rightLabel(it) || '') : '';
+              const right = typeof rightLabel === 'function' ? rightLabel(it) || '' : '';
               return (
                 <button
                   key={it}
@@ -215,8 +227,12 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
           )}
         </div>
         <div className="flex items-center justify-between mt-3 px-2">
-          <div className="text-xs text-gray-400">{(filtered || []).length} result{(filtered || []).length === 1 ? '' : 's'}</div>
-          <button type="button" onClick={() => onSelect('')} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+          <div className="text-xs text-gray-400">
+            {(filtered || []).length} result{(filtered || []).length === 1 ? '' : 's'}
+          </div>
+          <button type="button" onClick={() => onSelect('')} className="text-xs text-gray-500 hover:text-gray-700">
+            Clear
+          </button>
         </div>
       </div>
     );
@@ -226,7 +242,11 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
 
-  const jumpTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {} };
+  const jumpTop = () => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
+  };
 
   const handleServiceTypeToggle = (type) => {
     let updated;
@@ -286,8 +306,11 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     if (saved) {
       try {
         const d = JSON.parse(saved);
-        setServiceTypesSelected(d.service_types || []);
-        setServiceTask(d.service_task || {});
+        const savedTypes = Array.isArray(d.service_types) ? d.service_types.filter((t) => t !== 'Appliance') : [];
+        const savedTasks = { ...(d.service_task || {}) };
+        delete savedTasks.Appliance;
+        setServiceTypesSelected(savedTypes);
+        setServiceTask(savedTasks);
         setServiceDescription(d.service_description || '');
         setYearsExperience(d.years_experience || '');
         setToolsProvided(d.tools_provided || '');
@@ -298,8 +321,16 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
   useEffect(() => {
     if (!hydrated) return;
-    const draft = { service_types: serviceTypesSelected, service_task: serviceTask, service_description: serviceDescription, years_experience: yearsExperience, tools_provided: toolsProvided };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
+    const draft = {
+      service_types: serviceTypesSelected,
+      service_task: serviceTask,
+      service_description: serviceDescription,
+      years_experience: yearsExperience,
+      tools_provided: toolsProvided
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch {}
   }, [hydrated, serviceTypesSelected, serviceTask, serviceDescription, yearsExperience, toolsProvided]);
 
   useEffect(() => {
@@ -313,7 +344,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             setMeEmail(em);
             const known = localStorage.getItem('workerEmail') || localStorage.getItem('email_address') || '';
             if (!known) {
-              try { localStorage.setItem('workerEmail', em); } catch {}
+              try {
+                localStorage.setItem('workerEmail', em);
+              } catch {}
             }
           }
         }
@@ -324,13 +357,18 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
   useEffect(() => {
     if (!isLoadingNext) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       window.removeEventListener('popstate', onPopState, true);
@@ -341,11 +379,20 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
   const handleYearsChange = (e) => {
     const raw = e.target.value;
-    if (raw === '') { setYearsExperience(''); return; }
+    if (raw === '') {
+      setYearsExperience('');
+      return;
+    }
     const onlyDigits = raw.replace(/\D/g, '');
-    if (onlyDigits === '') { setYearsExperience(''); return; }
+    if (onlyDigits === '') {
+      setYearsExperience('');
+      return;
+    }
     let n = parseInt(onlyDigits, 10);
-    if (Number.isNaN(n)) { setYearsExperience(''); return; }
+    if (Number.isNaN(n)) {
+      setYearsExperience('');
+      return;
+    }
     if (n < 1) n = 1;
     if (n > 50) n = 50;
     setYearsExperience(String(n));
@@ -353,13 +400,24 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
   const isYearsValid = yearsExperience !== '' && /^\d+$/.test(yearsExperience) && Number(yearsExperience) >= 1 && Number(yearsExperience) <= 50;
 
-  const hasServiceDetails = serviceTypesSelected.length > 0 && serviceTypesSelected.every((t) => (serviceTask[t] || []).some((v) => String(v || '').trim() !== ''));
+  const hasServiceDetails =
+    serviceTypesSelected.length > 0 &&
+    serviceTypesSelected.every((t) => (serviceTask[t] || []).some((v) => String(v || '').trim() !== ''));
 
   const isFormValid = serviceTypesSelected.length > 0 && hasServiceDetails && serviceDescription.trim() && isYearsValid && toolsProvided;
 
   const proceed = () => {
-    const draft = { service_types: serviceTypesSelected, service_task: serviceTask, service_description: serviceDescription, years_experience: yearsExperience, tools_provided: toolsProvided, email_address: meEmail || '' };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)); } catch {}
+    const draft = {
+      service_types: serviceTypesSelected,
+      service_task: serviceTask,
+      service_description: serviceDescription,
+      years_experience: yearsExperience,
+      tools_provided: toolsProvided,
+      email_address: meEmail || ''
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch {}
     onCollect?.(draft);
     handleNext?.();
   };
@@ -369,15 +427,21 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     if (!isFormValid) return;
     jumpTop();
     setIsLoadingNext(true);
-    setTimeout(() => { proceed(); }, 2000);
+    setTimeout(() => {
+      proceed();
+    }, 2000);
   };
 
   useEffect(() => {
     if (!isLoadingBack) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
-    return () => { window.removeEventListener('popstate', onPopState, true); };
+    return () => {
+      window.removeEventListener('popstate', onPopState, true);
+    };
   }, [isLoadingBack]);
 
   useEffect(() => {
@@ -385,7 +449,10 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       document.body.style.overflow = prev;
@@ -396,7 +463,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
   const onBackClick = () => {
     jumpTop();
     setIsLoadingBack(true);
-    setTimeout(() => { handleBack?.(); }, 2000);
+    setTimeout(() => {
+      handleBack?.();
+    }, 2000);
   };
 
   return (
@@ -591,20 +660,56 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between gap-3">
-          <button type="button" onClick={onBackClick} className="w-full sm:w-1/3 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition mt-2.5">Back : Personal Information</button>
-          <button type="button" onClick={onNextClick} disabled={!isFormValid} aria-disabled={!isFormValid} className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm mt-2.5 ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}>Next : Required Documents</button>
+          <button type="button" onClick={onBackClick} className="w-full sm:w-1/3 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition mt-2.5">
+            Back : Personal Information
+          </button>
+          <button
+            type="button"
+            onClick={onNextClick}
+            disabled={!isFormValid}
+            aria-disabled={!isFormValid}
+            className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm mt-2.5 ${
+              isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'
+            }`}
+          >
+            Next : Required Documents
+          </button>
         </div>
       </form>
 
       {isLoadingNext && (
-        <div role="dialog" aria-modal="true" aria-label="Loading next step" tabIndex={-1} autoFocus onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Loading next step"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
+        >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
             <div className="relative mx-auto w-40 h-40">
-              <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+              />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
-                {!logoBroken ? <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} /> : <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center"><span className="font-bold text-[#008cfc]">JDK</span></div>}
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="mt-6 text-center">
@@ -616,14 +721,38 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       )}
 
       {isLoadingBack && (
-        <div role="dialog" aria-modal="true" aria-label="Back to Step 1" tabIndex={-1} autoFocus onKeyDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Back to Step 1"
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center cursor-wait"
+        >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]">
             <div className="relative mx-auto w-40 h-40">
-              <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+              />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
-                {!logoBroken ? <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} /> : <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center"><span className="font-bold text-[#008cfc]">JDK</span></div>}
+                {!logoBroken ? (
+                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="mt-6 text-center">
