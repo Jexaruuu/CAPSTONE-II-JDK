@@ -123,19 +123,21 @@ function TaskPill({ value }) {
   return (
     <span
       className={[
-        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide whitespace-nowrap",
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide",
         "bg-violet-50",
         "text-violet-700",
         "border-violet-200",
+        "max-w-full min-w-0 shrink overflow-hidden text-ellipsis whitespace-nowrap",
       ].join(" ")}
       title={value || "-"}
     >
-      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-      {value || "-"}
+      <span className="h-3 w-3 rounded-full bg-current opacity-30 shrink-0" />
+      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+        {value || "-"}
+      </span>
     </span>
   );
 }
-
 function YesNoPill({ yes }) {
   const truthy =
     yes === true ||
@@ -192,13 +194,14 @@ function ServiceTasksInline({ list, fallback }) {
   const arr = base.length ? base : (fallback ? [fallback] : []);
   if (!arr.length) return <span className="text-gray-500 text-sm">-</span>;
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5 w-full min-w-0">
       {arr.map((s, i) => (
         <TaskPill key={`${s}-${i}`} value={s} />
       ))}
     </div>
   );
 }
+
 
 const Field = ({ label, value }) => (
   <div className="text-left space-y-0.5">
@@ -229,9 +232,9 @@ const QuickItem = ({ icon, label, value }) => (
         <div className="text-sm font-semibold text-gray-900 break-words">-</div>
       ) : typeof value === "string" || typeof value === "number" ? (
         <div className="text-sm font-semibold text-gray-900 break-words">{value}</div>
-      ) : (
-        <div className="break-words">{value}</div>
-      )}
+    ) : (
+  <div className="min-w-0 w-full break-words">{value}</div>
+)}
     </div>
   </div>
 );
@@ -1128,17 +1131,33 @@ age: ageValue ?? "-",
         </span>
       }
     >
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-4">
-        <div>
-          <Field label="Tools Provided" value={toolsText} />
-        </div>
-        <div>
-          <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
-        </div>
-        <div className="lg:col-span-3">
-          <Field label="Service Description" value={viewRow?.service_description || "-"} />
-        </div>
-      </div>
+     <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-4">
+  <div>
+    <Field label="Tools Provided" value={toolsText} />
+  </div>
+
+  <div>
+    <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
+  </div>
+
+  <div className="lg:col-span-3">
+    <Field
+      label="Service Type(s)"
+      value={<ServiceTypesInline list={viewRow?.service_types} />}
+    />
+  </div>
+
+  <div className="lg:col-span-3">
+    <Field
+      label="Service Task(s)"
+      value={<ServiceTasksInline list={viewRow?.service_tasks} fallback={viewRow?.task_or_role} />}
+    />
+  </div>
+
+  <div className="lg:col-span-3">
+    <Field label="Service Description" value={viewRow?.service_description || "-"} />
+  </div>
+</div>
     </SectionCard>
   );
 }
@@ -1547,50 +1566,15 @@ age: ageValue ?? "-",
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-3">
-              <QuickItem
-                icon={<CalendarDays className="h-4 w-4" />}
-                label="Created"
-                value={viewRow?.created_at_display || "-"}
-              />
-        <QuickItem
-  icon={<Briefcase className="h-4 w-4" />}
-  label="Service Type:"
-  value={
-    <ServiceTypePill
-      value={
-        viewRow?.primary_service ||
-        (Array.isArray(viewRow?.service_types) && viewRow.service_types.length ? viewRow.service_types[0] : "-")
-      }
-    />
-  }
+            <QuickItem
+  icon={<CalendarDays className="h-4 w-4" />}
+  label="Created"
+  value={viewRow?.created_at_display || "-"}
 />
-              <QuickItem
-  icon={<ClipboardList className="h-4 w-4" />}
-  label="Service Task(s):"
-  value={
-    <div className="flex flex-col gap-2">
 
-      <div className="flex flex-wrap items-center gap-2">
-      
-        <ServiceTasksInline list={viewRow?.service_tasks} fallback={viewRow?.task_or_role} />
-      </div>
-    </div>
-  }
-/>
             </div>
 <div className="mt-5">
-  <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
-    Application IDs
-  </div>
   <div className="mt-2 grid grid-cols-1 gap-2">
-    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-      <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
-        Application Group
-      </div>
-      <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
-        {viewRow?.request_group_id || "-"}
-      </div>
-    </div>
     <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
       <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
         Application ID
@@ -1623,7 +1607,11 @@ age: ageValue ?? "-",
   </div>
 </div>
 
-<div className="absolute bottom-6 right-6 z-20">
+<div className="flex-1 overflow-y-auto blue-scroll pt-3">
+  {renderSection()}
+</div>
+
+<div className="pt-4 flex justify-end shrink-0">
   <button
     type="button"
     onClick={closeView}
@@ -1633,9 +1621,6 @@ age: ageValue ?? "-",
   </button>
 </div>
 
-            <div className="flex-1 overflow-y-auto blue-scroll pt-3">
-              {renderSection()}
-            </div>
           </div>
         </section>
       </div>
@@ -1715,55 +1700,27 @@ age: ageValue ?? "-",
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-3">
-              <QuickItem
-                icon={<CalendarDays className="h-4 w-4" />}
-                label="Created"
-                value={viewRow?.created_at_display || "-"}
-              />
-              <QuickItem
-                icon={<Briefcase className="h-4 w-4" />}
-                label="Service Type:"
-                value={
-                  <ServiceTypePill
-                    value={
-                      viewRow?.primary_service ||
-                      (Array.isArray(viewRow?.service_types) && viewRow.service_types.length
-                        ? viewRow.service_types[0]
-                        : "-")
-                    }
-                  />
-                }
-              />
-              <QuickItem
-                icon={<ClipboardList className="h-4 w-4" />}
-                label="Service Task(s):"
-                value={<ServiceTasksInline list={viewRow?.service_tasks} fallback={viewRow?.task_or_role} />}
-              />
-            </div>
+  <QuickItem
+    icon={<CalendarDays className="h-4 w-4" />}
+    label="Created"
+    value={viewRow?.created_at_display || "-"}
+  />
+</div>
 
-            <div className="mt-5">
-              <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
-                Application IDs
-              </div>
-              <div className="mt-2 grid grid-cols-1 gap-2">
-                <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                  <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
-                    Application Group
-                  </div>
-                  <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
-                    {viewRow?.request_group_id || "-"}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                  <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
-                    Application ID
-                  </div>
-                  <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
-                    {viewRow?.id || "-"}
-                  </div>
-                </div>
-              </div>
-            </div>
+           <div className="mt-5">
+
+  <div className="mt-2 grid grid-cols-1 gap-2">
+    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+      <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
+        Application ID
+      </div>
+      <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
+        {viewRow?.id || "-"}
+      </div>
+    </div>
+  </div>
+</div>
+
 
             <div className="mt-5">
               <button
@@ -1783,7 +1740,8 @@ age: ageValue ?? "-",
               <div className="text-sm font-semibold text-gray-900">Submitted Documents</div>
             </div>
 
-            <div className="flex-1 overflow-y-auto blue-scroll pt-3 pb-20">
+            <div className="flex-1 overflow-y-auto blue-scroll pt-3">
+
               {viewRow && viewRow.docs && Object.keys(viewRow.docs).length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[
@@ -1838,15 +1796,9 @@ age: ageValue ?? "-",
               )}
             </div>
 
-            <div className="absolute bottom-6 right-6 z-20">
-              <button
-                type="button"
-                onClick={() => setShowDocs(false)}
-                className="inline-flex items-center justify-center rounded-xl border border-blue-300 bg-white px-6 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-              >
-                Done
-              </button>
-            </div>
+   <div className="pt-4 flex justify-end shrink-0">
+
+</div>
           </div>
         </section>
       </div>

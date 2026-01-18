@@ -823,7 +823,17 @@ export default function AdminServiceRequests() {
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-x-6 gap-y-4">
+             <div className="grid grid-cols-1 gap-x-6 gap-y-4">
+  <Field
+    label="Service Type"
+    value={<ServiceTypePill value={viewRow?.details?.service_type || viewRow?.service_type} />}
+  />
+
+  <Field
+    label="Service Task"
+    value={<TaskPill value={viewRow?.details?.service_task || viewRow?.service_task} />}
+  />
+
   <Field
     label="Urgent"
     value={
@@ -832,6 +842,7 @@ export default function AdminServiceRequests() {
       </span>
     }
   />
+
   <Field
     label="Tools Provided"
     value={
@@ -841,6 +852,7 @@ export default function AdminServiceRequests() {
     }
   />
 </div>
+
               <div>
                 <Field
                   label="Description"
@@ -1413,39 +1425,13 @@ export default function AdminServiceRequests() {
                         label="Preferred Schedule"
                         value={scheduleText(viewRow)}
                       />
-          <QuickItem
-  icon={<ClipboardList className="h-4 w-4" />}
-  value={
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500 whitespace-nowrap">
-          Service Type:
-        </div>
-        <ServiceTypePill value={viewRow?.details?.service_type || viewRow?.service_type} />
-      </div>
 
-      <div className="flex items-center gap-2">
-        <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500 whitespace-nowrap">
-          Service Task:
-        </div>
-        <TaskPill value={viewRow?.details?.service_task || viewRow?.service_task} />
-      </div>
-    </div>
-  }
-/>
                     </div>
 
                     <div className="mt-5">
-                      <div className="text-[11px] font-semibold tracking-[0.2em] uppercase text-gray-500">
-                        Request IDs
-                      </div>
+                      
                       <div className="mt-2 grid grid-cols-1 gap-2">
-                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                          <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">Request Group</div>
-                          <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
-                            {viewRow?.request_group_id || "-"}
-                          </div>
-                        </div>
+                    
                         <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
                           <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">Request ID</div>
                           <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
