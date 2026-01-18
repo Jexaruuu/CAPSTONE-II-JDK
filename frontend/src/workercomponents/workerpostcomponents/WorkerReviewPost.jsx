@@ -1364,7 +1364,7 @@ const WorkerReviewPost = ({ handleBack }) => {
 
             <div className="mt-6 text-center space-y-2">
               <div className="text-lg font-semibold text-gray-900">Application Submitted!</div>
-              <div className="text-sm text-gray-600">Please wait for admin approval.</div>
+              <div className="mt-1 text-sm text-gray-600">Your application has been successfully submitted.</div>
           
             </div>
 

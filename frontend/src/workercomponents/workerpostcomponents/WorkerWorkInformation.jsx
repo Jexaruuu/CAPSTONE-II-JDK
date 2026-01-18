@@ -34,6 +34,20 @@ function buildAppU() {
   }
 }
 
+const TASK_HEADERS = new Set(['Electrical', 'Appliances']);
+
+const normalizeHeader = (t) =>
+  String(t || '')
+    .replace(/^[—\-–\s]+|[—\-–\s]+$/g, '')
+    .trim();
+
+const isTaskHeader = (t) => {
+  const raw = String(t || '').trim();
+  if (TASK_HEADERS.has(raw)) return true;
+  const n = normalizeHeader(raw);
+  return TASK_HEADERS.has(n);
+};
+
 const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onCollect }) => {
   const [serviceTypesSelected, setServiceTypesSelected] = useState([]);
   const [yearsExperience, setYearsExperience] = useState('');
@@ -80,89 +94,84 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
 
   const serviceTypes = ['Carpenter', 'Electrician', 'Plumber', 'Carwasher', 'Laundry'];
 
-  const applianceTasks = [
-    'Refrigerator troubleshooting',
-    'Freezer troubleshooting',
-    'TV mounting & setup',
-    'TV diagnostics',
-    'Washer installation & hook-up',
-    'Washer troubleshooting',
-    'Electric fan troubleshooting',
-    'Dishwasher installation & hook-up',
-    'Dishwasher troubleshooting',
-    'Microwave troubleshooting',
-    'Oven troubleshooting',
-    'Rice cooker troubleshooting'
-  ];
-
   const jobTasks = {
     Carwasher: [
-      'Interior detailing & vacuuming',
-      'Seat and fabric stain treatment',
-      'Carpet shampoo / extraction cleaning',
-      'Dashboard & panel deep cleaning',
-      'Odor removal / deodorizing',
-      'Exterior wash & rinse technique',
-      'Wax / protectant application',
-      'Tire & rim detailing',
-      'Vehicle size handling (small car / sedan / MPV / SUV / pickup / van)'
+      '5 Seater Sedan (Interior + Carpet)',
+      '7 Seater MPV (Interior + Carpet)',
+      '7 - 8 Seater SUV (Interior + Carpet)',
+      '5 Seater Pick Up (Interior + Carpet)',
+      '10 Seater Family Van (Interior + Carpet)',
+      '1 - 2 Seater (Interior + Carpet)',
+      '5 Seater Sedan (Interior + Exterior)',
+      '7 Seater MPV (Interior + Exterior)',
+      '7 - 8 Seater SUV (Interior + Exterior)',
+      '5 Seater Pick Up (Interior + Exterior)',
+      '10 Seater Family Van (Interior + Exterior)'
     ],
     Carpenter: [
-      'Furniture assembly & installation',
-      'Door alignment & hardware fixing',
-      'Basic lockset servicing',
-      'Smart lock installation & troubleshooting',
-      'Wall patching & surface repair',
-      'Ceiling patching & minor restoration',
-      'Leak source checking',
-      'Waterproofing application',
-      'Roof checking & minor roof repair work',
-      'Area-based work measurement'
+      'Furniture Setup (Small Items)',
+      'Furniture Setup (Large Items)',
+      'Basic Door & Lock Repair',
+      'Smart Lock Repair',
+      'Wall & Ceiling Repair',
+      'Waterproofing Inspection',
+      'Waterproofing Repair',
+      'Roofing Inspection',
+      'Roofing Repair'
     ],
     Electrician: [
-      'Electrical safety check & diagnostics',
-      'Lighting setup & replacement work',
-      'Lighting fault troubleshooting',
-      'Wiring routing & termination',
-      'Wiring fault tracing & repair',
-      'Outlet installation & testing',
-      'Outlet troubleshooting & replacement',
-      'Breaker panel handling',
-      'Breaker issue troubleshooting',
-      'Switch installation & replacement',
-      'Switch troubleshooting',
-      'Fan mounting & balancing',
-      'Fan troubleshooting',
-      'Outdoor lighting setup',
-      'Outdoor lighting troubleshooting',
-      'Doorbell wiring & setup',
-      'Doorbell troubleshooting',
-      ...applianceTasks
+      'Electrical',
+      'Electrical Inspection',
+      'Light Fixture Installation',
+      'Light Fixture Repair',
+      'Wiring Installation',
+      'Wiring Repair',
+      'Outlet Installation',
+      'Outlet Repair',
+      'Circuit Breaker Installation',
+      'Circuit Breaker Repair',
+      'Switch Installation',
+      'Switch Repair',
+      'Ceiling Fan Installation',
+      'Ceiling Fan Repair',
+      'Outdoor Lightning Installation',
+      'Outdoor Lightning Repair',
+      'Doorbell Installation',
+      'Doorbell Repair',
+      'Appliances',
+      'Refrigerator Repair',
+      'Commercial Freezer Repair',
+      'TV Repair (50" to 90")',
+      'TV Installation (50" to 90")',
+      'Washing Machine Repair',
+      'Washing Machine Installation',
+      'Stand Fan Repair',
+      'Tower Fan Repair',
+      'Dishwasher Repair',
+      'Dishwasher Installation',
+      'Microwave Repair',
+      'Oven Repair',
+      'Rice Cooker Repair'
     ],
     Plumber: [
-      'Plumbing checkup & leak assessment',
-      'Faucet servicing & leak repair',
-      'Grease trap maintenance & cleaning',
-      'Sink blockage clearing',
-      'Drain clearing',
-      'Pipe servicing for exposed lines',
-      'Toilet troubleshooting & servicing',
-      'Heavy blockage clearing',
-      'Deep line clearing',
-      'Water heater installation',
-      'Water heater troubleshooting',
-      'Shower fixture installation'
+      'Plumbing Inspection',
+      'Faucet Leak Repair',
+      'Grease Trap Cleaning',
+      'Sink Declogging',
+      'Pipe Repair (Exposed Pipe)',
+      'Toilet Repair',
+      'Drainage Declogging',
+      'Pipe Line Declogging',
+      'Water Heater Installation',
+      'Water Heater Repair',
+      'Shower Installation'
     ],
     Laundry: [
-      'Standard wash–dry–fold workflow',
-      'Delicates / careful fabric handling',
-      'Handwash processing',
-      'Heavy fabric washing',
-      'Bulky item washing',
-      'Stain spotting & pre-treatment',
-      'Garment finishing',
-      'Per-piece garment handling',
-      'Label-based sorting & item tracking'
+      'Regular Clothes (Wash + Dry + Fold)',
+      'Handwash',
+      'Towels/Linens/Demin (Wash + Dry + Fold)',
+      'Blankets/Comforters (Wash + Dry + Fold)',
+      'Dry Cleaning'
     ]
   };
 
@@ -178,9 +187,16 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     rightLabel
   }) => {
     const [q, setQ] = useState('');
-    const filtered = hideSearch ? items || [] : (items || []).filter((it) => it.toLowerCase().includes(q.toLowerCase()));
+    const filtered = hideSearch
+      ? items || []
+      : (items || []).filter((it) => String(it || '').toLowerCase().includes(q.toLowerCase()));
+
     return (
-      <div className={`absolute z-50 mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}>
+      <div
+        className={`absolute z-50 mt-2 ${
+          fullWidth ? 'left-0 right-0 w-full' : 'w-80'
+        } rounded-xl border border-gray-200 bg-white shadow-xl p-3`}
+      >
         <div className="px-2 pb-2">
           <div className="text-sm font-semibold text-gray-800">{title}</div>
           {!hideSearch && (
@@ -194,12 +210,27 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             </div>
           )}
         </div>
+
         <div className="max-h-64 overflow-y-auto px-2 grid grid-cols-1 gap-1">
           {filtered && filtered.length ? (
             filtered.map((it) => {
               const isSel = value === it;
               const isDisabled = disabledLabel && disabledLabel(it);
+              const headerText = normalizeHeader(it);
               const right = typeof rightLabel === 'function' ? rightLabel(it) || '' : '';
+
+              if (isDisabled && isTaskHeader(it)) {
+                return (
+                  <div key={it} className="py-2">
+                    <div className="flex items-center gap-3">
+                      <div className="h-px bg-gray-200 flex-1" />
+                      <div className="text-xs font-bold text-gray-900">{headerText}</div>
+                      <div className="h-px bg-gray-200 flex-1" />
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <button
                   key={it}
@@ -215,7 +246,11 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                 >
                   <span className="truncate">{it}</span>
                   {right ? (
-                    <span className={`shrink-0 text-xs font-semibold ${isSel && !isDisabled ? 'text-white/90' : 'text-[#008cfc]'}`}>
+                    <span
+                      className={`shrink-0 text-xs font-semibold ${
+                        isSel && !isDisabled ? 'text-white/90' : 'text-[#008cfc]'
+                      }`}
+                    >
                       {right}
                     </span>
                   ) : null}
@@ -226,6 +261,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             <div className="text-xs text-gray-400 px-2 py-3">{emptyLabel}</div>
           )}
         </div>
+
         <div className="flex items-center justify-between mt-3 px-2">
           <div className="text-xs text-gray-400">
             {(filtered || []).length} result{(filtered || []).length === 1 ? '' : 's'}
@@ -398,13 +434,22 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
     setYearsExperience(String(n));
   };
 
-  const isYearsValid = yearsExperience !== '' && /^\d+$/.test(yearsExperience) && Number(yearsExperience) >= 1 && Number(yearsExperience) <= 50;
+  const isYearsValid =
+    yearsExperience !== '' &&
+    /^\d+$/.test(yearsExperience) &&
+    Number(yearsExperience) >= 1 &&
+    Number(yearsExperience) <= 50;
 
   const hasServiceDetails =
     serviceTypesSelected.length > 0 &&
     serviceTypesSelected.every((t) => (serviceTask[t] || []).some((v) => String(v || '').trim() !== ''));
 
-  const isFormValid = serviceTypesSelected.length > 0 && hasServiceDetails && serviceDescription.trim() && isYearsValid && toolsProvided;
+  const isFormValid =
+    serviceTypesSelected.length > 0 &&
+    hasServiceDetails &&
+    serviceDescription.trim() &&
+    isYearsValid &&
+    toolsProvided;
 
   const proceed = () => {
     const draft = {
@@ -473,7 +518,14 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       <div className="sticky top-0 z-10 border-b border-blue-100/60 bg-white/80 backdrop-blur">
         <div className="mx-auto w-full max-w-[1520px] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/jdklogo.png" alt="" className="h-8 w-8 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <img
+              src="/jdklogo.png"
+              alt=""
+              className="h-8 w-8 object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
             <div className="text-2xl md:text-3xl font-semibold text-gray-900">Tell us about your work</div>
           </div>
           <div className="flex items-center gap-2">
@@ -500,9 +552,25 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     {serviceTypes.map((type) => (
                       <label key={type} className="flex items-center gap-3 cursor-pointer select-none">
-                        <input type="checkbox" checked={serviceTypesSelected.includes(type)} onChange={() => handleServiceTypeToggle(type)} className="peer sr-only" />
-                        <span className="relative h-5 w-5 rounded-md border border-gray-300 bg-white transition peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 peer-checked:bg-[#008cfc] peer-checked:border-[#008cfc] grid place-items-center" aria-hidden="true">
-                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 opacity-0 peer-checked:opacity-100 transition" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <input
+                          type="checkbox"
+                          checked={serviceTypesSelected.includes(type)}
+                          onChange={() => handleServiceTypeToggle(type)}
+                          className="peer sr-only"
+                        />
+                        <span
+                          className="relative h-5 w-5 rounded-md border border-gray-300 bg-white transition peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 peer-checked:bg-[#008cfc] peer-checked:border-[#008cfc] grid place-items-center"
+                          aria-hidden="true"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="h-3.5 w-3.5 opacity-0 peer-checked:opacity-100 transition"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
                         </span>
@@ -510,7 +578,9 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                       </label>
                     ))}
                   </div>
-                  {attempted && serviceTypesSelected.length === 0 && <p className="text-xs text-red-600 mt-1">Select at least one service type.</p>}
+                  {attempted && serviceTypesSelected.length === 0 && (
+                    <p className="text-xs text-red-600 mt-1">Select at least one service type.</p>
+                  )}
                 </div>
 
                 {serviceTypesSelected.length > 0 && (
@@ -518,8 +588,11 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                     <h4 className="text-2xl font-semibold mb-2">Service Task</h4>
                     {serviceTypesSelected.map((jobType) => {
                       const options = jobTasks[jobType] || [];
-                      const selectedNonEmpty = (serviceTask[jobType] || []).filter((v) => String(v || '').trim() !== '');
+                      const selectedNonEmpty = (serviceTask[jobType] || []).filter(
+                        (v) => String(v || '').trim() !== '' && !isTaskHeader(v)
+                      );
                       const hasDetail = selectedNonEmpty.length > 0;
+
                       return (
                         <div key={jobType} className="mb-6 rounded-xl border border-gray-200 bg-white shadow-xs">
                           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -532,14 +605,39 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                               const key = `${jobType}-${index}`;
                               return (
                                 <div key={index} className="mb-3" ref={(node) => setTaskRowRef(key, node)}>
-                                  <div className={`flex items-stretch rounded-xl border ${attempted && !task ? 'border-red-500' : 'border-gray-300'} bg-white overflow-hidden`}>
-                                    <div className="px-3 py-3 text-xs text-gray-500 bg-gray-50 border-r border-gray-200 min-w-[62px] grid place-items-center">Task {index + 1}</div>
-                                    <button type="button" onClick={() => setOpenTaskKey((k) => (k === key ? null : key))} className="flex-1 px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                                  <div
+                                    className={`flex items-stretch rounded-xl border ${
+                                      attempted && !task ? 'border-red-500' : 'border-gray-300'
+                                    } bg-white overflow-hidden`}
+                                  >
+                                    <div className="px-3 py-3 text-xs text-gray-500 bg-gray-50 border-r border-gray-200 min-w-[62px] grid place-items-center">
+                                      Task {index + 1}
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenTaskKey((k) => (k === key ? null : key))}
+                                      className="flex-1 px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                    >
                                       {task ? <span className="truncate">{task}</span> : 'Select a service'}
                                     </button>
-                                    <button type="button" onClick={() => setOpenTaskKey((k) => (k === key ? null : key))} className="px-3 pr-4 text-gray-600 hover:text-gray-800">
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenTaskKey((k) => (k === key ? null : key))}
+                                      className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                                    >
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-5 w-5"
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor"
+                                      >
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                                          clipRule="evenodd"
+                                        />
                                       </svg>
                                     </button>
                                   </div>
@@ -551,8 +649,17 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                                         value={task}
                                         fullWidth
                                         title={`Select ${jobType} Service`}
-                                        disabledLabel={(opt) => (serviceTask[jobType] || []).includes(opt) && opt !== task}
+                                        disabledLabel={(opt) => {
+                                          if (isTaskHeader(opt)) return true;
+                                          return (serviceTask[jobType] || []).includes(opt) && opt !== task;
+                                        }}
                                         onSelect={(val) => {
+                                          if (!val) {
+                                            handleJobDetailChange(jobType, index, '');
+                                            setOpenTaskKey(null);
+                                            return;
+                                          }
+                                          if (isTaskHeader(val)) return;
                                           handleJobDetailChange(jobType, index, val);
                                           setOpenTaskKey(null);
                                         }}
@@ -563,12 +670,19 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                               );
                             })}
 
-                            {!hasDetail && attempted && <p className="text-xs text-red-600 mt-1">Choose at least one {jobType} service.</p>}
+                            {!hasDetail && attempted && (
+                              <p className="text-xs text-red-600 mt-1">Choose at least one {jobType} service.</p>
+                            )}
 
                             <div className="mt-3 flex items-center justify-between">
-                              <button type="button" onClick={() => addTaskField(jobType)} className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 text-sm">
+                              <button
+                                type="button"
+                                onClick={() => addTaskField(jobType)}
+                                className="px-8 py-3 bg-[#008cfc] text-white rounded-md shadow-md hover:bg-blue-700 transition duration-300 text-sm"
+                              >
                                 + Add Another Task
                               </button>
+
                               <button
                                 type="button"
                                 onClick={() => setServiceTask((prev) => ({ ...prev, [jobType]: [''] }))}
@@ -593,11 +707,15 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                     value={serviceDescription}
                     onChange={(e) => setServiceDescription(e.target.value)}
                     placeholder="Describe the service you offer"
-                    className={`w-full h-[180px] px-4 py-3 border ${attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                    className={`w-full h-[180px] px-4 py-3 border ${
+                      attempted && !serviceDescription.trim() ? 'border-red-500' : 'border-gray-300'
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
                     required
                     aria-invalid={attempted && !serviceDescription.trim()}
                   />
-                  {attempted && !serviceDescription.trim() && <p className="text-xs text-red-600 mt-1">Please describe your services.</p>}
+                  {attempted && !serviceDescription.trim() && (
+                    <p className="text-xs text-red-600 mt-1">Please describe your services.</p>
+                  )}
                 </div>
 
                 <div className="mb-4">
@@ -612,15 +730,21 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                     value={yearsExperience}
                     onChange={handleYearsChange}
                     placeholder="Enter years of experience"
-                    className={`w-full px-4 py-3 border ${attempted && !isYearsValid ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
+                    className={`w-full px-4 py-3 border ${
+                      attempted && !isYearsValid ? 'border-red-500' : 'border-gray-300'
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base`}
                     required
                     aria-invalid={attempted && !isYearsValid}
                   />
-                  {attempted && !isYearsValid && <p className="text-xs text-red-600 mt-1">Enter a valid number from 1–50.</p>}
+                  {attempted && !isYearsValid && (
+                    <p className="text-xs text-red-600 mt-1">Enter a valid number from 1–50.</p>
+                  )}
                 </div>
 
                 <div className="mb-2 relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Do you have your own tools or equipment? *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Do you have your own tools or equipment? *
+                  </label>
 
                   <select value={toolsProvided} onChange={(e) => setToolsProvided(e.target.value)} className="hidden" aria-hidden="true" tabIndex={-1}>
                     <option value="">Select Yes or No</option>
@@ -629,10 +753,19 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                   </select>
 
                   <div className={`flex items-center rounded-xl border ${attempted && !toolsProvided ? 'border-red-500' : 'border-gray-300'}`}>
-                    <button type="button" onClick={() => setToolsOpen((s) => !s)} className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base">
+                    <button
+                      type="button"
+                      onClick={() => setToolsOpen((s) => !s)}
+                      className="w-full px-4 py-3 text-left rounded-l-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                    >
                       {toolsProvided || 'Select Yes or No'}
                     </button>
-                    <button type="button" onClick={() => setToolsOpen((s) => !s)} className="px-3 pr-4 text-gray-600 hover:text-gray-800" aria-label="Open tools provided options">
+                    <button
+                      type="button"
+                      onClick={() => setToolsOpen((s) => !s)}
+                      className="px-3 pr-4 text-gray-600 hover:text-gray-800"
+                      aria-label="Open tools provided options"
+                    >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
                       </svg>
@@ -660,7 +793,11 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between gap-3">
-          <button type="button" onClick={onBackClick} className="w-full sm:w-1/3 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition mt-2.5">
+          <button
+            type="button"
+            onClick={onBackClick}
+            className="w-full sm:w-1/3 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition mt-2.5"
+          >
             Back : Personal Information
           </button>
           <button
@@ -699,12 +836,23 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
-                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
@@ -742,12 +890,23 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
             <div className="relative mx-auto w-40 h-40">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
-                style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }}
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {!logoBroken ? (
-                  <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>

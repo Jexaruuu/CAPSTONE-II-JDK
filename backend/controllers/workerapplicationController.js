@@ -335,6 +335,56 @@ async function finalizeRequiredDocsUploads(request_group_id, docCols) {
   return docCols;
 }
 
+function canonType(s) {
+  const k = String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if (/carpent/.test(k)) return 'carpentry';
+  if (/elect/.test(k)) return 'electrical works';
+  if (/plumb/.test(k)) return 'plumbing';
+  if (/(car\s*wash|carwash|auto)/.test(k)) return 'car washing';
+  if (/laund/.test(k)) return 'laundry';
+  return k;
+}
+
+function canonTask(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w\s-]/g, '')
+    .trim();
+}
+
+function extractTaskList(service_task) {
+  if (!service_task) return [];
+  if (typeof service_task === 'string') {
+    return service_task
+      .split(/[,/|]+/)
+      .map((x) => canonTask(x))
+      .filter(Boolean);
+  }
+  if (Array.isArray(service_task)) {
+    const out = [];
+    service_task.forEach((it) => {
+      if (!it) return;
+      if (typeof it === 'string') out.push(canonTask(it));
+      else if (typeof it === 'object') {
+        const tasks = Array.isArray(it.tasks) ? it.tasks : [];
+        tasks.forEach((t) => out.push(canonTask(t)));
+      }
+    });
+    return out.filter(Boolean);
+  }
+  if (typeof service_task === 'object') {
+    const out = [];
+    Object.values(service_task).forEach((v) => {
+      if (!v) return;
+      const arr = Array.isArray(v) ? v : [v];
+      arr.forEach((x) => out.push(canonTask(x)));
+    });
+    return out.filter(Boolean);
+  }
+  return [];
+}
+
 exports.submitFullApplication = async (req, res) => {
   try {
     const src = req.body || {};
@@ -997,6 +1047,12 @@ exports.submitFullApplication = async (req, res) => {
 exports.listPublicApproved = async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '60', 10), 1), 200);
+
+    const filterServiceType = canonType(req.query.service_type || req.query.serviceType || '');
+    const filterTasksRaw = req.query.service_task || req.query.serviceTask || '';
+    const filterTaskList = extractTaskList(filterTasksRaw);
+    const filterTaskSet = new Set(filterTaskList.map(canonTask).filter(Boolean));
+
     const { data: apps, error } = await supabaseAdmin
       .from('worker_application_status')
       .select('id, request_group_id, status, created_at, email_address, info, details')
@@ -1047,7 +1103,7 @@ exports.listPublicApproved = async (req, res) => {
       if (r?.request_group_id) workMap[r.request_group_id] = r;
     });
 
-    const items = rows
+    let items = rows
       .filter((r) => approvedCurrentGids.includes(r.request_group_id))
       .map((r) => {
         const gid = r.request_group_id;
@@ -1063,6 +1119,23 @@ exports.listPublicApproved = async (req, res) => {
           work: w
         };
       });
+
+    if (filterServiceType || filterTaskSet.size) {
+      items = items.filter((it) => {
+        const w = it.work || it.details || {};
+        const wTypes = Array.isArray(w.service_types) ? w.service_types : [];
+        const wCanonTypes = new Set(wTypes.map(canonType).filter(Boolean));
+
+        const wTaskList = extractTaskList(w.service_task || []);
+        const wTaskSet = new Set(wTaskList.map(canonTask).filter(Boolean));
+
+        const typeOk = filterServiceType ? wCanonTypes.has(filterServiceType) : true;
+        const taskOk =
+          filterTaskSet.size === 0 ? true : Array.from(filterTaskSet).some((t) => wTaskSet.has(t));
+
+        return typeOk && taskOk;
+      });
+    }
 
     return res.status(200).json({ items });
   } catch (e) {

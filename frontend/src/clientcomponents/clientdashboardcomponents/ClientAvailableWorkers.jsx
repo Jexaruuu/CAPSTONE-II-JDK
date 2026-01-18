@@ -2,12 +2,12 @@ import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Star, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
-import ClientViewWorker from '../clientdashboardcomponents/clientavailableworkercomponents/ClientViewWorker'
+import ClientViewWorker from '../clientdashboardcomponents/clientavailableworkercomponents/ClientViewWorker';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const avatarFromName = (name) =>
-  `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
+  `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || 'User')}`;
 
 function peso(n) {
   const x = Number(n);
@@ -18,7 +18,8 @@ function peso(n) {
 function primaryRate(rate) {
   const t = String(rate?.rate_type || '').toLowerCase();
   if (t === 'hourly rate') {
-    const f = rate?.rate_from, to = rate?.rate_to;
+    const f = rate?.rate_from,
+      to = rate?.rate_to;
     if (f && to) return `${peso(f)}–${peso(to)}`;
     if (f) return `${peso(f)}/hr`;
     if (to) return `${peso(to)}/hr`;
@@ -61,8 +62,8 @@ function normalizeGender(v) {
   const s = String(v ?? '').trim();
   if (!s) return null;
   const l = s.toLowerCase();
-  if (['m','male','man','masculine'].includes(l)) return 'Male';
-  if (['f','female','woman','feminine'].includes(l)) return 'Female';
+  if (['m', 'male', 'man', 'masculine'].includes(l)) return 'Male';
+  if (['f', 'female', 'woman', 'feminine'].includes(l)) return 'Female';
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
@@ -127,8 +128,13 @@ function normalizeRateType(v) {
 
 function deriveRatingPercent(src) {
   const cands = [
-    src?.rating_percent, src?.ratingPercent, src?.rating_percentage, src?.job_success_percent,
-    src?.jobSuccessPercent, src?.success_percent, src?.successPercent
+    src?.rating_percent,
+    src?.ratingPercent,
+    src?.rating_percentage,
+    src?.job_success_percent,
+    src?.jobSuccessPercent,
+    src?.success_percent,
+    src?.successPercent
   ];
   for (const v of cands) {
     const n = Number(String(v ?? '').replace(/[^\d.]/g, ''));
@@ -139,8 +145,15 @@ function deriveRatingPercent(src) {
 
 function deriveRatingFive(src) {
   const direct = [
-    src?.rating, src?.rating_out_of_5, src?.ratingOutOf5, src?.stars, src?.star_average, src?.starAverage
-  ].map((v) => Number(v)).find((n) => Number.isFinite(n) && n >= 0 && n <= 5);
+    src?.rating,
+    src?.rating_out_of_5,
+    src?.ratingOutOf5,
+    src?.stars,
+    src?.star_average,
+    src?.starAverage
+  ]
+    .map((v) => Number(v))
+    .find((n) => Number.isFinite(n) && n >= 0 && n <= 5);
   if (Number.isFinite(direct)) return direct;
   const pct = deriveRatingPercent(src);
   if (pct != null) return Math.max(0, Math.min(5, pct / 20));
@@ -166,12 +179,18 @@ const ClientAvailableWorkers = () => {
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
 
-  const goTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {} };
+  const goTop = () => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
+  };
   const beginRoute = (to) => {
     if (navLoading) return;
     goTop();
     setNavLoading(true);
-    setTimeout(() => { navigate(to, { replace: true }); }, 2000);
+    setTimeout(() => {
+      navigate(to, { replace: true });
+    }, 2000);
   };
 
   useEffect(() => {
@@ -197,13 +216,18 @@ const ClientAvailableWorkers = () => {
 
   useEffect(() => {
     if (!navLoading) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       window.removeEventListener('popstate', onPopState, true);
@@ -230,7 +254,11 @@ const ClientAvailableWorkers = () => {
           const st0 = stArr[0];
           const st0Cat = st0 && typeof st0 === 'object' && st0.category ? String(st0.category) : null;
           const st0Tasks = st0 && typeof st0 === 'object' ? flattenTasks(st0.tasks) : [];
-          const serviceTypeRaw = st0Cat || (Array.isArray(stArr) && typeof st0 === 'string' ? st0 : (work.service_type ?? work.primary_service_type ?? ''));
+          const serviceTypeRaw =
+            st0Cat ||
+            (Array.isArray(stArr) && typeof st0 === 'string'
+              ? st0
+              : work.service_type ?? work.primary_service_type ?? '');
           const serviceType = toText(serviceTypeRaw);
           const serviceTaskRaw = [
             ...flattenTasks(work.service_task),
@@ -241,20 +269,39 @@ const ClientAvailableWorkers = () => {
           ];
           const serviceTask = uniqJoin(serviceTaskRaw);
           const toolsProvided = toolsText(
-            work.tools_provided ?? work.toolsProvided ?? work.tools ?? work.provides_tools ?? work.has_tools ?? work.hasTools
+            work.tools_provided ??
+              work.toolsProvided ??
+              work.tools ??
+              work.provides_tools ??
+              work.has_tools ??
+              work.hasTools
           );
           const barangay = info.barangay ?? info.brgy ?? '';
-          const street = info.street ?? info.street_name ?? info.street_address ?? info.address_line1 ?? '';
+          const street =
+            info.street ??
+            info.street_name ??
+            info.street_address ??
+            info.address_line1 ??
+            '';
           const addressLine = [barangay, street].filter(Boolean).join(', ');
           const skill = st0Cat || (Array.isArray(stArr) && stArr.length ? String(stArr[0]) : 'General');
-          const rateText = primaryRate(rate) || 'Rate upon request';
+          const rateText = primaryRate(rate) || '';
           const rateType = normalizeRateType(rate?.rate_type ?? rate?.type ?? '');
           const ratingFive = deriveRatingFive(r) ?? deriveRatingFive(work);
-          const bio = work.work_description || 'Experienced home service professional focused on reliable, high-quality work and great communication.';
+          const bio =
+            work.work_description ||
+            'Experienced home service professional focused on reliable, high-quality work and great communication.';
           const country = 'Philippines';
           const success = '—';
           const jobs = 0;
-          const years = coerceYears(work.years_experience ?? work.years_of_experience ?? work.yearsExperience ?? work.experience_years ?? work.years ?? work.experience);
+          const years = coerceYears(
+            work.years_experience ??
+              work.years_of_experience ??
+              work.yearsExperience ??
+              work.experience_years ??
+              work.years ??
+              work.experience
+          );
           const dob = info.date_of_birth || info.birth_date || info.birthdate || info.dob || '';
           const age = computeAge(dob);
           const gender = normalizeGender(info.gender ?? info.sex ?? r.gender);
@@ -263,7 +310,7 @@ const ClientAvailableWorkers = () => {
           const typeLabels = [];
           if (Array.isArray(stArr) && stArr.length) {
             stArr.forEach((x) => {
-              const label = typeof x === 'object' ? (x.category || x.name || '') : x;
+              const label = typeof x === 'object' ? x.category || x.name || '' : x;
               if (label) typeLabels.push(String(label));
             });
           }
@@ -328,7 +375,9 @@ const ClientAvailableWorkers = () => {
         const enriched = await Promise.all(
           base.map(async (w) => {
             if (w.gender) {
-              const o = { ...w }; delete o.__meta; return o;
+              const o = { ...w };
+              delete o.__meta;
+              return o;
             }
             let sex = null;
             const e = w.__meta?.email ? String(w.__meta.email).trim() : '';
@@ -352,7 +401,9 @@ const ClientAvailableWorkers = () => {
       }
     };
     load();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const VIEW_LIMIT = 6;
@@ -365,15 +416,15 @@ const ClientAvailableWorkers = () => {
   const displayItems = viewItems.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE);
 
   const scrollRef = useRef(null);
-  const wrapRef   = useRef(null);
-  const cardRefs  = useRef([]);
+  const wrapRef = useRef(null);
+  const cardRefs = useRef([]);
 
   const [current, setCurrent] = useState(0);
   const [positions, setPositions] = useState([]);
 
   const GAP = 24;
 
-  const [cardW, setCardW]   = useState(420);
+  const [cardW, setCardW] = useState(420);
   const [endPad, setEndPad] = useState(0);
 
   const totalSlides = Math.max(1, Math.ceil(displayItems.length / PER_PAGE));
@@ -408,7 +459,7 @@ const ClientAvailableWorkers = () => {
   const scrollToIndex = (i) => {
     const el = scrollRef.current;
     if (!el) return;
-    const idx  = Math.max(0, Math.min(totalSlides - 1, i));
+    const idx = Math.max(0, Math.min(totalSlides - 1, i));
     const left = positions.length ? positions[idx] : idx * ((cardW + GAP) * PER_PAGE - GAP);
     el.scrollTo({ left, behavior: 'smooth' });
     setCurrent(idx);
@@ -420,11 +471,11 @@ const ClientAvailableWorkers = () => {
   };
 
   const recomputeCardWidth = () => {
-    const wrap  = wrapRef.current;
+    const wrap = wrapRef.current;
     const track = scrollRef.current;
     if (!wrap || !track) return;
     const visible = wrap.clientWidth - getHPad(wrap) - getHPad(track);
-    const exact   = Math.floor((visible - GAP * (PER_PAGE - 1)) / PER_PAGE);
+    const exact = Math.floor((visible - GAP * (PER_PAGE - 1)) / PER_PAGE);
     const clamped = Math.max(420, Math.min(600, exact));
     setCardW(clamped);
     setEndPad(0);
@@ -456,10 +507,10 @@ const ClientAvailableWorkers = () => {
   }, [page]);
 
   const isPointerDownRef = useRef(false);
-  const pointerIdRef     = useRef(null);
-  const startXRef        = useRef(0);
-  const startLeftRef     = useRef(0);
-  const movedRef         = useRef(false);
+  const pointerIdRef = useRef(null);
+  const startXRef = useRef(0);
+  const startLeftRef = useRef(0);
+  const movedRef = useRef(false);
 
   const snapToNearestSlide = () => {
     const el = scrollRef.current;
@@ -539,7 +590,10 @@ const ClientAvailableWorkers = () => {
         <a
           href="/find-a-worker"
           className="text-[#008cfc] flex items-center gap-1 font-medium hover:underline text-base"
-          onClick={(e) => { e.preventDefault(); beginRoute('/find-a-worker'); }}
+          onClick={(e) => {
+            e.preventDefault();
+            beginRoute('/find-a-worker');
+          }}
         >
           Browse available workers <ArrowRight size={16} />
         </a>
@@ -579,9 +633,9 @@ const ClientAvailableWorkers = () => {
                 style={{ touchAction: 'auto' }}
               >
                 {displayItems.map((w, i) => {
-                  const rating = 0;
-                  const filledStars = 0;
-                  const singleIcon = (w.serviceIcons || []).length === 1;
+                  const rating = Number.isFinite(Number(w.ratingFive)) ? Number(w.ratingFive) : 0;
+                  const filledStars = Math.max(0, Math.min(5, Math.floor(rating)));
+
                   return (
                     <div
                       key={w.id}
@@ -603,7 +657,10 @@ const ClientAvailableWorkers = () => {
                                   currentTarget.style.display = 'none';
                                   const parent = currentTarget.parentElement;
                                   if (parent) {
-                                    parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-gray-100 text-gray-700 text-base font-semibold">${(w.name || '?').trim().charAt(0).toUpperCase()}</div>`;
+                                    parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-gray-100 text-gray-700 text-base font-semibold">${(w.name || '?')
+                                      .trim()
+                                      .charAt(0)
+                                      .toUpperCase()}</div>`;
                                   }
                                   requestAnimationFrame(recomputePositions);
                                 }}
@@ -612,53 +669,13 @@ const ClientAvailableWorkers = () => {
                             <div className="min-w-0">
                               <div className="flex items-baseline gap-1">
                                 <span className="text-sm md:text-lg font-semibold text-gray-700">Worker:</span>
-                                <span className="text-lg md:text-lg font-semibold text-[#008cfc] leading-tight truncate">{w.name}</span>
+                                <span className="text-lg md:text-lg font-semibold text-[#008cfc] leading-tight truncate">
+                                  {w.name}
+                                </span>
                               </div>
-                              {w.emailAddress ? (
-                                <div className="text-xs text-gray-600 truncate">{w.emailAddress}</div>
-                              ) : null}
-                              <div className="mt-1 flex items-center gap-1">
-                                {[0,1,2,3,4].map((idx) => (
-                                  <Star
-                                    key={idx}
-                                    size={14}
-                                    className={idx < filledStars ? 'text-yellow-400' : 'text-gray-300'}
-                                    fill="currentColor"
-                                  />
-                                ))}
-                                <span className="text-xs font-medium text-gray-700">{`${rating.toFixed(1)}/5`}</span>
-                              </div>
+                              {w.emailAddress ? <div className="text-xs text-gray-600 truncate">{w.emailAddress}</div> : null}
                             </div>
                           </div>
-
-                          {singleIcon ? (
-                            <div className="relative w-18 h-18 flex items-start justify-end">
-                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200">
-                                {React.createElement(w.serviceIcons[0], { size: 16, className: 'text-[#008cfc]' })}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="relative w-18 h-18 grid grid-cols-2 auto-rows-[minmax(0,1fr)] gap-2">
-                              {(w.serviceIcons || []).slice(0,5).map((Icon, idx) => {
-                                const pos = [
-                                  { gridColumn: '1', gridRow: '1' },
-                                  { gridColumn: '2', gridRow: '1' },
-                                  { gridColumn: '2', gridRow: '2' },
-                                  { gridColumn: '1', gridRow: '2' },
-                                  { gridColumn: '2', gridRow: '3' }
-                                ][idx] || { gridColumn: '1', gridRow: '3' };
-                                return (
-                                  <span
-                                    key={idx}
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200"
-                                    style={{ gridColumn: pos.gridColumn, gridRow: pos.gridRow }}
-                                  >
-                                    <Icon size={16} className="text-[#008cfc]" />
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
                         </div>
 
                         <div className="mt-4 h-px bg-gray-200" />
@@ -667,7 +684,10 @@ const ClientAvailableWorkers = () => {
                           <div className="flex flex-wrap items-center gap-2">
                             <div className="text-sm font-semibold text-gray-700">Service Type:</div>
                             {(w.serviceTypeList && w.serviceTypeList.length ? w.serviceTypeList : [w.serviceType || '—']).map((lbl, idx) => (
-                              <span key={idx} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200"
+                              >
                                 {lbl}
                               </span>
                             ))}
@@ -675,8 +695,19 @@ const ClientAvailableWorkers = () => {
 
                           <div className="mt-3 flex flex-wrap items-center gap-2">
                             <div className="text-sm font-semibold text-gray-700">Service Task:</div>
-                            {(w.serviceTaskList && w.serviceTaskList.length ? w.serviceTaskList : (w.serviceTask ? String(w.serviceTask).split(/[,/|]+/).map(s=>s.trim()).filter(Boolean) : ['—'])).map((lbl, idx) => (
-                              <span key={idx} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                            {(w.serviceTaskList && w.serviceTaskList.length
+                              ? w.serviceTaskList
+                              : w.serviceTask
+                              ? String(w.serviceTask)
+                                  .split(/[,/|]+/)
+                                  .map((s) => s.trim())
+                                  .filter(Boolean)
+                              : ['—']
+                            ).map((lbl, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200"
+                              >
                                 {lbl}
                               </span>
                             ))}
@@ -689,17 +720,37 @@ const ClientAvailableWorkers = () => {
                         <div className="mt-4 h-px bg-gray-200" />
 
                         <div className="mt-4 flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-semibold text-[#008cfc]">{w.addressLine || w.country}</div>
+                          <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
-                              {w.rateType && <div className="text-sm font-semibold text-[#008cfc]">{w.rateType}</div>}
-                              {w.rateType ? <span className="text-gray-400">•</span> : null}
-                              <div className="text-sm font-semibold text-[#008cfc]">{w.rate || 'Rate upon request'}</div>
+                              <div className="text-sm font-semibold text-gray-700">Rating:</div>
+                              <div className="flex items-center gap-1">
+                                {[0, 1, 2, 3, 4].map((idx) => (
+                                  <Star
+                                    key={idx}
+                                    size={14}
+                                    className={idx < filledStars ? 'text-yellow-400' : 'text-gray-300'}
+                                    fill="currentColor"
+                                  />
+                                ))}
+                              </div>
+                              <span className="text-xs font-medium text-gray-700">{`${rating.toFixed(1)}/5`}</span>
                             </div>
+
+                            {(w.rateType || w.rate) ? (
+                              <div className="flex items-center gap-2">
+                                {w.rateType && <div className="text-sm font-semibold text-[#008cfc]">{w.rateType}</div>}
+                                {w.rateType && w.rate ? <span className="text-gray-400">•</span> : null}
+                                {w.rate ? <div className="text-sm font-semibold text-[#008cfc]">{w.rate}</div> : null}
+                              </div>
+                            ) : null}
                           </div>
+
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
-                            onClick={() => { setViewWorker(w); setViewOpen(true); }}
+                            onClick={() => {
+                              setViewWorker(w);
+                              setViewOpen(true);
+                            }}
                             className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition"
                           >
                             View worker
