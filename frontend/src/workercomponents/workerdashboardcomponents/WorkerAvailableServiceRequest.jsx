@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt, Star } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
 import WorkerViewRequest from '../workerdashboardcomponents/workeravailablerequestcomponents/WorkerViewRequest';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -29,7 +29,8 @@ function fmtRate(rate) {
   const t = String(rate?.rate_type || '').toLowerCase();
   const peso = (n) => `₱${Number(n).toLocaleString()}`;
   if (t.includes('hour') || t === 'range') {
-    const f = rate?.rate_from, to = rate?.rate_to;
+    const f = rate?.rate_from,
+      to = rate?.rate_to;
     if (f && to) return `${peso(f)} - ${peso(to)}`;
     if (f) return `${peso(f)}`;
     if (to) return `${peso(to)}`;
@@ -85,7 +86,11 @@ const pick = (obj, keys) => {
 const toObj = (v) => {
   if (!v) return {};
   if (typeof v === 'string') {
-    try { return JSON.parse(v); } catch { return {}; }
+    try {
+      return JSON.parse(v);
+    } catch {
+      return {};
+    }
   }
   return v && typeof v === 'object' ? v : {};
 };
@@ -99,12 +104,18 @@ const WorkerAvailableServiceRequest = () => {
   const [navLoading, setNavLoading] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
 
-  const goTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch {} };
+  const goTop = () => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {}
+  };
   const beginRoute = (to) => {
     if (navLoading) return;
     goTop();
     setNavLoading(true);
-    setTimeout(() => { navigate(to, { replace: true }); }, 2000);
+    setTimeout(() => {
+      navigate(to, { replace: true });
+    }, 2000);
   };
 
   useEffect(() => {
@@ -130,13 +141,18 @@ const WorkerAvailableServiceRequest = () => {
 
   useEffect(() => {
     if (!navLoading) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', onPopState, true);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
     window.addEventListener('keydown', blockKeys, true);
     return () => {
       window.removeEventListener('popstate', onPopState, true);
@@ -148,7 +164,7 @@ const WorkerAvailableServiceRequest = () => {
   useEffect(() => {
     let ok = true;
     (async () => {
-      const base = API_BASE.replace(/\/+$/,'');
+      const base = API_BASE.replace(/\/+$/, '');
       let dataArr = [];
       const primary = [`${base}/api/clientservicerequests/open`];
       const fallbacks = [
@@ -172,11 +188,15 @@ const WorkerAvailableServiceRequest = () => {
               : Array.isArray(data?.rows)
               ? data.rows
               : null;
-            if (arr) { dataArr = arr; break; }
+            if (arr) {
+              dataArr = arr;
+              break;
+            }
           }
         } catch {}
       }
       if (!ok) return;
+
       const now = Date.now();
       const mapped = (dataArr || []).map((r, idx) => {
         const infoRaw = r.info ?? r.client_info ?? r.client_information ?? r.client ?? r.profile ?? {};
@@ -191,22 +211,25 @@ const WorkerAvailableServiceRequest = () => {
         const ia = toObj(i.address);
         const da = toObj(d.address);
         const barangay =
-          pick(i, ['barangay','brgy']) ||
-          pick(ia, ['barangay','brgy']) ||
+          pick(i, ['barangay', 'brgy']) ||
+          pick(ia, ['barangay', 'brgy']) ||
           pick(d, ['barangay']) ||
           pick(da, ['barangay']);
         const street =
-          pick(i, ['street','street_name','street_address','address_line1']) ||
-          pick(ia, ['street','street_name','street_address','address_line1']) ||
-          pick(d, ['street','street_name','street_address']) ||
-          pick(da, ['street','street_name','street_address']);
+          pick(i, ['street', 'street_name', 'street_address', 'address_line1']) ||
+          pick(ia, ['street', 'street_name', 'street_address', 'address_line1']) ||
+          pick(d, ['street', 'street_name', 'street_address']) ||
+          pick(da, ['street', 'street_name', 'street_address']);
         const addl =
-          pick(i, ['additional_address','additional_street','address_line2']) ||
-          pick(ia, ['additional_address','additional_street','address_line2']) ||
-          pick(d, ['additional_address','additional_street','address_line2']) ||
-          pick(da, ['additional_address','additional_street','address_line2']);
+          pick(i, ['additional_address', 'additional_street', 'address_line2']) ||
+          pick(ia, ['additional_address', 'additional_street', 'address_line2']) ||
+          pick(d, ['additional_address', 'additional_street', 'address_line2']) ||
+          pick(da, ['additional_address', 'additional_street', 'address_line2']);
 
-        const addressLine = [barangay, street, addl].map((s)=>String(s||'').trim()).filter(Boolean).join(', ');
+        const addressLine = [barangay, street, addl]
+          .map((s) => String(s || '').trim())
+          .filter(Boolean)
+          .join(', ');
 
         const dt = buildDateTime(d.preferred_date || '', d.preferred_time || '');
         const statusLower = String(r.status || '').toLowerCase();
@@ -215,14 +238,22 @@ const WorkerAvailableServiceRequest = () => {
         const iconLabels = [];
         const pushType = (val) => {
           if (val == null) return;
-          if (Array.isArray(val)) { val.forEach(pushType); return; }
+          if (Array.isArray(val)) {
+            val.forEach(pushType);
+            return;
+          }
           if (typeof val === 'object') {
             if (val.category) iconLabels.push(String(val.category));
             else if (val.name) iconLabels.push(String(val.name));
             else if (val.type) iconLabels.push(String(val.type));
             return;
           }
-          String(val).split(/[,/|]+/).forEach((s) => { s = s.trim(); if (s) iconLabels.push(s); });
+          String(val)
+            .split(/[,/|]+/)
+            .forEach((s) => {
+              s = s.trim();
+              if (s) iconLabels.push(s);
+            });
         };
         pushType(d.service_type);
 
@@ -231,23 +262,33 @@ const WorkerAvailableServiceRequest = () => {
         iconLabels.forEach((lbl) => {
           const Icon = getServiceIcon(lbl);
           const key = Icon.displayName || Icon.name || 'Icon';
-          if (!seen.has(key)) { seen.add(key); icons.push(Icon); }
+          if (!seen.has(key)) {
+            seen.add(key);
+            icons.push(Icon);
+          }
         });
         const serviceIcons = icons.slice(0, 3);
 
         const tasksOut = [];
         const addTask = (val) => {
           if (val == null) return;
-          if (Array.isArray(val)) { val.forEach(addTask); return; }
+          if (Array.isArray(val)) {
+            val.forEach(addTask);
+            return;
+          }
           if (typeof val === 'object') {
             if (Array.isArray(val.tasks)) val.tasks.forEach(addTask);
             else Object.values(val).forEach(addTask);
             return;
           }
-          String(val).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) tasksOut.push(s); });
+          String(val)
+            .split(/[,/|]+/)
+            .forEach((s) => {
+              s = s.trim();
+              if (s) tasksOut.push(s);
+            });
         };
         addTask(d.service_task);
-
         const service_task_label = [...new Set(tasksOut)].join(', ');
 
         let stLabel = '';
@@ -284,11 +325,13 @@ const WorkerAvailableServiceRequest = () => {
         };
       });
 
-      const onlyApproved = mapped.filter(x => x.status === 'approved');
+      const onlyApproved = mapped.filter((x) => x.status === 'approved');
       const active = onlyApproved.filter((x) => !x.isExpired);
       setItems(active);
     })();
-    return () => { ok = false; };
+    return () => {
+      ok = false;
+    };
   }, []);
 
   const VIEW_LIMIT = 6;
@@ -402,7 +445,7 @@ const WorkerAvailableServiceRequest = () => {
     if (!el) return;
     const idx = Math.max(0, Math.min(totalSlides - 1, i));
     const slideLefts = getViewSlideLefts();
-    const fallback = idx * (({width:cardW}+GAP)*PER_PAGE - GAP);
+    const fallback = idx * ((cardW + GAP) * PER_PAGE - GAP);
     const left = slideLefts.length ? slideLefts[idx] : fallback;
     el.scrollTo({ left, behavior: 'smooth' });
   };
@@ -493,7 +536,10 @@ const WorkerAvailableServiceRequest = () => {
         <a
           href="/find-a-client"
           className="text-[#008cfc] flex items-center gap-1 font-medium hover:underline"
-          onClick={(e) => { e.preventDefault(); beginRoute('/find-a-client'); }}
+          onClick={(e) => {
+            e.preventDefault();
+            beginRoute('/find-a-client');
+          }}
         >
           Browse available requests <ArrowRight size={16} />
         </a>
@@ -533,7 +579,6 @@ const WorkerAvailableServiceRequest = () => {
                 style={{ touchAction: 'auto' }}
               >
                 {displayItems.map((req, i) => {
-                  const Icon = getServiceIcon(req.service_type);
                   return (
                     <div
                       key={req.id}
@@ -555,7 +600,10 @@ const WorkerAvailableServiceRequest = () => {
                                   currentTarget.style.display = 'none';
                                   const parent = currentTarget.parentElement;
                                   if (parent) {
-                                    parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-base font-semibold">${(req.name || '?').trim().charAt(0).toUpperCase()}</div>`;
+                                    parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-blue-100 text-blue-700 text-base font-semibold">${(req.name || '?')
+                                      .trim()
+                                      .charAt(0)
+                                      .toUpperCase()}</div>`;
                                   }
                                   requestAnimationFrame(recomputePositions);
                                 }}
@@ -566,28 +614,8 @@ const WorkerAvailableServiceRequest = () => {
                                 <span className="text-sm md:text-lg font-semibold text-gray-700">Client:</span>
                                 <span className="text-lg md:text-lg font-semibold text-[#008cfc] leading-tight truncate">{req.name}</span>
                               </div>
-                              {req.email ? (
-                                <div className="text-xs text-gray-600 truncate">{req.email}</div>
-                              ) : null}
-                              <div className="mt-1 flex items-center gap-1">
-                                {[0,1,2,3,4].map((idx) => (
-                                  <Star
-                                    key={idx}
-                                    size={14}
-                                    className="text-gray-300"
-                                    fill="currentColor"
-                                  />
-                                ))}
-                                <span className="text-xs font-medium text-gray-700">0.0/5</span>
-                              </div>
+                              {req.email ? <div className="text-xs text-gray-600 truncate">{req.email}</div> : null}
                             </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {(req.serviceIcons || []).map((Ic, idx) => (
-                              <span key={idx} className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200">
-                                <Ic size={16} className="text-[#008cfc]" />
-                              </span>
-                            ))}
                           </div>
                         </div>
 
@@ -628,32 +656,33 @@ const WorkerAvailableServiceRequest = () => {
 
                         <div className="mt-4 h-px bg-gray-200" />
 
-                        <div className="mt-4">
-                          <div className="text-sm font-semibold text-[#008cfc]">
-                            {[req.barangay, req.street].filter(Boolean).join(', ') || req.addressLine}
-                          </div>
-                          {req.additional_address ? (
-                            <div className="text-sm flex items-baseline gap-1">
-                              <span className="font-semibold text-gray-700">Landmark:</span>
-                              <span className="text-[#008cfc]">{req.additional_address}</span>
-                            </div>
-                          ) : null}
+                       <div className="mt-4 flex items-end justify-between gap-4">
+  <div className="min-w-0">
+    <div className="text-sm font-semibold text-[#008cfc]">
+      {[req.barangay, req.street].filter(Boolean).join(', ') || req.addressLine}
+    </div>
 
-                          <div className="mt-1 flex items-end justify-between">
-                            <div className="flex items-center gap-2">
-                              {req.rate_type && <div className="text-sm font-semibold text-[#008cfc]">{req.rate_type}</div>}
-                              {req.rate_type ? <span className="text-gray-400">•</span> : null}
-                              <div className="text-sm font-semibold text-[#008cfc]">{req.price || 'Rate upon request'}</div>
-                            </div>
-                            <a
-                              href={req.request_group_id ? `/worker/requests/${req.request_group_id}` : '#'}
-                              onPointerDown={(e)=>e.stopPropagation()}
-                              onClick={(e)=>{ e.preventDefault(); setViewRequest(req); setViewOpen(true); }}
-                              className="inline-flex items-center justify-center px-4 h-10 rounded-md bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition self-end"
-                            >
-                              View Request
-                            </a>
-                          </div>
+    {req.additional_address ? (
+      <div className="text-sm flex items-baseline gap-1">
+        <span className="font-semibold text-gray-700">Landmark:</span>
+        <span className="text-[#008cfc]">{req.additional_address}</span>
+      </div>
+    ) : null}
+  </div>
+                          <div className="mt-2 flex items-end justify-end">
+                           <a
+    href={req.request_group_id ? `/worker/requests/${req.request_group_id}` : '#'}
+    onPointerDown={(e) => e.stopPropagation()}
+    onClick={(e) => {
+      e.preventDefault();
+      setViewRequest(req);
+      setViewOpen(true);
+    }}
+    className="shrink-0 inline-flex items-center justify-center px-4 h-10 rounded-md bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition"
+  >
+    View Request
+  </a>
+</div>
                         </div>
                       </div>
                     </div>
@@ -685,9 +714,7 @@ const WorkerAvailableServiceRequest = () => {
               >
                 ‹
               </button>
-              <button className="h-9 min-w-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white">
-                {page}
-              </button>
+              <button className="h-9 min-w-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white">{page}</button>
               <button
                 className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 disabled={page >= totalPages}
@@ -710,7 +737,7 @@ const WorkerAvailableServiceRequest = () => {
         .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
       `}</style>
 
-      <WorkerViewRequest open={viewOpen} onClose={()=>setViewOpen(false)} request={viewRequest} />
+      <WorkerViewRequest open={viewOpen} onClose={() => setViewOpen(false)} request={viewRequest} />
 
       {navLoading && (
         <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
