@@ -663,6 +663,7 @@ export default function WorkerApplicationMenu() {
   const [searchTerm, setSearchTerm] = useState("");
   const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0, total: 0 });
   const [showDocs, setShowDocs] = useState(false);
+const [previewDoc, setPreviewDoc] = useState({ open: false, url: "", label: "" });
 
   const [docsFetched, setDocsFetched] = useState(null);
   const [docsLoading, setDocsLoading] = useState(false);
@@ -1917,6 +1918,41 @@ const fetchRequiredDocs = async (gid) => {
               onClick={() => setShowDocs(false)}
             />
 
+{previewDoc.open && (
+  <div className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4">
+    <div
+      className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+      onClick={() => setPreviewDoc({ open: false, url: "", label: "" })}
+    />
+
+    <div className="relative w-full max-w-3xl max-h-[85vh] rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-gray-900 truncate">
+            {previewDoc.label || "Document Preview"}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setPreviewDoc({ open: false, url: "", label: "" })}
+          className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+        >
+          Close
+        </button>
+      </div>
+
+      <div className="p-4 bg-white flex items-center justify-center max-h-[75vh] overflow-auto">
+        <img
+          src={previewDoc.url}
+          alt={previewDoc.label || "Preview"}
+          className="max-w-full max-h-[70vh] object-contain rounded-lg border border-gray-200"
+        />
+      </div>
+    </div>
+  </div>
+)}
+
             <div className="relative w-full max-w-6xl max-h-[86vh] rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
               <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-white to-white">
                 <div className="px-6 sm:px-8 py-5">
@@ -2054,7 +2090,16 @@ const fetchRequiredDocs = async (gid) => {
     )}
   </div>
 
-  {first ? (
+ {first ? (
+  isImageUrl(first) ? (
+    <button
+      type="button"
+      onClick={() => setPreviewDoc({ open: true, url: first, label: cfg.label })}
+      className="shrink-0 inline-flex items-center justify-center rounded-md border border-blue-300 px-4 h-9 text-sm font-medium text-blue-600 hover:bg-blue-50 whitespace-nowrap"
+    >
+      Open
+    </button>
+  ) : (
     <a
       href={first}
       target="_blank"
@@ -2063,25 +2108,39 @@ const fetchRequiredDocs = async (gid) => {
     >
       Open
     </a>
-  ) : (
-    <span className="text-sm text-gray-400 shrink-0 whitespace-nowrap">No link</span>
-  )}
+  )
+) : (
+  <span className="text-sm text-gray-400 shrink-0 whitespace-nowrap">No link</span>
+)}
+
 </div>
 
                                 {links.length > 1 && (
                                   <div className="px-4 pb-4">
                                     <div className="flex flex-wrap gap-2">
-                                      {links.slice(1).map((u, idx) => (
-                                        <a
-                                          key={`${cfg.label}-${idx}`}
-                                          href={u}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="inline-flex items-center justify-center rounded-md border border-gray-200 px-3 h-8 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                                        >
-                                          Open #{idx + 2}
-                                        </a>
-                                      ))}
+                                     {links.slice(1).map((u, idx) =>
+  isImageUrl(u) ? (
+    <button
+      key={`${cfg.label}-${idx}`}
+      type="button"
+      onClick={() => setPreviewDoc({ open: true, url: u, label: `${cfg.label} #${idx + 2}` })}
+      className="inline-flex items-center justify-center rounded-md border border-gray-200 px-3 h-8 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+    >
+      Open #{idx + 2}
+    </button>
+  ) : (
+    <a
+      key={`${cfg.label}-${idx}`}
+      href={u}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center justify-center rounded-md border border-gray-200 px-3 h-8 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+    >
+      Open #{idx + 2}
+    </a>
+  )
+)}
+
                                     </div>
                                   </div>
                                 )}
