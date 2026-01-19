@@ -61,6 +61,11 @@ function computeAge(iso) {
   return a >= 0 && a <= 120 ? a : null;
 }
 
+function clamp3(a) {
+  const src = Array.isArray(a) ? a : [];
+  return [src[0] ?? null, src[1] ?? null, src[2] ?? null];
+}
+
 const registerWorker = async (req, res) => {
   const { first_name, last_name, sex, email_address, password, is_agreed_to_terms, is_agreed_to_policy_nda } = req.body;
   try {
@@ -327,4 +332,70 @@ const listPublicReviews = async (req, res) => {
   }
 };
 
-module.exports = { registerWorker, me, password, updateProfile, publicSex, listPublicReviews };
+const getMyWorks = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "worker" || !s.auth_uid) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const row = await workerModel.getWorkerWorksByAuthUid(s.auth_uid, { db: supabaseAdmin });
+
+    const best_works = [
+      row?.best_work_1 ?? null,
+      row?.best_work_2 ?? null,
+      row?.best_work_3 ?? null,
+    ];
+
+    const previous_works = [
+      row?.previous_work_1 ?? null,
+      row?.previous_work_2 ?? null,
+      row?.previous_work_3 ?? null,
+    ];
+
+    return res.status(200).json({ best_works, previous_works });
+  } catch (e) {
+    return res.status(200).json({ best_works: [null, null, null], previous_works: [null, null, null] });
+  }
+};
+
+const saveMyWorks = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "worker" || !s.auth_uid) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const best = clamp3(req.body?.best_works || req.body?.bestWorks);
+    const prev = clamp3(req.body?.previous_works || req.body?.previousWorks);
+
+    const saved = await workerModel.upsertWorkerWorks(s.auth_uid, best, prev, { db: supabaseAdmin });
+
+    const best_works = [
+      saved?.best_work_1 ?? null,
+      saved?.best_work_2 ?? null,
+      saved?.best_work_3 ?? null,
+    ];
+
+    const previous_works = [
+      saved?.previous_work_1 ?? null,
+      saved?.previous_work_2 ?? null,
+      saved?.previous_work_3 ?? null,
+    ];
+
+    return res.status(200).json({ best_works, previous_works });
+  } catch (e) {
+    return res.status(400).json({ message: e?.message || "Failed to save portfolio" });
+  }
+};
+
+module.exports = {
+  registerWorker,
+  me,
+  password,
+  updateProfile,
+  publicSex,
+  listPublicReviews,
+  getMyWorks,
+  saveMyWorks,
+};

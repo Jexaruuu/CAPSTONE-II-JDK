@@ -267,6 +267,39 @@ async function listPublicReviews({ email, auth_uid, request_group_id, limit = 20
   return { items: [], avg: 0, count: 0 };
 }
 
+function clamp3(a) {
+  const src = Array.isArray(a) ? a : [];
+  return [src[0] ?? null, src[1] ?? null, src[2] ?? null];
+}
+
+async function getWorkerWorksByAuthUid(auth_uid, opts = {}) {
+  const db = opts.db || supabaseAdmin;
+  const { data, error } = await db.from("worker_works").select("*").eq("auth_uid", auth_uid).limit(1);
+  if (error) throw error;
+  return data && data[0] ? data[0] : null;
+}
+
+async function upsertWorkerWorks(auth_uid, bestWorks, prevWorks, opts = {}) {
+  const db = opts.db || supabaseAdmin;
+  const b = clamp3(bestWorks);
+  const p = clamp3(prevWorks);
+
+  const row = {
+    auth_uid,
+    best_work_1: b[0],
+    best_work_2: b[1],
+    best_work_3: b[2],
+    previous_work_1: p[0],
+    previous_work_2: p[1],
+    previous_work_3: p[2],
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await db.from("worker_works").upsert([row], { onConflict: "auth_uid" }).select("*").limit(1);
+  if (error) throw error;
+  return data && data[0] ? data[0] : null;
+}
+
 module.exports = {
   createWorker,
   checkEmailExistence,
@@ -284,4 +317,6 @@ module.exports = {
   normalizePHContactForStore,
   upsertWorkerAgreements,
   listPublicReviews,
+  getWorkerWorksByAuthUid,
+  upsertWorkerWorks,
 };

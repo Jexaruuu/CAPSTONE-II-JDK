@@ -9,4 +9,7 @@ router.post("/profile", workerController.updateProfile);
 router.get("/public/sex", workerController.publicSex);
 router.get("/public/reviews", workerController.listPublicReviews);
 
+router.get("/myworks", workerController.getMyWorks);
+router.post("/myworks", workerController.saveMyWorks);
+
 module.exports = router;

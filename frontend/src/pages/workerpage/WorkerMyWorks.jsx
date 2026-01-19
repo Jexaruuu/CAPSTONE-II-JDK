@@ -216,7 +216,7 @@ export default function WorkerMyWorks() {
             <button
               type="button"
               onClick={() => openPicker(type, index)}
-              className="inline-flex items-center justify-center rounded-xl border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50"
+              className="inline-flex items-center justify-center rounded-md border border-[#008cfc] text-[#008cfc] px-4 py-2 text-sm font-medium hover:bg-blue-50"
             >
               {has ? "Change" : "Upload"}
             </button>
@@ -224,7 +224,7 @@ export default function WorkerMyWorks() {
               type="button"
               onClick={() => onRemove(type, index)}
               disabled={!has}
-              className={`inline-flex items-center justify-center rounded-xl border px-4 py-2 text-sm font-medium ${
+              className={`inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium ${
                 has ? "border-red-500 text-red-600 hover:bg-red-50" : "border-gray-200 text-gray-300 cursor-not-allowed"
               }`}
             >
@@ -284,7 +284,7 @@ export default function WorkerMyWorks() {
                 <div className="text-[11px] uppercase tracking-wide text-gray-500">Portfolio Status</div>
                 <div className="mt-1">
                   <span
-                    className={`inline-flex items-center rounded-xl px-3 py-1.5 text-sm border ${
+                    className={`inline-flex items-center rounded-md px-3 py-1.5 text-sm border ${
                       canSave ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-gray-50 text-gray-600 border-gray-200"
                     }`}
                   >
@@ -335,7 +335,7 @@ export default function WorkerMyWorks() {
                 type="button"
                 disabled={!canSave}
                 onClick={() => setConfirmOpen(true)}
-                className={`rounded-xl px-5 py-2.5 text-sm font-medium transition shadow-sm ${
+                className={`rounded-md px-5 py-2.5 text-sm font-medium transition shadow-sm ${
                   canSave ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"
                 }`}
               >
@@ -366,7 +366,7 @@ export default function WorkerMyWorks() {
                     setConfirmOpen(false);
                     onSave();
                   }}
-                  className={`rounded-xl px-5 py-2 text-sm font-medium transition ${
+                  className={`rounded-md px-5 py-2 text-sm font-medium transition ${
                     canSave ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"
                   }`}
                 >
