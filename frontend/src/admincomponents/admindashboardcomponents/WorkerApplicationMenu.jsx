@@ -644,8 +644,12 @@ function parseMultiLinks(v) {
 }
 
 function isImageUrl(url) {
-  return /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(String(url || ""));
+  const s = String(url || "").trim();
+  if (!s) return false;
+  if (/^data:image\/(png|jpe?g|webp|gif|svg\+xml);base64,/i.test(s)) return true;
+  return /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(s);
 }
+
 
 export default function WorkerApplicationMenu() {
   const [rows, setRows] = useState([]);
@@ -839,7 +843,8 @@ export default function WorkerApplicationMenu() {
           info: i,
           work: w,
           rate,
-          docs: r.docs || {},
+         docs: r.docs || {},
+required_documents: r.required_documents || r.requiredDocuments || null,
           created_at_raw: createdRaw,
           created_at_ts: createdTs,
           created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
@@ -867,26 +872,74 @@ export default function WorkerApplicationMenu() {
     }
   };
 
-  const fetchRequiredDocs = async (gid) => {
-    if (!gid) return null;
-    setDocsLoading(true);
-    setDocsError("");
-    try {
-      const res = await axios.get(`${API_BASE}/api/admin/workerapplications/group/${encodeURIComponent(gid)}`, {
-        withCredentials: true,
-      });
-      const data = res?.data || {};
-      const rd = data.required_documents || data.requiredDocuments || data.docs || null;
-      setDocsFetched(rd || null);
-      return rd || null;
-    } catch (e) {
-      setDocsFetched(null);
-      setDocsError(e?.response?.data?.message || e?.message || "Failed to load documents");
-      return null;
-    } finally {
-      setDocsLoading(false);
-    }
+const fetchRequiredDocs = async (gid) => {
+  if (!gid) return null;
+  setDocsLoading(true);
+  setDocsError("");
+
+  const unwrapRoot = (data) => {
+    if (!data) return {};
+    return data.item || data.application || data.record || data.worker || data;
   };
+
+  const pickDocs = (root) => {
+    const rdRaw =
+      root.required_documents ||
+      root.requiredDocuments ||
+      root.required_docs ||
+      root.docs ||
+      root.documents ||
+      root.requiredDocs ||
+      null;
+
+    const topLevel =
+      (root?.data && (root.data.required_documents || root.data.requiredDocuments)) ||
+      null;
+
+    const rd = parseMaybe(rdRaw || topLevel);
+
+    if (rd && typeof rd === "object") return rd;
+    return null;
+  };
+
+  try {
+    const urls = [
+      `${API_BASE}/api/admin/workerapplications/group/${encodeURIComponent(gid)}`,
+      `${API_BASE}/api/workerapplications/group/${encodeURIComponent(gid)}`
+    ];
+
+    let merged = null;
+
+    for (const url of urls) {
+      try {
+        const res = await axios.get(url, { withCredentials: true });
+        const data = res?.data || {};
+        const root = unwrapRoot(data);
+        const docs = pickDocs(root) || pickDocs(data) || null;
+
+        if (docs) {
+          merged = docs;
+          break;
+        }
+      } catch {}
+    }
+
+    setDocsFetched(merged || null);
+
+    if (!merged) {
+      setDocsError("No documents found for this application.");
+      return null;
+    }
+
+    return merged;
+  } catch (e) {
+    setDocsFetched(null);
+    setDocsError(e?.response?.data?.message || e?.message || "Failed to load documents");
+    return null;
+  } finally {
+    setDocsLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchCounts();
@@ -1258,25 +1311,172 @@ export default function WorkerApplicationMenu() {
   }, [docsFetched, viewRow?.docs, viewRow?.required_documents]);
 
   const docCards = useMemo(() => {
-    const d = docsObj || {};
-    const one = (label, key) => {
-      const links = parseMultiLinks(d[key]);
-      return { label, links };
-    };
-    return [
-      one("Primary ID (Front)", "primary_id_front"),
-      one("Primary ID (Back)", "primary_id_back"),
-      one("Secondary ID", "secondary_id"),
-      one("NBI/Police Clearance", "nbi_police_clearance"),
-      one("Proof of Address", "proof_of_address"),
-      one("Medical Certificate", "medical_certificate"),
-      { label: "TESDA Carpentry Certificate", links: parseMultiLinks(d.tesda_carpentry_certificate) },
-      { label: "TESDA Electrician Certificate", links: parseMultiLinks(d.tesda_electrician_certificate) },
-      { label: "TESDA Plumbing Certificate", links: parseMultiLinks(d.tesda_plumbing_certificate) },
-      { label: "TESDA Carwashing Certificate", links: parseMultiLinks(d.tesda_carwashing_certificate) },
-      { label: "TESDA Laundry Certificate", links: parseMultiLinks(d.tesda_laundry_certificate) },
-    ];
-  }, [docsObj]);
+  const d = docsObj || {};
+
+  const getLinks = (keys, fuzzy = null) => {
+    const picked = resolveDoc(d, keys, fuzzy);
+    return parseMultiLinks(picked);
+  };
+
+  return [
+    {
+      label: "Primary ID (Front)",
+      links: getLinks(
+        [
+          "primary_id_front",
+          "primaryIdFront",
+          "primary_id_front_url",
+          "primary_id_front_link",
+          "primary_id_front_image",
+        ],
+        { all: ["primary"], any: ["front"] }
+      ),
+    },
+    {
+      label: "Primary ID (Back)",
+      links: getLinks(
+        [
+          "primary_id_back",
+          "primaryIdBack",
+          "primary_id_back_url",
+          "primary_id_back_link",
+          "primary_id_back_image",
+        ],
+        { all: ["primary"], any: ["back"] }
+      ),
+    },
+    {
+      label: "Secondary ID",
+      links: getLinks(
+        [
+          "secondary_id",
+          "secondaryId",
+          "secondary_id_url",
+          "secondary_id_link",
+          "secondary_id_image",
+        ],
+        { all: ["secondary"], any: ["id"] }
+      ),
+    },
+    {
+      label: "NBI/Police Clearance",
+      links: getLinks(
+        [
+          "nbi_police_clearance",
+          "nbiPoliceClearance",
+          "police_clearance",
+          "policeClearance",
+          "nbi_clearance",
+          "nbiClearance",
+        ],
+        { any: ["nbi", "police", "clearance"] }
+      ),
+    },
+    {
+      label: "Proof of Address",
+      links: getLinks(
+        [
+          "proof_of_address",
+          "proofOfAddress",
+          "address_proof",
+          "addressProof",
+          "billing_proof",
+          "billingProof",
+        ],
+        { all: ["proof"], any: ["address", "billing"] }
+      ),
+    },
+    {
+      label: "Medical Certificate",
+      links: getLinks(
+        [
+          "medical_certificate",
+          "medicalCertificate",
+          "med_certificate",
+          "medCertificate",
+        ],
+        { all: ["medical"], any: ["certificate", "cert"] }
+      ),
+    },
+
+    {
+      label: "TESDA Carpentry Certificate",
+      links: getLinks(
+        [
+          "tesda_carpentry_certificate",
+          "tesdaCarpentryCertificate",
+          "tesda_carpentry",
+          "tesdaCarpentry",
+          "carpentry_certificate",
+          "carpentryCertificate",
+        ],
+        { all: ["tesda"], any: ["carpentry"] }
+      ),
+    },
+    {
+      label: "TESDA Electrician Certificate",
+      links: getLinks(
+        [
+          "tesda_electrician_certificate",
+          "tesdaElectricianCertificate",
+          "tesda_electrician",
+          "tesdaElectrician",
+          "electrician_certificate",
+          "electricianCertificate",
+          "electrical_certificate",
+          "electricalCertificate",
+        ],
+        { all: ["tesda"], any: ["electric", "electrical"] }
+      ),
+    },
+    {
+      label: "TESDA Plumbing Certificate",
+      links: getLinks(
+        [
+          "tesda_plumbing_certificate",
+          "tesdaPlumbingCertificate",
+          "tesda_plumbing",
+          "tesdaPlumbing",
+          "plumbing_certificate",
+          "plumbingCertificate",
+        ],
+        { all: ["tesda"], any: ["plumb"] }
+      ),
+    },
+    {
+      label: "TESDA Carwashing Certificate",
+      links: getLinks(
+        [
+          "tesda_carwashing_certificate",
+          "tesdaCarwashingCertificate",
+          "tesda_car_washing_certificate",
+          "tesdaCarWashingCertificate",
+          "tesda_carwashing",
+          "tesdaCarwashing",
+          "carwashing_certificate",
+          "carwashingCertificate",
+          "car_wash_certificate",
+          "carWashCertificate",
+        ],
+        { all: ["tesda"], any: ["carwash", "car washing", "carwashing"] }
+      ),
+    },
+    {
+      label: "TESDA Laundry Certificate",
+      links: getLinks(
+        [
+          "tesda_laundry_certificate",
+          "tesdaLaundryCertificate",
+          "tesda_laundry",
+          "tesdaLaundry",
+          "laundry_certificate",
+          "laundryCertificate",
+        ],
+        { all: ["tesda"], any: ["laundry"] }
+      ),
+    },
+  ];
+}, [docsObj]);
 
   return (
     <>
