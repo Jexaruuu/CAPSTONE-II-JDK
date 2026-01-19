@@ -36,6 +36,8 @@ import WorkerFindAvailableClient from './pages/workerpage/WorkerFindAvailableCli
 import WorkerViewApplication from './pages/workerpage/WorkerViewApplication';
 import WorkerEditApplication from './pages/workerpage/WorkerEditApplication';
 import WorkerOnGoingService from './pages/workerpage/WorkerOnGoingService';
+import WorkerMyWorks from './pages/workerpage/WorkerMyWorks';
+
 
 import AdminLoginPage from './pages/loginpage/AdminLoginPage';
 import AdminSignup from './pages/signuppage/AdminSignup';
@@ -99,6 +101,18 @@ const App = () => {
 
         <Route path="/adminlogin" element={<AdminLoginPage />} />
         <Route path="/adminsignup" element={<GuestRoute><AdminSignup /></GuestRoute>} />
+
+        <Route
+  path="/my-works"
+  element={
+    <ProtectedRoute>
+      <WorkerOnlyRoute>
+        <WorkerMyWorks />
+      </WorkerOnlyRoute>
+    </ProtectedRoute>
+  }
+/>
+
 
         <Route
           path="/admindashboard"

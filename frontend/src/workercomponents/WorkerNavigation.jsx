@@ -1,4 +1,3 @@
-// WorkerNavigation.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -366,6 +365,16 @@ const WorkerNavigation = () => {
                     </div>
                   </div>
                   <ul className="py-2">
+                    <li className="px-4 py-2 transition cursor-pointer hover:bg-[#008cfc] hover:text-white">
+                      <Link
+                        to="/my-works"
+                        onClick={(e) => { e.preventDefault(); goTop(); beginRoute('/my-works'); }}
+                        className="block w-full h-full"
+                      >
+                        My Works
+                      </Link>
+                    </li>
+
                     <li className="px-4 py-2 transition cursor-pointer hover:bg-[#008cfc] hover:text-white">
                       <Link
                         to="/worker-account-settings"
