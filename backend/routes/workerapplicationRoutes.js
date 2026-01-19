@@ -7,8 +7,13 @@ router.post('/submit', controller.submitFullApplication);
 router.post('/cancel', controller.cancel);
 router.get('/approved', controller.listApproved);
 router.get('/', controller.listMine);
+
 router.get('/by-group/:id', controller.getByGroupFull);
 router.put('/by-group/:id', controller.updateByGroup);
+
+router.get('/group/:id', controller.getByGroupFull);
+router.put('/group/:id', controller.updateByGroup);
+
 router.get('/:id', controller.getByGroup);
 router.delete('/:id', controller.deleteApplication);
 

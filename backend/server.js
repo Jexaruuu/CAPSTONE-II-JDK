@@ -47,6 +47,8 @@ const workerapplicationstatusRoutes = require("./routes/workerapplicationstatusR
 const notificationsRoutes = require("./routes/notificationsRoutes");
 const adminServiceRequestsRoutes = require("./routes/adminservicerequestsRoutes");
 
+const workerapplicationController = require("./controllers/workerapplicationController");
+
 dotenv.config();
 
 try {
@@ -447,6 +449,13 @@ app.use("/api/workerapplications", workerapplicationRoutes);
 app.use("/api/client/servicerequeststatus", clientservicerequeststatusRoutes);
 app.use("/api/workerapplicationstatus", workerapplicationstatusRoutes);
 app.use("/api/admin/servicerequests", adminServiceRequestsRoutes);
+
+app.get("/api/admin/workerapplications/group/:id", workerapplicationController.getByGroupFull);
+app.put("/api/admin/workerapplications/group/:id", workerapplicationController.updateByGroup);
+
+app.get("/api/admin/workerapplications/by-group/:id", workerapplicationController.getByGroupFull);
+app.put("/api/admin/workerapplications/by-group/:id", workerapplicationController.updateByGroup);
+
 app.use("/api/admin/workerapplications", adminworkerapplicationRoutes);
 
 ensureStorageBucket("user-notifications", true).catch(() => {});

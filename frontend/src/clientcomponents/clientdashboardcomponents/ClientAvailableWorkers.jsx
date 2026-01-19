@@ -636,93 +636,135 @@ const ClientAvailableWorkers = () => {
                   const rating = Number.isFinite(Number(w.ratingFive)) ? Number(w.ratingFive) : 0;
                   const filledStars = Math.max(0, Math.min(5, Math.floor(rating)));
 
+                  const types = w.serviceTypeList && w.serviceTypeList.length ? w.serviceTypeList : [w.serviceType || '—'];
+                  const rawTasks =
+                    w.serviceTaskList && w.serviceTaskList.length
+                      ? w.serviceTaskList
+                      : w.serviceTask
+                      ? String(w.serviceTask)
+                          .split(/[,/|]+/)
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      : ['—'];
+
+                  const MAX_TYPES = 5;
+                  const MAX_TASKS = 5;
+                  const typeShow = types.slice(0, MAX_TYPES);
+                  const typeMore = Math.max(0, types.length - typeShow.length);
+                  const taskShow = rawTasks.slice(0, MAX_TASKS);
+                  const taskMore = Math.max(0, rawTasks.length - taskShow.length);
+
                   return (
                     <div
                       key={w.id}
                       ref={(el) => (cardRefs.current[i] = el)}
-                      className="relative overflow-hidden flex-shrink-0 bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl cursor-pointer"
+                      className="group relative overflow-hidden flex-shrink-0 cursor-pointer rounded-2xl bg-white border border-gray-200 shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:shadow-xl"
                       style={{ width: `${cardW}px`, minWidth: `${cardW}px` }}
                     >
-                      <div className="absolute inset-0 bg-[url('/Bluelogo.png')] bg-no-repeat bg-[length:380px] bg-[position:right_50%] opacity-10 pointer-events-none" />
-                      <div className="relative z-10">
-                        <div className="flex items-start justify-between">
+                      <div className="relative z-10 p-5">
+                        <div className="flex items-start justify-between gap-4">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-12 w-12 rounded-full overflow-hidden border border-gray-200 bg-gray-50 shrink-0">
-                              <img
-                                src={w.image || avatarFromName(w.name)}
-                                alt={w.name}
-                                className="h-full w-full object-cover"
-                                onLoad={() => requestAnimationFrame(recomputePositions)}
-                                onError={({ currentTarget }) => {
-                                  currentTarget.style.display = 'none';
-                                  const parent = currentTarget.parentElement;
-                                  if (parent) {
-                                    parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-gray-100 text-gray-700 text-base font-semibold">${(w.name || '?')
-                                      .trim()
-                                      .charAt(0)
-                                      .toUpperCase()}</div>`;
-                                  }
-                                  requestAnimationFrame(recomputePositions);
-                                }}
-                              />
+                            <div className="relative">
+                              <div className="h-12 w-12 rounded-full overflow-hidden border border-gray-200 bg-gray-50 shrink-0 ring-2 ring-white">
+                                <img
+                                  src={w.image || avatarFromName(w.name)}
+                                  alt={w.name}
+                                  className="h-full w-full object-cover"
+                                  onLoad={() => requestAnimationFrame(recomputePositions)}
+                                  onError={({ currentTarget }) => {
+                                    currentTarget.style.display = 'none';
+                                    const parent = currentTarget.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `<div class="h-full w-full grid place-items-center bg-gray-100 text-gray-700 text-base font-semibold">${(w.name || '?')
+                                        .trim()
+                                        .charAt(0)
+                                        .toUpperCase()}</div>`;
+                                    }
+                                    requestAnimationFrame(recomputePositions);
+                                  }}
+                                />
+                              </div>
+                              <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-white border border-gray-200 grid place-items-center shadow-sm">
+                                <div className="h-4 w-4 rounded-full bg-[#008cfc]" />
+                              </div>
                             </div>
+
                             <div className="min-w-0">
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-sm md:text-lg font-semibold text-gray-700">Worker:</span>
-                                <span className="text-lg md:text-lg font-semibold text-[#008cfc] leading-tight truncate">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm font-semibold text-gray-700 shrink-0">Worker:</span>
+                                <span className="text-base md:text-lg font-semibold text-[#008cfc] leading-tight truncate">
                                   {w.name}
                                 </span>
                               </div>
                               {w.emailAddress ? <div className="text-xs text-gray-600 truncate">{w.emailAddress}</div> : null}
                             </div>
                           </div>
+
+                          <img
+                            src="/Bluelogo.png"
+                            alt=""
+                            className="h-8 w-8 object-contain opacity-60 shrink-0"
+                            draggable={false}
+                          />
                         </div>
 
                         <div className="mt-4 h-px bg-gray-200" />
 
-                        <div className="mt-4">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="text-sm font-semibold text-gray-700">Service Type:</div>
-                            {(w.serviceTypeList && w.serviceTypeList.length ? w.serviceTypeList : [w.serviceType || '—']).map((lbl, idx) => (
-                              <span
-                                key={idx}
-                                className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200"
-                              >
-                                {lbl}
-                              </span>
-                            ))}
+                        <div className="mt-4 space-y-3">
+                          <div>
+                            <div className="text-sm font-semibold text-gray-700 mb-2">Service Type</div>
+                            <div className="flex flex-wrap gap-2">
+                              {typeShow.map((lbl, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200"
+                                >
+                                  {lbl}
+                                </span>
+                              ))}
+                              {typeMore > 0 ? (
+                                <span className="inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                                  +{typeMore} more
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
 
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <div className="text-sm font-semibold text-gray-700">Service Task:</div>
-                            {(w.serviceTaskList && w.serviceTaskList.length
-                              ? w.serviceTaskList
-                              : w.serviceTask
-                              ? String(w.serviceTask)
-                                  .split(/[,/|]+/)
-                                  .map((s) => s.trim())
-                                  .filter(Boolean)
-                              : ['—']
-                            ).map((lbl, idx) => (
-                              <span
-                                key={idx}
-                                className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200"
-                              >
-                                {lbl}
-                              </span>
-                            ))}
+                          <div>
+                            <div className="text-sm font-semibold text-gray-700 mb-2">Service Task</div>
+                            <div className="flex flex-wrap gap-2">
+                              {taskShow.map((lbl, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200"
+                                >
+                                  {lbl}
+                                </span>
+                              ))}
+                              {taskMore > 0 ? (
+                                <span className="inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                                  +{taskMore} more
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
 
-                          <div className="mt-3 text-sm font-semibold text-gray-700">Work Description</div>
-                          <div className="text-sm text-[#008cfc] line-clamp-3">{w.bio || '—'}</div>
+                          <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold text-gray-700">Work Description</div>
+                                <div className="text-sm text-[#008cfc] line-clamp-2">{w.bio || '—'}</div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="mt-4 h-px bg-gray-200" />
 
-                        <div className="mt-4 flex items-center justify-between">
-                          <div className="flex flex-col gap-2">
+                        <div className="mt-4 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <div className="text-sm font-semibold text-gray-700">Rating:</div>
+                              <div className="text-sm font-semibold text-gray-700">Rating</div>
                               <div className="flex items-center gap-1">
                                 {[0, 1, 2, 3, 4].map((idx) => (
                                   <Star
@@ -737,10 +779,17 @@ const ClientAvailableWorkers = () => {
                             </div>
 
                             {(w.rateType || w.rate) ? (
-                              <div className="flex items-center gap-2">
-                                {w.rateType && <div className="text-sm font-semibold text-[#008cfc]">{w.rateType}</div>}
-                                {w.rateType && w.rate ? <span className="text-gray-400">•</span> : null}
-                                {w.rate ? <div className="text-sm font-semibold text-[#008cfc]">{w.rate}</div> : null}
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                {w.rateType ? (
+                                  <span className="inline-flex items-center rounded-full bg-[#008cfc]/10 text-[#008cfc] px-3 py-1 text-xs font-semibold border border-[#008cfc]/20">
+                                    {w.rateType}
+                                  </span>
+                                ) : null}
+                                {w.rate ? (
+                                  <span className="inline-flex items-center rounded-full bg-[#008cfc]/10 text-[#008cfc] px-3 py-1 text-xs font-semibold border border-[#008cfc]/20">
+                                    {w.rate}
+                                  </span>
+                                ) : null}
                               </div>
                             ) : null}
                           </div>
@@ -751,7 +800,7 @@ const ClientAvailableWorkers = () => {
                               setViewWorker(w);
                               setViewOpen(true);
                             }}
-                            className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition"
+                            className="shrink-0 inline-flex items-center justify-center px-4 h-10 rounded-xl bg-[#008cfc] text-white text-sm font-semibold hover:bg-[#0078d6] transition shadow-sm group-hover:shadow-md"
                           >
                             View worker
                           </button>

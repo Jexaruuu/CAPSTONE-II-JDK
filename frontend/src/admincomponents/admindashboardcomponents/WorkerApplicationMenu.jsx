@@ -202,7 +202,6 @@ function ServiceTasksInline({ list, fallback }) {
   );
 }
 
-
 const Field = ({ label, value }) => (
   <div className="text-left space-y-0.5">
     <div className="text-[11px] font-medium tracking-wide text-gray-500 uppercase">{label}</div>
@@ -232,9 +231,9 @@ const QuickItem = ({ icon, label, value }) => (
         <div className="text-sm font-semibold text-gray-900 break-words">-</div>
       ) : typeof value === "string" || typeof value === "number" ? (
         <div className="text-sm font-semibold text-gray-900 break-words">{value}</div>
-    ) : (
-  <div className="min-w-0 w-full break-words">{value}</div>
-)}
+      ) : (
+        <div className="min-w-0 w-full break-words">{value}</div>
+      )}
     </div>
   </div>
 );
@@ -264,7 +263,6 @@ const QuickItemRow = ({ icon, label, value }) => (
     </div>
   </div>
 );
-
 
 function parseDateTime(val) {
   if (!val) return null;
@@ -625,6 +623,30 @@ function ContactDisplay({ number }) {
   );
 }
 
+function parseMultiLinks(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map((x) => String(x || "").trim()).filter(Boolean);
+  if (typeof v === "object") {
+    const url = v.url || v.link || v.href || "";
+    return url ? [String(url).trim()] : [];
+  }
+  const s = String(v || "").trim();
+  if (!s) return [];
+  if (s.startsWith("[")) {
+    try {
+      const j = JSON.parse(s);
+      if (Array.isArray(j)) return j.map((x) => String(x || "").trim()).filter(Boolean);
+    } catch {}
+  }
+  if (s.includes("|")) return s.split("|").map((x) => String(x || "").trim()).filter(Boolean);
+  if (s.includes("\n")) return s.split("\n").map((x) => String(x || "").trim()).filter(Boolean);
+  return [s];
+}
+
+function isImageUrl(url) {
+  return /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(String(url || ""));
+}
+
 export default function WorkerApplicationMenu() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -637,6 +659,10 @@ export default function WorkerApplicationMenu() {
   const [searchTerm, setSearchTerm] = useState("");
   const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0, total: 0 });
   const [showDocs, setShowDocs] = useState(false);
+
+  const [docsFetched, setDocsFetched] = useState(null);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [docsError, setDocsError] = useState("");
 
   const [showDecline, setShowDecline] = useState(false);
   const [declineTarget, setDeclineTarget] = useState(null);
@@ -674,16 +700,16 @@ export default function WorkerApplicationMenu() {
 
   const closeView = () => setViewRow(null);
 
-const initialsFrom = (first, last) => {
-  const a = (String(first || "").trim().slice(0, 1) + String(last || "").trim().slice(0, 1)).toUpperCase();
-  return a || "?";
-};
+  const initialsFrom = (first, last) => {
+    const a = (String(first || "").trim().slice(0, 1) + String(last || "").trim().slice(0, 1)).toUpperCase();
+    return a || "?";
+  };
 
-const viewStatusPills = (r) => (
-  <div className="flex flex-nowrap gap-2 whitespace-nowrap">
-    <StatusPill value={r?.status} />
-  </div>
-);
+  const viewStatusPills = (r) => (
+    <div className="flex flex-nowrap gap-2 whitespace-nowrap">
+      <StatusPill value={r?.status} />
+    </div>
+  );
 
   const fetchItems = async (_statusArg = filter, qArg = searchTerm) => {
     setLoading(true);
@@ -699,14 +725,14 @@ const viewStatusPills = (r) => (
       const rawItems = Array.isArray(res?.data?.items) ? res.data.items : [];
       const items = rawItems.filter((r) => String(r.status || "").toLowerCase() !== "cancelled");
       const mapped = items.map((r) => {
-  const i = parseMaybe(r.info || r.information || r.profile || {});
-const w = parseMaybe(r.work || r.details || r.work_details || {});
-const rate = parseMaybe(r.rate || {});
-const st = Array.isArray(w.service_types)
-  ? w.service_types
-  : Array.isArray(r.service_types)
-  ? r.service_types
-  : [];
+        const i = parseMaybe(r.info || r.information || r.profile || {});
+        const w = parseMaybe(r.work || r.details || r.work_details || {});
+        const rate = parseMaybe(r.rate || {});
+        const st = Array.isArray(w.service_types)
+          ? w.service_types
+          : Array.isArray(r.service_types)
+          ? r.service_types
+          : [];
         const createdRaw =
           r.created_at || r.createdAt || i.created_at || i.createdAt || null;
         const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
@@ -748,82 +774,82 @@ const st = Array.isArray(w.service_types)
         const groupsFromServiceTask = normalizeServiceTask(w.service_task);
         groupsFromServiceTask.forEach(g => g.tasks.forEach(addTask));
 
-       const dobRaw = firstNonEmpty(
-  i.date_of_birth,
-  i.birth_date,
-  i.birthdate,
-  i.birthDate,
-  i.dateOfBirth,
-  i.dob,
-  r.date_of_birth,
-  r.dob,
-  r.dateOfBirth,
-  r.birth_date,
-  r.birthDate,
-  r.date_of_birth_raw,
-  i.date_of_birth_raw
-) || null;
+        const dobRaw = firstNonEmpty(
+          i.date_of_birth,
+          i.birth_date,
+          i.birthdate,
+          i.birthDate,
+          i.dateOfBirth,
+          i.dob,
+          r.date_of_birth,
+          r.dob,
+          r.dateOfBirth,
+          r.birth_date,
+          r.birthDate,
+          r.date_of_birth_raw,
+          i.date_of_birth_raw
+        ) || null;
 
-const dobDisplay = firstNonEmpty(
-  i.date_of_birth_display,
-  r.date_of_birth_display,
-  i.birth_date_display,
-  r.birth_date_display,
-  fmtDateOnly(dobRaw)
-);
+        const dobDisplay = firstNonEmpty(
+          i.date_of_birth_display,
+          r.date_of_birth_display,
+          i.birth_date_display,
+          r.birth_date_display,
+          fmtDateOnly(dobRaw)
+        );
 
-const ageValue = (() => {
-  const a = i.age ?? r.age;
-  if (a !== undefined && a !== null && String(a).trim() !== "") return a;
-  return computeAgeFrom(dobRaw);
-})();
+        const ageValue = (() => {
+          const a = i.age ?? r.age;
+          if (a !== undefined && a !== null && String(a).trim() !== "") return a;
+          return computeAgeFrom(dobRaw);
+        })();
 
-    return {
-  id: r.id,
-  request_group_id: r.request_group_id,
-  status: s || "pending",
-  name_first: i.first_name || "",
-  name_last: i.last_name || "",
-  full_name: [i.first_name, i.last_name].filter(Boolean).join(" ") || "",
-  email: r.email_address || i.email_address || "",
-  barangay: i.barangay || "",
-  additional_address: i.additional_address || i.street || "",
- date_of_birth_raw: dobRaw,
-date_of_birth_display: dobDisplay || "-",
-age: ageValue ?? "-",
-  contact_number:
-    i.contact_number ||
-    i.contactNumber ||
-    r.contact_number ||
-    r.phone_number ||
-    i.phone_number ||
-    "",
-  years_experience: w.years_experience ?? "",
-  tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
-  service_types: st,
-  primary_service: primaryService,
-  service_types_lex: st.join(", "),
-  task_or_role: taskOrRole || "",
-  service_tasks: tasksList,
-  service_description: w.work_description || "",
-  rate_type: rate.rate_type || "",
-  rate_from: rate.rate_from,
-  rate_to: rate_toNumber(rate.rate_to),
-  rate_value: rate_toNumber(rate.rate_value),
-  info: i,
-  work: w,
-  rate,
-  docs: r.docs || {},
-  created_at_raw: createdRaw,
-  created_at_ts: createdTs,
-  created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
-  profile_picture_url: i.profile_picture_url || null,
-  reason_choice: r.reason_choice || r.decline_reason_choice || null,
-  reason_other: r.reason_other || r.decline_reason_other || null,
-  decision_reason: r.decision_reason || r.reason || null,
-  decided_at_raw: r.decided_at || null,
-  decided_at_display: r.decided_at ? fmtDateTime(r.decided_at) : r.decided_at_display || ""
-};
+        return {
+          id: r.id,
+          request_group_id: r.request_group_id,
+          status: s || "pending",
+          name_first: i.first_name || "",
+          name_last: i.last_name || "",
+          full_name: [i.first_name, i.last_name].filter(Boolean).join(" ") || "",
+          email: r.email_address || i.email_address || "",
+          barangay: i.barangay || "",
+          additional_address: i.additional_address || i.street || "",
+          date_of_birth_raw: dobRaw,
+          date_of_birth_display: dobDisplay || "-",
+          age: ageValue ?? "-",
+          contact_number:
+            i.contact_number ||
+            i.contactNumber ||
+            r.contact_number ||
+            r.phone_number ||
+            i.phone_number ||
+            "",
+          years_experience: w.years_experience ?? "",
+          tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
+          service_types: st,
+          primary_service: primaryService,
+          service_types_lex: st.join(", "),
+          task_or_role: taskOrRole || "",
+          service_tasks: tasksList,
+          service_description: w.work_description || "",
+          rate_type: rate.rate_type || "",
+          rate_from: rate.rate_from,
+          rate_to: rate_toNumber(rate.rate_to),
+          rate_value: rate_toNumber(rate.rate_value),
+          info: i,
+          work: w,
+          rate,
+          docs: r.docs || {},
+          created_at_raw: createdRaw,
+          created_at_ts: createdTs,
+          created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
+          profile_picture_url: i.profile_picture_url || null,
+          reason_choice: r.reason_choice || r.decline_reason_choice || null,
+          reason_other: r.reason_other || r.decline_reason_other || null,
+          decision_reason: r.decision_reason || r.reason || null,
+          decided_at_raw: r.decided_at || null,
+          decided_at_display: r.decided_at ? fmtDateTime(r.decided_at) : r.decided_at_display || ""
+        };
       });
 
       setRows(mapped);
@@ -838,6 +864,27 @@ age: ageValue ?? "-",
       setCounts({ pending: 0, approved: 0, declined: 0, total: 0 });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRequiredDocs = async (gid) => {
+    if (!gid) return null;
+    setDocsLoading(true);
+    setDocsError("");
+    try {
+      const res = await axios.get(`${API_BASE}/api/admin/workerapplications/group/${encodeURIComponent(gid)}`, {
+        withCredentials: true,
+      });
+      const data = res?.data || {};
+      const rd = data.required_documents || data.requiredDocuments || data.docs || null;
+      setDocsFetched(rd || null);
+      return rd || null;
+    } catch (e) {
+      setDocsFetched(null);
+      setDocsError(e?.response?.data?.message || e?.message || "Failed to load documents");
+      return null;
+    } finally {
+      setDocsLoading(false);
     }
   };
 
@@ -875,11 +922,20 @@ age: ageValue ?? "-",
     } else {
       document.body.style.overflow = "";
       setShowDocs(false);
+      setDocsFetched(null);
+      setDocsError("");
+      setDocsLoading(false);
     }
     return () => {
       document.body.style.overflow = "";
     };
   }, [viewRow]);
+
+  useEffect(() => {
+    if (showDocs && viewRow?.request_group_id) {
+      fetchRequiredDocs(viewRow.request_group_id);
+    }
+  }, [showDocs, viewRow?.request_group_id]);
 
   useEffect(() => {
     if (showConfirmCancelSuccess) {
@@ -1093,78 +1149,77 @@ age: ageValue ?? "-",
   };
 
   const renderSection = () => {
-  if (!viewRow) return null;
+    if (!viewRow) return null;
 
-  if (sectionOpen === "info") {
-    return (
-      <SectionCard
-        title="Personal Information"
-        badge={
-          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-            Worker
-          </span>
-        }
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
-          <Field label="Date of Birth" value={viewRow?.date_of_birth_display || "-"} />
-          <Field label="Age" value={viewRow?.age ?? "-"} />
-          <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
-          <Field label="Barangay" value={viewRow?.barangay || "-"} />
-          <Field label="Street" value={viewRow?.additional_address || "-"} />
-        </div>
-      </SectionCard>
-    );
-  }
+    if (sectionOpen === "info") {
+      return (
+        <SectionCard
+          title="Personal Information"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+              Worker
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 max-w-5xl">
+            <Field label="Date of Birth" value={viewRow?.date_of_birth_display || "-"} />
+            <Field label="Age" value={viewRow?.age ?? "-"} />
+            <Field label="Contact Number" value={<ContactDisplay number={viewRow?.contact_number} />} />
+            <Field label="Barangay" value={viewRow?.barangay || "-"} />
+            <Field label="Street" value={viewRow?.additional_address || "-"} />
+          </div>
+        </SectionCard>
+      );
+    }
 
-  if (sectionOpen === "work") {
-  const toolsText =
-    viewRow?.tools_provided === true ? "Yes" : viewRow?.tools_provided === false ? "No" : "-";
+    if (sectionOpen === "work") {
+      const toolsText =
+        viewRow?.tools_provided === true ? "Yes" : viewRow?.tools_provided === false ? "No" : "-";
 
-  return (
-    <SectionCard
-      title="Work Details"
-      badge={
-        <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
-          Experience
-        </span>
-      }
-    >
-     <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-4">
-  <div>
-    <Field label="Tools Provided" value={toolsText} />
-  </div>
+      return (
+        <SectionCard
+          title="Work Details"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+              Experience
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-4">
+            <div>
+              <Field label="Tools Provided" value={toolsText} />
+            </div>
 
-  <div>
-    <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
-  </div>
+            <div>
+              <Field label="Years of Experience" value={viewRow?.years_experience || "-"} />
+            </div>
 
-  <div className="lg:col-span-3">
-    <Field
-      label="Service Type(s)"
-      value={<ServiceTypesInline list={viewRow?.service_types} />}
-    />
-  </div>
+            <div className="lg:col-span-3">
+              <Field
+                label="Service Type(s)"
+                value={<ServiceTypesInline list={viewRow?.service_types} />}
+              />
+            </div>
 
-  <div className="lg:col-span-3">
-    <Field
-      label="Service Task(s)"
-      value={<ServiceTasksInline list={viewRow?.service_tasks} fallback={viewRow?.task_or_role} />}
-    />
-  </div>
+            <div className="lg:col-span-3">
+              <Field
+                label="Service Task(s)"
+                value={<ServiceTasksInline list={viewRow?.service_tasks} fallback={viewRow?.task_or_role} />}
+              />
+            </div>
 
-  <div className="lg:col-span-3">
-    <Field label="Service Description" value={viewRow?.service_description || "-"} />
-  </div>
-</div>
-    </SectionCard>
-  );
-}
+            <div className="lg:col-span-3">
+              <Field label="Service Description" value={viewRow?.service_description || "-"} />
+            </div>
+          </div>
+        </SectionCard>
+      );
+    }
 
-  return null;
-};
-
+    return null;
+  };
 
   const [serviceFilter, setServiceFilter] = useState("all");
   const categoryMap = (serviceOrTask) => {
@@ -1197,27 +1252,45 @@ age: ageValue ?? "-",
     { key: "plumber", label: "Plumber" }
   ];
 
+  const docsObj = useMemo(() => {
+    const fallback = viewRow?.docs || {};
+    return docsFetched || viewRow?.required_documents || fallback;
+  }, [docsFetched, viewRow?.docs, viewRow?.required_documents]);
+
+  const docCards = useMemo(() => {
+    const d = docsObj || {};
+    const one = (label, key) => {
+      const links = parseMultiLinks(d[key]);
+      return { label, links };
+    };
+    return [
+      one("Primary ID (Front)", "primary_id_front"),
+      one("Primary ID (Back)", "primary_id_back"),
+      one("Secondary ID", "secondary_id"),
+      one("NBI/Police Clearance", "nbi_police_clearance"),
+      one("Proof of Address", "proof_of_address"),
+      one("Medical Certificate", "medical_certificate"),
+      { label: "TESDA Carpentry Certificate", links: parseMultiLinks(d.tesda_carpentry_certificate) },
+      { label: "TESDA Electrician Certificate", links: parseMultiLinks(d.tesda_electrician_certificate) },
+      { label: "TESDA Plumbing Certificate", links: parseMultiLinks(d.tesda_plumbing_certificate) },
+      { label: "TESDA Carwashing Certificate", links: parseMultiLinks(d.tesda_carwashing_certificate) },
+      { label: "TESDA Laundry Certificate", links: parseMultiLinks(d.tesda_laundry_certificate) },
+    ];
+  }, [docsObj]);
+
   return (
     <>
       <style>{`
         .blue-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: #0b82ff #e6f0ff;
-        }
-        .blue-scroll::-webkit-scrollbar {
-          width: 10px;
-        }
-        .blue-scroll::-webkit-scrollbar-track {
-          background: #e6f0ff;
-          border-radius: 8px;
-        }
-        .blue-scroll::-webkit-scrollbar-thumb {
-          background: #0b82ff;
-          border-radius: 8px;
-        }
-        .blue-scroll::-webkit-scrollbar-thumb:hover {
-          background: #086bd4;
-        }
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.blue-scroll::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  display: none;
+}
+
       `}</style>
 
       <main className="p-6">
@@ -1501,310 +1574,333 @@ age: ageValue ?? "-",
         </section>
 
         {viewRow && (
-  <div
-    role="dialog"
-    aria-modal="true"
-    aria-label="Worker application details"
-    tabIndex={-1}
-    className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
-  >
-    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeView} />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Worker application details"
+            tabIndex={-1}
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeView} />
 
-    <div className="relative w-full max-w-6xl max-h-[86vh] rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
-      <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-white to-white">
-        <div className="px-6 sm:px-8 py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-  <div className="text-[11px] font-semibold tracking-[0.25em] uppercase text-gray-500">
-    Worker Application
-  </div>
- 
-</div>
+            <div className="relative w-full max-w-6xl max-h-[86vh] rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+              <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-white to-white">
+                <div className="px-6 sm:px-8 py-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-semibold tracking-[0.25em] uppercase text-gray-500">
+                        Worker Application
+                      </div>
+                    </div>
 
-<div className="flex items-center gap-2 shrink-0">
-  <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700">
-    <ShieldCheck className="h-4 w-4" />
-    Admin View
-  </span>
-</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row max-h-[calc(86vh-76px)]">
-        <aside className="md:w-[320px] lg:w-[360px] border-b md:border-b-0 md:border-r border-gray-200 bg-white">
-          <div className="p-5 sm:p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl border border-gray-200 bg-gray-100 overflow-hidden shadow-sm">
-                {viewRow?.profile_picture_url ? (
-                  <img
-                    src={viewRow.profile_picture_url}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                    onError={({ currentTarget }) => {
-                      currentTarget.style.display = "none";
-                      const parent = currentTarget.parentElement;
-                      if (parent) {
-                        parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${initialsFrom(viewRow?.name_first, viewRow?.name_last)}</div>`;
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">
-                    {initialsFrom(viewRow?.name_first, viewRow?.name_last)}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700">
+                        <ShieldCheck className="h-4 w-4" />
+                        Admin View
+                      </span>
+                    </div>
                   </div>
-                )}
-              </div>
-
-              <div className="min-w-0">
-                <div className="text-base font-semibold text-gray-900 truncate">
-                  {[viewRow?.name_first, viewRow?.name_last].filter(Boolean).join(" ") || "-"}
                 </div>
-                <div className="text-sm text-gray-500 truncate">{viewRow?.email || "-"}</div>
-                <div className="mt-2 flex flex-wrap gap-2">{viewStatusPills(viewRow)}</div>
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 gap-3">
-            <QuickItem
-  icon={<CalendarDays className="h-4 w-4" />}
-  label="Created"
-  value={viewRow?.created_at_display || "-"}
-/>
-
-            </div>
-<div className="mt-5">
-  <div className="mt-2 grid grid-cols-1 gap-2">
-    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-      <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
-        Application ID
-      </div>
-      <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
-        {viewRow?.id || "-"}
-      </div>
-    </div>
-  </div>
-</div>
-
-<div className="mt-5">
-  <button
-    type="button"
-    onClick={() => setShowDocs(true)}
-    className="w-full inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium bg-[#0b82ff] text-white border border-[#0b82ff] hover:bg-[#086bd4]"
-  >
-    View Documents
-  </button>
-</div>
-          </div>
-        </aside>
-
-        <section className="flex-1 bg-gray-50">
-          <div className="p-5 sm:p-6 flex flex-col h-full">
-       <div className="mb-3 flex flex-wrap items-center justify-start gap-3 pb-2 border-b border-gray-200 shrink-0">
-  <div className="flex flex-wrap items-center gap-2">
-    <SectionButton k="info" label="Personal Information" />
-    <SectionButton k="work" label="Work Details" />
-  </div>
-</div>
-
-<div className="flex-1 overflow-y-auto blue-scroll pt-3">
-  {renderSection()}
-</div>
-
-<div className="pt-4 flex justify-end shrink-0">
-  <button
-    type="button"
-    onClick={closeView}
-    className="inline-flex items-center justify-center rounded-xl border border-blue-300 bg-white px-6 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-  >
-    Done
-  </button>
-</div>
-
-          </div>
-        </section>
-      </div>
-    </div>
-  </div>
-)}
-
-      {viewRow && showDocs && (
-  <div
-    role="dialog"
-    aria-modal="true"
-    aria-label="View documents"
-    tabIndex={-1}
-    className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
-  >
-    <div
-  className="absolute inset-0 bg-black/0.5 backdrop-blur-sm"
-  onClick={() => setShowDocs(false)}
-/>
-
-    <div className="relative w-full max-w-6xl max-h-[86vh] rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
-      <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-white to-white">
-        <div className="px-6 sm:px-8 py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold tracking-[0.25em] uppercase text-gray-500">
-                Worker Application
-              </div>
-              <div className="mt-1 text-lg font-semibold text-gray-900">Documents</div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700">
-                <ShieldCheck className="h-4 w-4" />
-                Admin View
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row max-h-[calc(86vh-76px)]">
-        <aside className="md:w-[320px] lg:w-[360px] border-b md:border-b-0 md:border-r border-gray-200 bg-white">
-          <div className="p-5 sm:p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl border border-gray-200 bg-gray-100 overflow-hidden shadow-sm">
-                {viewRow?.profile_picture_url ? (
-                  <img
-                    src={viewRow.profile_picture_url}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                    onError={({ currentTarget }) => {
-                      currentTarget.style.display = "none";
-                      const parent = currentTarget.parentElement;
-                      if (parent) {
-                        parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${initialsFrom(
-                          viewRow?.name_first,
-                          viewRow?.name_last
-                        )}</div>`;
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">
-                    {initialsFrom(viewRow?.name_first, viewRow?.name_last)}
-                  </div>
-                )}
               </div>
 
-              <div className="min-w-0">
-                <div className="text-base font-semibold text-gray-900 truncate">
-                  {[viewRow?.name_first, viewRow?.name_last].filter(Boolean).join(" ") || "-"}
-                </div>
-                <div className="text-sm text-gray-500 truncate">{viewRow?.email || "-"}</div>
-                <div className="mt-2 flex flex-wrap gap-2">{viewStatusPills(viewRow)}</div>
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 gap-3">
-  <QuickItem
-    icon={<CalendarDays className="h-4 w-4" />}
-    label="Created"
-    value={viewRow?.created_at_display || "-"}
-  />
-</div>
-
-           <div className="mt-5">
-
-  <div className="mt-2 grid grid-cols-1 gap-2">
-    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-      <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
-        Application ID
-      </div>
-      <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
-        {viewRow?.id || "-"}
-      </div>
-    </div>
-  </div>
-</div>
-
-
-            <div className="mt-5">
-              <button
-                type="button"
-                onClick={() => setShowDocs(false)}
-                className="w-full inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium bg-[#0b82ff] text-white border border-[#0b82ff] hover:bg-[#086bd4]"
-              >
-                Back to Details
-              </button>
-            </div>
-          </div>
-        </aside>
-
-        <section className="flex-1 bg-gray-50">
-          <div className="p-5 sm:p-6 flex flex-col h-full relative">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-gray-200 shrink-0">
-              <div className="text-sm font-semibold text-gray-900">Submitted Documents</div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto blue-scroll pt-3">
-
-              {viewRow && viewRow.docs && Object.keys(viewRow.docs).length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[
-                    { label: "Primary ID (Front)", keys: ["primary_id_front", "primaryIdFront", "primary_front", "primary_front_id", "primary_id_front_url", "primary_front_url"] },
-                    { label: "Primary ID (Back)", keys: ["primary_id_back", "primaryIdBack", "primary_back", "primary_back_id", "primary_id_back_url", "primary_back_url"] },
-                    { label: "Secondary ID", keys: ["secondary_id", "secondaryId", "secondary_id_url"] },
-                    { label: "NBI/Police Clearance", keys: ["nbi_police_clearance", "nbi_clearance", "police_clearance", "nbi", "police"] },
-                    { label: "Proof of Address", keys: ["proof_of_address","proofOfAddress","address_proof","proof_address","billing_proof","utility_bill","proof_of_residence","proofOfResidence","residence_proof","residency_proof","barangay_clearance","barangay_certificate","electric_bill","water_bill","meralco_bill"], fuzzy: { any: ["address","residence","residency","billing","utility","bill","proof","poa","barangay","clearance"] } },
-                    { label: "Medical Certificate", keys: ["medical_certificate", "med_cert"], fuzzy: { any: ["medical", "med_cert", "medcert", "health", "fit_to_work", "fit-to-work", "fit2work", "med"] } },
-                    { label: "Certificates", keys: ["certificates", "training_certificates", "certs"] },
-                  ].map((cfg) => {
-                    const d = viewRow.docs || {};
-                    const found = resolveDoc(d, cfg.keys, cfg.fuzzy);
-                    const url = toDocUrl(found);
-                    const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(url);
-
-                    return (
-                      <div key={cfg.label} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <div className="p-4">
-                          {isImg && url ? (
-                            <img src={url} alt={cfg.label} className="w-full h-44 object-contain" />
-                          ) : (
-                            <div className="h-44 grid place-items-center text-sm text-gray-500">
-                              {url ? "Preview not available" : "No document"}
-                            </div>
-                          )}
-                        </div>
-                        <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-                          <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-800">
-                            <span className="h-2 w-2 rounded-full bg-gray-500/70" />
-                            {cfg.label}
+              <div className="flex flex-col md:flex-row max-h-[calc(86vh-76px)]">
+                <aside className="md:w-[320px] lg:w-[360px] border-b md:border-b-0 md:border-r border-gray-200 bg-white">
+                  <div className="p-5 sm:p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-2xl border border-gray-200 bg-gray-100 overflow-hidden shadow-sm">
+                        {viewRow?.profile_picture_url ? (
+                          <img
+                            src={viewRow.profile_picture_url}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                            onError={({ currentTarget }) => {
+                              currentTarget.style.display = "none";
+                              const parent = currentTarget.parentElement;
+                              if (parent) {
+                                parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${initialsFrom(viewRow?.name_first, viewRow?.name_last)}</div>`;
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">
+                            {initialsFrom(viewRow?.name_first, viewRow?.name_last)}
                           </div>
-                          {url ? (
-                            <a
-                              href={url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center justify-center rounded-md border border-blue-300 px-4 h-9 text-sm font-medium text-blue-600 hover:bg-blue-50"
-                            >
-                              Open
-                            </a>
-                          ) : (
-                            <span className="text-sm text-gray-400">No link</span>
-                          )}
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="text-base font-semibold text-gray-900 truncate">
+                          {[viewRow?.name_first, viewRow?.name_last].filter(Boolean).join(" ") || "-"}
+                        </div>
+                        <div className="text-sm text-gray-500 truncate">{viewRow?.email || "-"}</div>
+                        <div className="mt-2 flex flex-wrap gap-2">{viewStatusPills(viewRow)}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-1 gap-3">
+                      <QuickItem
+                        icon={<CalendarDays className="h-4 w-4" />}
+                        label="Created"
+                        value={viewRow?.created_at_display || "-"}
+                      />
+                    </div>
+
+                    <div className="mt-5">
+                      <div className="mt-2 grid grid-cols-1 gap-2">
+                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                          <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
+                            Application ID
+                          </div>
+                          <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
+                            {viewRow?.id || "-"}
+                          </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center text-gray-600">No documents.</div>
-              )}
+                    </div>
+
+                    <div className="mt-5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDocsFetched(null);
+                          setDocsError("");
+                          setShowDocs(true);
+                        }}
+                        className="w-full inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium bg-[#0b82ff] text-white border border-[#0b82ff] hover:bg-[#086bd4]"
+                      >
+                        View Documents
+                      </button>
+                    </div>
+                  </div>
+                </aside>
+
+                <section className="flex-1 bg-gray-50">
+                  <div className="p-5 sm:p-6 flex flex-col h-full">
+                    <div className="mb-3 flex flex-wrap items-center justify-start gap-3 pb-2 border-b border-gray-200 shrink-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <SectionButton k="info" label="Personal Information" />
+                        <SectionButton k="work" label="Work Details" />
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto blue-scroll pt-3">
+                      {renderSection()}
+                    </div>
+
+                    <div className="pt-4 flex justify-end shrink-0">
+                      <button
+                        type="button"
+                        onClick={closeView}
+                        className="inline-flex items-center justify-center rounded-xl border border-blue-300 bg-white px-6 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                      >
+                        Done
+                      </button>
+                    </div>
+
+                  </div>
+                </section>
+              </div>
             </div>
-
-   <div className="pt-4 flex justify-end shrink-0">
-
-</div>
           </div>
-        </section>
-      </div>
+        )}
+
+        {viewRow && showDocs && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="View documents"
+            tabIndex={-1}
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
+          >
+            <div
+              className="absolute inset-0 bg-black/0.5 backdrop-blur-sm"
+              onClick={() => setShowDocs(false)}
+            />
+
+            <div className="relative w-full max-w-6xl max-h-[86vh] rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+              <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-white to-white">
+                <div className="px-6 sm:px-8 py-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-semibold tracking-[0.25em] uppercase text-gray-500">
+                        Worker Application
+                      </div>
+                      <div className="mt-1 text-lg font-semibold text-gray-900">Documents</div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700">
+                        <ShieldCheck className="h-4 w-4" />
+                        Admin View
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row max-h-[calc(86vh-76px)]">
+                <aside className="md:w-[320px] lg:w-[360px] border-b md:border-b-0 md:border-r border-gray-200 bg-white">
+                  <div className="p-5 sm:p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-2xl border border-gray-200 bg-gray-100 overflow-hidden shadow-sm">
+                        {viewRow?.profile_picture_url ? (
+                          <img
+                            src={viewRow.profile_picture_url}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                            onError={({ currentTarget }) => {
+                              currentTarget.style.display = "none";
+                              const parent = currentTarget.parentElement;
+                              if (parent) {
+                                parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${initialsFrom(
+                                  viewRow?.name_first,
+                                  viewRow?.name_last
+                                )}</div>`;
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">
+                            {initialsFrom(viewRow?.name_first, viewRow?.name_last)}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="text-base font-semibold text-gray-900 truncate">
+                          {[viewRow?.name_first, viewRow?.name_last].filter(Boolean).join(" ") || "-"}
+                        </div>
+                        <div className="text-sm text-gray-500 truncate">{viewRow?.email || "-"}</div>
+                        <div className="mt-2 flex flex-wrap gap-2">{viewStatusPills(viewRow)}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-1 gap-3">
+                      <QuickItem
+                        icon={<CalendarDays className="h-4 w-4" />}
+                        label="Created"
+                        value={viewRow?.created_at_display || "-"}
+                      />
+                    </div>
+
+                    <div className="mt-5">
+                      <div className="mt-2 grid grid-cols-1 gap-2">
+                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                          <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
+                            Application ID
+                          </div>
+                          <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
+                            {viewRow?.id || "-"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5">
+                      <button
+                        type="button"
+                        onClick={() => setShowDocs(false)}
+                        className="w-full inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium bg-[#0b82ff] text-white border border-[#0b82ff] hover:bg-[#086bd4]"
+                      >
+                        Back to Details
+                      </button>
+                    </div>
+                  </div>
+                </aside>
+
+                <section className="flex-1 bg-gray-50">
+                  <div className="p-5 sm:p-6 flex flex-col h-full relative">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-gray-200 shrink-0">
+                      <div className="text-sm font-semibold text-gray-900">Submitted Documents</div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto blue-scroll pt-3">
+                      {docsLoading ? (
+                        <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border border-blue-100 rounded-xl">
+                          Loading documents…
+                        </div>
+                      ) : docsError ? (
+                        <div className="px-4 py-3 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl">
+                          {docsError}
+                        </div>
+                      ) : docCards.some((x) => (x.links || []).length > 0) ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {docCards.map((cfg) => {
+                            const links = Array.isArray(cfg.links) ? cfg.links.filter(Boolean) : [];
+                            const first = links[0] || "";
+                            const img = first && isImageUrl(first);
+                            return (
+                              <div key={cfg.label} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                                <div className="p-4">
+                                  {img && first ? (
+                                    <img src={first} alt={cfg.label} className="w-full h-44 object-contain" />
+                                  ) : (
+                                    <div className="h-44 grid place-items-center text-sm text-gray-500">
+                                      {first ? "Preview not available" : "No document"}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+  <div className="flex-1 min-w-0 overflow-hidden">
+    <div className="flex items-center gap-2 min-w-0 text-sm font-semibold text-gray-800">
+      <span className="h-2 w-2 rounded-full bg-gray-500/70 shrink-0" />
+      <span className="truncate min-w-0">{cfg.label}</span>
     </div>
+
+    {links.length > 1 && (
+      <div className="text-[11px] text-gray-500 mt-0.5">
+        {links.length} files
+      </div>
+    )}
   </div>
-)}
+
+  {first ? (
+    <a
+      href={first}
+      target="_blank"
+      rel="noreferrer"
+      className="shrink-0 inline-flex items-center justify-center rounded-md border border-blue-300 px-4 h-9 text-sm font-medium text-blue-600 hover:bg-blue-50 whitespace-nowrap"
+    >
+      Open
+    </a>
+  ) : (
+    <span className="text-sm text-gray-400 shrink-0 whitespace-nowrap">No link</span>
+  )}
+</div>
+
+                                {links.length > 1 && (
+                                  <div className="px-4 pb-4">
+                                    <div className="flex flex-wrap gap-2">
+                                      {links.slice(1).map((u, idx) => (
+                                        <a
+                                          key={`${cfg.label}-${idx}`}
+                                          href={u}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex items-center justify-center rounded-md border border-gray-200 px-3 h-8 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                        >
+                                          Open #{idx + 2}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-600">No documents.</div>
+                      )}
+                    </div>
+
+                    <div className="pt-4 flex justify-end shrink-0"></div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        )}
 
       </main>
     </>

@@ -619,14 +619,14 @@ const WorkerViewApplication = () => {
               <button
                 type="button"
                 onClick={handleDone}
-                className="inline-flex items-center justify-center h-10 px-4 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 whitespace-nowrap"
+                className="inline-flex items-center justify-center h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 whitespace-nowrap"
               >
                 Done View
               </button>
               <button
                 type="button"
                 onClick={handleCancel}
-                className="inline-flex items-center justify-center h-10 px-5 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 whitespace-nowrap"
+                className="inline-flex items-center justify-center h-10 px-5 rounded-md bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 whitespace-nowrap"
               >
                 Cancel Application
               </button>

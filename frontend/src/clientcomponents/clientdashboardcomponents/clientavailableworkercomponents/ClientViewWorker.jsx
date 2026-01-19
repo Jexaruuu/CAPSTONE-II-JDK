@@ -102,6 +102,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
     let cancel = false;
     async function load() {
       if (!open) return;
+
       let gid = gidGuess;
       if (!gid && emailGuess) {
         try {
@@ -112,6 +113,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
           gid = items[0]?.request_group_id || "";
         } catch {}
       }
+
       let full = null;
       if (gid) {
         try {
@@ -119,6 +121,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
           full = res.data || null;
         } catch {}
       }
+
       let gender = base.gender || base.sex || baseInfo.sex || "";
       if (!gender && (base.auth_uid || base.authUid || emailGuess)) {
         try {
@@ -128,6 +131,55 @@ export default function ClientViewWorker({ open, onClose, worker }) {
           gender = res.data?.sex || "";
         } catch {}
       }
+
+      const fromFullInfo =
+        full?.info?.contact_number ||
+        full?.info?.contactNumber ||
+        full?.info?.phone ||
+        full?.info?.mobile ||
+        full?.contact_number ||
+        full?.contactNumber ||
+        full?.phone ||
+        full?.mobile ||
+        "";
+
+      let contactNumber =
+        base.contact_number ||
+        base.contactNumber ||
+        base.phone ||
+        base.mobile ||
+        baseInfo.contact_number ||
+        baseInfo.contactNumber ||
+        baseInfo.phone ||
+        baseInfo.mobile ||
+        fromFullInfo ||
+        "";
+
+      if (!contactNumber && (base.auth_uid || base.authUid || emailGuess)) {
+        const params = { email: emailGuess || "", auth_uid: base.auth_uid || base.authUid || "" };
+        const tryUrls = [
+          `${API_BASE}/api/workers/public/contact-number`,
+          `${API_BASE}/api/workers/public/contact`,
+          `${API_BASE}/api/workers/public/phone`
+        ];
+        for (const url of tryUrls) {
+          try {
+            const res = await axios.get(url, { params });
+            const v =
+              res.data?.contact_number ||
+              res.data?.contactNumber ||
+              res.data?.phone ||
+              res.data?.mobile ||
+              res.data?.number ||
+              "";
+            if (v) {
+              contactNumber = v;
+              break;
+            }
+          } catch {}
+        }
+      }
+
       let revItems = [];
       try {
         const res = await axios.get(`${API_BASE}/api/workers/public/reviews`, {
@@ -154,13 +206,20 @@ export default function ClientViewWorker({ open, onClose, worker }) {
           return { id, rating, text, created_at: createdAt };
         });
       } catch {}
+
       if (!cancel) {
-        setFetched(full ? { ...full, gender } : gender ? { gender } : null);
+        const extra = {};
+        if (gender) extra.gender = gender;
+        if (contactNumber) extra.contact_number = contactNumber;
+
+        setFetched(full ? { ...full, ...extra } : Object.keys(extra).length ? extra : null);
+
         const nums = revItems.map((r) => r.rating).filter((n) => Number.isFinite(n));
         const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
         setReviewsState({ items: revItems, avg, count: revItems.length });
       }
     }
+
     load();
     return () => {
       cancel = true;
@@ -263,9 +322,12 @@ export default function ClientViewWorker({ open, onClose, worker }) {
     const d = fetched.details || fetched.work || {};
     const r = fetched.rate || {};
     const withGender = fetched.gender ? { gender: fetched.gender } : {};
+    const withContact = fetched.contact_number
+      ? { info: { contact_number: fetched.contact_number } }
+      : {};
     return {
       ...base,
-      info: { ...(base.info || {}), ...i },
+      info: { ...(base.info || {}), ...i, ...(withContact.info || {}) },
       details: { ...(base.details || base.work || {}), ...d },
       rate: { ...(base.rate || {}), ...r },
       ...withGender
@@ -306,6 +368,33 @@ export default function ClientViewWorker({ open, onClose, worker }) {
     : Number.isFinite(w.years)
     ? w.years
     : null;
+
+  const contactNumber =
+    i.contact_number ||
+    i.contactNumber ||
+    i.phone ||
+    i.mobile ||
+    w.contact_number ||
+    w.contactNumber ||
+    w.phone ||
+    w.mobile ||
+    "";
+
+  const normalizePHMobile = (raw) => {
+    const digits = String(raw || "").replace(/\D/g, "");
+    if (!digits) return "";
+    let d = digits;
+
+    if (d.startsWith("63")) d = d.slice(2);
+    if (d.startsWith("0")) d = d.slice(1);
+    if (d.length > 10) d = d.slice(d.length - 10);
+
+    if (d.length !== 10) return "";
+    if (d[0] !== "9") return "";
+    return d;
+  };
+
+  const phMobile = useMemo(() => normalizePHMobile(contactNumber), [contactNumber]);
 
   const rateTypeRaw = r.rate_type || r.rateType || "";
   const rateType = workerRateTypeCanon(rateTypeRaw);
@@ -564,6 +653,34 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                   </div>
 
                   <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-gray-200 p-4 bg-white sm:col-span-2">
+                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                        Contact Number
+                      </div>
+
+                      {phMobile ? (
+                        <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 border border-gray-100">
+                          <img
+                            src="philippines.png"
+                            alt="PH"
+                            className="h-5 w-7 rounded-sm object-cover"
+                          />
+                          <span className="text-gray-700 text-sm">+63</span>
+                          <span className="text-sm text-[#008cfc] tracking-wide">{phMobile}</span>
+                        </div>
+                      ) : (
+                        <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 border border-gray-200 text-gray-400">
+                          <img
+                            src="philippines.png"
+                            alt="PH"
+                            className="h-5 w-7 rounded-sm object-cover"
+                          />
+                          <span className="text-sm">+63</span>
+                          <span className="text-sm">9XXXXXXXXX</span>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="rounded-xl border border-gray-200 p-4 bg-white">
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Gender</div>
                       <div className="text-sm text-[#008cfc]">{gender || "—"}</div>
@@ -605,7 +722,9 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold text-gray-700">Match With Your Approved Request</div>
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border ${statusClasses}`}>
+                        <span
+                          className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border ${statusClasses}`}
+                        >
                           {statusLabel}
                         </span>
                       </div>

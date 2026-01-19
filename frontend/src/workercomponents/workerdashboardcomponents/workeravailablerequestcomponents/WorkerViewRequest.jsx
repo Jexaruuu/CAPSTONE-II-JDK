@@ -14,46 +14,114 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const [approvedTypes, setApprovedTypes] = useState([]);
   const [hasApproved, setHasApproved] = useState(false);
   const [approvedApp, setApprovedApp] = useState(null);
+  const [approvedTasksCanon, setApprovedTasksCanon] = useState([]);
+  const [approvedApps, setApprovedApps] = useState([]);
 
   const base = request || {};
   const info = base.info || {};
-  const emailGuess = base.client_email || info.email_address || base.email || base.email_address || base.emailAddress || "";
-  const gidGuess = base.request_group_id || base.requestGroupId || base.requestGroupID || base.group_id || base.groupId || "";
+  const emailGuess =
+    base.client_email ||
+    info.email_address ||
+    base.email ||
+    base.email_address ||
+    base.emailAddress ||
+    "";
+  const gidGuess =
+    base.request_group_id ||
+    base.requestGroupId ||
+    base.requestGroupID ||
+    base.group_id ||
+    base.groupId ||
+    "";
 
   const appU = useMemo(() => {
     try {
-      const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
+      const a = JSON.parse(localStorage.getItem("workerAuth") || "{}");
       const au =
         a.auth_uid ||
         a.authUid ||
         a.uid ||
         a.id ||
-        localStorage.getItem('auth_uid') ||
-        '';
+        localStorage.getItem("auth_uid") ||
+        "";
       const e =
         a.email ||
-        localStorage.getItem('worker_email') ||
-        localStorage.getItem('email_address') ||
-        localStorage.getItem('email') ||
-        '';
-      return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
+        localStorage.getItem("worker_email") ||
+        localStorage.getItem("email_address") ||
+        localStorage.getItem("email") ||
+        "";
+      return encodeURIComponent(JSON.stringify({ r: "worker", e, au }));
     } catch {
-      return '';
+      return "";
     }
   }, []);
-  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+  const headersWithU = useMemo(() => (appU ? { "x-app-u": appU } : {}), [appU]);
+
+  const canonType = (s) => {
+    const k = String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+    if (/carpent/.test(k)) return "carpentry";
+    if (/elect/.test(k)) return "electrical works";
+    if (/plumb/.test(k)) return "plumbing";
+    if (/(car\s*wash|carwash|auto)/.test(k)) return "car washing";
+    if (/laund/.test(k)) return "laundry";
+    return k;
+  };
+
+  const canonTask = (s) => {
+    return String(s || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/[^\w\s-]/g, "")
+      .trim();
+  };
+
+  const extractTasks = (taskRaw) => {
+    if (!taskRaw) return [];
+    if (typeof taskRaw === "string") {
+      return taskRaw
+        .split(/[,/|]+/)
+        .map((x) => canonTask(x))
+        .filter(Boolean);
+    }
+    if (Array.isArray(taskRaw)) {
+      const out = [];
+      taskRaw.forEach((it) => {
+        if (!it) return;
+        if (typeof it === "string") out.push(canonTask(it));
+        else if (typeof it === "object") {
+          const tasks = Array.isArray(it.tasks) ? it.tasks : [];
+          tasks.forEach((t) => out.push(canonTask(t)));
+        }
+      });
+      return out.filter(Boolean);
+    }
+    if (typeof taskRaw === "object") {
+      const out = [];
+      Object.values(taskRaw).forEach((v) => {
+        if (!v) return;
+        const arr = Array.isArray(v) ? v : [v];
+        arr.forEach((x) => out.push(canonTask(x)));
+      });
+      return out.filter(Boolean);
+    }
+    return [];
+  };
 
   useEffect(() => {
     let cancel = false;
     async function load() {
       if (!open) return;
+
       let gid = gidGuess;
       if (!gid && emailGuess) {
         try {
-          const res = await axios.get(`${API_BASE}/api/clientservicerequests/last`, { params: { email: emailGuess } });
+          const res = await axios.get(`${API_BASE}/api/clientservicerequests/last`, {
+            params: { email: emailGuess }
+          });
           gid = res.data?.request_group_id || "";
         } catch {}
       }
+
       let full = null;
       if (gid) {
         try {
@@ -61,24 +129,34 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
           full = res.data || null;
         } catch {}
       }
+
       let gender = base.gender || info.sex || info.gender || "";
       if (!gender && full) {
         const ii = full.info || {};
         const dd = full.details || full.work || {};
         gender = ii.sex || ii.gender || dd.sex || dd.gender || "";
       }
+
       if (!gender && (base.client_auth_uid || base.auth_uid || base.authUid || emailGuess)) {
         try {
-          const res = await axios.get(`${API_BASE}/api/clients/public/sex`, { params: { email: emailGuess || "", auth_uid: base.client_auth_uid || base.auth_uid || base.authUid || "" } });
+          const res = await axios.get(`${API_BASE}/api/clients/public/sex`, {
+            params: {
+              email: emailGuess || "",
+              auth_uid: base.client_auth_uid || base.auth_uid || base.authUid || ""
+            }
+          });
           gender = res.data?.sex || "";
         } catch {}
       }
+
       if (!cancel) {
         setFetched(full ? { ...full, gender } : gender ? { gender } : null);
       }
     }
     load();
-    return () => { cancel = true };
+    return () => {
+      cancel = true;
+    };
   }, [open, gidGuess, emailGuess, base.auth_uid, base.authUid, base.client_auth_uid]);
 
   useEffect(() => {
@@ -101,18 +179,23 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
 
   useEffect(() => {
     if (!btnLoading) return;
-    const onPopState = () => { window.history.pushState(null, '', window.location.href); };
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', onPopState, true);
+    const onPopState = () => {
+      window.history.pushState(null, "", window.location.href);
+    };
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", onPopState, true);
     const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     document.activeElement && document.activeElement.blur();
-    const blockKeys = (e) => { e.preventDefault(); e.stopPropagation(); };
-    window.addEventListener('keydown', blockKeys, true);
+    const blockKeys = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    window.addEventListener("keydown", blockKeys, true);
     return () => {
-      window.removeEventListener('popstate', onPopState, true);
+      window.removeEventListener("popstate", onPopState, true);
       document.body.style.overflow = prevOverflow;
-      window.removeEventListener('keydown', blockKeys, true);
+      window.removeEventListener("keydown", blockKeys, true);
     };
   }, [btnLoading]);
 
@@ -120,7 +203,8 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     const k = String(s || "").toLowerCase();
     if (k.includes("elect")) return Zap;
     if (k.includes("plumb")) return Wrench;
-    if (k.includes("car wash") || k.includes("carwash") || k.includes("auto") || k.includes("carwasher")) return Car;
+    if (k.includes("car wash") || k.includes("carwash") || k.includes("auto") || k.includes("carwasher"))
+      return Car;
     if (k.includes("laund") || k.includes("clean")) return Shirt;
     if (k.includes("carpent") || k.includes("wood")) return Hammer;
     return Hammer;
@@ -150,7 +234,10 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     const out = [];
     const add = (val) => {
       if (val == null) return;
-      if (Array.isArray(val)) { val.forEach(add); return; }
+      if (Array.isArray(val)) {
+        val.forEach(add);
+        return;
+      }
       if (typeof val === "object") {
         const lbl = val.category || val.name || val.type || val.label;
         if (lbl) add(lbl);
@@ -159,35 +246,68 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
         if (Array.isArray(val.services)) val.services.forEach(add);
         return;
       }
-      String(val).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) out.push(s); });
+      String(val)
+        .split(/[,/|]+/)
+        .forEach((s) => {
+          s = s.trim();
+          if (s) out.push(s);
+        });
     };
     add(d.service_types ?? d.service_type ?? d.serviceTypes ?? d.serviceType);
     add(w.service_types ?? w.service_type ?? w.serviceTypes ?? w.serviceType);
     if (Array.isArray(w.serviceTypeList)) out.push(...w.serviceTypeList);
     return [...new Set(out)];
   })();
+
   const serviceTasks = (() => {
     const out = [];
     const add = (val) => {
       if (val == null) return;
-      if (Array.isArray(val)) { val.forEach(add); return; }
-      if (typeof val === 'object') {
+      if (Array.isArray(val)) {
+        val.forEach(add);
+        return;
+      }
+      if (typeof val === "object") {
         if (Array.isArray(val.tasks)) val.tasks.forEach(add);
         else Object.values(val).forEach(add);
         return;
       }
-      String(val).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) out.push(s); });
+      String(val)
+        .split(/[,/|]+/)
+        .forEach((s) => {
+          s = s.trim();
+          if (s) out.push(s);
+        });
     };
     add(d.service_task ?? w.service_task ?? w.serviceTask);
     if (Array.isArray(w.serviceTaskList)) out.push(...w.serviceTaskList);
     return [...new Set(out)];
   })();
+
+  const requestCanonTypes = useMemo(() => {
+    const list = Array.isArray(serviceTypes) ? serviceTypes : [];
+    return Array.from(new Set(list.map(canonType).filter(Boolean)));
+  }, [serviceTypes]);
+
+  const requestTaskCanonSet = useMemo(() => {
+    const raw =
+      d.service_task ??
+      w.service_task ??
+      w.serviceTask ??
+      (Array.isArray(w.serviceTaskList) ? w.serviceTaskList : null) ??
+      serviceTasks ??
+      null;
+    const tasks = extractTasks(raw);
+    return new Set(tasks.map(canonTask).filter(Boolean));
+  }, [d.service_task, w.service_task, w.serviceTask, w.serviceTaskList, serviceTasks]);
+
   const avatar = i.profile_picture_url || w.client_image || w.image || w.avatar || "/Clienticon.png";
 
   const barangay = i.barangay || d.barangay || "";
   const street = i.street || d.street || "";
   const additionalAddress = i.additional_address || d.additional_address || "";
-  const age = Number.isFinite(i.age) ? i.age : (Number.isFinite(w.age) ? w.age : null);
+  const age = Number.isFinite(i.age) ? i.age : Number.isFinite(w.age) ? w.age : null;
+
   const genderRaw = w.gender || w.sex || i.sex || i.gender || d.sex || d.gender || "";
   const gender = (() => {
     const g = String(genderRaw || "").trim();
@@ -197,13 +317,19 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     if (u === "F" || u === "FEMALE") return "Female";
     return g;
   })();
+
   const yearsExp = Number.isFinite(d.years_experience) ? d.years_experience : null;
 
   const canonRateType = (t) => {
-    const s = String(t || "").toLowerCase().replace(/\s+/g, " ").replace(/_/g, " ").trim();
+    const s = String(t || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/_/g, " ")
+      .trim();
     if (!s) return "";
     if (s.includes("hour") || s === "range" || s === "ranged") return "Hourly Rate";
-    if (s.includes("job") || s.includes("fixed") || s.includes("flat") || s.includes("project") || s.includes("task")) return "By the Job Rate";
+    if (s.includes("job") || s.includes("fixed") || s.includes("flat") || s.includes("project") || s.includes("task"))
+      return "By the Job Rate";
     if (s === "by the job rate") return "By the Job Rate";
     return "";
   };
@@ -219,6 +345,7 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     if (!Number.isFinite(x)) return "";
     return `₱${x.toLocaleString()}`;
   };
+
   const rateFrom = r.rate_from ?? d.rate_from ?? r.from ?? d.from ?? null;
   const rateTo = r.rate_to ?? d.rate_to ?? r.to ?? d.to ?? null;
   const rateValue = r.rate_value ?? d.rate_value ?? r.value ?? d.value ?? null;
@@ -232,7 +359,8 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     if (rateValue) displayRate = `${peso(rateValue)}`;
   }
   if (!displayRate && (rateFrom || rateTo)) {
-    displayRate = rateFrom && rateTo ? `${peso(rateFrom)}–${peso(rateTo)}/hr` : `${peso(rateFrom ?? rateTo)}/hr`;
+    displayRate =
+      rateFrom && rateTo ? `${peso(rateFrom)}–${peso(rateTo)}/hr` : `${peso(rateFrom ?? rateTo)}/hr`;
   }
   if (!displayRate && rateValue) displayRate = `${peso(rateValue)}`;
   if (!displayRate) displayRate = "Rate not provided";
@@ -240,18 +368,36 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const name = w.client_name || [i.first_name, i.last_name].filter(Boolean).join(" ") || "Client";
   const emailAddress = w.client_email || i.email_address || "";
 
-  const icons = (serviceTypes || []).slice(0, 5).map((lbl) => iconFor(lbl));
-  const singleIcon = icons.length === 1;
-
   const workDescription = d.work_description || d.description || w.description || w.title || "—";
   const workDone = Number.isFinite(w.completed_jobs) ? w.completed_jobs : 0;
 
   const ratingSources = [
-    w.ratingFive, w.rating, w.stars, w.star, w.score, w.rating_out_of_5, w.value,
-    i.ratingFive, i.rating, i.stars, i.star, i.score, i.rating_out_of_5, i.value,
-    d.ratingFive, d.rating, d.stars, d.star, d.score, d.rating_out_of_5, d.value
+    w.ratingFive,
+    w.rating,
+    w.stars,
+    w.star,
+    w.score,
+    w.rating_out_of_5,
+    w.value,
+    i.ratingFive,
+    i.rating,
+    i.stars,
+    i.star,
+    i.score,
+    i.rating_out_of_5,
+    i.value,
+    d.ratingFive,
+    d.rating,
+    d.stars,
+    d.star,
+    d.score,
+    d.rating_out_of_5,
+    d.value
   ];
-  const rating = ratingSources.map((v)=>Number(v)).find((n)=>Number.isFinite(n)&&n>=0&&n<=5) ?? 0;
+  const rating =
+    ratingSources
+      .map((v) => Number(v))
+      .find((n) => Number.isFinite(n) && n >= 0 && n <= 5) ?? 0;
   const filled = Math.round(Math.max(0, Math.min(5, rating)));
 
   const prettyDate = (() => {
@@ -264,28 +410,37 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     const yyyy = dt.getFullYear();
     return `${mm}/${dd}/${yyyy}`;
   })();
+
   const prettyTime = (() => {
     const t = d.preferred_time;
     if (!t) return "—";
     const s = String(t).trim();
     let h, m;
     let mm = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(s);
-    if (mm) { h = parseInt(mm[1],10); m = parseInt(mm[2],10); }
-    else {
+    if (mm) {
+      h = parseInt(mm[1], 10);
+      m = parseInt(mm[2], 10);
+    } else {
       mm = /^(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])$/.exec(s);
       if (mm) {
-        h = parseInt(mm[1],10); m = parseInt(mm[2]||"0",10);
+        h = parseInt(mm[1], 10);
+        m = parseInt(mm[2] || "0", 10);
         const ap = mm[3].toUpperCase();
-        if (ap==="PM" && h<12) h+=12;
-        if (ap==="AM" && h===12) h=0;
+        if (ap === "PM" && h < 12) h += 12;
+        if (ap === "AM" && h === 12) h = 0;
       } else {
         const dte = new Date(`1970-01-01T${s}`);
-        if (!isNaN(dte)) { h = dte.getHours(); m = dte.getMinutes(); } else { return s; }
+        if (!isNaN(dte)) {
+          h = dte.getHours();
+          m = dte.getMinutes();
+        } else {
+          return s;
+        }
       }
     }
-    const ap = h>=12 ? "PM" : "AM";
-    const hh = ((h%12)||12);
-    const mins = String(m||0).padStart(2,"0");
+    const ap = h >= 12 ? "PM" : "AM";
+    const hh = h % 12 || 12;
+    const mins = String(m || 0).padStart(2, "0");
     return `${hh}:${mins} ${ap}`;
   })();
 
@@ -304,30 +459,27 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     });
   }, [w, i, d]);
 
-  const normalizeKind = (s) => {
-    const t = String(s || '').trim().toLowerCase();
-    if (!t) return '';
-    if (/^carpent/.test(t) || t === 'carpenter') return 'carpentry';
-    if (/^elect/.test(t) || t === 'electrician' || t === 'electrical work' || t === 'electrical work(s)') return 'electrical works';
-    if (/^plumb/.test(t) || t === 'plumber') return 'plumbing';
-    if (/car\s*wash/.test(t) || t === 'car washer' || t === 'carwasher' || t === 'car-washer') return 'car washing';
-    if (/laund/.test(t)) return 'laundry';
-    return t;
-  };
-
   const extractTypeList = (val) => {
     const out = [];
     const add = (v) => {
       if (!v) return;
-      if (Array.isArray(v)) { v.forEach(add); return; }
-      if (typeof v === 'object') {
+      if (Array.isArray(v)) {
+        v.forEach(add);
+        return;
+      }
+      if (typeof v === "object") {
         const lbl = v.category || v.name || v.type || v.label;
         if (lbl) out.push(lbl);
         if (Array.isArray(v.types)) v.types.forEach(add);
         if (Array.isArray(v.items)) v.items.forEach(add);
         return;
       }
-      String(v).split(/[,/|]+/).forEach(s => { s = s.trim(); if (s) out.push(s); });
+      String(v)
+        .split(/[,/|]+/)
+        .forEach((s) => {
+          s = s.trim();
+          if (s) out.push(s);
+        });
     };
     add(val);
     return [...new Set(out)];
@@ -340,24 +492,56 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
         const res = await axios.get(`${API_BASE}/api/workerapplications`, {
           withCredentials: true,
           headers: headersWithU,
-          params: { scope: 'active' }
+          params: { scope: "active" }
         });
         const items = Array.isArray(res.data?.items) ? res.data.items : [];
-        const approved = items.filter(r => String(r.status || '').toLowerCase() === 'approved');
+        const approved = items.filter((r) => String(r.status || "").toLowerCase() === "approved");
         const first = approved[0] || null;
-        const src = first?.details || first?.work || {};
-        const list = extractTypeList(src?.service_types || src?.service_type || []);
+
+        const allTypes = [];
+        const allTasks = [];
+
+        for (const row of approved) {
+          const src = row?.details || row?.work || {};
+          const types = extractTypeList(src?.service_types || src?.service_type || src?.category || []);
+          types.forEach((t) => allTypes.push(t));
+
+          const tasksRaw =
+            src?.service_task ||
+            src?.service_tasks ||
+            src?.tasks ||
+            row?.service_task ||
+            row?.tasks ||
+            null;
+
+          const tasksCanon = extractTasks(tasksRaw);
+          tasksCanon.forEach((t) => allTasks.push(t));
+        }
+
+        const uniqueTypes = Array.from(new Set(allTypes.filter(Boolean)));
+        const uniqueTasksCanon = Array.from(new Set(allTasks.map(canonTask).filter(Boolean)));
+
         if (!stop) {
-          setHasApproved(!!first);
-          setApprovedTypes(list);
+          setHasApproved(approved.length > 0);
+          setApprovedTypes(uniqueTypes);
+          setApprovedTasksCanon(uniqueTasksCanon);
+          setApprovedApps(approved);
+
           if (first) {
-            const rate = first.rate || first.pricing || {};
+            const src = first?.details || first?.work || {};
+            const tasksRaw =
+              src?.service_task ||
+              src?.service_tasks ||
+              src?.tasks ||
+              first?.service_task ||
+              first?.tasks ||
+              null;
+            const tasksCanon = extractTasks(tasksRaw).map(canonTask).filter(Boolean);
+
             setApprovedApp({
               service_type: src?.service_type || src?.category || "",
-              rate_type: rate?.rate_type || rate?.pricing_type || "",
-              rate_from: rate?.rate_from ?? null,
-              rate_to: rate?.rate_to ?? null,
-              rate_value: rate?.rate_value ?? null
+              service_types: extractTypeList(src?.service_types || src?.service_type || src?.category || []),
+              service_tasks: tasksCanon
             });
           } else {
             setApprovedApp(null);
@@ -367,65 +551,105 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
         if (!stop) {
           setHasApproved(false);
           setApprovedTypes([]);
+          setApprovedTasksCanon([]);
           setApprovedApp(null);
+          setApprovedApps([]);
         }
       }
     }
     loadApproved();
-    return () => { stop = true; };
+    return () => {
+      stop = true;
+    };
   }, [headersWithU]);
 
-  const clientTypeRaw = d.service_type || d.serviceType || '';
-  const clientType = normalizeKind(clientTypeRaw);
-  const workerTypesNorm = approvedTypes.map(normalizeKind);
-  const serviceMatch = clientType && workerTypesNorm.includes(clientType);
+  const approvedTypesCanon = useMemo(() => {
+    const originals = approvedTypes || [];
+    return originals.map(canonType).filter(Boolean);
+  }, [approvedTypes]);
 
-  const wRateType = canonRateType(approvedApp?.rate_type || "");
-  const wFrom = approvedApp?.rate_from != null ? Number(approvedApp.rate_from) : null;
-  const wTo = approvedApp?.rate_to != null ? Number(approvedApp.rate_to) : null;
-  const wValue = approvedApp?.rate_value != null ? Number(approvedApp.rate_value) : null;
+  const approvedTaskSet = useMemo(() => {
+    const list = Array.isArray(approvedTasksCanon) ? approvedTasksCanon : [];
+    return new Set(list.map(canonTask).filter(Boolean));
+  }, [approvedTasksCanon]);
 
-  const reqFrom = rateFrom != null ? Number(rateFrom) : null;
-  const reqTo = rateTo != null ? Number(rateTo) : null;
-  const reqValue = rateValue != null ? Number(rateValue) : null;
+  const typeMatchOk = useMemo(() => {
+    if (!requestCanonTypes.length || !approvedTypesCanon.length) return false;
+    const s = new Set(approvedTypesCanon);
+    return requestCanonTypes.some((t) => s.has(t));
+  }, [requestCanonTypes, approvedTypesCanon]);
 
-  const rateTypeMatchOk = !!wRateType && !!rateType && wRateType === rateType;
-  let rateValueMatchOk = false;
-  if (rateTypeMatchOk && wRateType === "Hourly Rate") {
-    const norm = (a, b) => {
-      const af = Number.isFinite(a);
-      const bf = Number.isFinite(b);
-      if (af && bf) return [a, b];
-      if (af && !bf) return [a, a];
-      if (!af && bf) return [b, b];
-      return null;
-    };
-    const c = norm(reqFrom, reqTo);
-    const wv = norm(wFrom, wTo);
-    if (c && wv) rateValueMatchOk = c[0] === wv[0] && c[1] === wv[1];
-  } else if (rateTypeMatchOk && wRateType === "By the Job Rate") {
-    if (Number.isFinite(reqValue) && Number.isFinite(wValue)) {
-      rateValueMatchOk = reqValue === wValue;
+  const taskMatchOk = useMemo(() => {
+    if (!requestTaskCanonSet.size || !approvedTaskSet.size) return false;
+    for (const t of requestTaskCanonSet) {
+      if (approvedTaskSet.has(t)) return true;
     }
-  }
+    return false;
+  }, [requestTaskCanonSet, approvedTaskSet]);
 
-  const typeMatchOk = !!serviceMatch;
-  const matchCount = [typeMatchOk, rateTypeMatchOk, rateValueMatchOk].filter(Boolean).length;
-  const allThreeMatch = matchCount === 3;
+  const matchedApprovedApps = useMemo(() => {
+    const list = Array.isArray(approvedApps) ? approvedApps : [];
+    const out = [];
 
-  const statusLabel = allThreeMatch ? "Match" : "Not Match";
-  const statusClasses = allThreeMatch ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200";
-  const progressWidth = `${Math.max(0, Math.min(100, Math.round((matchCount / 3) * 100)))}%`;
+    for (const row of list) {
+      const src = row?.details || row?.work || {};
+      const typesRaw = extractTypeList(src?.service_types || src?.service_type || src?.category || []);
+      const typeCanon = typesRaw.map(canonType).filter(Boolean);
+      const typeOk = typeCanon.length ? typeCanon.some((t) => requestCanonTypes.includes(t)) : false;
+
+      const tasksRaw =
+        src?.service_task ||
+        src?.service_tasks ||
+        src?.tasks ||
+        row?.service_task ||
+        row?.tasks ||
+        null;
+
+      const tasksCanon = extractTasks(tasksRaw).map(canonTask).filter(Boolean);
+      const reqTasks = requestTaskCanonSet;
+
+      let taskOk = false;
+      if (reqTasks && reqTasks.size && tasksCanon.length) {
+        const s = new Set(tasksCanon);
+        for (const t of reqTasks) {
+          if (s.has(t)) {
+            taskOk = true;
+            break;
+          }
+        }
+      }
+
+      if (typeOk || taskOk) {
+        out.push({
+          id: row?.request_group_id || row?.id || `${out.length}`,
+          service_type: src?.service_type || src?.category || "",
+          matches: { service_type: !!typeOk, service_task: !!taskOk }
+        });
+      }
+    }
+
+    return out;
+  }, [approvedApps, requestCanonTypes, requestTaskCanonSet]);
+
+  const matchCount = [typeMatchOk, taskMatchOk].filter(Boolean).length;
+  const allTwoMatch = matchCount === 2;
+
+  const statusLabel = allTwoMatch ? "Match" : "Not Match";
+  const statusClasses = allTwoMatch
+    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : "bg-rose-50 text-rose-700 border-rose-200";
+
+  const progressWidth = `${Math.max(0, Math.min(100, Math.round((matchCount / 2) * 100)))}%`;
 
   const hasActiveApproved = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/workerapplications`, {
         withCredentials: true,
         headers: headersWithU,
-        params: { scope: 'active' }
+        params: { scope: "active" }
       });
       const items = Array.isArray(res.data?.items) ? res.data.items : [];
-      return items.some(r => String(r.status || '').toLowerCase() === 'approved');
+      return items.some((r) => String(r.status || "").toLowerCase() === "approved");
     } catch {
       return false;
     }
@@ -440,7 +664,7 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
       setShowNoApproved(true);
       return;
     }
-    if (!allThreeMatch) {
+    if (!allTwoMatch) {
       setShowTypeMismatch(true);
       return;
     }
@@ -451,23 +675,86 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const approvedServiceType = useMemo(() => {
     const originals = approvedTypes || [];
     if (!originals.length) return "";
-    if (clientType) {
-      const idx = workerTypesNorm.indexOf(clientType);
-      if (idx >= 0) return originals[idx] || "";
-    }
+    const idx = requestCanonTypes.length
+      ? originals.map(canonType).findIndex((x) => requestCanonTypes.includes(x))
+      : -1;
+    if (idx >= 0) return originals[idx] || "";
     return originals[0] || "";
-  }, [approvedTypes, workerTypesNorm, clientType]);
+  }, [approvedTypes, requestCanonTypes]);
 
-  const canAccept = hasApproved && allThreeMatch;
+  const canAccept = hasApproved && allTwoMatch;
+
+  const workersNeeded = (() => {
+    const v = d.workers_needed ?? d.workers_need ?? w.workers_needed ?? w.workers_need ?? null;
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.floor(n);
+  })();
+
+  const unitsLabel = (() => {
+    const sq = r.sq_m ?? r.sqm ?? null;
+    const pcs = r.pieces ?? r.pcs ?? null;
+    const kg = r.unit_kg ?? null;
+    const un = r.units ?? r.unit ?? null;
+
+    const toNum = (x) => {
+      const n = typeof x === "number" ? x : Number(String(x ?? "").replace(/,/g, ""));
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const sqN = toNum(sq);
+    const pcsN = toNum(pcs);
+    const kgN = toNum(kg);
+    const unN = toNum(un);
+
+    if (sqN !== null && sqN > 0) return `${sqN} sq.m`;
+    if (pcsN !== null && pcsN > 0) return `${pcsN} pcs`;
+    if (kgN !== null && kgN > 0) return `${kgN} kg`;
+    if (unN !== null && unN > 0) return `${unN} unit${unN > 1 ? "s" : ""}`;
+    return null;
+  })();
+
+  const totalRateDisplay = (() => {
+    const raw = r.total_rate_php ?? r.totalRatePhp ?? r.total_rate ?? r.totalRate ?? r.total ?? null;
+    const s = String(raw ?? "").trim();
+    if (!s) return "—";
+    if (s.startsWith("₱")) return s;
+    const n = Number(s.replace(/,/g, "").match(/-?\d+(\.\d+)?/)?.[0] ?? NaN);
+    if (Number.isFinite(n)) {
+      return `₱${new Intl.NumberFormat("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+        Math.max(0, n)
+      )}`;
+    }
+    return s;
+  })();
 
   return (
     <div className={`fixed inset-0 z-[120] ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
-      <div className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
-      <div className={`absolute right-0 top-0 h-full w-full sm:w-[560px] md:w-[660px] bg-white shadow-2xl border-l border-gray-200 transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`} role="dialog" aria-modal="true">
+      <div
+        className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity ${
+          open ? "opacity-100" : "opacity-0"
+        }`}
+        onClick={onClose}
+      />
+
+      <div
+        className={`absolute right-0 top-0 h-full w-full sm:w-[560px] md:w-[660px] bg-white shadow-2xl border-l border-gray-200 transition-transform duration-300 ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+        role="dialog"
+        aria-modal="true"
+      >
         <div className="h-16 px-5 border-b border-gray-200 flex items-center justify-between">
-          <button onClick={onClose} aria-label="Close" className="h-8 w-8 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center">×</button>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="h-8 w-8 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center"
+          >
+            ×
+          </button>
           <img src="/jdklogo.png" alt="Logo" className="h-36 w-auto" />
         </div>
+
         <div className="h-[calc(100%-4rem)] overflow-hidden flex flex-col">
           <div className="flex-1 overflow-hidden">
             <div className="p-5 h-full">
@@ -475,58 +762,50 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                 <div className="relative p-5 bg-gradient-to-b from-gray-50/60 to-white rounded-t-2xl shrink-0">
                   <div className="flex items-start gap-4">
                     <div className="relative h-16 w-16 rounded-full overflow-hidden border border-gray-200 bg-gray-50 shrink-0">
-                      <img src={i.profile_picture_url || w.client_image || w.image || w.avatar || "/Clienticon.png"} alt={name} className="h-full w-full object-cover" onError={({ currentTarget }) => { currentTarget.style.display = "none" }} />
+                      <img
+                        src={avatar}
+                        alt={name}
+                        className="h-full w-full object-cover"
+                        onError={({ currentTarget }) => {
+                          currentTarget.style.display = "none";
+                        }}
+                      />
                     </div>
+
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex items-baseline gap-1">
                             <span className="text-sm md:text-lg font-semibold text-gray-700">Client:</span>
-                            <span className="text-lg md:text-xl font-semibold text-[#008cfc] leading-tight truncate">{name}</span>
+                            <span className="text-lg md:text-xl font-semibold text-[#008cfc] leading-tight truncate">
+                              {name}
+                            </span>
                           </div>
                           {emailAddress ? <div className="text-xs text-gray-600 truncate">{emailAddress}</div> : null}
                         </div>
-                        <div className="hidden" />
-                        {(() => {
-                          const icons = (serviceTypes || []).slice(0, 5).map((lbl) => iconFor(lbl));
-                          const singleIcon = icons.length === 1;
-                          return singleIcon ? (
-                            <div className="relative w-18 h-18 flex items-start justify-end">
-                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200">
-                                {React.createElement(icons[0] || Hammer, { size: 16, className: "text-[#008cfc]" })}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="relative w-18 h-18 grid grid-cols-2 auto-rows-[minmax(0,1fr)] gap-2">
-                              {(icons.length ? icons : [Hammer]).map((Icon, idx) => {
-                                const pos = [
-                                  { gridColumn: "1", gridRow: "1" },
-                                  { gridColumn: "2", gridRow: "1" },
-                                  { gridColumn: "2", gridRow: "2" },
-                                  { gridColumn: "1", gridRow: "2" },
-                                  { gridColumn: "2", gridRow: "3" }
-                                ][idx] || { gridColumn: "1", gridRow: "3" };
-                                return (
-                                  <span
-                                    key={idx}
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200"
-                                    style={{ gridColumn: pos.gridColumn, gridRow: pos.gridRow }}
-                                  >
-                                    {React.createElement(Icon || Hammer, { size: 16, className: "text-[#008cfc]" })}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
+
+                        <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium shrink-0">
+                          Request Done
+                          <span className="ml-2 text-sm font-semibold text-[#008cfc]">
+                            {Number.isFinite(workDone) ? workDone : 0}
+                          </span>
+                        </span>
                       </div>
+
                       <div className="mt-2 flex items-center gap-1">
-                        {[0,1,2,3,4].map((i) => (
-                          <svg key={i} viewBox="0 0 24 24" className={`h-4 w-4 ${i < filled ? "text-yellow-400" : "text-gray-300"}`} fill="currentColor">
+                        {[0, 1, 2, 3, 4].map((idx) => (
+                          <svg
+                            key={idx}
+                            viewBox="0 0 24 24"
+                            className={`h-4 w-4 ${idx < filled ? "text-yellow-400" : "text-gray-300"}`}
+                            fill="currentColor"
+                          >
                             <path d="M12 .587l3.668 7.431L24 9.75l-6 5.85L19.335 24 12 19.897 4.665 24 6 15.6 0 9.75l8.332-1.732z" />
                           </svg>
                         ))}
-                        <span className="ml-1 text-xs font-medium text-gray-700">{`${(rating || 0).toFixed(1)}/5`}</span>
+                        <span className="ml-1 text-xs font-medium text-gray-700">{`${(rating || 0).toFixed(
+                          1
+                        )}/5`}</span>
                       </div>
                     </div>
                   </div>
@@ -534,29 +813,38 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
 
                 <div className="relative px-5 pb-5 overflow-y-auto">
                   <div className="mt-4 border-t border-gray-200" />
-                  <div className="mt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold text-gray-700">Service Type</div>
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
-                          Request Done
-                          <span className="ml-2 text-sm font-semibold text-[#008cfc]">{Number.isFinite(w.completed_jobs) ? w.completed_jobs : 0}</span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {(serviceTypes.length ? serviceTypes : ["—"]).map((t, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">{t}</span>
-                      ))}
-                    </div>
-                  </div>
 
-                  <div className="mt-4">
-                    <div className="text-sm font-semibold text-gray-700">Service Task</div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {(serviceTasks.length ? serviceTasks : ["—"]).map((t, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">{t}</span>
-                      ))}
+                  <div className="mt-6 rounded-2xl border border-gray-200 bg-white overflow-hidden">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x sm:divide-gray-200">
+                      <div className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-semibold text-gray-700">Service Type</div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(serviceTypes.length ? serviceTypes : ["—"]).map((t, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="p-4">
+                        <div className="text-sm font-semibold text-gray-700">Service Task</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(serviceTasks.length ? serviceTasks : ["—"]).map((t, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -565,107 +853,153 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Gender</div>
                       <div className="text-sm text-[#008cfc]">{gender || "—"}</div>
                     </div>
+
                     <div className="rounded-xl border border-gray-200 p-4 bg-white">
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Barangay</div>
                       <div className="text-sm text-[#008cfc]">{barangay || "—"}</div>
                     </div>
+
                     <div className="rounded-xl border border-gray-200 p-4 bg-white">
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Street</div>
                       <div className="text-sm text-[#008cfc]">{street || "—"}</div>
                     </div>
-                    <div className="rounded-xl border border-gray-200 p-4 bg-white">
-                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Additional Address</div>
+
+                    <div className="rounded-xl border border-gray-200 p-4 bg-white sm:col-span-2">
+                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                        Additional Address
+                      </div>
                       <div className="text-sm text-[#008cfc]">{additionalAddress || "—"}</div>
                     </div>
-                    <div className="rounded-xl border border-gray-200 p-4 bg-white">
-                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Rate Type</div>
-                      <div className="text-sm text-[#008cfc]">{rateType || "—"}</div>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 p-4 bg-white">
-                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Service Rate</div>
-                      <div className="text-sm text-[#008cfc]">{displayRate}</div>
-                    </div>
+
                     <div className="rounded-xl border border-gray-200 p-4 bg-white">
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Preferred Date</div>
                       <div className="text-sm text-[#008cfc]">{prettyDate}</div>
                     </div>
+
                     <div className="rounded-xl border border-gray-200 p-4 bg-white">
                       <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Preferred Time</div>
                       <div className="text-sm text-[#008cfc]">{prettyTime}</div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 p-4 bg-white">
+                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Workers Needed</div>
+                      <div className="text-sm text-[#008cfc]">{workersNeeded != null ? workersNeeded : "—"}</div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 p-4 bg-white">
+                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Units</div>
+                      <div className="text-sm text-[#008cfc]">{unitsLabel || "—"}</div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 p-4 bg-white sm:col-span-2">
+                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Total Rate</div>
+                      <div className="text-sm text-[#008cfc]">{totalRateDisplay}</div>
                     </div>
                   </div>
 
                   <div className="mt-6">
                     <div className="text-sm font-semibold text-gray-700">Request Description</div>
-                    <div className="mt-2 text-sm text-[#008cfc] leading-6 bg-gray-50/60 border border-gray-200 rounded-xl p-4">{workDescription}</div>
+                    <div className="mt-2 text-sm text-[#008cfc] leading-6 bg-gray-50/60 border border-gray-200 rounded-xl p-4">
+                      {workDescription}
+                    </div>
                   </div>
 
                   <div className="mt-8 border-t border-gray-200" />
+
                   <div className="mt-6">
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold text-gray-700">Match With Your Approved Application</div>
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border ${statusClasses}`}>{statusLabel}</span>
+                        <span
+                          className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border ${statusClasses}`}
+                        >
+                          {statusLabel}
+                        </span>
                       </div>
                     </div>
 
                     <div className="mt-3 rounded-xl border border-gray-200 bg-gradient-to-b from-gray-50/60 to-white p-4">
                       <div className="flex items-center justify-between text-xs text-gray-600">
-                        <span>{matchCount} of 3 criteria matched</span>
+                        <span>{matchCount} of 2 criteria matched</span>
                         <span className="font-medium">{progressWidth}</span>
                       </div>
+
                       <div className="mt-2 h-2 w-full rounded-full bg-gray-200 overflow-hidden">
                         <div className="h-2 bg-[#008cfc] rounded-full transition-all" style={{ width: progressWidth }} />
                       </div>
 
-                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${typeMatchOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>Service Type {typeMatchOk ? "✓" : "✗"}</div>
-                        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${rateTypeMatchOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>Rate Type {rateTypeMatchOk ? "✓" : "✗"}</div>
-                        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${rateValueMatchOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>Service Rate {rateValueMatchOk ? "✓" : "✗"}</div>
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-1 gap-2">
+                        <div
+                          className={`rounded-lg border px-3 py-2 text-xs font-medium ${
+                            typeMatchOk
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-rose-50 text-rose-700 border-rose-200"
+                          }`}
+                        >
+                          Service Type {typeMatchOk ? "✓" : "✗"}
+                        </div>
+
+                        <div
+                          className={`rounded-lg border px-3 py-2 text-xs font-medium ${
+                            taskMatchOk
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-rose-50 text-rose-700 border-rose-200"
+                          }`}
+                        >
+                          Service Task {taskMatchOk ? "✓" : "✗"}
+                        </div>
                       </div>
 
                       <div className="mt-4">
-                        <div className="text-xs text-gray-500">Your Approved Application</div>
+                        <div className="text-xs text-gray-500">Matching Approved Applications</div>
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {approvedApp ? (() => {
-                            const t = approvedServiceType || approvedApp.service_type || "—";
-                            const rt = canonRateType(approvedApp.rate_type) || "—";
-                            let rv = "";
-                            if (rt === "Hourly Rate") {
-                              if (Number.isFinite(wFrom) && Number.isFinite(wTo)) rv = `${peso(wFrom)}–${peso(wTo)}/hr`;
-                              else if (Number.isFinite(wFrom)) rv = `${peso(wFrom)}/hr`;
-                              else if (Number.isFinite(wTo)) rv = `${peso(wTo)}/hr`;
-                            } else if (rt === "By the Job Rate") {
-                              if (Number.isFinite(wValue)) rv = `${peso(wValue)}`;
-                            }
+                          {(matchedApprovedApps.length ? matchedApprovedApps : []).slice(0, 4).map((m) => {
+                            const t = m.service_type || approvedServiceType || "—";
                             return (
-                              <span className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs bg-white border-gray-200 text-gray-700 shadow-sm">
-                                <span className="font-semibold">{t || "—"}</span>
-                                <span className="h-1 w-1 rounded-full bg-gray-300" />
-                                <span>{rt}</span>
-                                {rv ? (<><span className="h-1 w-1 rounded-full bg-gray-300" /><span>{rv}</span></>) : null}
+                              <span
+                                key={m.id || Math.random()}
+                                className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs bg-white border-gray-200 text-gray-700 shadow-sm"
+                              >
+                                <span className="font-semibold">{t}</span>
                               </span>
                             );
-                          })() : <span className="text-xs text-gray-400">None</span>}
+                          })}
+                          {!matchedApprovedApps.length ? <span className="text-xs text-gray-400">None</span> : null}
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-8 border-t border-gray-200" />
+
                   <div className="mt-6">
                     <div className="text-sm font-semibold text-gray-700">Ratings & Reviews</div>
                     <div className="mt-4 space-y-3">
-                      {(reviews.length ? reviews : [{ id: "empty", rating: 0, text: "No reviews yet.", created_at: null }]).map((rv) => {
+                      {(reviews.length
+                        ? reviews
+                        : [{ id: "empty", rating: 0, text: "No reviews yet.", created_at: null }]
+                      ).map((rv) => {
                         const rf = Math.round(Math.max(0, Math.min(5, rv.rating || 0)));
                         const date = rv.created_at ? new Date(rv.created_at) : null;
-                        const dstr = date && !isNaN(date.getTime()) ? date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" }) : "";
+                        const dstr =
+                          date && !isNaN(date.getTime())
+                            ? date.toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "2-digit"
+                              })
+                            : "";
                         return (
                           <div key={rv.id} className="rounded-xl border border-gray-200 bg-white p-4">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-1">
-                                {[0,1,2,3,4].map((i) => (
-                                  <svg key={i} viewBox="0 0 24 24" className={`h-3.5 w-3.5 ${i < rf ? "text-yellow-400" : "text-gray-300"}`} fill="currentColor">
+                                {[0, 1, 2, 3, 4].map((x) => (
+                                  <svg
+                                    key={x}
+                                    viewBox="0 0 24 24"
+                                    className={`h-3.5 w-3.5 ${x < rf ? "text-yellow-400" : "text-gray-300"}`}
+                                    fill="currentColor"
+                                  >
                                     <path d="M12 .587l3.668 7.431L24 9.75l-6 5.85L19.335 24 12 19.897 4.665 24 6 15.6 0 9.75l8.332-1.732z" />
                                   </svg>
                                 ))}
@@ -680,18 +1014,27 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                   </div>
 
                   <div className="mt-6 flex items-center justify-end gap-3">
-                    <div className="items-center gap-2 mr-auto hidden">
-                      <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
-                        Request Done
-                        <span className="ml-2 text-sm font-semibold text-[#008cfc]">{Number.isFinite(w.completed_jobs) ? w.completed_jobs : 0}</span>
-                      </span>
-                    </div>
-                    <button onClick={onClose} className="hidden">Close</button>
+                    <a
+                      href={`/workermessages?to=${encodeURIComponent(emailAddress || "")}`}
+                      className="h-9 px-4 rounded-md border border-[#008cfc] text-[#008cfc] hover:bg-blue-50 text-sm inline-flex items-center justify-center"
+                    >
+                      Message
+                    </a>
+
                     <a
                       href="/workerpostapplication"
-                      onClick={(e) => { e.preventDefault(); applyNow(); }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        applyNow();
+                      }}
                       aria-disabled={!canAccept}
-                      className={`h-9 px-4 rounded-md ${btnLoading ? "opacity-60 pointer-events-none" : ""} ${canAccept ? "bg-[#008cfc] text-white hover:bg-[#0078d6]" : "bg-gray-200 text-gray-500 pointer-events-none"} text-sm inline-flex items-center justify-center`}
+                      className={`h-9 px-4 rounded-md ${
+                        btnLoading ? "opacity-60 pointer-events-none" : ""
+                      } ${
+                        canAccept
+                          ? "bg-[#008cfc] text-white hover:bg-[#0078d6]"
+                          : "bg-gray-200 text-gray-500 pointer-events-none"
+                      } text-sm inline-flex items-center justify-center`}
                     >
                       Apply Request
                     </a>
@@ -703,8 +1046,18 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
 
           <div className="border-t border-gray-200 bg-white p-4 sticky bottom-0 hidden">
             <div className="flex items-center justify-end gap-3">
-              <button onClick={onClose} className="h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">Close</button>
-              <button onClick={applyNow} className="h-10 px-5 rounded-md bg-[#008cfc] text-white hover:bg-[#0078d6] inline-flex items-center justify-center">Accept Request</button>
+              <button
+                onClick={onClose}
+                className="h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                onClick={applyNow}
+                className="h-10 px-5 rounded-md bg-[#008cfc] text-white hover:bg-[#0078d6] inline-flex items-center justify-center"
+              >
+                Accept Request
+              </button>
             </div>
           </div>
         </div>
@@ -724,8 +1077,12 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
               )}
             </div>
             <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">You need an approved worker application to accept requests</div>
-              <div className="text-sm text-gray-600">Submit your work application and wait for approval. Once approved, you can accept client requests.</div>
+              <div className="text-lg font-semibold text-gray-900">
+                You need an approved worker application to accept requests
+              </div>
+              <div className="text-sm text-gray-600">
+                Submit your work application and wait for approval. Once approved, you can accept client requests.
+              </div>
             </div>
             <div className="mt-6 grid grid-cols-1 gap-2">
               <a
@@ -734,7 +1091,9 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                   e.preventDefault();
                   setShowNoApproved(false);
                   setBtnLoading(true);
-                  setTimeout(() => { window.location.href = "/workerpostapplication"; }, 2000);
+                  setTimeout(() => {
+                    window.location.href = "/workerpostapplication";
+                  }, 2000);
                 }}
                 className="px-6 py-3 bg-[#008cfc] text-white rounded-md shadow-sm hover:bg-blue-700 transition text-center whitespace-nowrap"
               >
@@ -755,8 +1114,10 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
               </div>
             </div>
             <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">Service type not matched</div>
-              <div className="text-sm text-gray-600">Your approved application’s service type does not match this request.</div>
+              <div className="text-lg font-semibold text-gray-900">Request not matched</div>
+              <div className="text-sm text-gray-600">
+                Your approved application’s service type and service task must match this request.
+              </div>
             </div>
             <div className="mt-6 grid grid-cols-1 gap-2">
               <button
@@ -785,11 +1146,11 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
               <div
                 className="absolute inset-0 animate-spin rounded-full"
                 style={{
-                  borderWidth: '10px',
-                  borderStyle: 'solid',
-                  borderColor: '#008cfc22',
-                  borderTopColor: '#008cfc',
-                  borderRadius: '9999px'
+                  borderWidth: "10px",
+                  borderStyle: "solid",
+                  borderColor: "#008cfc22",
+                  borderTopColor: "#008cfc",
+                  borderRadius: "9999px"
                 }}
               />
               <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
