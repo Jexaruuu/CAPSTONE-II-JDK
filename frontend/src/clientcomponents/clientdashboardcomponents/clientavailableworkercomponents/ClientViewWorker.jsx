@@ -1,9 +1,82 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import { Hammer, Zap, Wrench, Car, Shirt } from "lucide-react";
+import { Hammer, Zap, Wrench, Car, Shirt, ChevronLeft, ChevronRight } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+function WorkCarousel({ title, items }) {
+  const ref = useRef(null);
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  const hasItems = list.length > 0;
+
+  const scrollByCard = (dir) => {
+    const el = ref.current;
+    if (!el) return;
+    const w = el.clientWidth || 320;
+    el.scrollBy({ left: dir * (w * 0.85), behavior: "smooth" });
+  };
+
+  return (
+    <div className="mt-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm font-semibold text-gray-700">{title}</div>
+
+        {hasItems ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => scrollByCard(-1)}
+              className="h-8 w-8 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center"
+              aria-label="Previous"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollByCard(1)}
+              className="h-8 w-8 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center"
+              aria-label="Next"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-2 rounded-xl border border-gray-200 bg-white p-3">
+        {hasItems ? (
+          <div
+            ref={ref}
+            className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {list.map((src, idx) => (
+              <div
+                key={`${src}-${idx}`}
+                className="snap-start shrink-0 w-[240px] sm:w-[260px] md:w-[280px] h-[160px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50 relative"
+              >
+                <img
+                  src={src}
+                  alt={`${title} ${idx + 1}`}
+                  className="h-full w-full object-cover"
+                  onError={({ currentTarget }) => {
+                    currentTarget.style.display = "none";
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400">
+                  {!src ? "No Image" : ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs text-gray-400 px-2 py-6 text-center">No images uploaded yet.</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ClientViewWorker({ open, onClose, worker }) {
   const [fetched, setFetched] = useState(null);
@@ -14,11 +87,13 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const [approvedClientTypes, setApprovedClientTypes] = useState([]);
   const [checkedTypes, setCheckedTypes] = useState(false);
   const [approvedClientRequests, setApprovedClientRequests] = useState([]);
+  const [worksState, setWorksState] = useState({ best_works: [null, null, null], previous_works: [null, null, null] });
 
   const base = worker || {};
   const baseInfo = base.info || {};
   const emailGuess = base.emailAddress || baseInfo.email_address || base.email || base.email_address || "";
   const gidGuess = base.request_group_id || base.requestGroupId || base.requestGroupID || "";
+  const authUidGuess = base.auth_uid || base.authUid || "";
 
   const canonType = (s) => {
     const k = String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -81,7 +156,6 @@ export default function ClientViewWorker({ open, onClose, worker }) {
     return "";
   };
 
-  const clientRateTypeToWorker = (t) => canonRateType(t);
   const workerRateTypeCanon = (t) => canonRateType(t);
 
   const getClientEmail = () => {
@@ -123,10 +197,10 @@ export default function ClientViewWorker({ open, onClose, worker }) {
       }
 
       let gender = base.gender || base.sex || baseInfo.sex || "";
-      if (!gender && (base.auth_uid || base.authUid || emailGuess)) {
+      if (!gender && (authUidGuess || emailGuess)) {
         try {
           const res = await axios.get(`${API_BASE}/api/workers/public/sex`, {
-            params: { email: emailGuess || "", auth_uid: base.auth_uid || base.authUid || "" }
+            params: { email: emailGuess || "", auth_uid: authUidGuess || "" }
           });
           gender = res.data?.sex || "";
         } catch {}
@@ -155,8 +229,8 @@ export default function ClientViewWorker({ open, onClose, worker }) {
         fromFullInfo ||
         "";
 
-      if (!contactNumber && (base.auth_uid || base.authUid || emailGuess)) {
-        const params = { email: emailGuess || "", auth_uid: base.auth_uid || base.authUid || "" };
+      if (!contactNumber && (authUidGuess || emailGuess)) {
+        const params = { email: emailGuess || "", auth_uid: authUidGuess || "" };
         const tryUrls = [
           `${API_BASE}/api/workers/public/contact-number`,
           `${API_BASE}/api/workers/public/contact`,
@@ -185,7 +259,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
         const res = await axios.get(`${API_BASE}/api/workers/public/reviews`, {
           params: {
             email: emailGuess || "",
-            auth_uid: base.auth_uid || base.authUid || "",
+            auth_uid: authUidGuess || "",
             request_group_id: gid || "",
             limit: 20
           }
@@ -207,12 +281,24 @@ export default function ClientViewWorker({ open, onClose, worker }) {
         });
       } catch {}
 
+      let works = { best_works: [null, null, null], previous_works: [null, null, null] };
+      try {
+        const res = await axios.get(`${API_BASE}/api/workers/public/works`, {
+          params: { email: emailGuess || "", auth_uid: authUidGuess || "" }
+        });
+        works = res.data || works;
+      } catch {}
+
       if (!cancel) {
         const extra = {};
         if (gender) extra.gender = gender;
         if (contactNumber) extra.contact_number = contactNumber;
 
         setFetched(full ? { ...full, ...extra } : Object.keys(extra).length ? extra : null);
+        setWorksState({
+          best_works: Array.isArray(works.best_works) ? works.best_works : [null, null, null],
+          previous_works: Array.isArray(works.previous_works) ? works.previous_works : [null, null, null]
+        });
 
         const nums = revItems.map((r) => r.rating).filter((n) => Number.isFinite(n));
         const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
@@ -224,7 +310,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
     return () => {
       cancel = true;
     };
-  }, [open, gidGuess, emailGuess, base.auth_uid, base.authUid]);
+  }, [open, gidGuess, emailGuess, authUidGuess]);
 
   useEffect(() => {
     let cancel = false;
@@ -306,16 +392,6 @@ export default function ClientViewWorker({ open, onClose, worker }) {
     };
   }, [btnLoading]);
 
-  const iconFor = (s) => {
-    const k = String(s || "").toLowerCase();
-    if (k.includes("elect")) return Zap;
-    if (k.includes("plumb")) return Wrench;
-    if (k.includes("car wash") || k.includes("carwash") || k.includes("auto") || k.includes("carwasher")) return Car;
-    if (k.includes("laund") || k.includes("clean")) return Shirt;
-    if (k.includes("carpent") || k.includes("wood")) return Hammer;
-    return Hammer;
-  };
-
   const merged = useMemo(() => {
     if (!fetched) return base;
     const i = fetched.info || {};
@@ -395,7 +471,6 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   };
 
   const phMobile = useMemo(() => normalizePHMobile(contactNumber), [contactNumber]);
-
   const rateTypeRaw = r.rate_type || r.rateType || "";
   const rateType = workerRateTypeCanon(rateTypeRaw);
 
@@ -429,17 +504,6 @@ export default function ClientViewWorker({ open, onClose, worker }) {
     (w.stats && (w.stats.work_done || w.stats.completed || w.stats.jobs));
   const wd = Number(rawWorkDone);
   const workDone = Number.isFinite(wd) && wd >= 0 ? Math.floor(wd) : 0;
-
-  const rawSuccess =
-    w.workerSuccess ??
-    w.success_rate ??
-    w.job_success ??
-    w.jobs_success ??
-    w.jobSuccess ??
-    (w.stats && w.stats.success_rate) ??
-    r.rate_success;
-  const succ = Number(rawSuccess);
-  const workerSuccess = rating > 0 ? (Number.isFinite(succ) ? Math.max(0, Math.min(100, succ)) : 0) : 0;
 
   const workerCanonTypes = Array.from(new Set((serviceTypes || []).map(canonType)));
   const workerTaskSet = useMemo(() => {
@@ -532,7 +596,6 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const taskMatchOk = matchedRequests.some((m) => m.matches.service_task);
 
   const matchCount = [typeMatchOk, taskMatchOk].filter(Boolean).length;
-
   const statusLabel = allTwoMatch ? "Match" : "Not Match";
   const statusClasses = allTwoMatch
     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -714,6 +777,9 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                     <div className="mt-2 text-sm text-[#008cfc] leading-6 bg-gray-50/60 border border-gray-200 rounded-xl p-4">
                       {w.bio || w.title || d.work_description || "—"}
                     </div>
+
+                    <WorkCarousel title="Best Works" items={worksState.best_works} />
+                    <WorkCarousel title="Previous Works" items={worksState.previous_works} />
                   </div>
 
                   <div className="mt-8 border-t border-gray-200" />

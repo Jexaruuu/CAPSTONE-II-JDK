@@ -373,6 +373,14 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
 
     if (!t) return 1;
 
+    const meetsThreshold =
+      (u === 'kg' && qty > 10) ||
+      (u === 'pc' && qty > 8) ||
+      (u === 'sq.m' && qty > 5) ||
+      (u !== 'kg' && u !== 'pc' && u !== 'sq.m' && qty > 3);
+
+    if (!meetsThreshold) return 1;
+
     if (t === 'Car Washing') {
       return qty >= 2 ? 5 : 1;
     }
@@ -895,7 +903,7 @@ const ClientServiceRate = ({ title, setTitle, handleNext, handleBack }) => {
                               <span className="font-medium">{maxWorkersAllowed}</span>.
                             </>
                           ) : (
-                            <>Adding workers is not available for your selected quantity.</>
+                            <>Adding workers is available only when your quantity is high enough.</>
                           )}
                         </p>
 

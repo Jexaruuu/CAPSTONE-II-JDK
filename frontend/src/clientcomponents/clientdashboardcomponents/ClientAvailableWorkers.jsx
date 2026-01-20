@@ -800,7 +800,7 @@ const ClientAvailableWorkers = () => {
                               setViewWorker(w);
                               setViewOpen(true);
                             }}
-                            className="shrink-0 inline-flex items-center justify-center px-4 h-10 rounded-xl bg-[#008cfc] text-white text-sm font-semibold hover:bg-[#0078d6] transition shadow-sm group-hover:shadow-md"
+                            className="shrink-0 inline-flex items-center justify-center px-4 h-10 rounded-md bg-[#008cfc] text-white text-sm font-semibold hover:bg-[#0078d6] transition shadow-sm group-hover:shadow-md"
                           >
                             View worker
                           </button>

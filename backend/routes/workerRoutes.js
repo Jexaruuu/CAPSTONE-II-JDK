@@ -12,4 +12,6 @@ router.get("/public/reviews", workerController.listPublicReviews);
 router.get("/myworks", workerController.getMyWorks);
 router.post("/myworks", workerController.saveMyWorks);
 
+router.get("/public/works", workerController.getPublicWorks);
+
 module.exports = router;

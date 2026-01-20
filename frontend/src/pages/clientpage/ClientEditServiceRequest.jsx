@@ -1563,7 +1563,7 @@ export default function ClientEditServiceRequest() {
                           <button
                             type="button"
                             onClick={clearClientPickedImage}
-                            className="rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
+                            className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition w-full"
                           >
                             Remove
                           </button>
@@ -2234,7 +2234,7 @@ export default function ClientEditServiceRequest() {
                 type="button"
                 onClick={onCancel}
                 disabled={saving || loading || cancelLoading || showSaving || showSuccess}
-                className="w-full sm:w-auto h-[48px] px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                className="w-full sm:w-auto h-[48px] px-5 py-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
               >
                 Cancel
               </button>
@@ -2243,7 +2243,7 @@ export default function ClientEditServiceRequest() {
                 type="button"
                 onClick={() => setConfirmOpen(true)}
                 disabled={saving || !isDirty || !isComplete}
-                className="inline-flex w-full sm:w-auto items-center justify-center h-11 rounded-xl bg-[#008cfc] px-7 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0077d6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="inline-flex w-full sm:w-auto items-center justify-center h-11 rounded-md bg-[#008cfc] px-7 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0077d6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>

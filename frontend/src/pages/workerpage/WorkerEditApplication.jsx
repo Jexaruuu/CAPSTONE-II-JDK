@@ -1250,7 +1250,7 @@ export default function WorkerEditApplication() {
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+                  className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
                 </button>
@@ -1258,7 +1258,7 @@ export default function WorkerEditApplication() {
                   type="button"
                   onClick={() => setConfirmOpen(true)}
                   disabled={!canSave}
-                  className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
+                  className="inline-flex items-center rounded-md px-3 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
                 >
                   {saving ? 'Saving…' : 'Save Changes'}
                 </button>
@@ -1838,7 +1838,7 @@ export default function WorkerEditApplication() {
                   <button
                     type="button"
                     onClick={onCancel}
-                    className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+                    className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
                   >
                     Cancel
                   </button>
@@ -1846,7 +1846,7 @@ export default function WorkerEditApplication() {
                     type="button"
                     onClick={() => setConfirmOpen(true)}
                     disabled={!canSave}
-                    className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
+                    className="inline-flex items-center rounded-md px-3 py-2 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
                   >
                     {saving ? 'Saving…' : 'Save Changes'}
                   </button>
@@ -1858,7 +1858,7 @@ export default function WorkerEditApplication() {
               <button
                 type="button"
                 onClick={onCancel}
-                className="inline-flex items-center rounded-lg border px-4 py-2.5 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center rounded-md border px-4 py-2.5 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -1866,7 +1866,7 @@ export default function WorkerEditApplication() {
                 type="button"
                 onClick={() => setConfirmOpen(true)}
                 disabled={!canSave}
-                className="inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
+                className="inline-flex items-center rounded-md px-4 py-2.5 text-sm font-medium bg-[#008cfc] text-white hover:bg-[#0077d6] disabled:opacity-60"
               >
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>
@@ -1885,7 +1885,7 @@ export default function WorkerEditApplication() {
               <button
                 type="button"
                 onClick={() => setConfirmOpen(false)}
-                className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>

@@ -389,6 +389,53 @@ const saveMyWorks = async (req, res) => {
   }
 };
 
+const getPublicWorks = async (req, res) => {
+  try {
+    const email = String(req.query.email || "").trim().toLowerCase();
+    const auth_uid = String(req.query.auth_uid || "").trim();
+
+    if (!email && !auth_uid) {
+      return res.status(200).json({ best_works: [null, null, null], previous_works: [null, null, null] });
+    }
+
+    let uid = auth_uid || "";
+
+    if (!uid && email) {
+      try {
+        const { data } = await supabaseAdmin
+          .from("user_worker")
+          .select("auth_uid")
+          .ilike("email_address", email)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        uid = data && data[0]?.auth_uid ? String(data[0].auth_uid) : "";
+      } catch {}
+    }
+
+    if (!uid) {
+      return res.status(200).json({ best_works: [null, null, null], previous_works: [null, null, null] });
+    }
+
+    const row = await workerModel.getWorkerWorksByAuthUid(uid, { db: supabaseAdmin });
+
+    const best_works = [
+      row?.best_work_1 ?? null,
+      row?.best_work_2 ?? null,
+      row?.best_work_3 ?? null,
+    ];
+
+    const previous_works = [
+      row?.previous_work_1 ?? null,
+      row?.previous_work_2 ?? null,
+      row?.previous_work_3 ?? null,
+    ];
+
+    return res.status(200).json({ best_works, previous_works });
+  } catch {
+    return res.status(200).json({ best_works: [null, null, null], previous_works: [null, null, null] });
+  }
+};
+
 module.exports = {
   registerWorker,
   me,
@@ -398,4 +445,5 @@ module.exports = {
   listPublicReviews,
   getMyWorks,
   saveMyWorks,
+  getPublicWorks,
 };
