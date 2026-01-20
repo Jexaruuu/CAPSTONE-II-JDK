@@ -19,6 +19,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const session = require("express-session");
 
+const chatRoutes = require("./routes/chatRoutes");
 const clientRoutes = require("./routes/clientRoutes");
 const workerRoutes = require("./routes/workerRoutes");
 const loginRoutes = require("./routes/loginRoutes");
@@ -455,6 +456,8 @@ app.put("/api/admin/workerapplications/group/:id", workerapplicationController.u
 
 app.get("/api/admin/workerapplications/by-group/:id", workerapplicationController.getByGroupFull);
 app.put("/api/admin/workerapplications/by-group/:id", workerapplicationController.updateByGroup);
+
+app.use("/api/chat", chatRoutes);
 
 app.use("/api/admin/workerapplications", adminworkerapplicationRoutes);
 

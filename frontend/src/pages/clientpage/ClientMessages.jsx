@@ -1,13 +1,23 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
+import { useLocation } from "react-router-dom";
 import ClientConversationList from "../../clientcomponents/clientmessagescomponents/ClientConversationList";
 import ClientChatWindow from "../../clientcomponents/clientmessagescomponents/ClientChatWindow";
-import ClientNavigation from '../../clientcomponents/ClientNavigation';
+import ClientNavigation from "../../clientcomponents/ClientNavigation";
 import ClientFooter from "../../clientcomponents/ClientFooter";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+function useQueryParams() {
+  const { search } = useLocation();
+  return useMemo(() => new URLSearchParams(search), [search]);
+}
+
 const ClientMessages = () => {
+  const qs = useQueryParams();
+  const to = String(qs.get("to") || "").trim();
+  const toUid = String(qs.get("toUid") || "").trim();
+
   const [loadingConvos, setLoadingConvos] = useState(true);
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -17,113 +27,241 @@ const ClientMessages = () => {
   const [messages, setMessages] = useState([]);
   const [composerText, setComposerText] = useState("");
 
+  const pollRef = useRef(null);
+  const didEnsureRef = useRef(false);
+  const hydratedConvosRef = useRef(false);
+  const fetchingConvosRef = useRef(false);
+  const fetchingMsgsRef = useRef(false);
+
+  const appU = useMemo(() => {
+    try {
+      const a = JSON.parse(localStorage.getItem("clientAuth") || "{}");
+      const au =
+        a.auth_uid ||
+        a.authUid ||
+        a.uid ||
+        a.id ||
+        localStorage.getItem("auth_uid") ||
+        "";
+      const e =
+        a.email ||
+        localStorage.getItem("client_email") ||
+        localStorage.getItem("email_address") ||
+        localStorage.getItem("email") ||
+        "";
+      return encodeURIComponent(JSON.stringify({ r: "client", e, au }));
+    } catch {
+      return "";
+    }
+  }, []);
+
+  const headersWithU = useMemo(() => (appU ? { "x-app-u": appU } : {}), [appU]);
+
+  const fetchConversations = async (opts = {}) => {
+    const silent = !!opts.silent;
+
+    if (fetchingConvosRef.current) return;
+    fetchingConvosRef.current = true;
+
+    if (!silent && !hydratedConvosRef.current) setLoadingConvos(true);
+
+    try {
+      const res = await axios.get(`${API_BASE}/api/chat/conversations`, {
+        withCredentials: true,
+        headers: headersWithU,
+      });
+
+      const items = Array.isArray(res?.data?.items) ? res.data.items : [];
+      const mapped = items.map((c) => ({
+        id: c.id,
+        name: c.name,
+        lastMessage: c.lastMessage || "",
+        avatarUrl: c.avatarUrl || "",
+        unreadCount: c.unreadCount || 0,
+        subtitle: c.subtitle || "",
+      }));
+
+      setConversations(mapped);
+
+      if (!activeId && mapped[0]?.id) setActiveId(mapped[0].id);
+      hydratedConvosRef.current = true;
+    } catch {
+      setConversations([]);
+      hydratedConvosRef.current = true;
+    } finally {
+      fetchingConvosRef.current = false;
+      if (!silent) setLoadingConvos(false);
+      if (!silent && hydratedConvosRef.current) setLoadingConvos(false);
+    }
+  };
+
+  const ensureConversationFromUrl = async () => {
+    if (!to && !toUid) return null;
+    try {
+      const res = await axios.post(
+        `${API_BASE}/api/chat/ensure`,
+        { to, toUid },
+        { withCredentials: true, headers: headersWithU }
+      );
+      const convo = res?.data?.conversation || null;
+      if (convo?.id) return convo.id;
+    } catch {}
+    return null;
+  };
+
+  const fetchMessages = async (conversationId, opts = {}) => {
+    const silent = !!opts.silent;
+
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+
+    if (fetchingMsgsRef.current) return;
+    fetchingMsgsRef.current = true;
+
+    if (!silent) setLoadingMessages(true);
+
+    try {
+      const res = await axios.get(
+        `${API_BASE}/api/chat/messages/${encodeURIComponent(conversationId)}`,
+        {
+          params: { limit: 300 },
+          withCredentials: true,
+          headers: headersWithU,
+        }
+      );
+
+      const items = Array.isArray(res?.data?.items) ? res.data.items : [];
+      setMessages(
+        items.map((m) => ({
+          id: m.id,
+          mine: !!m.mine,
+          text: m.text || "",
+          time: m.time || "",
+        }))
+      );
+    } catch {
+      setMessages([]);
+    } finally {
+      fetchingMsgsRef.current = false;
+      if (!silent) setLoadingMessages(false);
+    }
+  };
+
+  const handleSelectConversation = async (id) => {
+    if (!id) return;
+    setActiveId(id);
+    await fetchMessages(id);
+    await fetchConversations({ silent: true });
+  };
+
+  const handleSend = async () => {
+    const msg = String(composerText || "").trim();
+    if (!msg || !activeId) return;
+
+    const optimistic = {
+      id: `tmp-${Date.now()}`,
+      mine: true,
+      text: msg,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    setMessages((p) => [...p, optimistic]);
+    setComposerText("");
+
+    try {
+      await axios.post(
+        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}`,
+        { text: msg },
+        { withCredentials: true, headers: headersWithU }
+      );
+      await fetchMessages(activeId, { silent: true });
+      await fetchConversations({ silent: true });
+    } catch {
+      await fetchMessages(activeId, { silent: true });
+      await fetchConversations({ silent: true });
+    }
+  };
+
   useEffect(() => {
     let didCancel = false;
 
-    const fetchConversations = async () => {
-      setLoadingConvos(true);
-      try {
-        const email =
-          localStorage.getItem("email") ||
-          localStorage.getItem("client_email") ||
-          localStorage.getItem("worker_email") ||
-          "";
+    const init = async () => {
+      await fetchConversations();
+      if (didCancel) return;
 
-        const res = await axios.get(`${API_BASE}/api/messages/conversations`, {
-          params: { email },
-          withCredentials: true,
-        });
+      if (!didEnsureRef.current) {
+        didEnsureRef.current = true;
+        const ensuredId = await ensureConversationFromUrl();
+        if (didCancel) return;
 
-        if (didCancel) return;
-        const items = Array.isArray(res?.data?.items) ? res.data.items : [];
-        setConversations(
-          items.map((c) => ({
-            id: c.id,
-            name: c.name,
-            lastMessage: c.lastMessage,
-            avatarUrl: c.avatarUrl,
-            unreadCount: c.unreadCount || 0,
-            subtitle: c.subtitle || "",
-          }))
-        );
-        if (items[0]?.id) setActiveId(items[0].id);
-      } catch {
-        if (didCancel) return;
-        // graceful fallback demo data
-        const demo = [
-          {
-            id: "c1",
-            name: "Juan Dela Cruz",
-            lastMessage: "Great, see you tomorrow.",
-            avatarUrl: "",
-            unreadCount: 2,
-            subtitle: "Last seen 2h ago",
-          },
-          {
-            id: "c2",
-            name: "Maria Santos",
-            lastMessage: "Thanks for the update!",
-            avatarUrl: "",
-            unreadCount: 0,
-            subtitle: "Online",
-          },
-        ];
-        setConversations(demo);
-        setActiveId("c1");
-      } finally {
-        if (!didCancel) setLoadingConvos(false);
+        if (ensuredId) {
+          setActiveId(ensuredId);
+          await fetchConversations({ silent: true });
+          if (didCancel) return;
+          await fetchMessages(ensuredId);
+          return;
+        }
+      }
+
+      if (activeId) {
+        await fetchMessages(activeId);
       }
     };
 
-    fetchConversations();
+    init();
+
     return () => {
       didCancel = true;
     };
   }, []);
 
   useEffect(() => {
+    let didCancel = false;
+
+    const runEnsureOnUrlChange = async () => {
+      if (!to && !toUid) return;
+
+      const ensuredId = await ensureConversationFromUrl();
+      if (didCancel) return;
+
+      if (ensuredId) {
+        setActiveId(ensuredId);
+        await fetchConversations({ silent: true });
+        if (didCancel) return;
+        await fetchMessages(ensuredId);
+      }
+    };
+
+    runEnsureOnUrlChange();
+
+    return () => {
+      didCancel = true;
+    };
+  }, [to, toUid]);
+
+  useEffect(() => {
     if (!activeId) {
       setMessages([]);
       return;
     }
+    fetchMessages(activeId);
+    return () => {};
+  }, [activeId]);
 
-    let didCancel = false;
+  useEffect(() => {
+    if (!activeId) return;
 
-    const fetchMessages = async () => {
-      setLoadingMessages(true);
-      try {
-        const res = await axios.get(`${API_BASE}/api/messages/thread`, {
-          params: { conversationId: activeId },
-          withCredentials: true,
-        });
+    if (pollRef.current) clearInterval(pollRef.current);
 
-        if (didCancel) return;
-        const items = Array.isArray(res?.data?.items) ? res.data.items : [];
-        setMessages(
-          items.map((m) => ({
-            id: m.id,
-            mine: m.mine,
-            text: m.text,
-            time: m.time,
-          }))
-        );
-      } catch {
-        if (didCancel) return;
-        // demo thread
-        const demo = [
-          { id: "m1", mine: false, text: "Hi! Are you available this weekend?", time: "9:12 AM" },
-          { id: "m2", mine: true, text: "Yes, Saturday morning works for me.", time: "9:14 AM" },
-          { id: "m3", mine: false, text: "Great, see you tomorrow.", time: "9:15 AM" },
-        ];
-        setMessages(demo);
-      } finally {
-        if (!didCancel) setLoadingMessages(false);
-      }
-    };
+    pollRef.current = setInterval(() => {
+      fetchMessages(activeId, { silent: true });
+      fetchConversations({ silent: true });
+    }, 2500);
 
-    fetchMessages();
     return () => {
-      didCancel = true;
+      if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [activeId]);
 
@@ -131,9 +269,7 @@ const ClientMessages = () => {
     if (!query.trim()) return conversations;
     const q = query.toLowerCase();
     return conversations.filter(
-      (c) =>
-        c.name?.toLowerCase().includes(q) ||
-        c.lastMessage?.toLowerCase().includes(q)
+      (c) => c.name?.toLowerCase().includes(q) || c.lastMessage?.toLowerCase().includes(q)
     );
   }, [conversations, query]);
 
@@ -143,32 +279,32 @@ const ClientMessages = () => {
   );
 
   return (
-     <div className="min-h-screen bg-white overflow-hidden">
-          <ClientNavigation />
-    <div className="max-w-[1525px] mx-auto px-6 py-6">
-      <div className="flex gap-6">
-        <ClientConversationList
-          conversations={filteredConversations}
-          activeId={activeId}
-          loading={loadingConvos}
-          query={query}
-          onQueryChange={setQuery}
-          onSelect={setActiveId}
-        />
+    <div className="min-h-screen bg-white overflow-hidden">
+      <ClientNavigation />
+      <div className="max-w-[1525px] mx-auto px-6 py-6">
+        <div className="flex gap-6">
+          <ClientConversationList
+            conversations={filteredConversations}
+            activeId={activeId}
+            loading={loadingConvos}
+            query={query}
+            onQueryChange={setQuery}
+            onSelect={handleSelectConversation}
+          />
 
-        <ClientChatWindow
-          conversation={activeConversation}
-          messages={messages}
-          loading={loadingMessages}
-          composer={{
-            text: composerText,
-            onChange: setComposerText,
-            onSend: () => setComposerText(""), // wire your send API here when ready
-          }}
-        />
+          <ClientChatWindow
+            conversation={activeConversation}
+            messages={messages}
+            loading={loadingMessages}
+            composer={{
+              text: composerText,
+              onChange: setComposerText,
+              onSend: handleSend,
+            }}
+          />
+        </div>
       </div>
-    </div>
-    <ClientFooter />
+      <ClientFooter />
     </div>
   );
 };
