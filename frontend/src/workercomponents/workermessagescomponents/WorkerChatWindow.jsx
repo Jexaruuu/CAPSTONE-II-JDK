@@ -18,7 +18,7 @@ function fmtChatTimestamp(v) {
     return v;
   }
   if (v instanceof Date) {
-    if (!Number.isNaN(v.getTime())) {
+    if (!Number.isNaN(d.getTime())) {
       return v.toLocaleString(undefined, {
         year: "numeric",
         month: "short",

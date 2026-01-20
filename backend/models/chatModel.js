@@ -17,6 +17,22 @@ function safeName(first, last) {
   return full || "User";
 }
 
+async function getClientProfilePictureFromInfo(auth_uid) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("client_information")
+      .select("profile_picture_url")
+      .eq("auth_uid", auth_uid)
+      .limit(1);
+
+    if (error) return null;
+    const row = data && data[0] ? data[0] : null;
+    return row?.profile_picture_url || null;
+  } catch {
+    return null;
+  }
+}
+
 async function getClientSummary(auth_uid) {
   try {
     const { data, error } = await supabaseAdmin
@@ -34,7 +50,10 @@ async function getClientSummary(auth_uid) {
       row?.last_name || user?.user_metadata?.last_name
     );
 
+    const infoAvatar = await getClientProfilePictureFromInfo(auth_uid);
+
     const avatarUrl =
+      infoAvatar ||
       row?.profile_picture_url ||
       user?.user_metadata?.profile_picture_url ||
       user?.user_metadata?.avatar_url ||
@@ -49,13 +68,35 @@ async function getClientSummary(auth_uid) {
     };
   } catch {
     const user = await getAuthUserById(auth_uid);
+    const infoAvatar = await getClientProfilePictureFromInfo(auth_uid);
+
     return {
       auth_uid,
       role: "client",
       name: safeName(user?.user_metadata?.first_name, user?.user_metadata?.last_name),
       email_address: user?.email || "",
-      avatarUrl: user?.user_metadata?.profile_picture_url || user?.user_metadata?.avatar_url || null,
+      avatarUrl:
+        infoAvatar ||
+        user?.user_metadata?.profile_picture_url ||
+        user?.user_metadata?.avatar_url ||
+        null,
     };
+  }
+}
+
+async function getWorkerProfilePictureFromInfo(auth_uid) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("worker_information")
+      .select("profile_picture_url")
+      .eq("auth_uid", auth_uid)
+      .limit(1);
+
+    if (error) return null;
+    const row = data && data[0] ? data[0] : null;
+    return row?.profile_picture_url || null;
+  } catch {
+    return null;
   }
 }
 
@@ -76,7 +117,10 @@ async function getWorkerSummary(auth_uid) {
       row?.last_name || user?.user_metadata?.last_name
     );
 
+    const infoAvatar = await getWorkerProfilePictureFromInfo(auth_uid);
+
     const avatarUrl =
+      infoAvatar ||
       row?.profile_picture_url ||
       user?.user_metadata?.profile_picture_url ||
       user?.user_metadata?.avatar_url ||
@@ -91,12 +135,18 @@ async function getWorkerSummary(auth_uid) {
     };
   } catch {
     const user = await getAuthUserById(auth_uid);
+    const infoAvatar = await getWorkerProfilePictureFromInfo(auth_uid);
+
     return {
       auth_uid,
       role: "worker",
       name: safeName(user?.user_metadata?.first_name, user?.user_metadata?.last_name),
       email_address: user?.email || "",
-      avatarUrl: user?.user_metadata?.profile_picture_url || user?.user_metadata?.avatar_url || null,
+      avatarUrl:
+        infoAvatar ||
+        user?.user_metadata?.profile_picture_url ||
+        user?.user_metadata?.avatar_url ||
+        null,
     };
   }
 }
