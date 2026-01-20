@@ -13,6 +13,36 @@ function useQueryParams() {
   return useMemo(() => new URLSearchParams(search), [search]);
 }
 
+function safeJsonParse(v) {
+  try {
+    return JSON.parse(String(v || ""));
+  } catch {
+    return null;
+  }
+}
+
+function pickLastTimestampClient(c) {
+  if (!c) return "";
+  return (
+    c.lastMessageTime ||
+    c.last_message_time ||
+    c.last_message_updated_at ||
+    c.last_message_created_at ||
+    c.last_message_at ||
+    c.lastMessageAt ||
+    c.last_message_date ||
+    c.lastMessageDate ||
+    c.updated_at ||
+    c.created_at ||
+    c.sent_at ||
+    c.time ||
+    c.updatedAt ||
+    c.createdAt ||
+    c.sentAt ||
+    ""
+  );
+}
+
 const ClientMessages = () => {
   const qs = useQueryParams();
   const to = String(qs.get("to") || "").trim();
@@ -32,6 +62,32 @@ const ClientMessages = () => {
   const hydratedConvosRef = useRef(false);
   const fetchingConvosRef = useRef(false);
   const fetchingMsgsRef = useRef(false);
+
+  const autoMarkedRef = useRef(new Set());
+
+  const authKey = useMemo(() => {
+    const a = safeJsonParse(localStorage.getItem("clientAuth") || "{}") || {};
+    const au =
+      a.auth_uid ||
+      a.authUid ||
+      a.uid ||
+      a.id ||
+      localStorage.getItem("auth_uid") ||
+      "";
+    return String(au || "anon");
+  }, []);
+
+  const READ_OVERRIDES_KEY = useMemo(() => `client_seen_overrides_${authKey}`, [authKey]);
+
+  const [readOverrides, setReadOverrides] = useState(() => {
+    const raw = safeJsonParse(localStorage.getItem(READ_OVERRIDES_KEY) || "{}");
+    if (!raw || typeof raw !== "object") return {};
+    return raw;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(READ_OVERRIDES_KEY, JSON.stringify(readOverrides || {}));
+  }, [READ_OVERRIDES_KEY, readOverrides]);
 
   const appU = useMemo(() => {
     try {
@@ -75,13 +131,39 @@ const ClientMessages = () => {
       const mapped = items.map((c) => ({
         id: c.id,
         name: c.name,
-        lastMessage: c.lastMessage || "",
+        lastMessage: c.lastMessage || c.last_message || "",
         avatarUrl: c.avatarUrl || "",
-        unreadCount: c.unreadCount || 0,
+        unreadCount: c.unreadCount || c.unread_count || 0,
         subtitle: c.subtitle || "",
+        lastMessageTime:
+          c.lastMessageTime ||
+          c.last_message_time ||
+          c.last_message_updated_at ||
+          c.last_message_created_at ||
+          c.last_message_at ||
+          c.lastMessageAt ||
+          c.updated_at ||
+          c.created_at ||
+          c.time ||
+          "",
+        updated_at: c.updated_at || "",
+        created_at: c.created_at || "",
       }));
 
       setConversations(mapped);
+
+      setReadOverrides((prev) => {
+        const p = prev && typeof prev === "object" ? prev : {};
+        const next = {};
+        for (const conv of mapped) {
+          const id = String(conv?.id || "");
+          if (!id) continue;
+          const lastTs = String(pickLastTimestampClient(conv) || "");
+          const savedTs = String(p[id] || "");
+          if (savedTs && lastTs && savedTs === lastTs) next[id] = savedTs;
+        }
+        return next;
+      });
 
       if (!activeId && mapped[0]?.id) setActiveId(mapped[0].id);
       hydratedConvosRef.current = true;
@@ -149,6 +231,78 @@ const ClientMessages = () => {
     } finally {
       fetchingMsgsRef.current = false;
       if (!silent) setLoadingMessages(false);
+    }
+  };
+
+  const markConversationReadUI = (conversationId) => {
+    if (!conversationId) return;
+    const convo = conversations.find((c) => String(c.id) === String(conversationId)) || null;
+    const lastTs = String(pickLastTimestampClient(convo) || "");
+    if (!lastTs) return;
+
+    setReadOverrides((prev) => ({
+      ...(prev && typeof prev === "object" ? prev : {}),
+      [String(conversationId)]: lastTs,
+    }));
+
+    setConversations((prev) =>
+      prev.map((c) =>
+        String(c.id) === String(conversationId) ? { ...c, unreadCount: 0 } : c
+      )
+    );
+  };
+
+  const markConversationRead = async (conversationId) => {
+    if (!conversationId) return;
+
+    markConversationReadUI(conversationId);
+
+    try {
+      await axios.post(
+        `${API_BASE}/api/chat/read/${encodeURIComponent(conversationId)}`,
+        {},
+        { withCredentials: true, headers: headersWithU }
+      );
+    } catch {
+      try {
+        await axios.post(
+          `${API_BASE}/api/chat/mark-read/${encodeURIComponent(conversationId)}`,
+          {},
+          { withCredentials: true, headers: headersWithU }
+        );
+      } catch {}
+    }
+  };
+
+  const markAllReadUI = () => {
+    const next = {};
+    for (const c of conversations) {
+      const id = String(c?.id || "");
+      if (!id) continue;
+      const lastTs = String(pickLastTimestampClient(c) || "");
+      if (lastTs) next[id] = lastTs;
+    }
+    setReadOverrides(next);
+    setConversations((prev) => prev.map((c) => ({ ...c, unreadCount: 0 })));
+  };
+
+  const markAllRead = async () => {
+    markAllReadUI();
+
+    try {
+      await axios.post(
+        `${API_BASE}/api/chat/read-all`,
+        {},
+        { withCredentials: true, headers: headersWithU }
+      );
+    } catch {
+      try {
+        await axios.post(
+          `${API_BASE}/api/chat/mark-all-read`,
+          {},
+          { withCredentials: true, headers: headersWithU }
+        );
+      } catch {}
     }
   };
 
@@ -325,6 +479,26 @@ const ClientMessages = () => {
     };
   }, [activeId]);
 
+  useEffect(() => {
+    if (!activeId) return;
+    if (loadingMessages) return;
+
+    const convo = conversations.find((c) => String(c.id) === String(activeId)) || null;
+    if (!convo) return;
+
+    const rawUnread = Number(convo.unreadCount || 0);
+    if (!rawUnread || rawUnread <= 0) return;
+
+    const lastTs = String(pickLastTimestampClient(convo) || "");
+    if (!lastTs) return;
+
+    const key = `${String(activeId)}::${lastTs}`;
+    if (autoMarkedRef.current.has(key)) return;
+    autoMarkedRef.current.add(key);
+
+    markConversationRead(activeId);
+  }, [activeId, loadingMessages, conversations]);
+
   const filteredConversations = useMemo(() => {
     if (!query.trim()) return conversations;
     const q = query.toLowerCase();
@@ -353,6 +527,9 @@ const ClientMessages = () => {
             query={query}
             onQueryChange={setQuery}
             onSelect={handleSelectConversation}
+            onMarkRead={markConversationRead}
+            onReadAll={markAllRead}
+            readOverrides={readOverrides}
           />
 
           {showChatWindow ? (
@@ -389,7 +566,9 @@ const ClientMessages = () => {
                     </svg>
                   </div>
 
-                  <h2 className="mt-5 text-lg font-semibold text-gray-900">No conversations yet</h2>
+                  <h2 className="mt-5 text-lg font-semibold text-gray-900">
+                    No conversations yet
+                  </h2>
                   <p className="mt-2 text-sm text-gray-500 leading-relaxed">
                     Once you connect with a worker, your messages will appear here. You can start by
                     booking a service or selecting a worker to chat.

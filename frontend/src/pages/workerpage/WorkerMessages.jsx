@@ -13,6 +13,34 @@ function useQueryParams() {
   return useMemo(() => new URLSearchParams(search), [search]);
 }
 
+function safeJsonParse(v) {
+  try {
+    return JSON.parse(String(v || ""));
+  } catch {
+    return null;
+  }
+}
+
+function pickLastTimestampWorker(c) {
+  if (!c) return "";
+  return (
+    c.lastMessageTime ||
+    c.last_message_time ||
+    c.last_message_updated_at ||
+    c.last_message_created_at ||
+    c.last_message_at ||
+    c.lastMessageAt ||
+    c.updated_at ||
+    c.created_at ||
+    c.sent_at ||
+    c.time ||
+    c.updatedAt ||
+    c.createdAt ||
+    c.sentAt ||
+    ""
+  );
+}
+
 const WorkerMessages = () => {
   const qs = useQueryParams();
   const to = String(qs.get("to") || "").trim();
@@ -32,6 +60,32 @@ const WorkerMessages = () => {
   const hydratedConvosRef = useRef(false);
   const fetchingConvosRef = useRef(false);
   const fetchingMsgsRef = useRef(false);
+
+  const autoMarkedRef = useRef(new Set());
+
+  const authKey = useMemo(() => {
+    const a = safeJsonParse(localStorage.getItem("workerAuth") || "{}") || {};
+    const au =
+      a.auth_uid ||
+      a.authUid ||
+      a.uid ||
+      a.id ||
+      localStorage.getItem("auth_uid") ||
+      "";
+    return String(au || "anon");
+  }, []);
+
+  const READ_OVERRIDES_KEY = useMemo(() => `worker_seen_overrides_${authKey}`, [authKey]);
+
+  const [readOverrides, setReadOverrides] = useState(() => {
+    const raw = safeJsonParse(localStorage.getItem(READ_OVERRIDES_KEY) || "{}");
+    if (!raw || typeof raw !== "object") return {};
+    return raw;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(READ_OVERRIDES_KEY, JSON.stringify(readOverrides || {}));
+  }, [READ_OVERRIDES_KEY, readOverrides]);
 
   const appU = useMemo(() => {
     try {
@@ -75,13 +129,39 @@ const WorkerMessages = () => {
       const mapped = items.map((c) => ({
         id: c.id,
         name: c.name,
-        lastMessage: c.lastMessage || "",
+        lastMessage: c.lastMessage || c.last_message || "",
         avatarUrl: c.avatarUrl || "",
-        unreadCount: c.unreadCount || 0,
+        unreadCount: c.unreadCount || c.unread_count || 0,
         subtitle: c.subtitle || "",
+        lastMessageTime:
+          c.lastMessageTime ||
+          c.last_message_time ||
+          c.last_message_updated_at ||
+          c.last_message_created_at ||
+          c.last_message_at ||
+          c.lastMessageAt ||
+          c.updated_at ||
+          c.created_at ||
+          c.time ||
+          "",
+        updated_at: c.updated_at || "",
+        created_at: c.created_at || "",
       }));
 
       setConversations(mapped);
+
+      setReadOverrides((prev) => {
+        const p = prev && typeof prev === "object" ? prev : {};
+        const next = {};
+        for (const conv of mapped) {
+          const id = String(conv?.id || "");
+          if (!id) continue;
+          const lastTs = String(pickLastTimestampWorker(conv) || "");
+          const savedTs = String(p[id] || "");
+          if (savedTs && lastTs && savedTs === lastTs) next[id] = savedTs;
+        }
+        return next;
+      });
 
       if (!activeId && mapped[0]?.id) setActiveId(mapped[0].id);
       hydratedConvosRef.current = true;
@@ -152,6 +232,78 @@ const WorkerMessages = () => {
     }
   };
 
+  const markConversationReadUI = (conversationId) => {
+    if (!conversationId) return;
+    const convo = conversations.find((c) => String(c.id) === String(conversationId)) || null;
+    const lastTs = String(pickLastTimestampWorker(convo) || "");
+    if (!lastTs) return;
+
+    setReadOverrides((prev) => ({
+      ...(prev && typeof prev === "object" ? prev : {}),
+      [String(conversationId)]: lastTs,
+    }));
+
+    setConversations((prev) =>
+      prev.map((c) =>
+        String(c.id) === String(conversationId) ? { ...c, unreadCount: 0 } : c
+      )
+    );
+  };
+
+  const markConversationRead = async (conversationId) => {
+    if (!conversationId) return;
+
+    markConversationReadUI(conversationId);
+
+    try {
+      await axios.post(
+        `${API_BASE}/api/chat/read/${encodeURIComponent(conversationId)}`,
+        {},
+        { withCredentials: true, headers: headersWithU }
+      );
+    } catch {
+      try {
+        await axios.post(
+          `${API_BASE}/api/chat/mark-read/${encodeURIComponent(conversationId)}`,
+          {},
+          { withCredentials: true, headers: headersWithU }
+        );
+      } catch {}
+    }
+  };
+
+  const markAllReadUI = () => {
+    const next = {};
+    for (const c of conversations) {
+      const id = String(c?.id || "");
+      if (!id) continue;
+      const lastTs = String(pickLastTimestampWorker(c) || "");
+      if (lastTs) next[id] = lastTs;
+    }
+    setReadOverrides(next);
+    setConversations((prev) => prev.map((c) => ({ ...c, unreadCount: 0 })));
+  };
+
+  const markAllRead = async () => {
+    markAllReadUI();
+
+    try {
+      await axios.post(
+        `${API_BASE}/api/chat/read-all`,
+        {},
+        { withCredentials: true, headers: headersWithU }
+      );
+    } catch {
+      try {
+        await axios.post(
+          `${API_BASE}/api/chat/mark-all-read`,
+          {},
+          { withCredentials: true, headers: headersWithU }
+        );
+      } catch {}
+    }
+  };
+
   const handleSelectConversation = async (id) => {
     if (!id) return;
     setActiveId(id);
@@ -196,10 +348,11 @@ const WorkerMessages = () => {
     if (!activeId) return;
     const t = String(newText || "").trim();
     if (!t) return;
+    if (String(messageId).startsWith("tmp-")) return;
 
     setMessages((p) =>
       p.map((m) =>
-        m.id === messageId
+        String(m.id) === String(messageId)
           ? { ...m, text: t, updated_at: new Date().toISOString(), edited: true }
           : m
       )
@@ -207,7 +360,9 @@ const WorkerMessages = () => {
 
     try {
       await axios.put(
-        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(messageId)}`,
+        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(
+          messageId
+        )}`,
         { text: t },
         { withCredentials: true, headers: headersWithU }
       );
@@ -221,13 +376,16 @@ const WorkerMessages = () => {
 
   const handleDeleteMessage = async (messageId) => {
     if (!activeId) return;
+    if (String(messageId).startsWith("tmp-")) return;
 
     const prev = messages;
-    setMessages((p) => p.filter((m) => m.id !== messageId));
+    setMessages((p) => p.filter((m) => String(m.id) !== String(messageId)));
 
     try {
       await axios.delete(
-        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(messageId)}`,
+        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(
+          messageId
+        )}`,
         { withCredentials: true, headers: headersWithU }
       );
       await fetchMessages(activeId, { silent: true });
@@ -320,6 +478,26 @@ const WorkerMessages = () => {
     };
   }, [activeId]);
 
+  useEffect(() => {
+    if (!activeId) return;
+    if (loadingMessages) return;
+
+    const convo = conversations.find((c) => String(c.id) === String(activeId)) || null;
+    if (!convo) return;
+
+    const rawUnread = Number(convo.unreadCount || 0);
+    if (!rawUnread || rawUnread <= 0) return;
+
+    const lastTs = String(pickLastTimestampWorker(convo) || "");
+    if (!lastTs) return;
+
+    const key = `${String(activeId)}::${lastTs}`;
+    if (autoMarkedRef.current.has(key)) return;
+    autoMarkedRef.current.add(key);
+
+    markConversationRead(activeId);
+  }, [activeId, loadingMessages, conversations]);
+
   const filteredConversations = useMemo(() => {
     if (!query.trim()) return conversations;
     const q = query.toLowerCase();
@@ -348,6 +526,9 @@ const WorkerMessages = () => {
             query={query}
             onQueryChange={setQuery}
             onSelect={handleSelectConversation}
+            onMarkRead={markConversationRead}
+            onReadAll={markAllRead}
+            readOverrides={readOverrides}
           />
 
           {showChatWindow ? (

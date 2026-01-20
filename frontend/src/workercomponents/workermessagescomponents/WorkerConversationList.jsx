@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { Search, SlidersHorizontal } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Search, SlidersHorizontal, Check } from "lucide-react";
 
 function fmtLastMessageTime(v) {
   if (!v) return "";
@@ -43,11 +43,13 @@ function fmtLastMessageTime(v) {
 function pickLastTimestamp(c) {
   if (!c) return "";
 
-  return (
+  const direct =
     c.lastMessageTime ||
     c.last_message_time ||
     c.last_message_updated_at ||
     c.last_message_created_at ||
+    c.last_message_at ||
+    c.lastMessageAt ||
     c.updated_at ||
     c.created_at ||
     c.sent_at ||
@@ -55,14 +57,52 @@ function pickLastTimestamp(c) {
     c.updatedAt ||
     c.createdAt ||
     c.sentAt ||
-    ""
-  );
+    "";
+
+  if (direct) return direct;
+
+  const lm = c.lastMessage || c.last_message || null;
+
+  if (lm && typeof lm === "object") {
+    return (
+      lm.updated_at ||
+      lm.created_at ||
+      lm.sent_at ||
+      lm.time ||
+      lm.updatedAt ||
+      lm.createdAt ||
+      lm.sentAt ||
+      ""
+    );
+  }
+
+  return "";
 }
 
 function pickLastMessageText(c) {
   if (!c) return "";
-  const v = c.lastMessage || c.last_message || c.preview || c.last_text || "";
-  return String(v || "").trim();
+
+  const v =
+    (typeof c.lastMessage === "string" ? c.lastMessage : "") ||
+    (typeof c.last_message === "string" ? c.last_message : "") ||
+    c.preview ||
+    c.last_text ||
+    "";
+
+  if (String(v || "").trim()) return String(v || "").trim();
+
+  const lm = c.lastMessage || c.last_message || null;
+  if (lm && typeof lm === "object") {
+    return String(lm.text || lm.message || lm.body || "").trim();
+  }
+
+  return "";
+}
+
+function readCount(c) {
+  const v = c?.unreadCount ?? c?.unread_count ?? c?.unread ?? 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 }
 
 const WorkerConversationList = ({
@@ -72,19 +112,58 @@ const WorkerConversationList = ({
   query = "",
   onQueryChange = () => {},
   onSelect = () => {},
+  onMarkRead = () => {},
+  onReadAll = () => {},
+  readOverrides = {},
 }) => {
   const safeConversations = useMemo(
     () => (Array.isArray(conversations) ? conversations : []),
     [conversations]
   );
 
+  const [openMenu, setOpenMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(e.target)) setOpenMenu(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
   return (
     <aside className="w-[300px] lg:w-[320px] shrink-0 h-[calc(100vh-140px)] bg-gray-50 border border-gray-200 rounded-2xl p-4 flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">Messages</h2>
-        <button type="button" className="p-2 rounded-md hover:bg-gray-100" title="Filters">
-          <SlidersHorizontal className="h-5 w-5 text-gray-500" />
-        </button>
+
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            className="p-2 rounded-md hover:bg-gray-100"
+            title="Settings"
+            onClick={() => setOpenMenu((v) => !v)}
+          >
+            <SlidersHorizontal className="h-5 w-5 text-gray-500" />
+          </button>
+
+          {openMenu ? (
+            <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between"
+                onClick={() => {
+                  setOpenMenu(false);
+                  onReadAll();
+                }}
+              >
+                <span>Read all</span>
+                <Check className="h-4 w-4 text-gray-500" />
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="relative mb-4">
@@ -105,13 +184,22 @@ const WorkerConversationList = ({
         ) : (
           safeConversations.map((c) => {
             const isActive = activeId === c.id;
-            const timeText = fmtLastMessageTime(pickLastTimestamp(c));
+            const lastTs = String(pickLastTimestamp(c) || "");
+            const timeText = fmtLastMessageTime(lastTs);
             const lastText = pickLastMessageText(c);
+
+            const rawUnread = readCount(c);
+            const overrideTs = String(readOverrides?.[String(c.id)] || "");
+            const uiUnread = overrideTs && lastTs && overrideTs === lastTs ? 0 : rawUnread;
+            const showUnread = uiUnread > 0;
 
             return (
               <button
                 key={c.id}
-                onClick={() => onSelect(c.id)}
+                onClick={() => {
+                  onSelect(c.id);
+                  if (rawUnread > 0) onMarkRead(c.id);
+                }}
                 className={[
                   "w-full text-left rounded-xl border px-3 py-3 transition-all",
                   isActive
@@ -120,12 +208,17 @@ const WorkerConversationList = ({
                 ].join(" ")}
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
+                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 overflow-hidden shrink-0">
                     {c.avatarUrl ? (
                       <img src={c.avatarUrl} alt={c.name} className="h-10 w-10 rounded-full object-cover" />
                     ) : (
                       <span className="text-sm font-semibold">
-                        {c.name?.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                        {String(c.name || "")
+                          .split(" ")
+                          .filter(Boolean)
+                          .map((n) => n[0])
+                          .slice(0, 2)
+                          .join("") || "U"}
                       </span>
                     )}
                   </div>
@@ -134,20 +227,22 @@ const WorkerConversationList = ({
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-medium truncate">{c.name}</p>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        {timeText ? (
-                          <span className="text-[11px] text-gray-500 whitespace-nowrap">{timeText}</span>
-                        ) : null}
-
-                        {c.unreadCount > 0 && (
-                          <span className="inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-[#008cfc] text-white text-xs px-1">
-                            {c.unreadCount}
-                          </span>
-                        )}
-                      </div>
+                      {showUnread ? (
+                        <span className="inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-[#008cfc] text-white text-xs px-1 shrink-0">
+                          {uiUnread}
+                        </span>
+                      ) : null}
                     </div>
 
-                    <p className="text-sm text-gray-600 truncate">{lastText || "…"}</p>
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <p className="text-sm text-gray-600 truncate">{lastText || "…"}</p>
+
+                      {timeText ? (
+                        <span className="text-[11px] text-gray-500 whitespace-nowrap shrink-0">
+                          {timeText}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </button>

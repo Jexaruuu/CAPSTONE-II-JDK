@@ -34,7 +34,7 @@ function fmtChatTimestamp(v) {
 
   if (v instanceof Date) {
     if (!Number.isNaN(v.getTime())) {
-      return d.toLocaleString(undefined, {
+      return v.toLocaleString(undefined, {
         year: "numeric",
         month: "short",
         day: "2-digit",
@@ -126,18 +126,6 @@ function readCount(c) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function isConversationSeen(c) {
-  if (!c) return false;
-  const flag =
-    c.seen === true ||
-    c.isSeen === true ||
-    c.lastMessageSeen === true ||
-    c.last_message_seen === true ||
-    c.read === true ||
-    c.isRead === true;
-  return Boolean(flag) || readCount(c) <= 0;
-}
-
 const ClientConversationList = ({
   conversations = [],
   activeId = null,
@@ -147,15 +135,14 @@ const ClientConversationList = ({
   onSelect = () => {},
   onMarkRead = () => {},
   onReadAll = () => {},
+  readOverrides = {},
 }) => {
   const safeConversations = useMemo(
     () => (Array.isArray(conversations) ? conversations : []),
     [conversations]
   );
 
-  const [readOverrides, setReadOverrides] = useState(() => new Set());
   const [openMenu, setOpenMenu] = useState(false);
-
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -166,31 +153,6 @@ const ClientConversationList = ({
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
-
-  useEffect(() => {
-    setReadOverrides((prev) => {
-      if (!prev || prev.size === 0) return prev;
-      const next = new Set();
-      for (const id of prev) {
-        const c = safeConversations.find((x) => String(x?.id) === String(id));
-        if (c && readCount(c) > 0) next.add(id);
-      }
-      return next;
-    });
-  }, [safeConversations]);
-
-  const markOneReadUI = (id) => {
-    if (!id) return;
-    setReadOverrides((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-  };
-
-  const markAllReadUI = () => {
-    setReadOverrides(() => new Set(safeConversations.map((c) => c?.id).filter(Boolean)));
-  };
 
   return (
     <aside className="w-[300px] lg:w-[320px] shrink-0 h-[calc(100vh-140px)] bg-gray-50 border border-gray-200 rounded-2xl p-4 flex flex-col">
@@ -214,7 +176,6 @@ const ClientConversationList = ({
                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between"
                 onClick={() => {
                   setOpenMenu(false);
-                  markAllReadUI();
                   onReadAll();
                 }}
               >
@@ -244,23 +205,22 @@ const ClientConversationList = ({
         ) : (
           safeConversations.map((c) => {
             const isActive = activeId === c.id;
-            const timeText = fmtChatTimestamp(pickLastTimestamp(c));
+            const lastTs = String(pickLastTimestamp(c) || "");
+            const timeText = fmtChatTimestamp(lastTs);
             const lastText = pickLastMessageText(c);
 
             const rawUnread = readCount(c);
-            const uiUnread = readOverrides.has(c.id) ? 0 : rawUnread;
+            const overrideTs = String(readOverrides?.[String(c.id)] || "");
+            const uiUnread = overrideTs && lastTs && overrideTs === lastTs ? 0 : rawUnread;
+
             const showUnread = uiUnread > 0;
-            const showSeen = !showUnread && isConversationSeen(c);
 
             return (
               <button
                 key={c.id}
                 onClick={() => {
                   onSelect(c.id);
-                  if (rawUnread > 0) {
-                    markOneReadUI(c.id);
-                    onMarkRead(c.id);
-                  }
+                  if (rawUnread > 0) onMarkRead(c.id);
                 }}
                 className={[
                   "w-full text-left rounded-xl border px-3 py-3 transition-all",
@@ -270,9 +230,13 @@ const ClientConversationList = ({
                 ].join(" ")}
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 overflow-hidden">
+                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 overflow-hidden shrink-0">
                     {c.avatarUrl ? (
-                      <img src={c.avatarUrl} alt={c.name} className="h-10 w-10 rounded-full object-cover" />
+                      <img
+                        src={c.avatarUrl}
+                        alt={c.name}
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
                     ) : (
                       <span className="text-sm font-semibold">
                         {String(c.name || "")
@@ -289,24 +253,22 @@ const ClientConversationList = ({
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-medium truncate">{c.name}</p>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        {timeText ? (
-                          <span className="text-[11px] text-gray-500 whitespace-nowrap">{timeText}</span>
-                        ) : null}
-
-                        {showUnread ? (
-                          <span className="inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-[#008cfc] text-white text-xs px-1">
-                            {uiUnread}
-                          </span>
-                        ) : showSeen ? (
-                          <span className="text-[11px] text-emerald-600 whitespace-nowrap font-medium">
-                            Seen
-                          </span>
-                        ) : null}
-                      </div>
+                      {showUnread ? (
+                        <span className="inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-[#008cfc] text-white text-xs px-1 shrink-0">
+                          {uiUnread}
+                        </span>
+                      ) : null}
                     </div>
 
-                    <p className="text-sm text-gray-600 truncate">{lastText || "…"}</p>
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <p className="text-sm text-gray-600 truncate">{lastText || "…"}</p>
+
+                      {timeText ? (
+                        <span className="text-[11px] text-gray-500 whitespace-nowrap shrink-0">
+                          {timeText}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </button>

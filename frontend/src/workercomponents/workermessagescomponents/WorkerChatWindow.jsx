@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare, Send, MoreHorizontal, Pencil, Trash2, X, Check } from "lucide-react";
+import { MessageSquare, Send, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 function fmtChatTimestamp(v) {
