@@ -13,11 +13,7 @@ const ClientConversationList = ({
     <aside className="w-[300px] lg:w-[320px] shrink-0 h-[calc(100vh-140px)] bg-gray-50 border border-gray-200 rounded-2xl p-4 flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">Messages</h2>
-        <button
-          type="button"
-          className="p-2 rounded-md hover:bg-gray-100"
-          title="Filters"
-        >
+        <button type="button" className="p-2 rounded-md hover:bg-gray-100" title="Filters">
           <SlidersHorizontal className="h-5 w-5 text-gray-500" />
         </button>
       </div>
@@ -54,11 +50,7 @@ const ClientConversationList = ({
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
                     {c.avatarUrl ? (
-                      <img
-                        src={c.avatarUrl}
-                        alt={c.name}
-                        className="h-10 w-10 rounded-full object-cover"
-                      />
+                      <img src={c.avatarUrl} alt={c.name} className="h-10 w-10 rounded-full object-cover" />
                     ) : (
                       <span className="text-sm font-semibold">
                         {c.name?.split(" ").map((n) => n[0]).slice(0, 2).join("")}

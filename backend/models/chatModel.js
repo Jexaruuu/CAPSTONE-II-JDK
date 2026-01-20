@@ -29,7 +29,11 @@ async function getClientSummary(auth_uid) {
     const row = data && data[0] ? data[0] : null;
     const user = await getAuthUserById(auth_uid);
 
-    const name = safeName(row?.first_name || user?.user_metadata?.first_name, row?.last_name || user?.user_metadata?.last_name);
+    const name = safeName(
+      row?.first_name || user?.user_metadata?.first_name,
+      row?.last_name || user?.user_metadata?.last_name
+    );
+
     const avatarUrl =
       row?.profile_picture_url ||
       user?.user_metadata?.profile_picture_url ||
@@ -41,7 +45,7 @@ async function getClientSummary(auth_uid) {
       role: "client",
       name,
       email_address: row?.email_address || user?.email || "",
-      avatarUrl
+      avatarUrl,
     };
   } catch {
     const user = await getAuthUserById(auth_uid);
@@ -50,7 +54,7 @@ async function getClientSummary(auth_uid) {
       role: "client",
       name: safeName(user?.user_metadata?.first_name, user?.user_metadata?.last_name),
       email_address: user?.email || "",
-      avatarUrl: user?.user_metadata?.profile_picture_url || user?.user_metadata?.avatar_url || null
+      avatarUrl: user?.user_metadata?.profile_picture_url || user?.user_metadata?.avatar_url || null,
     };
   }
 }
@@ -67,7 +71,11 @@ async function getWorkerSummary(auth_uid) {
     const row = data && data[0] ? data[0] : null;
     const user = await getAuthUserById(auth_uid);
 
-    const name = safeName(row?.first_name || user?.user_metadata?.first_name, row?.last_name || user?.user_metadata?.last_name);
+    const name = safeName(
+      row?.first_name || user?.user_metadata?.first_name,
+      row?.last_name || user?.user_metadata?.last_name
+    );
+
     const avatarUrl =
       row?.profile_picture_url ||
       user?.user_metadata?.profile_picture_url ||
@@ -79,7 +87,7 @@ async function getWorkerSummary(auth_uid) {
       role: "worker",
       name,
       email_address: row?.email_address || user?.email || "",
-      avatarUrl
+      avatarUrl,
     };
   } catch {
     const user = await getAuthUserById(auth_uid);
@@ -88,7 +96,7 @@ async function getWorkerSummary(auth_uid) {
       role: "worker",
       name: safeName(user?.user_metadata?.first_name, user?.user_metadata?.last_name),
       email_address: user?.email || "",
-      avatarUrl: user?.user_metadata?.profile_picture_url || user?.user_metadata?.avatar_url || null
+      avatarUrl: user?.user_metadata?.profile_picture_url || user?.user_metadata?.avatar_url || null,
     };
   }
 }
@@ -137,8 +145,8 @@ async function ensureConversation(client_auth_uid, worker_auth_uid) {
           client_auth_uid,
           worker_auth_uid,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
+          updated_at: new Date().toISOString(),
+        },
       ])
       .select("*")
       .limit(1);
@@ -153,7 +161,7 @@ async function ensureConversation(client_auth_uid, worker_auth_uid) {
       .upsert(
         [
           { conversation_id: convo.id, auth_uid: client_auth_uid, role: "client", updated_at: new Date().toISOString() },
-          { conversation_id: convo.id, auth_uid: worker_auth_uid, role: "worker", updated_at: new Date().toISOString() }
+          { conversation_id: convo.id, auth_uid: worker_auth_uid, role: "worker", updated_at: new Date().toISOString() },
         ],
         { onConflict: "conversation_id,auth_uid" }
       );
@@ -234,7 +242,7 @@ async function listConversationsForUser(auth_uid, role) {
       subtitle: peer?.role ? peer.role.toUpperCase() : "",
       lastMessage: last?.text || "",
       updated_at: c.updated_at || c.created_at,
-      unreadCount
+      unreadCount,
     });
   }
 
@@ -258,9 +266,10 @@ async function listMessages(conversation_id, auth_uid, limit = 200) {
       id: m.id,
       mine,
       text: m.text || "",
+      created_at: m.created_at || "",
       time: m.created_at
         ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-        : ""
+        : "",
     };
   });
 }
@@ -279,18 +288,15 @@ async function sendMessage(conversation_id, sender_auth_uid, sender_role, text) 
         sender_auth_uid,
         sender_role,
         text: msg,
-        created_at: now
-      }
+        created_at: now,
+      },
     ])
     .select("*")
     .limit(1);
 
   if (error) throw error;
 
-  await supabaseAdmin
-    .from("chat_conversations")
-    .update({ updated_at: now })
-    .eq("id", conversation_id);
+  await supabaseAdmin.from("chat_conversations").update({ updated_at: now }).eq("id", conversation_id);
 
   return data && data[0] ? data[0] : null;
 }
@@ -299,10 +305,9 @@ async function markRead(conversation_id, auth_uid) {
   const now = new Date().toISOString();
   const { error } = await supabaseAdmin
     .from("chat_participants")
-    .upsert(
-      [{ conversation_id, auth_uid, last_read_at: now, updated_at: now }],
-      { onConflict: "conversation_id,auth_uid" }
-    );
+    .upsert([{ conversation_id, auth_uid, last_read_at: now, updated_at: now }], {
+      onConflict: "conversation_id,auth_uid",
+    });
   if (error) throw error;
   return true;
 }
@@ -316,5 +321,5 @@ module.exports = {
   findWorkerByEmail,
   findClientByEmail,
   getClientSummary,
-  getWorkerSummary
+  getWorkerSummary,
 };

@@ -139,6 +139,7 @@ const ClientMessages = () => {
           mine: !!m.mine,
           text: m.text || "",
           time: m.time || "",
+          created_at: m.created_at || "",
         }))
       );
     } catch {
@@ -160,11 +161,14 @@ const ClientMessages = () => {
     const msg = String(composerText || "").trim();
     if (!msg || !activeId) return;
 
+    const nowIso = new Date().toISOString();
+
     const optimistic = {
       id: `tmp-${Date.now()}`,
       mine: true,
       text: msg,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      created_at: nowIso,
     };
 
     setMessages((p) => [...p, optimistic]);
@@ -327,12 +331,10 @@ const ClientMessages = () => {
                     </svg>
                   </div>
 
-                  <h2 className="mt-5 text-lg font-semibold text-gray-900">
-                    No conversations yet
-                  </h2>
+                  <h2 className="mt-5 text-lg font-semibold text-gray-900">No conversations yet</h2>
                   <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-                    Once you connect with a worker, your messages will appear here.
-                    You can start by booking a service or selecting a worker to chat.
+                    Once you connect with a worker, your messages will appear here. You can start by
+                    booking a service or selecting a worker to chat.
                   </p>
 
                   <div className="mt-5 flex items-center justify-center gap-2">

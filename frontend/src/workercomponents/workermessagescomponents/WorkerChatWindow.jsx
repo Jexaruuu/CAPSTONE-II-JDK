@@ -2,6 +2,35 @@ import React from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 
+function fmtChatTimestamp(v) {
+  if (!v) return "";
+  if (typeof v === "string") {
+    const d = new Date(v);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    }
+    return v;
+  }
+  if (v instanceof Date) {
+    if (!Number.isNaN(v.getTime())) {
+      return v.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    }
+  }
+  return String(v || "");
+}
+
 const Bubble = ({ mine, text, time }) => (
   <div className={`flex ${mine ? "justify-end" : "justify-start"} mb-2`}>
     <div
@@ -11,9 +40,11 @@ const Bubble = ({ mine, text, time }) => (
       ].join(" ")}
     >
       <p className="whitespace-pre-wrap break-words">{text}</p>
-      <div className={`text-[11px] mt-1 ${mine ? "text-white/80" : "text-gray-500"}`}>
-        {time}
-      </div>
+      {time ? (
+        <div className={`text-[11px] mt-1 ${mine ? "text-white/80" : "text-gray-500"}`}>
+          {time}
+        </div>
+      ) : null}
     </div>
   </div>
 );
@@ -59,9 +90,7 @@ const WorkerChatWindow = ({
         </div>
         <div>
           <p className="font-semibold leading-5">{conversation.name}</p>
-          <p className="text-xs text-gray-500 leading-4">
-            {conversation.subtitle || "Online"}
-          </p>
+          <p className="text-xs text-gray-500 leading-4">{conversation.subtitle || "Online"}</p>
         </div>
       </header>
 
@@ -72,7 +101,12 @@ const WorkerChatWindow = ({
           <div className="text-sm text-gray-500">No messages yet.</div>
         ) : (
           messages.map((m) => (
-            <Bubble key={m.id} mine={m.mine} text={m.text} time={m.time} />
+            <Bubble
+              key={m.id}
+              mine={m.mine}
+              text={m.text}
+              time={fmtChatTimestamp(m.created_at || m.sent_at || m.time)}
+            />
           ))
         )}
       </div>
