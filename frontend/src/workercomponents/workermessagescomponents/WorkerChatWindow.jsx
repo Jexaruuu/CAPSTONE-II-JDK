@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { Link } from "react-router-dom";
+import WorkerViewServiceRequest from "../workermessagescomponents/WorkerViewServiceRequest.jsx";
 
 const AVATAR_PLACEHOLDER = "/Bluelogo.png";
 
@@ -33,6 +34,18 @@ function fmtChatTimestamp(v) {
   return String(v || "");
 }
 
+function toObj(v) {
+  if (!v) return {};
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v);
+    } catch {
+      return {};
+    }
+  }
+  return typeof v === "object" ? v : {};
+}
+
 const WorkerChatWindow = ({
   conversation,
   messages = [],
@@ -41,6 +54,9 @@ const WorkerChatWindow = ({
 }) => {
   const [avatarSrc, setAvatarSrc] = useState(AVATAR_PLACEHOLDER);
   const [avatarFailed, setAvatarFailed] = useState(false);
+
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewRequest, setViewRequest] = useState(null);
 
   const safeMessages = useMemo(() => (Array.isArray(messages) ? messages : []), [messages]);
 
@@ -63,6 +79,29 @@ const WorkerChatWindow = ({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [safeMessages.length, conversation?.id]);
 
+  useEffect(() => {
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyPaddingRight = document.body.style.paddingRight;
+
+    if (viewOpen) {
+      const sw = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+      if (sw > 0) document.body.style.paddingRight = `${sw}px`;
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+      document.body.style.paddingRight = "";
+    }
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.paddingRight = originalBodyPaddingRight;
+    };
+  }, [viewOpen]);
+
   const viewRequestHref = useMemo(() => {
     const direct = String(conversation?.requestHref || conversation?.requestUrl || "").trim();
     if (direct) return direct;
@@ -83,6 +122,75 @@ const WorkerChatWindow = ({
     conversation?.userId,
     conversation?.clientUid,
   ]);
+
+  const buildViewRequestPayload = useMemo(() => {
+    const req =
+      toObj(conversation?.request) ||
+      toObj(conversation?.request_details) ||
+      toObj(conversation?.details) ||
+      toObj(conversation?.service_request) ||
+      {};
+
+    const rid = String(
+      req?.id ||
+        req?.request_id ||
+        conversation?.request_id ||
+        conversation?.requestId ||
+        conversation?.request_group_id ||
+        ""
+    ).trim();
+
+    const clientUid = String(
+      req?.clientUid ||
+        req?.client_uid ||
+        conversation?.clientUid ||
+        conversation?.uid ||
+        conversation?.userId ||
+        conversation?.client_id ||
+        ""
+    ).trim();
+
+    return {
+      ...req,
+      id: rid || req?.id || "",
+      request_id: rid || req?.request_id || "",
+      request_group_id: req?.request_group_id || conversation?.request_group_id || "",
+      clientUid,
+      name: req?.name || conversation?.name || "Client",
+      email: req?.email || conversation?.email || "",
+      image: req?.image || conversation?.avatarUrl || "",
+      preferred_date: req?.preferred_date || req?.preferredDate || "",
+      preferred_time: req?.preferred_time || req?.preferredTime || "",
+      urgency: req?.urgency || req?.is_urgent || "",
+      service_type: req?.service_type || req?.serviceType || "",
+      service_task: req?.service_task || req?.serviceTask || "",
+      description: req?.description || req?.service_description || req?.serviceDescription || "",
+      workers_needed: req?.workers_needed || req?.workersNeeded || "",
+      price: req?.price || req?.total_rate_php || req?.totalRate || "",
+      barangay: req?.barangay || "",
+      street: req?.street || "",
+      additional_address: req?.additional_address || req?.landmark || "",
+    };
+  }, [
+    conversation?.request,
+    conversation?.request_details,
+    conversation?.details,
+    conversation?.service_request,
+    conversation?.request_id,
+    conversation?.requestId,
+    conversation?.request_group_id,
+    conversation?.clientUid,
+    conversation?.uid,
+    conversation?.userId,
+    conversation?.name,
+    conversation?.email,
+    conversation?.avatarUrl,
+  ]);
+
+  const openViewRequest = () => {
+    setViewRequest(buildViewRequestPayload);
+    setViewOpen(true);
+  };
 
   if (!conversation) {
     const role = localStorage.getItem("role");
@@ -119,106 +227,114 @@ const WorkerChatWindow = ({
       .toUpperCase() || "U";
 
   return (
-    <section className="flex-1 h-[calc(100vh-140px)] bg-white border border-gray-200 rounded-2xl flex flex-col">
-      <header className="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center shrink-0">
-            {!avatarFailed ? (
-              <img
-                src={avatarSrc}
-                alt={conversation.name}
-                className="h-10 w-10 object-cover"
-                onError={() => {
-                  if (avatarSrc !== AVATAR_PLACEHOLDER) setAvatarSrc(AVATAR_PLACEHOLDER);
-                  else setAvatarFailed(true);
-                }}
-              />
-            ) : (
-              <div className="h-10 w-10 flex items-center justify-center text-sm font-semibold text-blue-600">
-                {initials}
-              </div>
-            )}
+    <>
+      <section className="flex-1 h-[calc(100vh-140px)] bg-white border border-gray-200 rounded-2xl flex flex-col">
+        <header className="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center shrink-0">
+              {!avatarFailed ? (
+                <img
+                  src={avatarSrc}
+                  alt={conversation.name}
+                  className="h-10 w-10 object-cover"
+                  onError={() => {
+                    if (avatarSrc !== AVATAR_PLACEHOLDER) setAvatarSrc(AVATAR_PLACEHOLDER);
+                    else setAvatarFailed(true);
+                  }}
+                />
+              ) : (
+                <div className="h-10 w-10 flex items-center justify-center text-sm font-semibold text-blue-600">
+                  {initials}
+                </div>
+              )}
+            </div>
+
+            <div className="min-w-0">
+              <p className="font-semibold leading-5 truncate">{conversation.name}</p>
+              <p className="text-xs text-gray-500 leading-4 truncate">{conversation.subtitle || "Online"}</p>
+            </div>
           </div>
 
-          <div className="min-w-0">
-            <p className="font-semibold leading-5 truncate">{conversation.name}</p>
-            <p className="text-xs text-gray-500 leading-4 truncate">{conversation.subtitle || "Online"}</p>
-          </div>
-        </div>
+          <Link
+            to={viewRequestHref}
+            onClick={(e) => {
+              e.preventDefault();
+              openViewRequest();
+            }}
+            className="shrink-0 bg-[#008cfc] hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md transition"
+          >
+            View Client Request
+          </Link>
+        </header>
 
-        <Link
-          to={viewRequestHref}
-          className="shrink-0 bg-[#008cfc] hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md transition"
+        <div
+          ref={messagesRef}
+          className="flex-1 overflow-y-auto px-5 py-4 space-y-1 hide-scrollbar"
+          style={{
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+          }}
         >
-          View Client Request
-        </Link>
-      </header>
+          <style>{`
+            .hide-scrollbar::-webkit-scrollbar { display: none; }
+          `}</style>
 
-      <div
-        ref={messagesRef}
-        className="flex-1 overflow-y-auto px-5 py-4 space-y-1 hide-scrollbar"
-        style={{
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
-        }}
-      >
-        <style>{`
-          .hide-scrollbar::-webkit-scrollbar { display: none; }
-        `}</style>
+          {loading ? (
+            <div className="text-sm text-gray-500">Loading conversation…</div>
+          ) : safeMessages.length === 0 ? (
+            <div className="text-sm text-gray-500">No messages yet.</div>
+          ) : (
+            safeMessages.map((m) => {
+              const mine = !!m.mine;
 
-        {loading ? (
-          <div className="text-sm text-gray-500">Loading conversation…</div>
-        ) : safeMessages.length === 0 ? (
-          <div className="text-sm text-gray-500">No messages yet.</div>
-        ) : (
-          safeMessages.map((m) => {
-            const mine = !!m.mine;
-
-            return (
-              <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} mb-2`}>
-                <div
-                  className={[
-                    "max-w-[80%] rounded-2xl px-4 py-2 shadow-sm relative",
-                    mine ? "bg-[#008cfc] text-white rounded-br-md" : "bg-gray-100 text-gray-900 rounded-bl-md",
-                  ].join(" ")}
-                >
-                  <p className="whitespace-pre-wrap break-words">{m.text}</p>
-                  <div className={`text-[11px] mt-1 ${mine ? "text-white/80" : "text-gray-500"}`}>
-                    {fmtChatTimestamp(m.updated_at || m.created_at || m.sent_at || m.time)}
-                    {m.edited ? <span className="ml-2 opacity-80">(edited)</span> : null}
+              return (
+                <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} mb-2`}>
+                  <div
+                    className={[
+                      "max-w-[80%] rounded-2xl px-4 py-2 shadow-sm relative",
+                      mine ? "bg-[#008cfc] text-white rounded-br-md" : "bg-gray-100 text-gray-900 rounded-bl-md",
+                    ].join(" ")}
+                  >
+                    <p className="whitespace-pre-wrap break-words">{m.text}</p>
+                    <div className={`text-[11px] mt-1 ${mine ? "text-white/80" : "text-gray-500"}`}>
+                      {fmtChatTimestamp(m.updated_at || m.created_at || m.sent_at || m.time)}
+                      {m.edited ? <span className="ml-2 opacity-80">(edited)</span> : null}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          composer.onSend?.();
-        }}
-        className="p-4 border-t border-gray-200"
-      >
-        <div className="flex items-center gap-3">
-          <input
-            value={composer.text}
-            onChange={(e) => composer.onChange?.(e.target.value)}
-            placeholder="Write a message"
-            className="flex-1 rounded-md border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-[#008cfc] focus:border-[#008cfc]"
-          />
-
-          <button
-            type="submit"
-            className="bg-[#008cfc] hover:bg-blue-700 text-white font-medium px-4 py-3 rounded-md flex items-center gap-2 transition"
-          >
-            <Send className="h-4 w-4" />
-            Send
-          </button>
+              );
+            })
+          )}
         </div>
-      </form>
-    </section>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            composer.onSend?.();
+          }}
+          className="p-4 border-t border-gray-200"
+        >
+          <div className="flex items-center gap-3">
+            <input
+              value={composer.text}
+              onChange={(e) => composer.onChange?.(e.target.value)}
+              placeholder="Write a message"
+              className="flex-1 rounded-md border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-[#008cfc] focus:border-[#008cfc]"
+            />
+
+            <button
+              type="submit"
+              className="bg-[#008cfc] hover:bg-blue-700 text-white font-medium px-4 py-3 rounded-md flex items-center gap-2 transition"
+            >
+              <Send className="h-4 w-4" />
+              Send
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <WorkerViewServiceRequest open={viewOpen} onClose={() => setViewOpen(false)} request={viewRequest} />
+    </>
   );
 };
 
