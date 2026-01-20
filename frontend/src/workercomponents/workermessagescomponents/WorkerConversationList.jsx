@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Search, SlidersHorizontal, Check } from "lucide-react";
+import { Search } from "lucide-react";
+
+
+const AVATAR_PLACEHOLDER = "/Bluelogo.png";
 
 function fmtLastMessageTime(v) {
   if (!v) return "";
@@ -124,6 +127,49 @@ function readCount(c) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function AvatarCircle({ id, name, avatarUrl }) {
+  const [src, setSrc] = useState(AVATAR_PLACEHOLDER);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const u = String(avatarUrl || "").trim();
+    if (u) {
+      setSrc(u);
+      setFailed(false);
+    } else {
+      setSrc(AVATAR_PLACEHOLDER);
+      setFailed(false);
+    }
+  }, [avatarUrl, id]);
+
+  const initials =
+    String(name || "")
+      .split(" ")
+      .filter(Boolean)
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "U";
+
+  return (
+    <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center shrink-0">
+      {!failed ? (
+        <img
+          src={src}
+          alt={name}
+          className="h-10 w-10 rounded-full object-cover"
+          onError={() => {
+            if (src !== AVATAR_PLACEHOLDER) setSrc(AVATAR_PLACEHOLDER);
+            else setFailed(true);
+          }}
+        />
+      ) : (
+        <span className="text-sm font-semibold text-blue-600">{initials}</span>
+      )}
+    </div>
+  );
+}
+
 const WorkerConversationList = ({
   conversations = [],
   activeId = null,
@@ -137,49 +183,15 @@ const WorkerConversationList = ({
 }) => {
   const safeConversations = useMemo(() => (Array.isArray(conversations) ? conversations : []), [conversations]);
 
-  const [openMenu, setOpenMenu] = useState(false);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    const onDoc = (e) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(e.target)) setOpenMenu(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
 
   return (
     <aside className="w-[300px] lg:w-[320px] shrink-0 h-[calc(100vh-140px)] bg-gray-50 border border-gray-200 rounded-2xl p-4 flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">Messages</h2>
+<div className="h-10 w-10 rounded-full overflow-hidden  flex items-center justify-center shrink-0">
+  <img src="/Bluelogo.png" alt="Logo" className="h-full w-full object-cover" />
+</div>
 
-        <div className="relative" ref={menuRef}>
-          <button
-            type="button"
-            className="p-2 rounded-md hover:bg-gray-100"
-            title="Settings"
-            onClick={() => setOpenMenu((v) => !v)}
-          >
-            <SlidersHorizontal className="h-5 w-5 text-gray-500" />
-          </button>
-
-          {openMenu ? (
-            <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
-              <button
-                type="button"
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between"
-                onClick={() => {
-                  setOpenMenu(false);
-                  onReadAll();
-                }}
-              >
-                <span>Read all</span>
-                <Check className="h-4 w-4 text-gray-500" />
-              </button>
-            </div>
-          ) : null}
-        </div>
       </div>
 
       <div className="relative mb-4">
@@ -224,20 +236,7 @@ const WorkerConversationList = ({
                 ].join(" ")}
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 overflow-hidden shrink-0">
-                    {c.avatarUrl ? (
-                      <img src={c.avatarUrl} alt={c.name} className="h-10 w-10 rounded-full object-cover" />
-                    ) : (
-                      <span className="text-sm font-semibold">
-                        {String(c.name || "")
-                          .split(" ")
-                          .filter(Boolean)
-                          .map((n) => n[0])
-                          .slice(0, 2)
-                          .join("") || "U"}
-                      </span>
-                    )}
-                  </div>
+                  <AvatarCircle id={c.id} name={c.name} avatarUrl={c.avatarUrl} />
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">

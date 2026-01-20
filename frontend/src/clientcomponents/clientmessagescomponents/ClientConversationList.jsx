@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Search, SlidersHorizontal, Check } from "lucide-react";
+import { Search } from "lucide-react";
+
+
+const AVATAR_PLACEHOLDER = "/Bluelogo.png";
 
 function fmtChatTimestamp(v) {
   if (!v) return "";
@@ -153,49 +156,22 @@ const ClientConversationList = ({
     [conversations]
   );
 
-  const [openMenu, setOpenMenu] = useState(false);
-  const menuRef = useRef(null);
+  const [avatarPlaceholderBroken, setAvatarPlaceholderBroken] = useState(false);
+  const [brokenAvatars, setBrokenAvatars] = useState({});
 
-  useEffect(() => {
-    const onDoc = (e) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(e.target)) setOpenMenu(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+
+
+
 
   return (
     <aside className="w-[300px] lg:w-[320px] shrink-0 h-[calc(100vh-140px)] bg-gray-50 border border-gray-200 rounded-2xl p-4 flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">Messages</h2>
 
-        <div className="relative" ref={menuRef}>
-          <button
-            type="button"
-            className="p-2 rounded-md hover:bg-gray-100"
-            title="Settings"
-            onClick={() => setOpenMenu((v) => !v)}
-          >
-            <SlidersHorizontal className="h-5 w-5 text-gray-500" />
-          </button>
+       <div className="h-10 w-10 rounded-full overflow-hidden  flex items-center justify-center shrink-0">
+  <img src="/Bluelogo.png" alt="Logo" className="h-full w-full object-cover" />
+</div>
 
-          {openMenu ? (
-            <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
-              <button
-                type="button"
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between"
-                onClick={() => {
-                  setOpenMenu(false);
-                  onReadAll();
-                }}
-              >
-                <span>Read all</span>
-                <Check className="h-4 w-4 text-gray-500" />
-              </button>
-            </div>
-          ) : null}
-        </div>
       </div>
 
       <div className="relative mb-4">
@@ -229,6 +205,17 @@ const ClientConversationList = ({
             const uiUnread = hideUnread ? 0 : rawUnread;
             const showUnread = uiUnread > 0;
 
+            const hasAvatar = !!c.avatarUrl && !brokenAvatars?.[String(c.id)];
+
+            const initials =
+              String(c.name || "")
+                .split(" ")
+                .filter(Boolean)
+                .map((n) => n[0])
+                .slice(0, 2)
+                .join("")
+                .toUpperCase() || "U";
+
             return (
               <button
                 key={c.id}
@@ -244,22 +231,30 @@ const ClientConversationList = ({
                 ].join(" ")}
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 overflow-hidden shrink-0">
-                    {c.avatarUrl ? (
+                  <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center shrink-0">
+                    {hasAvatar ? (
                       <img
                         src={c.avatarUrl}
                         alt={c.name}
                         className="h-10 w-10 rounded-full object-cover"
+                        onError={() =>
+                          setBrokenAvatars((p) => ({
+                            ...p,
+                            [String(c.id)]: true,
+                          }))
+                        }
+                      />
+                    ) : !avatarPlaceholderBroken ? (
+                      <img
+                        src={AVATAR_PLACEHOLDER}
+                        alt={c.name}
+                        className="h-10 w-10 rounded-full object-cover"
+                        onError={() => setAvatarPlaceholderBroken(true)}
                       />
                     ) : (
-                      <span className="text-sm font-semibold">
-                        {String(c.name || "")
-                          .split(" ")
-                          .filter(Boolean)
-                          .map((n) => n[0])
-                          .slice(0, 2)
-                          .join("") || "U"}
-                      </span>
+                      <div className="h-10 w-10 flex items-center justify-center text-sm font-semibold text-blue-600">
+                        {initials}
+                      </div>
                     )}
                   </div>
 
