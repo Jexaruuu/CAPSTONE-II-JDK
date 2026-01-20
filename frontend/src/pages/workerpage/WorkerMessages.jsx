@@ -140,6 +140,8 @@ const WorkerMessages = () => {
           text: m.text || "",
           time: m.time || "",
           created_at: m.created_at || "",
+          updated_at: m.updated_at || "",
+          edited: !!m.edited,
         }))
       );
     } catch {
@@ -169,6 +171,8 @@ const WorkerMessages = () => {
       text: msg,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       created_at: nowIso,
+      updated_at: nowIso,
+      edited: false,
     };
 
     setMessages((p) => [...p, optimistic]);
@@ -183,6 +187,53 @@ const WorkerMessages = () => {
       await fetchMessages(activeId, { silent: true });
       await fetchConversations({ silent: true });
     } catch {
+      await fetchMessages(activeId, { silent: true });
+      await fetchConversations({ silent: true });
+    }
+  };
+
+  const handleEditMessage = async (messageId, newText) => {
+    if (!activeId) return;
+    const t = String(newText || "").trim();
+    if (!t) return;
+
+    setMessages((p) =>
+      p.map((m) =>
+        m.id === messageId
+          ? { ...m, text: t, updated_at: new Date().toISOString(), edited: true }
+          : m
+      )
+    );
+
+    try {
+      await axios.put(
+        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(messageId)}`,
+        { text: t },
+        { withCredentials: true, headers: headersWithU }
+      );
+      await fetchMessages(activeId, { silent: true });
+      await fetchConversations({ silent: true });
+    } catch {
+      await fetchMessages(activeId, { silent: true });
+      await fetchConversations({ silent: true });
+    }
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    if (!activeId) return;
+
+    const prev = messages;
+    setMessages((p) => p.filter((m) => m.id !== messageId));
+
+    try {
+      await axios.delete(
+        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(messageId)}`,
+        { withCredentials: true, headers: headersWithU }
+      );
+      await fetchMessages(activeId, { silent: true });
+      await fetchConversations({ silent: true });
+    } catch {
+      setMessages(prev);
       await fetchMessages(activeId, { silent: true });
       await fetchConversations({ silent: true });
     }
@@ -304,6 +355,8 @@ const WorkerMessages = () => {
               conversation={activeConversation}
               messages={messages}
               loading={loadingMessages}
+              onEditMessage={handleEditMessage}
+              onDeleteMessage={handleDeleteMessage}
               composer={{
                 text: composerText,
                 onChange: setComposerText,

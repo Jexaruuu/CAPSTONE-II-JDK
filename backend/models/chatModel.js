@@ -267,6 +267,8 @@ async function listMessages(conversation_id, auth_uid, limit = 200) {
       mine,
       text: m.text || "",
       created_at: m.created_at || "",
+      updated_at: m.updated_at || "",
+      edited: !!(m.updated_at && m.created_at && String(m.updated_at) !== String(m.created_at)),
       time: m.created_at
         ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         : "",
@@ -301,6 +303,66 @@ async function sendMessage(conversation_id, sender_auth_uid, sender_role, text) 
   return data && data[0] ? data[0] : null;
 }
 
+async function updateMessage(conversation_id, message_id, auth_uid, text) {
+  const now = new Date().toISOString();
+  const msg = String(text || "").trim();
+  if (!msg) throw new Error("Message cannot be empty");
+
+  const { data, error } = await supabaseAdmin
+    .from("chat_messages")
+    .update({ text: msg, updated_at: now })
+    .eq("id", message_id)
+    .eq("conversation_id", conversation_id)
+    .eq("sender_auth_uid", auth_uid)
+    .select("*")
+    .limit(1);
+
+  if (error) throw error;
+
+  const row = data && data[0] ? data[0] : null;
+  if (!row) throw new Error("Not allowed");
+
+  await supabaseAdmin.from("chat_conversations").update({ updated_at: now }).eq("id", conversation_id);
+
+  return row;
+}
+
+async function deleteMessage(conversation_id, message_id, auth_uid) {
+  const { data: existing, error: e1 } = await supabaseAdmin
+    .from("chat_messages")
+    .select("id, conversation_id, sender_auth_uid")
+    .eq("id", message_id)
+    .eq("conversation_id", conversation_id)
+    .eq("sender_auth_uid", auth_uid)
+    .limit(1);
+
+  if (e1) throw e1;
+
+  const row = existing && existing[0] ? existing[0] : null;
+  if (!row) throw new Error("Not allowed");
+
+  const { error: e2 } = await supabaseAdmin
+    .from("chat_messages")
+    .delete()
+    .eq("id", message_id)
+    .eq("conversation_id", conversation_id)
+    .eq("sender_auth_uid", auth_uid);
+
+  if (e2) throw e2;
+
+  const { data: last } = await supabaseAdmin
+    .from("chat_messages")
+    .select("created_at")
+    .eq("conversation_id", conversation_id)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  const updated_at = last && last[0]?.created_at ? last[0].created_at : new Date().toISOString();
+  await supabaseAdmin.from("chat_conversations").update({ updated_at }).eq("id", conversation_id);
+
+  return true;
+}
+
 async function markRead(conversation_id, auth_uid) {
   const now = new Date().toISOString();
   const { error } = await supabaseAdmin
@@ -317,6 +379,8 @@ module.exports = {
   listConversationsForUser,
   listMessages,
   sendMessage,
+  updateMessage,
+  deleteMessage,
   markRead,
   findWorkerByEmail,
   findClientByEmail,

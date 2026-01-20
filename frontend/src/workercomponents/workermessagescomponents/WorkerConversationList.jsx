@@ -1,5 +1,69 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
+
+function fmtLastMessageTime(v) {
+  if (!v) return "";
+
+  if (typeof v === "number") {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime())
+      ? ""
+      : d.toLocaleString(undefined, {
+          month: "short",
+          day: "2-digit",
+          hour: "numeric",
+          minute: "2-digit",
+        });
+  }
+
+  if (v instanceof Date) {
+    return Number.isNaN(v.getTime())
+      ? ""
+      : v.toLocaleString(undefined, {
+          month: "short",
+          day: "2-digit",
+          hour: "numeric",
+          minute: "2-digit",
+        });
+  }
+
+  const d = new Date(String(v));
+  if (!Number.isNaN(d.getTime())) {
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "2-digit",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
+  return "";
+}
+
+function pickLastTimestamp(c) {
+  if (!c) return "";
+
+  return (
+    c.lastMessageTime ||
+    c.last_message_time ||
+    c.last_message_updated_at ||
+    c.last_message_created_at ||
+    c.updated_at ||
+    c.created_at ||
+    c.sent_at ||
+    c.time ||
+    c.updatedAt ||
+    c.createdAt ||
+    c.sentAt ||
+    ""
+  );
+}
+
+function pickLastMessageText(c) {
+  if (!c) return "";
+  const v = c.lastMessage || c.last_message || c.preview || c.last_text || "";
+  return String(v || "").trim();
+}
 
 const WorkerConversationList = ({
   conversations = [],
@@ -9,6 +73,11 @@ const WorkerConversationList = ({
   onQueryChange = () => {},
   onSelect = () => {},
 }) => {
+  const safeConversations = useMemo(
+    () => (Array.isArray(conversations) ? conversations : []),
+    [conversations]
+  );
+
   return (
     <aside className="w-[300px] lg:w-[320px] shrink-0 h-[calc(100vh-140px)] bg-gray-50 border border-gray-200 rounded-2xl p-4 flex flex-col">
       <div className="flex items-center justify-between mb-4">
@@ -31,11 +100,14 @@ const WorkerConversationList = ({
       <div className="overflow-y-auto flex-1 space-y-1">
         {loading ? (
           <div className="text-sm text-gray-500 p-3">Loading conversations…</div>
-        ) : conversations.length === 0 ? (
+        ) : safeConversations.length === 0 ? (
           <div className="text-sm text-gray-500 p-3">Conversations will appear here</div>
         ) : (
-          conversations.map((c) => {
+          safeConversations.map((c) => {
             const isActive = activeId === c.id;
+            const timeText = fmtLastMessageTime(pickLastTimestamp(c));
+            const lastText = pickLastMessageText(c);
+
             return (
               <button
                 key={c.id}
@@ -57,16 +129,25 @@ const WorkerConversationList = ({
                       </span>
                     )}
                   </div>
+
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <p className="font-medium truncate">{c.name}</p>
-                      {c.unreadCount > 0 && (
-                        <span className="ml-2 inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-[#008cfc] text-white text-xs px-1">
-                          {c.unreadCount}
-                        </span>
-                      )}
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {timeText ? (
+                          <span className="text-[11px] text-gray-500 whitespace-nowrap">{timeText}</span>
+                        ) : null}
+
+                        {c.unreadCount > 0 && (
+                          <span className="inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-[#008cfc] text-white text-xs px-1">
+                            {c.unreadCount}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600 truncate">{c.lastMessage || "…"}</p>
+
+                    <p className="text-sm text-gray-600 truncate">{lastText || "…"}</p>
                   </div>
                 </div>
               </button>

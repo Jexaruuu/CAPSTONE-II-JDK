@@ -113,8 +113,8 @@ const ensure = async (req, res) => {
         id: convo?.id,
         name: peer?.name || "User",
         avatarUrl: peer?.avatarUrl || null,
-        subtitle: peer?.role ? peer.role.toUpperCase() : ""
-      }
+        subtitle: peer?.role ? peer.role.toUpperCase() : "",
+      },
     });
   } catch (e) {
     return res.status(400).json({ message: e?.message || "Failed" });
@@ -171,6 +171,49 @@ const send = async (req, res) => {
   }
 };
 
+const editMessage = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (!s.role || !s.auth_uid) return res.status(401).json({ message: "Unauthorized" });
+
+    const role = String(s.role || "").toLowerCase();
+    if (role !== "client" && role !== "worker") return res.status(401).json({ message: "Unauthorized" });
+
+    const conversation_id = String(req.params.conversationId || "").trim();
+    const message_id = String(req.params.messageId || "").trim();
+    if (!conversation_id) return res.status(400).json({ message: "Missing conversation id" });
+    if (!message_id) return res.status(400).json({ message: "Missing message id" });
+
+    const text = String(req.body?.text || "").trim();
+    if (!text) return res.status(400).json({ message: "Message cannot be empty" });
+
+    const updated = await chatModel.updateMessage(conversation_id, message_id, s.auth_uid, text);
+    return res.status(200).json({ ok: true, message: updated });
+  } catch (e) {
+    return res.status(400).json({ message: e?.message || "Failed" });
+  }
+};
+
+const deleteMessage = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (!s.role || !s.auth_uid) return res.status(401).json({ message: "Unauthorized" });
+
+    const role = String(s.role || "").toLowerCase();
+    if (role !== "client" && role !== "worker") return res.status(401).json({ message: "Unauthorized" });
+
+    const conversation_id = String(req.params.conversationId || "").trim();
+    const message_id = String(req.params.messageId || "").trim();
+    if (!conversation_id) return res.status(400).json({ message: "Missing conversation id" });
+    if (!message_id) return res.status(400).json({ message: "Missing message id" });
+
+    await chatModel.deleteMessage(conversation_id, message_id, s.auth_uid);
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    return res.status(400).json({ message: e?.message || "Failed" });
+  }
+};
+
 const markRead = async (req, res) => {
   try {
     const s = sess(req);
@@ -184,4 +227,4 @@ const markRead = async (req, res) => {
   }
 };
 
-module.exports = { ensure, conversations, messages, send, markRead };
+module.exports = { ensure, conversations, messages, send, editMessage, deleteMessage, markRead };

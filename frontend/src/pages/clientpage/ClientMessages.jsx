@@ -140,6 +140,8 @@ const ClientMessages = () => {
           text: m.text || "",
           time: m.time || "",
           created_at: m.created_at || "",
+          updated_at: m.updated_at || "",
+          edited: !!m.edited,
         }))
       );
     } catch {
@@ -169,6 +171,8 @@ const ClientMessages = () => {
       text: msg,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       created_at: nowIso,
+      updated_at: nowIso,
+      edited: false,
     };
 
     setMessages((p) => [...p, optimistic]);
@@ -183,6 +187,58 @@ const ClientMessages = () => {
       await fetchMessages(activeId, { silent: true });
       await fetchConversations({ silent: true });
     } catch {
+      await fetchMessages(activeId, { silent: true });
+      await fetchConversations({ silent: true });
+    }
+  };
+
+  const handleEditMessage = async (messageId, newText) => {
+    const t = String(newText || "").trim();
+    if (!activeId || !messageId || !t) return;
+    if (String(messageId).startsWith("tmp-")) return;
+
+    setMessages((p) =>
+      p.map((m) =>
+        String(m.id) === String(messageId)
+          ? { ...m, text: t, edited: true, updated_at: new Date().toISOString() }
+          : m
+      )
+    );
+
+    try {
+      await axios.put(
+        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(
+          messageId
+        )}`,
+        { text: t },
+        { withCredentials: true, headers: headersWithU }
+      );
+      await fetchMessages(activeId, { silent: true });
+      await fetchConversations({ silent: true });
+    } catch {
+      await fetchMessages(activeId, { silent: true });
+      await fetchConversations({ silent: true });
+    }
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    if (!activeId || !messageId) return;
+    if (String(messageId).startsWith("tmp-")) return;
+
+    const prev = messages;
+    setMessages((p) => p.filter((m) => String(m.id) !== String(messageId)));
+
+    try {
+      await axios.delete(
+        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(
+          messageId
+        )}`,
+        { withCredentials: true, headers: headersWithU }
+      );
+      await fetchMessages(activeId, { silent: true });
+      await fetchConversations({ silent: true });
+    } catch {
+      setMessages(prev);
       await fetchMessages(activeId, { silent: true });
       await fetchConversations({ silent: true });
     }
@@ -309,6 +365,8 @@ const ClientMessages = () => {
                 onChange: setComposerText,
                 onSend: handleSend,
               }}
+              onEditMessage={handleEditMessage}
+              onDeleteMessage={handleDeleteMessage}
             />
           ) : (
             <div className="flex-1 min-h-[650px] rounded-2xl border border-gray-200 bg-white flex items-center justify-center">
