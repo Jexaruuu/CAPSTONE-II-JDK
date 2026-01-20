@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -42,12 +42,21 @@ const ClientChatWindow = ({
   const [avatarUrlBroken, setAvatarUrlBroken] = useState(false);
   const [avatarPlaceholderBroken, setAvatarPlaceholderBroken] = useState(false);
 
+  const safeMessages = useMemo(() => (Array.isArray(messages) ? messages : []), [messages]);
+
+  const messagesRef = useRef(null);
+
+
   useEffect(() => {
     setAvatarUrlBroken(false);
     setAvatarPlaceholderBroken(false);
   }, [conversation?.id, conversation?.avatarUrl]);
 
-  const safeMessages = useMemo(() => (Array.isArray(messages) ? messages : []), [messages]);
+ useEffect(() => {
+  const el = messagesRef.current;
+  if (!el) return;
+  el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+}, [safeMessages.length, conversation?.id]);
 
   const initials = useMemo(() => {
     const name = String(conversation?.name || "").trim();
@@ -114,31 +123,45 @@ const ClientChatWindow = ({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1">
+      <div
+        ref={messagesRef}
+        className="flex-1 overflow-y-auto px-5 py-4 space-y-1 hide-scrollbar"
+        style={{
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}
+      >
+        <style>{`
+          .hide-scrollbar::-webkit-scrollbar { display: none; }
+        `}</style>
+
         {loading ? (
           <div className="text-sm text-gray-500">Loading conversation…</div>
         ) : safeMessages.length === 0 ? (
           <div className="text-sm text-gray-500">No messages yet.</div>
         ) : (
-          safeMessages.map((m) => {
-            const mine = !!m.mine;
+          <>
+            {safeMessages.map((m) => {
+              const mine = !!m.mine;
 
-            return (
-              <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} mb-2`}>
-                <div
-                  className={[
-                    "max-w-[80%] rounded-2xl px-4 py-2 shadow-sm relative",
-                    mine ? "bg-[#008cfc] text-white rounded-br-md" : "bg-gray-100 text-gray-900 rounded-bl-md",
-                  ].join(" ")}
-                >
-                  <p className="whitespace-pre-wrap break-words">{m.text}</p>
-                  <div className={`text-[11px] mt-1 ${mine ? "text-white/80" : "text-gray-500"}`}>
-                    {fmtChatTimestamp(m.updated_at || m.created_at || m.sent_at || m.time)}
+              return (
+                <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} mb-2`}>
+                  <div
+                    className={[
+                      "max-w-[80%] rounded-2xl px-4 py-2 shadow-sm relative",
+                      mine ? "bg-[#008cfc] text-white rounded-br-md" : "bg-gray-100 text-gray-900 rounded-bl-md",
+                    ].join(" ")}
+                  >
+                    <p className="whitespace-pre-wrap break-words">{m.text}</p>
+                    <div className={`text-[11px] mt-1 ${mine ? "text-white/80" : "text-gray-500"}`}>
+                      {fmtChatTimestamp(m.updated_at || m.created_at || m.sent_at || m.time)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+      
+          </>
         )}
       </div>
 

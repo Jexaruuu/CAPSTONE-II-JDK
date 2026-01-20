@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -42,6 +42,10 @@ const WorkerChatWindow = ({
   const [avatarSrc, setAvatarSrc] = useState(AVATAR_PLACEHOLDER);
   const [avatarFailed, setAvatarFailed] = useState(false);
 
+  const safeMessages = useMemo(() => (Array.isArray(messages) ? messages : []), [messages]);
+
+  const messagesRef = useRef(null);
+
   useEffect(() => {
     const src = String(conversation?.avatarUrl || "").trim();
     if (src) {
@@ -53,7 +57,32 @@ const WorkerChatWindow = ({
     }
   }, [conversation?.avatarUrl, conversation?.id]);
 
-  const safeMessages = useMemo(() => (Array.isArray(messages) ? messages : []), [messages]);
+  useEffect(() => {
+    const el = messagesRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [safeMessages.length, conversation?.id]);
+
+  const viewRequestHref = useMemo(() => {
+    const direct = String(conversation?.requestHref || conversation?.requestUrl || "").trim();
+    if (direct) return direct;
+
+    const rid = String(conversation?.request_id || conversation?.requestId || "").trim();
+    if (rid) return `/worker-view-service-request?id=${encodeURIComponent(rid)}`;
+
+    const uid = String(conversation?.uid || conversation?.userId || conversation?.clientUid || "").trim();
+    if (uid) return `/worker-view-service-request?clientUid=${encodeURIComponent(uid)}`;
+
+    return "/worker-view-service-request";
+  }, [
+    conversation?.requestHref,
+    conversation?.requestUrl,
+    conversation?.request_id,
+    conversation?.requestId,
+    conversation?.uid,
+    conversation?.userId,
+    conversation?.clientUid,
+  ]);
 
   if (!conversation) {
     const role = localStorage.getItem("role");
@@ -91,32 +120,52 @@ const WorkerChatWindow = ({
 
   return (
     <section className="flex-1 h-[calc(100vh-140px)] bg-white border border-gray-200 rounded-2xl flex flex-col">
-      <header className="px-5 py-4 border-b border-gray-200 flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center shrink-0">
-          {!avatarFailed ? (
-            <img
-              src={avatarSrc}
-              alt={conversation.name}
-              className="h-10 w-10 object-cover"
-              onError={() => {
-                if (avatarSrc !== AVATAR_PLACEHOLDER) setAvatarSrc(AVATAR_PLACEHOLDER);
-                else setAvatarFailed(true);
-              }}
-            />
-          ) : (
-            <div className="h-10 w-10 flex items-center justify-center text-sm font-semibold text-blue-600">
-              {initials}
-            </div>
-          )}
+      <header className="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center shrink-0">
+            {!avatarFailed ? (
+              <img
+                src={avatarSrc}
+                alt={conversation.name}
+                className="h-10 w-10 object-cover"
+                onError={() => {
+                  if (avatarSrc !== AVATAR_PLACEHOLDER) setAvatarSrc(AVATAR_PLACEHOLDER);
+                  else setAvatarFailed(true);
+                }}
+              />
+            ) : (
+              <div className="h-10 w-10 flex items-center justify-center text-sm font-semibold text-blue-600">
+                {initials}
+              </div>
+            )}
+          </div>
+
+          <div className="min-w-0">
+            <p className="font-semibold leading-5 truncate">{conversation.name}</p>
+            <p className="text-xs text-gray-500 leading-4 truncate">{conversation.subtitle || "Online"}</p>
+          </div>
         </div>
 
-        <div>
-          <p className="font-semibold leading-5">{conversation.name}</p>
-          <p className="text-xs text-gray-500 leading-4">{conversation.subtitle || "Online"}</p>
-        </div>
+        <Link
+          to={viewRequestHref}
+          className="shrink-0 bg-[#008cfc] hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md transition"
+        >
+          View Client Request
+        </Link>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1">
+      <div
+        ref={messagesRef}
+        className="flex-1 overflow-y-auto px-5 py-4 space-y-1 hide-scrollbar"
+        style={{
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}
+      >
+        <style>{`
+          .hide-scrollbar::-webkit-scrollbar { display: none; }
+        `}</style>
+
         {loading ? (
           <div className="text-sm text-gray-500">Loading conversation…</div>
         ) : safeMessages.length === 0 ? (
