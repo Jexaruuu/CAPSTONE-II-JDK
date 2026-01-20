@@ -203,14 +203,11 @@ const WorkerMessages = () => {
     if (!silent) setLoadingMessages(true);
 
     try {
-      const res = await axios.get(
-        `${API_BASE}/api/chat/messages/${encodeURIComponent(conversationId)}`,
-        {
-          params: { limit: 300 },
-          withCredentials: true,
-          headers: headersWithU,
-        }
-      );
+      const res = await axios.get(`${API_BASE}/api/chat/messages/${encodeURIComponent(conversationId)}`, {
+        params: { limit: 300 },
+        withCredentials: true,
+        headers: headersWithU,
+      });
 
       const items = Array.isArray(res?.data?.items) ? res.data.items : [];
       setMessages(
@@ -244,9 +241,7 @@ const WorkerMessages = () => {
     }));
 
     setConversations((prev) =>
-      prev.map((c) =>
-        String(c.id) === String(conversationId) ? { ...c, unreadCount: 0 } : c
-      )
+      prev.map((c) => (String(c.id) === String(conversationId) ? { ...c, unreadCount: 0 } : c))
     );
   };
 
@@ -257,14 +252,14 @@ const WorkerMessages = () => {
 
     try {
       await axios.post(
-        `${API_BASE}/api/chat/read/${encodeURIComponent(conversationId)}`,
+        `${API_BASE}/api/chat/mark-read/${encodeURIComponent(conversationId)}`,
         {},
         { withCredentials: true, headers: headersWithU }
       );
     } catch {
       try {
         await axios.post(
-          `${API_BASE}/api/chat/mark-read/${encodeURIComponent(conversationId)}`,
+          `${API_BASE}/api/chat/read/${encodeURIComponent(conversationId)}`,
           {},
           { withCredentials: true, headers: headersWithU }
         );
@@ -289,14 +284,14 @@ const WorkerMessages = () => {
 
     try {
       await axios.post(
-        `${API_BASE}/api/chat/read-all`,
+        `${API_BASE}/api/chat/mark-all-read`,
         {},
         { withCredentials: true, headers: headersWithU }
       );
     } catch {
       try {
         await axios.post(
-          `${API_BASE}/api/chat/mark-all-read`,
+          `${API_BASE}/api/chat/read-all`,
           {},
           { withCredentials: true, headers: headersWithU }
         );
@@ -360,9 +355,7 @@ const WorkerMessages = () => {
 
     try {
       await axios.put(
-        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(
-          messageId
-        )}`,
+        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(messageId)}`,
         { text: t },
         { withCredentials: true, headers: headersWithU }
       );
@@ -383,9 +376,7 @@ const WorkerMessages = () => {
 
     try {
       await axios.delete(
-        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(
-          messageId
-        )}`,
+        `${API_BASE}/api/chat/messages/${encodeURIComponent(activeId)}/${encodeURIComponent(messageId)}`,
         { withCredentials: true, headers: headersWithU }
       );
       await fetchMessages(activeId, { silent: true });
@@ -501,15 +492,10 @@ const WorkerMessages = () => {
   const filteredConversations = useMemo(() => {
     if (!query.trim()) return conversations;
     const q = query.toLowerCase();
-    return conversations.filter(
-      (c) => c.name?.toLowerCase().includes(q) || c.lastMessage?.toLowerCase().includes(q)
-    );
+    return conversations.filter((c) => c.name?.toLowerCase().includes(q) || c.lastMessage?.toLowerCase().includes(q));
   }, [conversations, query]);
 
-  const activeConversation = useMemo(
-    () => conversations.find((c) => c.id === activeId) || null,
-    [conversations, activeId]
-  );
+  const activeConversation = useMemo(() => conversations.find((c) => c.id === activeId) || null, [conversations, activeId]);
 
   const showChatWindow = !!activeConversation && !!activeId;
   const showEmptyState = !loadingConvos && !showChatWindow;
@@ -567,8 +553,8 @@ const WorkerMessages = () => {
 
                   <h2 className="mt-5 text-lg font-semibold text-gray-900">No conversations yet</h2>
                   <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-                    Once a client sends you a message, it will appear here. Keep your profile updated
-                    and stay active to receive service requests.
+                    Once a client sends you a message, it will appear here. Keep your profile updated and stay active
+                    to receive service requests.
                   </p>
 
                   <div className="mt-5 flex items-center justify-center gap-2">

@@ -227,4 +227,19 @@ const markRead = async (req, res) => {
   }
 };
 
-module.exports = { ensure, conversations, messages, send, editMessage, deleteMessage, markRead };
+const markAllRead = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (!s.role || !s.auth_uid) return res.status(401).json({ message: "Unauthorized" });
+
+    const role = String(s.role || "").toLowerCase();
+    if (role !== "client" && role !== "worker") return res.status(401).json({ message: "Unauthorized" });
+
+    await chatModel.markAllReadForUser(s.auth_uid, role);
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    return res.status(400).json({ message: e?.message || "Failed" });
+  }
+};
+
+module.exports = { ensure, conversations, messages, send, editMessage, deleteMessage, markRead, markAllRead };

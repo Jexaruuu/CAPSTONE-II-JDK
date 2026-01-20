@@ -4,32 +4,51 @@ import { Search, SlidersHorizontal, Check } from "lucide-react";
 function fmtLastMessageTime(v) {
   if (!v) return "";
 
+  if (typeof v === "string") {
+    const d = new Date(v);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    }
+    return v;
+  }
+
   if (typeof v === "number") {
     const d = new Date(v);
-    return Number.isNaN(d.getTime())
-      ? ""
-      : d.toLocaleString(undefined, {
-          month: "short",
-          day: "2-digit",
-          hour: "numeric",
-          minute: "2-digit",
-        });
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    }
+    return "";
   }
 
   if (v instanceof Date) {
-    return Number.isNaN(v.getTime())
-      ? ""
-      : v.toLocaleString(undefined, {
-          month: "short",
-          day: "2-digit",
-          hour: "numeric",
-          minute: "2-digit",
-        });
+    if (!Number.isNaN(v.getTime())) {
+      return v.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    }
+    return "";
   }
 
   const d = new Date(String(v));
   if (!Number.isNaN(d.getTime())) {
     return d.toLocaleString(undefined, {
+      year: "numeric",
       month: "short",
       day: "2-digit",
       hour: "numeric",
@@ -116,10 +135,7 @@ const WorkerConversationList = ({
   onReadAll = () => {},
   readOverrides = {},
 }) => {
-  const safeConversations = useMemo(
-    () => (Array.isArray(conversations) ? conversations : []),
-    [conversations]
-  );
+  const safeConversations = useMemo(() => (Array.isArray(conversations) ? conversations : []), [conversations]);
 
   const [openMenu, setOpenMenu] = useState(false);
   const menuRef = useRef(null);
@@ -238,9 +254,7 @@ const WorkerConversationList = ({
                       <p className="text-sm text-gray-600 truncate">{lastText || "…"}</p>
 
                       {timeText ? (
-                        <span className="text-[11px] text-gray-500 whitespace-nowrap shrink-0">
-                          {timeText}
-                        </span>
+                        <span className="text-[11px] text-gray-500 whitespace-nowrap shrink-0">{timeText}</span>
                       ) : null}
                     </div>
                   </div>

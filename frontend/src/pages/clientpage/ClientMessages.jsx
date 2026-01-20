@@ -43,6 +43,17 @@ function pickLastTimestampClient(c) {
   );
 }
 
+function toEpoch(v) {
+  if (!v) return 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (v instanceof Date) {
+    const t = v.getTime();
+    return Number.isFinite(t) ? t : 0;
+  }
+  const t = Date.parse(String(v));
+  return Number.isFinite(t) ? t : 0;
+}
+
 const ClientMessages = () => {
   const qs = useQueryParams();
   const to = String(qs.get("to") || "").trim();
@@ -82,7 +93,12 @@ const ClientMessages = () => {
   const [readOverrides, setReadOverrides] = useState(() => {
     const raw = safeJsonParse(localStorage.getItem(READ_OVERRIDES_KEY) || "{}");
     if (!raw || typeof raw !== "object") return {};
-    return raw;
+    const out = {};
+    for (const [k, val] of Object.entries(raw)) {
+      const n = Number(val);
+      if (Number.isFinite(n) && n > 0) out[String(k)] = n;
+    }
+    return out;
   });
 
   useEffect(() => {
@@ -133,7 +149,7 @@ const ClientMessages = () => {
         name: c.name,
         lastMessage: c.lastMessage || c.last_message || "",
         avatarUrl: c.avatarUrl || "",
-        unreadCount: c.unreadCount || c.unread_count || 0,
+        unreadCount: c.unreadCount ?? c.unread_count ?? 0,
         subtitle: c.subtitle || "",
         lastMessageTime:
           c.lastMessageTime ||
@@ -142,6 +158,8 @@ const ClientMessages = () => {
           c.last_message_created_at ||
           c.last_message_at ||
           c.lastMessageAt ||
+          c.last_message_date ||
+          c.lastMessageDate ||
           c.updated_at ||
           c.created_at ||
           c.time ||
@@ -158,9 +176,8 @@ const ClientMessages = () => {
         for (const conv of mapped) {
           const id = String(conv?.id || "");
           if (!id) continue;
-          const lastTs = String(pickLastTimestampClient(conv) || "");
-          const savedTs = String(p[id] || "");
-          if (savedTs && lastTs && savedTs === lastTs) next[id] = savedTs;
+          const seen = Number(p[id] || 0);
+          if (Number.isFinite(seen) && seen > 0) next[id] = seen;
         }
         return next;
       });
@@ -237,12 +254,13 @@ const ClientMessages = () => {
   const markConversationReadUI = (conversationId) => {
     if (!conversationId) return;
     const convo = conversations.find((c) => String(c.id) === String(conversationId)) || null;
+
     const lastTs = String(pickLastTimestampClient(convo) || "");
-    if (!lastTs) return;
+    const lastEpoch = toEpoch(lastTs) || Date.now();
 
     setReadOverrides((prev) => ({
       ...(prev && typeof prev === "object" ? prev : {}),
-      [String(conversationId)]: lastTs,
+      [String(conversationId)]: lastEpoch,
     }));
 
     setConversations((prev) =>
@@ -280,7 +298,8 @@ const ClientMessages = () => {
       const id = String(c?.id || "");
       if (!id) continue;
       const lastTs = String(pickLastTimestampClient(c) || "");
-      if (lastTs) next[id] = lastTs;
+      const lastEpoch = toEpoch(lastTs) || Date.now();
+      next[id] = lastEpoch;
     }
     setReadOverrides(next);
     setConversations((prev) => prev.map((c) => ({ ...c, unreadCount: 0 })));
@@ -490,9 +509,10 @@ const ClientMessages = () => {
     if (!rawUnread || rawUnread <= 0) return;
 
     const lastTs = String(pickLastTimestampClient(convo) || "");
-    if (!lastTs) return;
+    const lastEpoch = toEpoch(lastTs);
+    if (!lastEpoch) return;
 
-    const key = `${String(activeId)}::${lastTs}`;
+    const key = `${String(activeId)}::${lastEpoch}`;
     if (autoMarkedRef.current.has(key)) return;
     autoMarkedRef.current.add(key);
 

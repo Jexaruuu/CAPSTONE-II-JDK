@@ -11,5 +11,7 @@ router.put("/messages/:conversationId/:messageId", chatController.editMessage);
 router.delete("/messages/:conversationId/:messageId", chatController.deleteMessage);
 
 router.post("/mark-read/:conversationId", chatController.markRead);
+router.post("/mark-all-read", chatController.markAllRead);
+router.post("/read-all", chatController.markAllRead);
 
 module.exports = router;

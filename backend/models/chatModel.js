@@ -374,6 +374,38 @@ async function markRead(conversation_id, auth_uid) {
   return true;
 }
 
+async function markAllReadForUser(auth_uid, role) {
+  const r = String(role || "").toLowerCase();
+  const key = r === "client" ? "client_auth_uid" : "worker_auth_uid";
+
+  const { data, error } = await supabaseAdmin
+    .from("chat_conversations")
+    .select("id")
+    .eq(key, auth_uid)
+    .limit(500);
+
+  if (error) throw error;
+
+  const ids = (Array.isArray(data) ? data : []).map((x) => x.id).filter(Boolean);
+  if (!ids.length) return true;
+
+  const now = new Date().toISOString();
+
+  const rows = ids.map((conversation_id) => ({
+    conversation_id,
+    auth_uid,
+    last_read_at: now,
+    updated_at: now,
+  }));
+
+  const { error: e2 } = await supabaseAdmin
+    .from("chat_participants")
+    .upsert(rows, { onConflict: "conversation_id,auth_uid" });
+
+  if (e2) throw e2;
+  return true;
+}
+
 module.exports = {
   ensureConversation,
   listConversationsForUser,
@@ -382,6 +414,7 @@ module.exports = {
   updateMessage,
   deleteMessage,
   markRead,
+  markAllReadForUser,
   findWorkerByEmail,
   findClientByEmail,
   getClientSummary,

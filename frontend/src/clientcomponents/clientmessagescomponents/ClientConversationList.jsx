@@ -126,6 +126,17 @@ function readCount(c) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function toEpoch(v) {
+  if (!v) return 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (v instanceof Date) {
+    const t = v.getTime();
+    return Number.isFinite(t) ? t : 0;
+  }
+  const t = Date.parse(String(v));
+  return Number.isFinite(t) ? t : 0;
+}
+
 const ClientConversationList = ({
   conversations = [],
   activeId = null,
@@ -210,9 +221,12 @@ const ClientConversationList = ({
             const lastText = pickLastMessageText(c);
 
             const rawUnread = readCount(c);
-            const overrideTs = String(readOverrides?.[String(c.id)] || "");
-            const uiUnread = overrideTs && lastTs && overrideTs === lastTs ? 0 : rawUnread;
+            const lastEpoch = toEpoch(lastTs);
 
+            const seenEpoch = Number(readOverrides?.[String(c.id)] || 0);
+            const hideUnread = lastEpoch > 0 && seenEpoch > 0 && seenEpoch >= lastEpoch;
+
+            const uiUnread = hideUnread ? 0 : rawUnread;
             const showUnread = uiUnread > 0;
 
             return (
