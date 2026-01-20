@@ -1344,14 +1344,14 @@ const ClientViewServiceRequest = () => {
                     <button
                       type="button"
                       onClick={handleDone}
-                      className="w-full sm:w-1/2 h-[48px] px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                      className="w-full sm:w-1/2 h-[48px] px-5 py-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                     >
                       Done View
                     </button>
                     <button
                       type="button"
                       onClick={handleCancel}
-                      className="w-full sm:w-1/2 h-[48px] px-5 py-3 rounded-xl bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                      className="w-full sm:w-1/2 h-[48px] px-5 py-3 rounded-md bg-[#008cfc] text-white hover:bg-[#0077d6] transition shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
                     >
                       Cancel Request
                     </button>
