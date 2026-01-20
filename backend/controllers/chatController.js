@@ -139,12 +139,16 @@ const messages = async (req, res) => {
   try {
     const s = sess(req);
     if (!s.role || !s.auth_uid) return res.status(401).json({ message: "Unauthorized" });
+
+    const role = String(s.role || "").toLowerCase();
+    if (role !== "client" && role !== "worker") return res.status(401).json({ message: "Unauthorized" });
+
     const conversation_id = String(req.params.conversationId || "").trim();
     if (!conversation_id) return res.status(400).json({ message: "Missing conversation id" });
 
     const limit = req.query?.limit;
     const list = await chatModel.listMessages(conversation_id, s.auth_uid, limit);
-    await chatModel.markRead(conversation_id, s.auth_uid).catch(() => {});
+    await chatModel.markRead(conversation_id, s.auth_uid, role).catch(() => {});
     return res.status(200).json({ items: list });
   } catch (e) {
     return res.status(400).json({ message: e?.message || "Failed" });
@@ -218,9 +222,14 @@ const markRead = async (req, res) => {
   try {
     const s = sess(req);
     if (!s.role || !s.auth_uid) return res.status(401).json({ message: "Unauthorized" });
+
+    const role = String(s.role || "").toLowerCase();
+    if (role !== "client" && role !== "worker") return res.status(401).json({ message: "Unauthorized" });
+
     const conversation_id = String(req.params.conversationId || "").trim();
     if (!conversation_id) return res.status(400).json({ message: "Missing conversation id" });
-    await chatModel.markRead(conversation_id, s.auth_uid);
+
+    await chatModel.markRead(conversation_id, s.auth_uid, role);
     return res.status(200).json({ ok: true });
   } catch (e) {
     return res.status(400).json({ message: e?.message || "Failed" });

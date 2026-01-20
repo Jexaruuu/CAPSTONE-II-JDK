@@ -413,13 +413,25 @@ async function deleteMessage(conversation_id, message_id, auth_uid) {
   return true;
 }
 
-async function markRead(conversation_id, auth_uid) {
+async function markRead(conversation_id, auth_uid, role) {
   const now = new Date().toISOString();
+  const r = String(role || "").toLowerCase();
+
+  const payload = {
+    conversation_id,
+    auth_uid,
+    last_read_at: now,
+    updated_at: now,
+  };
+
+  if (r === "client" || r === "worker") payload.role = r;
+
   const { error } = await supabaseAdmin
     .from("chat_participants")
-    .upsert([{ conversation_id, auth_uid, last_read_at: now, updated_at: now }], {
+    .upsert([payload], {
       onConflict: "conversation_id,auth_uid",
     });
+
   if (error) throw error;
   return true;
 }
@@ -444,13 +456,20 @@ async function markAllReadForUser(auth_uid, role) {
   const rows = ids.map((conversation_id) => ({
     conversation_id,
     auth_uid,
+    role: r === "client" || r === "worker" ? r : undefined,
     last_read_at: now,
     updated_at: now,
   }));
 
+  const cleaned = rows.map((x) => {
+    const o = { ...x };
+    if (!o.role) delete o.role;
+    return o;
+  });
+
   const { error: e2 } = await supabaseAdmin
     .from("chat_participants")
-    .upsert(rows, { onConflict: "conversation_id,auth_uid" });
+    .upsert(cleaned, { onConflict: "conversation_id,auth_uid" });
 
   if (e2) throw e2;
   return true;
