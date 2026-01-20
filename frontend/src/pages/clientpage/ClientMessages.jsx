@@ -278,6 +278,9 @@ const ClientMessages = () => {
     [conversations, activeId]
   );
 
+  const showChatWindow = !!activeConversation && !!activeId;
+  const showEmptyState = !loadingConvos && !showChatWindow;
+
   return (
     <div className="min-h-screen bg-white overflow-hidden">
       <ClientNavigation />
@@ -292,16 +295,70 @@ const ClientMessages = () => {
             onSelect={handleSelectConversation}
           />
 
-          <ClientChatWindow
-            conversation={activeConversation}
-            messages={messages}
-            loading={loadingMessages}
-            composer={{
-              text: composerText,
-              onChange: setComposerText,
-              onSend: handleSend,
-            }}
-          />
+          {showChatWindow ? (
+            <ClientChatWindow
+              conversation={activeConversation}
+              messages={messages}
+              loading={loadingMessages}
+              composer={{
+                text: composerText,
+                onChange: setComposerText,
+                onSend: handleSend,
+              }}
+            />
+          ) : (
+            <div className="flex-1 min-h-[650px] rounded-2xl border border-gray-200 bg-white flex items-center justify-center">
+              {showEmptyState ? (
+                <div className="w-full max-w-md px-6 text-center">
+                  <div className="mx-auto w-16 h-16 rounded-2xl border border-blue-100 bg-blue-50 flex items-center justify-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-8 h-8 text-[#008cfc]"
+                    >
+                      <path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                      <path d="M8 10h8" />
+                      <path d="M8 14h5" />
+                    </svg>
+                  </div>
+
+                  <h2 className="mt-5 text-lg font-semibold text-gray-900">
+                    No conversations yet
+                  </h2>
+                  <p className="mt-2 text-sm text-gray-500 leading-relaxed">
+                    Once you connect with a worker, your messages will appear here.
+                    You can start by booking a service or selecting a worker to chat.
+                  </p>
+
+                  <div className="mt-5 flex items-center justify-center gap-2">
+                    <div className="px-3 py-1.5 rounded-full border border-gray-200 bg-gray-50 text-xs text-gray-600">
+                      Tip: Search & book a worker first
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full max-w-md px-6 text-center">
+                  <div className="mx-auto w-16 h-16 rounded-2xl border border-blue-100 bg-blue-50 flex items-center justify-center">
+                    <div
+                      className="w-7 h-7 rounded-full animate-spin"
+                      style={{
+                        borderWidth: "4px",
+                        borderStyle: "solid",
+                        borderColor: "#008cfc22",
+                        borderTopColor: "#008cfc",
+                      }}
+                    />
+                  </div>
+                  <p className="mt-4 text-sm text-gray-600">Loading conversations...</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
       <ClientFooter />

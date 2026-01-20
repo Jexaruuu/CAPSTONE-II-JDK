@@ -368,6 +368,21 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const name = w.client_name || [i.first_name, i.last_name].filter(Boolean).join(" ") || "Client";
   const emailAddress = w.client_email || i.email_address || "";
 
+  const clientToUid =
+    w.client_auth_uid ||
+    w.clientAuthUid ||
+    base.client_auth_uid ||
+    base.auth_uid ||
+    base.authUid ||
+    i.auth_uid ||
+    i.authUid ||
+    "";
+  const workerMessageHref = useMemo(() => {
+    const to = encodeURIComponent(emailAddress || "");
+    const toUid = encodeURIComponent(clientToUid || "");
+    return `/workermessages?to=${to}${clientToUid ? `&toUid=${toUid}` : ""}`;
+  }, [emailAddress, clientToUid]);
+
   const workDescription = d.work_description || d.description || w.description || w.title || "—";
   const workDone = Number.isFinite(w.completed_jobs) ? w.completed_jobs : 0;
 
@@ -1015,7 +1030,7 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
 
                   <div className="mt-6 flex items-center justify-end gap-3">
                     <a
-                      href={`/workermessages?to=${encodeURIComponent(emailAddress || "")}`}
+                      href={workerMessageHref}
                       className="h-9 px-4 rounded-md border border-[#008cfc] text-[#008cfc] hover:bg-blue-50 text-sm inline-flex items-center justify-center"
                     >
                       Message

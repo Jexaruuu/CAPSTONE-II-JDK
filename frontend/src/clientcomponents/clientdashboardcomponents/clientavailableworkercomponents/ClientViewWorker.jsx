@@ -493,6 +493,13 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const name = w.name || [i.first_name, i.last_name].filter(Boolean).join(" ") || "Worker";
   const emailAddress = w.emailAddress || i.email_address || "";
 
+  const workerToUid = w.auth_uid || w.authUid || i.auth_uid || i.authUid || authUidGuess || "";
+  const clientMessageHref = useMemo(() => {
+    const to = encodeURIComponent(emailAddress || "");
+    const toUid = encodeURIComponent(workerToUid || "");
+    return `/clientmessages?to=${to}${workerToUid ? `&toUid=${toUid}` : ""}`;
+  }, [emailAddress, workerToUid]);
+
   const avgFive = Math.max(0, Math.min(5, reviewsState.avg || 0));
   const reviewItems = reviewsState.items;
 
@@ -723,21 +730,13 @@ export default function ClientViewWorker({ open, onClose, worker }) {
 
                       {phMobile ? (
                         <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 border border-gray-100">
-                          <img
-                            src="philippines.png"
-                            alt="PH"
-                            className="h-5 w-7 rounded-sm object-cover"
-                          />
+                          <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
                           <span className="text-gray-700 text-sm">+63</span>
                           <span className="text-sm text-[#008cfc] tracking-wide">{phMobile}</span>
                         </div>
                       ) : (
                         <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 border border-gray-200 text-gray-400">
-                          <img
-                            src="philippines.png"
-                            alt="PH"
-                            className="h-5 w-7 rounded-sm object-cover"
-                          />
+                          <img src="philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
                           <span className="text-sm">+63</span>
                           <span className="text-sm">9XXXXXXXXX</span>
                         </div>
@@ -894,7 +893,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
 
                   <div className="mt-6 flex items-center justify-end gap-3">
                     <a
-                      href={`/clientmessages?to=${encodeURIComponent(emailAddress || "")}`}
+                      href={clientMessageHref}
                       className="h-9 px-4 rounded-md border border-[#008cfc] text-[#008cfc] hover:bg-blue-50 text-sm inline-flex items-center justify-center"
                     >
                       Message
