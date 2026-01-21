@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { Link } from "react-router-dom";
-import WorkerViewServiceRequest from "../workermessagescomponents/WorkerViewServiceRequest.jsx";
 
 const AVATAR_PLACEHOLDER = "/Bluelogo.png";
 
@@ -287,18 +286,6 @@ const WorkerChatWindow = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              to={viewRequestHref}
-              onClick={(e) => {
-                e.preventDefault();
-                openViewRequest();
-              }}
-              className="h-9 px-4 rounded-md border border-[#008cfc] text-[#008cfc] hover:bg-blue-50 text-sm font-medium flex items-center"
-            >
-              View Client Request
-            </Link>
-          </div>
         </header>
 
         <div className="flex-1 overflow-hidden flex flex-col">
@@ -384,14 +371,6 @@ const WorkerChatWindow = ({
         </div>
       </section>
 
-      <WorkerViewServiceRequest
-        open={viewOpen}
-        onClose={() => {
-          setViewOpen(false);
-          setViewRequest(null);
-        }}
-        request={viewRequest}
-      />
     </>
   );
 };

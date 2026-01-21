@@ -386,35 +386,6 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const workDescription = d.work_description || d.description || w.description || w.title || "—";
   const workDone = Number.isFinite(w.completed_jobs) ? w.completed_jobs : 0;
 
-  const ratingSources = [
-    w.ratingFive,
-    w.rating,
-    w.stars,
-    w.star,
-    w.score,
-    w.rating_out_of_5,
-    w.value,
-    i.ratingFive,
-    i.rating,
-    i.stars,
-    i.star,
-    i.score,
-    i.rating_out_of_5,
-    i.value,
-    d.ratingFive,
-    d.rating,
-    d.stars,
-    d.star,
-    d.score,
-    d.rating_out_of_5,
-    d.value
-  ];
-  const rating =
-    ratingSources
-      .map((v) => Number(v))
-      .find((n) => Number.isFinite(n) && n >= 0 && n <= 5) ?? 0;
-  const filled = Math.round(Math.max(0, Math.min(5, rating)));
-
   const prettyDate = (() => {
     const raw = d.preferred_date;
     if (!raw) return "—";
@@ -458,21 +429,6 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     const mins = String(m || 0).padStart(2, "0");
     return `${hh}:${mins} ${ap}`;
   })();
-
-  const reviews = useMemo(() => {
-    const raw =
-      (Array.isArray(w.reviews) && w.reviews) ||
-      (Array.isArray(i.reviews) && i.reviews) ||
-      (Array.isArray(d.reviews) && d.reviews) ||
-      [];
-    return raw.map((x, idx) => {
-      const text = x.text || x.message || x.content || "";
-      const rating = Number.isFinite(Number(x.rating)) ? Number(x.rating) : 0;
-      const created_at = x.created_at || x.date || x.createdAt || null;
-      const id = x.id || `${idx}`;
-      return { id, text, rating, created_at };
-    });
-  }, [w, i, d]);
 
   const extractTypeList = (val) => {
     const out = [];
@@ -798,29 +754,6 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                           </div>
                           {emailAddress ? <div className="text-xs text-gray-600 truncate">{emailAddress}</div> : null}
                         </div>
-
-                        <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium shrink-0">
-                          Request Done
-                          <span className="ml-2 text-sm font-semibold text-[#008cfc]">
-                            {Number.isFinite(workDone) ? workDone : 0}
-                          </span>
-                        </span>
-                      </div>
-
-                      <div className="mt-2 flex items-center gap-1">
-                        {[0, 1, 2, 3, 4].map((idx) => (
-                          <svg
-                            key={idx}
-                            viewBox="0 0 24 24"
-                            className={`h-4 w-4 ${idx < filled ? "text-yellow-400" : "text-gray-300"}`}
-                            fill="currentColor"
-                          >
-                            <path d="M12 .587l3.668 7.431L24 9.75l-6 5.85L19.335 24 12 19.897 4.665 24 6 15.6 0 9.75l8.332-1.732z" />
-                          </svg>
-                        ))}
-                        <span className="ml-1 text-xs font-medium text-gray-700">{`${(rating || 0).toFixed(
-                          1
-                        )}/5`}</span>
                       </div>
                     </div>
                   </div>
@@ -985,49 +918,6 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                     </div>
                   </div>
 
-                  <div className="mt-8 border-t border-gray-200" />
-
-                  <div className="mt-6">
-                    <div className="text-sm font-semibold text-gray-700">Ratings & Reviews</div>
-                    <div className="mt-4 space-y-3">
-                      {(reviews.length
-                        ? reviews
-                        : [{ id: "empty", rating: 0, text: "No reviews yet.", created_at: null }]
-                      ).map((rv) => {
-                        const rf = Math.round(Math.max(0, Math.min(5, rv.rating || 0)));
-                        const date = rv.created_at ? new Date(rv.created_at) : null;
-                        const dstr =
-                          date && !isNaN(date.getTime())
-                            ? date.toLocaleDateString(undefined, {
-                                year: "numeric",
-                                month: "short",
-                                day: "2-digit"
-                              })
-                            : "";
-                        return (
-                          <div key={rv.id} className="rounded-xl border border-gray-200 bg-white p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1">
-                                {[0, 1, 2, 3, 4].map((x) => (
-                                  <svg
-                                    key={x}
-                                    viewBox="0 0 24 24"
-                                    className={`h-3.5 w-3.5 ${x < rf ? "text-yellow-400" : "text-gray-300"}`}
-                                    fill="currentColor"
-                                  >
-                                    <path d="M12 .587l3.668 7.431L24 9.75l-6 5.85L19.335 24 12 19.897 4.665 24 6 15.6 0 9.75l8.332-1.732z" />
-                                  </svg>
-                                ))}
-                              </div>
-                              <div className="text-[11px] text-gray-500">{dstr}</div>
-                            </div>
-                            <div className="mt-2 text-sm text-gray-700 whitespace-pre-line">{rv.text || "—"}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
                   <div className="mt-6 flex items-center justify-end gap-3">
                     <a
                       href={workerMessageHref}
@@ -1084,7 +974,12 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
           <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483648]">
             <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
               {!logoBroken ? (
-                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
+                <img
+                  src="/jdklogo.png"
+                  alt="Logo"
+                  className="w-16 h-16 object-contain"
+                  onError={() => setLogoBroken(true)}
+                />
               ) : (
                 <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
                   <span className="font-bold text-[#008cfc]">JDK</span>

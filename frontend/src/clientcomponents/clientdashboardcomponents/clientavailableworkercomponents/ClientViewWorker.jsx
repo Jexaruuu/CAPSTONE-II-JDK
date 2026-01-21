@@ -503,15 +503,6 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const avgFive = Math.max(0, Math.min(5, reviewsState.avg || 0));
   const reviewItems = reviewsState.items;
 
-  const rawWorkDone =
-    w.workDone ??
-    w.completed_jobs ??
-    w.jobs_completed ??
-    w.completed_works ??
-    (w.stats && (w.stats.work_done || w.stats.completed || w.stats.jobs));
-  const wd = Number(rawWorkDone);
-  const workDone = Number.isFinite(wd) && wd >= 0 ? Math.floor(wd) : 0;
-
   const workerCanonTypes = Array.from(new Set((serviceTypes || []).map(canonType)));
   const workerTaskSet = useMemo(() => {
     const flat = extractTasks(d.service_task || serviceTasks || []);
@@ -665,11 +656,6 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                           </div>
                           {emailAddress ? <div className="text-xs text-gray-600 truncate">{emailAddress}</div> : null}
                         </div>
-
-                        <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium shrink-0">
-                          Work Done
-                          <span className="ml-2 text-sm font-semibold text-[#008cfc]">{workDone}</span>
-                        </span>
                       </div>
 
                       <div className="mt-2 flex items-center gap-1">
@@ -790,7 +776,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                         <span
                           className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border ${statusClasses}`}
                         >
-                          {statusLabel}
+                          {allTwoMatch ? "Match" : "Not Match"}
                         </span>
                       </div>
                     </div>
