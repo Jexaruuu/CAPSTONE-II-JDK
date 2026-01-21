@@ -1316,13 +1316,7 @@ const ClientViewServiceRequest = () => {
                               </div>
                               <div className="text-lg font-semibold text-gray-900 truncate">{currentPaymentMeta?.title || 'Cash'}</div>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => setShowPaymentModal(true)}
-                              className="text-[#008cfc] font-semibold text-sm hover:underline shrink-0"
-                            >
-                              Change
-                            </button>
+                      
                           </div>
                           <div className="px-4 pb-4 -mt-2 text-xs text-gray-500">{currentPaymentMeta?.subtitle || 'Pay directly to the worker'}</div>
                         </div>
