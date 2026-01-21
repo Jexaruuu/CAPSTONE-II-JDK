@@ -1027,12 +1027,7 @@ export default function WorkerViewServiceRequest({ open, onClose, serviceRequest
                   </div>
 
                   <div className="mt-6 flex items-center justify-end gap-3">
-                    <a
-                      href={workerMessageHref}
-                      className="h-9 px-4 rounded-md border border-[#008cfc] text-[#008cfc] hover:bg-blue-50 text-sm inline-flex items-center justify-center"
-                    >
-                      Message
-                    </a>
+                  
 
                     <a
                       href="/workerpostapplication"
