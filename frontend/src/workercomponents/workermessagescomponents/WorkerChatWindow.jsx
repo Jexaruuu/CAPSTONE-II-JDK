@@ -46,32 +46,57 @@ function toObj(v) {
   return typeof v === "object" ? v : {};
 }
 
+function guessEmailFromConversation(conversation) {
+  const c = conversation || {};
+  const direct =
+    c.email ||
+    c.email_address ||
+    c.clientEmail ||
+    c.client_email ||
+    c.otherEmail ||
+    c.other_email ||
+    c.to ||
+    c.toEmail ||
+    c.to_email ||
+    c.participantEmail ||
+    c.participant_email ||
+    "";
+
+  const cleanDirect = String(direct || "").trim();
+  if (cleanDirect && /\S+@\S+\.\S+/.test(cleanDirect)) return cleanDirect;
+
+  const subtitle = String(c.subtitle || c.subTitle || c.meta || "").trim();
+  const m = subtitle.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i);
+  if (m?.[0]) return String(m[0]).trim();
+
+  try {
+    const qs = new URLSearchParams(window.location.search);
+    const to = String(qs.get("to") || "").trim();
+    if (to && /\S+@\S+\.\S+/.test(to)) return to;
+  } catch {}
+
+  return "";
+}
+
 const WorkerChatWindow = ({
   conversation,
   messages = [],
   loading = false,
   composer = { text: "", onChange: () => {}, onSend: () => {} },
 }) => {
-  const [avatarSrc, setAvatarSrc] = useState(AVATAR_PLACEHOLDER);
-  const [avatarFailed, setAvatarFailed] = useState(false);
+  const [avatarUrlBroken, setAvatarUrlBroken] = useState(false);
+  const [avatarPlaceholderBroken, setAvatarPlaceholderBroken] = useState(false);
 
   const [viewOpen, setViewOpen] = useState(false);
   const [viewRequest, setViewRequest] = useState(null);
 
   const safeMessages = useMemo(() => (Array.isArray(messages) ? messages : []), [messages]);
-
   const messagesRef = useRef(null);
 
   useEffect(() => {
-    const src = String(conversation?.avatarUrl || "").trim();
-    if (src) {
-      setAvatarSrc(src);
-      setAvatarFailed(false);
-    } else {
-      setAvatarSrc(AVATAR_PLACEHOLDER);
-      setAvatarFailed(false);
-    }
-  }, [conversation?.avatarUrl, conversation?.id]);
+    setAvatarUrlBroken(false);
+    setAvatarPlaceholderBroken(false);
+  }, [conversation?.id, conversation?.avatarUrl]);
 
   useEffect(() => {
     const el = messagesRef.current;
@@ -101,6 +126,16 @@ const WorkerChatWindow = ({
       document.body.style.paddingRight = originalBodyPaddingRight;
     };
   }, [viewOpen]);
+
+  const initials = useMemo(() => {
+    const name = String(conversation?.name || "").trim();
+    const parts = name.split(" ").filter(Boolean);
+    const a = parts[0]?.[0] || "";
+    const b = parts[1]?.[0] || "";
+    return (a + b).toUpperCase() || "U";
+  }, [conversation?.name]);
+
+  const headerAvatarUrl = !avatarUrlBroken ? conversation?.avatarUrl : null;
 
   const viewRequestHref = useMemo(() => {
     const direct = String(conversation?.requestHref || conversation?.requestUrl || "").trim();
@@ -217,123 +252,146 @@ const WorkerChatWindow = ({
     );
   }
 
-  const initials =
-    String(conversation?.name || "")
-      .split(" ")
-      .filter(Boolean)
-      .map((n) => n[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase() || "U";
+  const otherName = String(conversation?.name || "Client").trim() || "Client";
+  const otherEmail = guessEmailFromConversation(conversation);
+  const hasOtherEmail = !!otherEmail;
 
   return (
     <>
-      <section className="flex-1 h-[calc(100vh-140px)] bg-white border border-gray-200 rounded-2xl flex flex-col">
+      <section className="flex-1 h-[calc(100vh-140px)] bg-white border border-gray-200 rounded-2xl flex flex-col overflow-hidden">
         <header className="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center shrink-0">
-              {!avatarFailed ? (
+            <div className="h-10 w-10 rounded-full border border-gray-200 overflow-hidden bg-gray-50 shrink-0 flex items-center justify-center">
+              {headerAvatarUrl ? (
                 <img
-                  src={avatarSrc}
-                  alt={conversation.name}
-                  className="h-10 w-10 object-cover"
-                  onError={() => {
-                    if (avatarSrc !== AVATAR_PLACEHOLDER) setAvatarSrc(AVATAR_PLACEHOLDER);
-                    else setAvatarFailed(true);
-                  }}
+                  src={headerAvatarUrl}
+                  alt={otherName}
+                  className="h-full w-full object-cover"
+                  onError={() => setAvatarUrlBroken(true)}
+                />
+              ) : !avatarPlaceholderBroken ? (
+                <img
+                  src={AVATAR_PLACEHOLDER}
+                  alt="avatar"
+                  className="h-full w-full object-cover"
+                  onError={() => setAvatarPlaceholderBroken(true)}
                 />
               ) : (
-                <div className="h-10 w-10 flex items-center justify-center text-sm font-semibold text-blue-600">
-                  {initials}
-                </div>
+                <div className="text-sm font-semibold text-gray-600">{initials}</div>
               )}
             </div>
 
             <div className="min-w-0">
-              <p className="font-semibold leading-5 truncate">{conversation.name}</p>
-              <p className="text-xs text-gray-500 leading-4 truncate">{conversation.subtitle || "Online"}</p>
+              <div className="text-sm font-semibold text-gray-800 truncate">{otherName}</div>
+              {hasOtherEmail ? <div className="text-xs text-gray-500 truncate">{otherEmail}</div> : null}
             </div>
           </div>
 
-          <Link
-            to={viewRequestHref}
-            onClick={(e) => {
-              e.preventDefault();
-              openViewRequest();
-            }}
-            className="shrink-0 bg-[#008cfc] hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md transition"
-          >
-            View Client Request
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              to={viewRequestHref}
+              onClick={(e) => {
+                e.preventDefault();
+                openViewRequest();
+              }}
+              className="h-9 px-4 rounded-md border border-[#008cfc] text-[#008cfc] hover:bg-blue-50 text-sm font-medium flex items-center"
+            >
+              View Client Request
+            </Link>
+          </div>
         </header>
 
-        <div
-          ref={messagesRef}
-          className="flex-1 overflow-y-auto px-5 py-4 space-y-1 hide-scrollbar"
-          style={{
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          }}
-        >
-          <style>{`
-            .hide-scrollbar::-webkit-scrollbar { display: none; }
-          `}</style>
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div ref={messagesRef} className="flex-1 overflow-y-auto p-5 space-y-3 bg-white">
+            {loading ? (
+              <div className="w-full flex items-center justify-center py-10">
+                <div
+                  className="w-10 h-10 rounded-full animate-spin"
+                  style={{
+                    borderWidth: "4px",
+                    borderStyle: "solid",
+                    borderColor: "#008cfc22",
+                    borderTopColor: "#008cfc",
+                  }}
+                />
+              </div>
+            ) : safeMessages.length ? (
+              safeMessages.map((m) => {
+                const mine = !!m.mine;
+                const text = String(m.text || "").trim();
+                const ts = fmtChatTimestamp(m.updated_at || m.created_at || m.sent_at || m.time || "");
+                return (
+                  <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[78%] ${mine ? "items-end" : "items-start"} flex flex-col gap-1`}>
+                      <div
+                        className={`px-4 py-2 rounded-2xl border ${
+                          mine
+                            ? "bg-[#008cfc] text-white border-[#008cfc]"
+                            : "bg-white text-gray-800 border-gray-200"
+                        }`}
+                        style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+                      >
+                        {text || "—"}
+                      </div>
 
-          {loading ? (
-            <div className="text-sm text-gray-500">Loading conversation…</div>
-          ) : safeMessages.length === 0 ? (
-            <div className="text-sm text-gray-500">No messages yet.</div>
-          ) : (
-            safeMessages.map((m) => {
-              const mine = !!m.mine;
-
-              return (
-                <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} mb-2`}>
-                  <div
-                    className={[
-                      "max-w-[80%] rounded-2xl px-4 py-2 shadow-sm relative",
-                      mine ? "bg-[#008cfc] text-white rounded-br-md" : "bg-gray-100 text-gray-900 rounded-bl-md",
-                    ].join(" ")}
-                  >
-                    <p className="whitespace-pre-wrap break-words">{m.text}</p>
-                    <div className={`text-[11px] mt-1 ${mine ? "text-white/80" : "text-gray-500"}`}>
-                      {fmtChatTimestamp(m.updated_at || m.created_at || m.sent_at || m.time)}
-                      {m.edited ? <span className="ml-2 opacity-80">(edited)</span> : null}
+                      {ts ? (
+                        <div className={`text-[11px] ${mine ? "text-gray-400 text-right" : "text-gray-400"}`}>
+                          {ts}
+                          {m.edited ? <span className="ml-2 opacity-80">(edited)</span> : null}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
+                );
+              })
+            ) : (
+              <div className="w-full flex items-center justify-center py-16">
+                <div className="text-center max-w-md">
+                  <div className="mx-auto w-14 h-14 rounded-2xl border border-blue-100 bg-blue-50 flex items-center justify-center">
+                    <MessageSquare className="w-7 h-7 text-[#008cfc]" />
+                  </div>
+                  <div className="mt-4 text-sm font-semibold text-gray-800">No messages yet</div>
+                  <div className="mt-1 text-xs text-gray-500">Send a message to start the conversation.</div>
                 </div>
-              );
-            })
-          )}
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            composer.onSend?.();
-          }}
-          className="p-4 border-t border-gray-200"
-        >
-          <div className="flex items-center gap-3">
-            <input
-              value={composer.text}
-              onChange={(e) => composer.onChange?.(e.target.value)}
-              placeholder="Write a message"
-              className="flex-1 rounded-md border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-[#008cfc] focus:border-[#008cfc]"
-            />
-
-            <button
-              type="submit"
-              className="bg-[#008cfc] hover:bg-blue-700 text-white font-medium px-4 py-3 rounded-md flex items-center gap-2 transition"
-            >
-              <Send className="h-4 w-4" />
-              Send
-            </button>
+              </div>
+            )}
           </div>
-        </form>
+
+          <div className="border-t border-gray-200 p-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                composer?.onSend?.();
+              }}
+              className="flex items-center gap-3"
+            >
+              <input
+                value={composer?.text || ""}
+                onChange={(e) => composer?.onChange?.(e.target.value)}
+                placeholder="Type a message..."
+                className="flex-1 h-11 px-4 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#008cfc22]"
+              />
+
+              <button
+                type="submit"
+                className="h-11 px-4 rounded-xl bg-[#008cfc] hover:bg-[#0078d6] text-white flex items-center gap-2"
+              >
+                <Send className="h-4 w-4" />
+                <span className="text-sm font-medium">Send</span>
+              </button>
+            </form>
+          </div>
+        </div>
       </section>
 
-      <WorkerViewServiceRequest open={viewOpen} onClose={() => setViewOpen(false)} request={viewRequest} />
+      <WorkerViewServiceRequest
+        open={viewOpen}
+        onClose={() => {
+          setViewOpen(false);
+          setViewRequest(null);
+        }}
+        request={viewRequest}
+      />
     </>
   );
 };
