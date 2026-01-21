@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import axios from "axios";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import WorkerNavigation from "../../workercomponents/WorkerNavigation";
 import WorkerFooter from "../../workercomponents/WorkerFooter";
 import WorkerViewRequest from "../../workercomponents/workerdashboardcomponents/workeravailablerequestcomponents/WorkerViewRequest";
-import { Hammer, Zap, Wrench, Car, Shirt, Star } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -71,16 +70,6 @@ const RateTypeOption = ({ name, label, value, selected, onSelect }) => (
   </label>
 );
 
-const iconFor = (s) => {
-  const k = String(s || "").toLowerCase();
-  if (k.includes("elect")) return Zap;
-  if (k.includes("plumb")) return Wrench;
-  if (k.includes("car wash") || k.includes("carwash") || k.includes("auto") || k.includes("carwasher")) return Car;
-  if (k.includes("laund") || k.includes("clean")) return Shirt;
-  if (k.includes("carpent") || k.includes("wood")) return Hammer;
-  return Hammer;
-};
-
 function fmtDate(v) {
   if (!v) return "";
   const d = new Date(v);
@@ -105,23 +94,17 @@ function toBool(v) {
   if (["no", "n", "false", "f", "0"].includes(s)) return false;
   return !!v;
 }
-const getServiceIcon = (t) => {
-  const s = String(t || "").toLowerCase();
-  if (s.includes("electric")) return Zap;
-  if (s.includes("plumb")) return Wrench;
-  if (s.includes("wash")) return Car;
-  if (s.includes("laundry") || s.includes("clean")) return Shirt;
-  return Hammer;
-};
 
 const FiltersPanel = ({ value, onChange }) => {
   const [local, setLocal] = useState(value);
   useEffect(() => setLocal(value), [value]);
+
   const set = (patch) => {
     const next = { ...local, ...patch };
     setLocal(next);
     onChange(next);
   };
+
   const setService = (key, val) => {
     if (val) set({ serviceTypes: { [key]: true } });
     else set({ serviceTypes: { any: true } });
@@ -136,11 +119,28 @@ const FiltersPanel = ({ value, onChange }) => {
   const [barangayQuery, setBarangayQuery] = useState("");
 
   const barangays = [
-    "Alangilan","Alijis","Banago","Bata","Cabug","Estefania","Felisa",
-    "Granada","Handumanan","Lopez Jaena","Mandalagan","Mansilingan",
-    "Montevista","Pahanocoy","Punta Taytay","Singcang-Airport","Sum-ag",
-    "Taculing","Tangub","Villa Esperanza"
+    "Alangilan",
+    "Alijis",
+    "Banago",
+    "Bata",
+    "Cabug",
+    "Estefania",
+    "Felisa",
+    "Granada",
+    "Handumanan",
+    "Lopez Jaena",
+    "Mandalagan",
+    "Mansilingan",
+    "Montevista",
+    "Pahanocoy",
+    "Punta Taytay",
+    "Singcang-Airport",
+    "Sum-ag",
+    "Taculing",
+    "Tangub",
+    "Villa Esperanza"
   ];
+
   const sortedBarangays = useMemo(() => [...barangays].sort(), []);
   const filteredBarangays = useMemo(() => {
     const q = barangayQuery.trim().toLowerCase();
@@ -152,6 +152,7 @@ const FiltersPanel = ({ value, onChange }) => {
     setBarangayQuery("");
     setShowDropdown((s) => !s);
   };
+
   useEffect(() => {
     const onClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false);
@@ -168,11 +169,7 @@ const FiltersPanel = ({ value, onChange }) => {
       <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
         <div className="text-sm font-semibold text-gray-900 mb-3">Service Type</div>
         <div className="space-y-3 mb-5">
-          <ServiceTypeCheckbox
-            label="Any"
-            checked={anyChecked}
-            onChange={(v) => setAny(v)}
-          />
+          <ServiceTypeCheckbox label="Any" checked={anyChecked} onChange={(v) => setAny(v)} />
           <ServiceTypeCheckbox
             label="Car Washing"
             checked={!!svc.carwasher && !svc.any}
@@ -219,7 +216,11 @@ const FiltersPanel = ({ value, onChange }) => {
               aria-label="Open barangay options"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                  clipRule="evenodd"
+                />
               </svg>
             </button>
           </div>
@@ -279,7 +280,7 @@ const FiltersPanel = ({ value, onChange }) => {
         </div>
 
         <div className="text-sm font-semibold text-gray-900 mb-2">Urgency</div>
-        <div className="space-y-3 mb-5">
+        <div className="space-y-3 mb-1">
           <RateTypeOption
             name="urgency"
             label="Any"
@@ -302,110 +303,6 @@ const FiltersPanel = ({ value, onChange }) => {
             onSelect={(v) => set({ urgency: v })}
           />
         </div>
-
-        <div className="text-sm font-semibold text-gray-900 mb-2">Service rate</div>
-        <div className="space-y-3 mb-3">
-          <RateTypeOption
-            name="rateType"
-            label="Any"
-            value="any"
-            selected={local.rateType === "any"}
-            onSelect={(v) => set({ rateType: v })}
-          />
-          <RateTypeOption
-            name="rateType"
-            label="Hourly Rate"
-            value="hourly"
-            selected={local.rateType === "hourly"}
-            onSelect={(v) => set({ rateType: v })}
-          />
-          <RateTypeOption
-            name="rateType"
-            label="By the Job Rate"
-            value="job"
-            selected={local.rateType === "job"}
-            onSelect={(v) => set({ rateType: v })}
-          />
-        </div>
-
-        {local.rateType === "hourly" && (
-          <div className="grid grid-cols-2 gap-2 mb-5">
-            <input
-              type="number"
-              min={0}
-              placeholder="From"
-              value={local.rateMin ?? ""}
-              onChange={(e) =>
-                set({ rateMin: e.target.value ? Number(e.target.value) : undefined })
-              }
-              className="h-10 rounded-md border border-gray-300 px-3 text-sm outline-none"
-            />
-            <input
-              type="number"
-              min={0}
-              placeholder="To"
-              value={local.rateMax ?? ""}
-              onChange={(e) =>
-                set({ rateMax: e.target.value ? Number(e.target.value) : undefined })
-              }
-              className="h-10 rounded-md border border-gray-300 px-3 text-sm outline-none"
-            />
-          </div>
-        )}
-
-        {local.rateType === "job" && (
-          <div className="mb-5">
-            <input
-              type="number"
-              min={0}
-              placeholder="Budget"
-              value={local.rateJob ?? ""}
-              onChange={(e) =>
-                set({ rateJob: e.target.value ? Number(e.target.value) : undefined })
-              }
-              className="w-full h-10 rounded-md border border-gray-300 px-3 text-sm outline-none"
-            />
-          </div>
-        )}
-
-        <div className="text-sm font-semibold text-gray-900 mb-2">Rating</div>
-        <div className="space-y-3 mb-5">
-          <RateTypeOption
-            name="ratingMin"
-            label="Any"
-            value={0}
-            selected={!Number(local.ratingMin)}
-            onSelect={(v) => set({ ratingMin: v })}
-          />
-          <RateTypeOption
-            name="ratingMin"
-            label="4+ stars"
-            value={4}
-            selected={Number(local.ratingMin) === 4}
-            onSelect={(v) => set({ ratingMin: v })}
-          />
-          <RateTypeOption
-            name="ratingMin"
-            label="3+ stars"
-            value={3}
-            selected={Number(local.ratingMin) === 3}
-            onSelect={(v) => set({ ratingMin: v })}
-          />
-          <RateTypeOption
-            name="ratingMin"
-            label="2+ stars"
-            value={2}
-            selected={Number(local.ratingMin) === 2}
-            onSelect={(v) => set({ ratingMin: v })}
-          />
-          <RateTypeOption
-            name="ratingMin"
-            label="1+ star"
-            value={1}
-            selected={Number(local.ratingMin) === 1}
-            onSelect={(v) => set({ ratingMin: v })}
-          />
-        </div>
       </div>
     </aside>
   );
@@ -414,23 +311,8 @@ const FiltersPanel = ({ value, onChange }) => {
 const ClientCard = ({ item, onView }) => {
   const serviceTypes = Array.isArray(item.serviceTypeList) ? item.serviceTypeList : [];
   const serviceTasks = Array.isArray(item.serviceTaskList) ? item.serviceTaskList : [];
-  const iconLabels = serviceTypes.length ? serviceTypes : [item.service_type].filter(Boolean);
-  const seen = new Set();
-  const serviceIcons = [];
-  iconLabels.forEach((lbl) => {
-    const Ic = getServiceIcon(lbl);
-    const key = Ic.displayName || Ic.name || "Icon";
-    if (!seen.has(key)) {
-      seen.add(key);
-      serviceIcons.push(Ic);
-    }
-  });
-  const topIcons = serviceIcons.slice(0, 3);
   const primaryType = serviceTypes[0] || item.service_type || "—";
   const primaryTask = serviceTasks[0] || item.service_task || "—";
-  const requestDone = Number.isFinite(item.requestDone) ? item.requestDone : 0;
-  const ratingSafe = Number.isFinite(item.rating) ? Math.max(0, Math.min(5, item.rating)) : 0;
-  const filledStars = Math.round(ratingSafe);
 
   return (
     <div className="relative overflow-hidden bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl">
@@ -451,93 +333,74 @@ const ClientCard = ({ item, onView }) => {
             <div className="min-w-0">
               <div className="flex items-baseline gap-1">
                 <span className="text-sm md:text-lg font-semibold text-gray-700">Client:</span>
-                <span className="text-lg md:text-lg font-semibold text-[#008cfc] leading-tight truncate">{item.title || "Service request"}</span>
+                <span className="text-lg md:text-lg font-semibold text-[#008cfc] leading-tight truncate">
+                  {item.title || "Service request"}
+                </span>
               </div>
               {item.emailAddress ? <div className="text-xs text-gray-600 truncate">{item.emailAddress}</div> : null}
-              <div className="mt-1 flex items-center gap-1">
-                {[0,1,2,3,4].map((idx) => (
-                  <Star
-                    key={idx}
-                    size={14}
-                    className={idx < filledStars ? "text-yellow-400" : "text-gray-300"}
-                    fill="currentColor"
-                  />
-                ))}
-                <span className="text-xs font-medium text-gray-700">{`${(ratingSafe || 0).toFixed(1)}/5`}</span>
-              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1">
-            {(topIcons.length ? topIcons : [Hammer]).map((Ic, idx) => (
-              <span key={idx} className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200">
-                <Ic size={16} className="text-[#008cfc]" />
-              </span>
-            ))}
           </div>
         </div>
 
         <div className="mt-4 h-px bg-gray-200" />
 
-        <div className="mt-4">
-          <div className="text-sm font-semibold text-gray-700">Preferred Schedule</div>
-          <div className="mt-1 flex items-center gap-2 text-sm font-medium">
-            <span className="text-[#008cfc]">{fmtDate(item.preferred_date) || "—"}</span>
-            <span className="text-gray-400">•</span>
-            <span className="text-[#008cfc]">{fmtTime(item.preferred_time) || "—"}</span>
-            <span className="text-gray-400">•</span>
-            <span className="text-[#008cfc]">{toBool(item.urgency) ? "Urgent" : "Not urgent"}</span>
-          </div>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-gray-700">Preferred Schedule</div>
+            <div className="mt-1 flex items-center gap-2 text-sm font-medium">
+              <span className="text-[#008cfc]">{fmtDate(item.preferred_date) || "—"}</span>
+              <span className="text-gray-400">•</span>
+              <span className="text-[#008cfc]">{fmtTime(item.preferred_time) || "—"}</span>
+              <span className="text-gray-400">•</span>
+              <span className="text-[#008cfc]">{toBool(item.urgency) ? "Urgent" : "Not urgent"}</span>
+            </div>
 
-          <div className="mt-3 flex items-start gap-3 flex-wrap">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-gray-700">Service Type</div>
-              <div className="mt-1">
-                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
-                  {primaryType}
-                </span>
+            <div className="mt-3 flex items-start gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-700">Service Type</div>
+                <div className="mt-1">
+                  <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                    {primaryType}
+                  </span>
+                </div>
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-700">Service Task</div>
+                <div className="mt-1">
+                  <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+                    {primaryTask}
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-gray-700">Service Task</div>
-              <div className="mt-1">
-                <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
-                  {primaryTask}
-                </span>
+
+            <div className="mt-3 text-sm font-semibold text-gray-700">Request Description</div>
+            <div className="text-sm text-[#008cfc] font-medium leading-relaxed line-clamp-3">
+              {item.description || "—"}
+            </div>
+          </div>
+
+          <div className="min-w-0 md:pl-4 md:border-l md:border-gray-200">
+            <div className="text-sm font-semibold text-gray-700 mb-2">Location</div>
+            <div className="space-y-1">
+              <div className="text-sm flex items-baseline gap-2">
+                <span className="font-semibold text-gray-700">Barangay:</span>
+                <span className="text-[#008cfc]">{item.barangay || "—"}</span>
+              </div>
+              <div className="text-sm flex items-baseline gap-2">
+                <span className="font-semibold text-gray-700">Street:</span>
+                <span className="text-[#008cfc]">{item.street || "—"}</span>
+              </div>
+              <div className="text-sm flex items-baseline gap-2">
+                <span className="font-semibold text-gray-700">Landmark:</span>
+                <span className="text-[#008cfc]">{item.additional_address || "—"}</span>
               </div>
             </div>
-          </div>
 
-          <div className="mt-3 text-sm font-semibold text-gray-700">Request Description</div>
-          <div className="text-sm text-[#008cfc] font-medium leading-relaxed line-clamp-3">{item.description || "—"}</div>
-        </div>
-
-        <div className="mt-4 h-px bg-gray-200" />
-
-        <div className="mt-4">
-          <div className="text-sm font-semibold text-[#008cfc]">
-            {[item.barangay, item.street].filter(Boolean).join(", ") || item.locationLabel || "Philippines"}
-          </div>
-          {item.additional_address ? (
-            <div className="text-sm mt-1 flex items-baseline gap-2">
-              <span className="font-semibold text-gray-700">Landmark:</span>
-              <span className="text-[#008cfc]">{item.additional_address}</span>
-            </div>
-          ) : null}
-
-          <div className="mt-3 flex items-end justify-between">
-            <div className="flex items-center gap-2">
-              {item.rateTypeLabel ? <div className="text-sm font-semibold text-[#008cfc]">{item.rateTypeLabel}</div> : null}
-              {item.rateTypeLabel ? <span className="text-gray-400">•</span> : null}
-              <div className="text-sm font-semibold text-[#008cfc]">{item.displayRate || item.budgetLabel || "Rate upon request"}</div>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
-                Request Done
-                <span className="ml-2 text-sm font-semibold text-[#008cfc]">{requestDone}</span>
-              </span>
+            <div className="mt-4 flex justify-end">
               <button
                 onClick={() => onView(item)}
-                className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition self-end"
+                className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition"
               >
                 View Request
               </button>
@@ -555,7 +418,6 @@ const ClientCard = ({ item, onView }) => {
 
 export default function WorkerFindAvailableClient() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const initialSearch = searchParams.get("search") || "";
   const [query, setQuery] = useState(initialSearch);
   const [loading, setLoading] = useState(true);
@@ -565,13 +427,8 @@ export default function WorkerFindAvailableClient() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
     serviceTypes: {},
-    rateMin: undefined,
-    rateMax: undefined,
-    rateJob: undefined,
-    rateType: "any",
     location: "",
-    urgency: "any",
-    ratingMin: 0
+    urgency: "any"
   });
 
   const normalizeItems = (rows) => {
@@ -644,7 +501,7 @@ export default function WorkerFindAvailableClient() {
       let rateType = "";
       if (s.includes("hour") || s === "range") rateType = "hourly";
       else if (s.includes("job") || s.includes("fixed") || s.includes("flat")) rateType = "job";
-      const rateTypeLabel = rateType === "hourly" ? "Hourly Rate" : rateType === "job" ? "By the Job Rate" : (rawType || "");
+      const rateTypeLabel = rateType === "hourly" ? "Hourly Rate" : rateType === "job" ? "By the Job Rate" : rawType || "";
 
       const n = (v) => {
         const num = v == null ? null : Number(v);
@@ -682,7 +539,13 @@ export default function WorkerFindAvailableClient() {
       const budgetLabel = r.budget ? `₱${Number(r.budget).toLocaleString()}` : displayRate || "Negotiable";
       const emailAddress = r.email || r.email_address || info.email_address || "";
       const reqDoneRaw =
-        r.request_done ?? r.requests_done ?? r.completed_requests ?? r.requests_completed ?? r.jobs_posted ?? r.completed_jobs ?? (r.stats && (r.stats.request_done || r.stats.completed_requests));
+        r.request_done ??
+        r.requests_done ??
+        r.completed_requests ??
+        r.requests_completed ??
+        r.jobs_posted ??
+        r.completed_jobs ??
+        (r.stats && (r.stats.request_done || r.stats.completed_requests));
       const reqn = Number(reqDoneRaw);
       const requestDone = Number.isFinite(reqn) && reqn >= 0 ? Math.floor(reqn) : 0;
 
@@ -738,15 +601,32 @@ export default function WorkerFindAvailableClient() {
         if (!cancelled) setItems(normalizeItems(data?.items || []));
       } catch {
         if (!cancelled) {
-          setItems(normalizeItems([
-            { id: "c1", title: "E-commerce product upload & data cleanup", company: "Acme Co.", location: "Remote", tags: ["Data Entry", "Shopify", "Ongoing"], payment_verified: true, posted_label: "1d ago", description: "Need help organizing and uploading 250 SKUs to Shopify with clean categories and high-quality descriptions.", rate_type: "Job", price: 500, barangay: "", street: "" }
-          ]));
+          setItems(
+            normalizeItems([
+              {
+                id: "c1",
+                title: "E-commerce product upload & data cleanup",
+                company: "Acme Co.",
+                location: "Remote",
+                tags: ["Data Entry", "Shopify", "Ongoing"],
+                payment_verified: true,
+                posted_label: "1d ago",
+                description: "Need help organizing and uploading 250 SKUs to Shopify with clean categories and high-quality descriptions.",
+                rate_type: "Job",
+                price: 500,
+                barangay: "",
+                street: ""
+              }
+            ])
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -756,6 +636,7 @@ export default function WorkerFindAvailableClient() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let base = items;
+
     if (q) {
       base = base.filter(
         (it) =>
@@ -778,38 +659,6 @@ export default function WorkerFindAvailableClient() {
       base = base.filter((it) => toBool(it.urgency) === false);
     }
 
-    if (filters.rateType === "hourly") {
-      base = base.filter((it) => it.rateType === "hourly");
-      if (typeof filters.rateMin === "number") {
-        base = base.filter((it) => {
-          const lo = it.rateFrom ?? it.rateNum ?? 0;
-          return (Number(lo) || 0) >= filters.rateMin;
-        });
-      }
-      if (typeof filters.rateMax === "number") {
-        base = base.filter((it) => {
-          const hi = it.rateTo ?? it.rateNum ?? 0;
-          return (Number(hi) || 0) <= filters.rateMax;
-        });
-      }
-    } else if (filters.rateType === "job") {
-      base = base.filter((it) => it.rateType === "job");
-      if (typeof filters.rateJob === "number") {
-        base = base.filter((it) => (Number(it.rateValue || it.rateNum || 0)) <= filters.rateJob);
-      }
-    } else {
-      if (typeof filters.rateMin === "number") {
-        base = base.filter((it) => (Number(it.rateNum) || 0) >= filters.rateMin);
-      }
-      if (typeof filters.rateMax === "number") {
-        base = base.filter((it) => (Number(it.rateNum) || 0) <= filters.rateMax);
-      }
-    }
-
-    if (typeof filters.ratingMin === "number" && filters.ratingMin > 0) {
-      base = base.filter((it) => (Number(it.rating) || 0) >= filters.ratingMin);
-    }
-
     const map = filters.serviceTypes || {};
     const selected = Object.keys(map).filter((k) => map[k] && k !== "any");
     if (selected.length) {
@@ -821,13 +670,11 @@ export default function WorkerFindAvailableClient() {
         plumber: ["plumber", "plumbing", "pipe", "leak", "drain", "toilet", "faucet"]
       };
       base = base.filter((it) => {
-        const skillSet = [...(it.serviceTypeList || []), ...(it.serviceTaskList || [])]
-          .map((s) => String(s).toLowerCase());
-        return selected.some((k) =>
-          (labels[k] || []).some((alias) => skillSet.some((s) => s.includes(alias)))
-        );
+        const skillSet = [...(it.serviceTypeList || []), ...(it.serviceTaskList || [])].map((s) => String(s).toLowerCase());
+        return selected.some((k) => (labels[k] || []).some((alias) => skillSet.some((s) => s.includes(alias))));
       });
     }
+
     return base;
   }, [items, query, filters]);
 
@@ -882,9 +729,7 @@ export default function WorkerFindAvailableClient() {
                 </div>
               </>
             ) : pageItems.length === 0 ? (
-              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-gray-600">
-                No clients found.
-              </div>
+              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-gray-600">No clients found.</div>
             ) : (
               pageItems.map((it) => (
                 <ClientCard
@@ -911,9 +756,7 @@ export default function WorkerFindAvailableClient() {
                   >
                     ‹
                   </button>
-                  <button className="h-9 min-w-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white">
-                    {page}
-                  </button>
+                  <button className="h-9 min-w-9 px-3 rounded-md border border-[#008cfc] bg-[#008cfc] text-white">{page}</button>
                   <button
                     className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                     disabled={page >= totalPages}
