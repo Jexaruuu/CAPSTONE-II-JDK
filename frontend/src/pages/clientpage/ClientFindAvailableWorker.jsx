@@ -100,35 +100,6 @@ const FiltersPanel = ({ value, onChange }) => {
     else set({ serviceTypes: {} });
   };
 
-  const dropdownRef = useRef(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [barangayQuery, setBarangayQuery] = useState("");
-
-  const barangays = [
-    "Alangilan","Alijis","Banago","Bata","Cabug","Estefania","Felisa",
-    "Granada","Handumanan","Lopez Jaena","Mandalagan","Mansilingan",
-    "Montevista","Pahanocoy","Punta Taytay","Singcang-Airport","Sum-ag",
-    "Taculing","Tangub","Villa Esperanza"
-  ];
-  const sortedBarangays = useMemo(() => [...barangays].sort(), []);
-  const filteredBarangays = useMemo(() => {
-    const q = barangayQuery.trim().toLowerCase();
-    if (!q) return sortedBarangays;
-    return sortedBarangays.filter((b) => b.toLowerCase().includes(q));
-  }, [sortedBarangays, barangayQuery]);
-
-  const toggleDropdown = () => {
-    setBarangayQuery("");
-    setShowDropdown((s) => !s);
-  };
-  useEffect(() => {
-    const onClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false);
-    };
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, []);
-
   const svc = local.serviceTypes || {};
   const anyChecked = !!svc.any || !Object.keys(svc).some((k) => k !== "any" && svc[k]);
 
@@ -166,109 +137,6 @@ const FiltersPanel = ({ value, onChange }) => {
             label="Plumber"
             checked={!!svc.plumber && !svc.any}
             onChange={(v) => setService("plumber", v)}
-          />
-        </div>
-
-        <div className="text-sm font-semibold text-gray-900 mb-3">Barangay</div>
-        <div className="relative mb-5" ref={dropdownRef}>
-          <div className="flex items-center rounded-md border border-gray-300">
-            <button
-              type="button"
-              onClick={toggleDropdown}
-              className="w-full h-10 px-3 text-left rounded-l-md focus:outline-none"
-              aria-expanded={showDropdown}
-              aria-haspopup="listbox"
-            >
-              {local.location?.trim() ? local.location : "Select Barangay"}
-            </button>
-            <button
-              type="button"
-              onClick={toggleDropdown}
-              className="px-3 text-gray-600 hover:text-gray-800"
-              aria-label="Open barangay options"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-
-          {showDropdown && (
-            <div
-              className="absolute z-50 mt-2 left-0 right-0 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-2"
-              role="listbox"
-            >
-              <div className="px-2 pb-2">
-                <input
-                  value={barangayQuery}
-                  onChange={(e) => setBarangayQuery(e.target.value)}
-                  placeholder="Search…"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-1 max-h-56 overflow-y-auto px-1">
-                {filteredBarangays.length ? (
-                  filteredBarangays.map((barangayName, index) => (
-                    <button
-                      key={`${barangayName}-${index}`}
-                      type="button"
-                      onClick={() => {
-                        set({ location: barangayName });
-                        setShowDropdown(false);
-                      }}
-                      className="text-left px-3 py-2 rounded-lg hover:bg-blue-50 text-sm text-gray-700"
-                      role="option"
-                      aria-selected={barangayName === local.location}
-                    >
-                      {barangayName}
-                    </button>
-                  ))
-                ) : (
-                  <div className="col-span-1 text-center text-xs text-gray-400 py-3">No options</div>
-                )}
-              </div>
-              <div className="flex items-center justify-between mt-2 px-2">
-                <span className="text-xs text-gray-400">
-                  {filteredBarangays.length} result{filteredBarangays.length === 1 ? "" : "s"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    set({ location: "" });
-                    setBarangayQuery("");
-                    setShowDropdown(false);
-                  }}
-                  className="text-xs text-gray-500 hover:text-gray-700"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="text-sm font-semibold text-gray-900 mb-2">Service rate</div>
-        <div className="space-y-3 mb-3">
-          <RateTypeOption
-            name="rateType"
-            label="Any"
-            value="any"
-            selected={local.rateType === "any"}
-            onSelect={(v) => set({ rateType: v })}
-          />
-          <RateTypeOption
-            name="rateType"
-            label="Hourly Rate"
-            value="hourly"
-            selected={local.rateType === "hourly"}
-            onSelect={(v) => set({ rateType: v })}
-          />
-          <RateTypeOption
-            name="rateType"
-            label="By the Job Rate"
-            value="job"
-            selected={local.rateType === "job"}
-            onSelect={(v) => set({ rateType: v })}
           />
         </div>
 
@@ -358,11 +226,8 @@ const FiltersPanel = ({ value, onChange }) => {
 const WorkerCard = ({ item, onView }) => {
   const serviceTypes = Array.isArray(item.serviceTypeList) ? item.serviceTypeList : [];
   const serviceTasks = Array.isArray(item.serviceTaskList) ? item.serviceTaskList : [];
-  const icons = (serviceTypes || []).slice(0, 5).map((lbl) => iconFor(lbl));
   const rating = Number.isFinite(item.rating) ? Math.max(0, Math.min(5, item.rating)) : 0;
   const filledStars = Math.round(rating);
-  const singleIcon = icons.length === 1;
-  const workDone = Number.isFinite(item.workDone) ? item.workDone : 0;
 
   return (
     <div className="relative overflow-hidden bg-white border border-gray-200 rounded-2xl p-5 text-left shadow-sm transition-all duration-300 hover:border-[#008cfc] hover:ring-2 hover:ring-inset hover:ring-[#008cfc] hover:shadow-xl">
@@ -386,7 +251,7 @@ const WorkerCard = ({ item, onView }) => {
                 <div className="text-xs text-gray-600 truncate">{item.emailAddress}</div>
               ) : null}
               <div className="mt-1 flex items-center gap-1">
-                {[0,1,2,3,4].map((idx) => (
+                {[0, 1, 2, 3, 4].map((idx) => (
                   <Star
                     key={idx}
                     size={14}
@@ -398,35 +263,6 @@ const WorkerCard = ({ item, onView }) => {
               </div>
             </div>
           </div>
-
-          {singleIcon ? (
-            <div className="relative w-18 h-18 flex items-start justify-end">
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200">
-                {React.createElement(icons[0], { size: 16, className: "text-[#008cfc]" })}
-              </span>
-            </div>
-          ) : (
-            <div className="relative w-18 h-18 grid grid-cols-2 auto-rows-[minmax(0,1fr)] gap-2">
-              {icons.map((Icon, idx) => {
-                const pos = [
-                  { gridColumn: "1", gridRow: "1" },
-                  { gridColumn: "2", gridRow: "1" },
-                  { gridColumn: "2", gridRow: "2" },
-                  { gridColumn: "1", gridRow: "2" },
-                  { gridColumn: "2", gridRow: "3" }
-                ][idx] || { gridColumn: "1", gridRow: "3" };
-                return (
-                  <span
-                    key={idx}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200"
-                    style={{ gridColumn: pos.gridColumn, gridRow: pos.gridRow }}
-                  >
-                    <Icon size={16} className="text-[#008cfc]" />
-                  </span>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         <div className="mt-4 h-px bg-gray-200" />
@@ -435,7 +271,10 @@ const WorkerCard = ({ item, onView }) => {
           <div className="flex flex-wrap items-center gap-2">
             <div className="text-sm font-semibold text-gray-700">Service Type:</div>
             {(serviceTypes.length ? serviceTypes : ["—"]).map((lbl, idx) => (
-              <span key={idx} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200"
+              >
                 {lbl}
               </span>
             ))}
@@ -444,7 +283,10 @@ const WorkerCard = ({ item, onView }) => {
           <div className="flex flex-wrap items-center gap-2">
             <div className="text-sm font-semibold text-gray-700">Service Task:</div>
             {(serviceTasks.length ? serviceTasks : ["—"]).map((lbl, idx) => (
-              <span key={idx} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200">
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-blue-50 text-[#008cfc] border-blue-200"
+              >
                 {lbl}
               </span>
             ))}
@@ -458,26 +300,13 @@ const WorkerCard = ({ item, onView }) => {
 
         <div className="mt-4 h-px bg-gray-200" />
 
-        <div className="mt-4 flex items-center justify-between">
-          <div>
-            <div className="text-sm font-semibold text-[#008cfc]">{item.location || "Philippines"}</div>
-            <div className="flex items-center gap-2">
-              <div className="text-sm font-semibold text-[#008cfc]">{item.rateTypeLabel || "Service Rate"}</div>
-              <span className="text-gray-400">•</span>
-              <div className="text-sm font-semibold text-[#008cfc]">{item.displayRate || "Rate upon request"}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-8 items-center rounded-md bg-blue-50 text-[#008cfc] border border-blue-200 px-3 text-xs font-medium">
-                Work Done
-                <span className="ml-2 text-sm font-semibold text-[#008cfc]">{workDone}</span>
-              </span>
-            </div>
-            <button onClick={() => onView(item)} className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition">
-              View worker
-            </button>
-          </div>
+        <div className="mt-4 flex items-center justify-end">
+          <button
+            onClick={() => onView(item)}
+            className="inline-flex items-center justify-center px-4 h-10 rounded-lg bg-[#008cfc] text-white text-sm font-medium hover:bg-[#0078d6] transition"
+          >
+            View worker
+          </button>
         </div>
       </div>
 
@@ -566,7 +395,6 @@ export default function ClientFindAvailableWorker() {
       ];
 
       const primaryService = serviceTypeList[0] || "";
-      const skills = [...serviceTypeList, ...serviceTaskList];
 
       const rawType = String(rate.rate_type || "").trim();
       const s = rawType.toLowerCase();
@@ -633,7 +461,7 @@ export default function ClientFindAvailableWorker() {
         earned: "",
         availableNow: false,
         badges: [],
-        skills,
+        skills: [...serviceTypeList, ...serviceTaskList],
         highlights: [],
         serviceTypeList,
         serviceTaskList,
@@ -682,12 +510,6 @@ export default function ClientFindAvailableWorker() {
           w.name.toLowerCase().includes(q) ||
           w.title.toLowerCase().includes(q) ||
           w.skills.some((s) => s.toLowerCase().includes(q))
-      );
-    }
-    if (filters.location && filters.location.trim()) {
-      const loc = filters.location.trim().toLowerCase();
-      base = base.filter((w) =>
-        String(w.location || "").toLowerCase().includes(loc)
       );
     }
 
@@ -796,7 +618,16 @@ export default function ClientFindAvailableWorker() {
                   No workers found.
                 </div>
               ) : (
-                pageItems.map((w) => <WorkerCard key={w.id} item={w} onView={(item)=>{ setViewWorker(item); setViewOpen(true); }} />)
+                pageItems.map((w) => (
+                  <WorkerCard
+                    key={w.id}
+                    item={w}
+                    onView={(item) => {
+                      setViewWorker(item);
+                      setViewOpen(true);
+                    }}
+                  />
+                ))
               )}
 
               {!loading && (
