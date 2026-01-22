@@ -183,14 +183,7 @@ const AdminSideNavigation = () => {
         <div className="mt-auto pt-2 space-y-2">
           <div className="border-t border-gray-200 mx-3" />
 
-          <button
-            type="button"
-            onClick={() => navigate('/admindashboard/account-details')}
-            className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] md:text-base font-medium transition-colors text-black hover:bg-gray-50 hover:text-[#008cfc]"
-          >
-            <User className="h-5 w-5" />
-            <span>Account Details</span>
-          </button>
+       
 
           <button
             type="button"

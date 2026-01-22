@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, MessageCircle, Bell } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 const SHOW_SEARCH = false;
 
@@ -69,20 +69,6 @@ const AdminTopNavigation = () => {
             </span>
             {adminNo ? <></> : null}
           </div>
-
-          <button
-            type="button"
-            className="hidden sm:inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 bg-white shadow-sm text-gray-500 hover:text-indigo-500 hover:border-indigo-200"
-          >
-            <MessageCircle className="h-5 w-5" />
-          </button>
-
-          <button
-            type="button"
-            className="hidden sm:inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 bg-white shadow-sm text-gray-500 hover:text-indigo-500 hover:border-indigo-200"
-          >
-            <Bell className="h-5 w-5" />
-          </button>
         </div>
       </div>
     </header>
