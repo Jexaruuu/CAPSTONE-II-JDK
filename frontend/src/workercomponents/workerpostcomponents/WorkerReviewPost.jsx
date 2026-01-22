@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { createPortal } from 'react-dom';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const CONFIRM_FLAG = 'workerApplicationJustSubmitted';
@@ -116,6 +117,51 @@ const pickPicAny = (...vals) => {
   return '';
 };
 
+const parseStoredMulti = (v) => {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map((x) => String(x || '').trim()).filter(Boolean);
+  if (typeof v === 'object') {
+    const s =
+      v.url ||
+      v.link ||
+      v.href ||
+      v.data_url ||
+      v.dataUrl ||
+      v.dataURL ||
+      v.base64 ||
+      '';
+    const raw = String(s || '').trim();
+    return raw ? [raw] : [];
+  }
+  const s = String(v || '').trim();
+  if (!s) return [];
+  if (s.startsWith('[')) {
+    try {
+      const j = JSON.parse(s);
+      if (Array.isArray(j)) return j.map((x) => String(x || '').trim()).filter(Boolean);
+    } catch {}
+  }
+  if (s.includes('|')) return s.split('|').map((x) => String(x || '').trim()).filter(Boolean);
+  if (s.includes('\n')) return s.split('\n').map((x) => String(x || '').trim()).filter(Boolean);
+  return [s];
+};
+
+const isPdfLike = (u) => {
+  const s = String(u || '').trim().toLowerCase();
+  if (!s) return false;
+  if (s.startsWith('data:application/pdf')) return true;
+  if (s.includes('.pdf')) return true;
+  return false;
+};
+
+const isImageLike = (u) => {
+  const s = String(u || '').trim().toLowerCase();
+  if (!s) return false;
+  if (s.startsWith('data:image/')) return true;
+  if (/\.(png|jpg|jpeg|webp|gif|svg)(\?|#|$)/.test(s)) return true;
+  return false;
+};
+
 const WorkerReviewPost = ({ handleBack }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -130,6 +176,14 @@ const WorkerReviewPost = ({ handleBack }) => {
   const [resolvedProfileSrc, setResolvedProfileSrc] = useState('');
   const [resolvedProfileDataUrl, setResolvedProfileDataUrl] = useState('');
   const [resolvedProfileHttpUrl, setResolvedProfileHttpUrl] = useState('');
+
+  const [requiredDocsRow, setRequiredDocsRow] = useState(null);
+  const [requiredDocsLoading, setRequiredDocsLoading] = useState(false);
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewTitle, setPreviewTitle] = useState('');
+  const [previewItems, setPreviewItems] = useState([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
 
   useEffect(() => {
     try {
@@ -328,6 +382,51 @@ const WorkerReviewPost = ({ handleBack }) => {
       alive = false;
     };
   }, [s, profile_picture, profile_picture_url_preview, savedInfo]);
+
+  useEffect(() => {
+    let alive = true;
+
+    const fetchRequiredDocs = async () => {
+      try {
+        const emailVal =
+          (savedInfo.email ||
+            localStorage.getItem('worker_email') ||
+            localStorage.getItem('email_address') ||
+            localStorage.getItem('email') ||
+            email ||
+            '')?.toString().trim();
+
+        if (!emailVal) {
+          if (alive) setRequiredDocsRow(null);
+          return;
+        }
+
+        setRequiredDocsLoading(true);
+
+        const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
+          params: { scope: 'current', limit: 1, email: emailVal },
+          withCredentials: true,
+          headers: headersWithU
+        });
+
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const latest = items[0] || null;
+        const docsRow = latest?.required_documents || null;
+
+        if (alive) setRequiredDocsRow(docsRow);
+      } catch {
+        if (alive) setRequiredDocsRow(null);
+      } finally {
+        if (alive) setRequiredDocsLoading(false);
+      }
+    };
+
+    fetchRequiredDocs();
+
+    return () => {
+      alive = false;
+    };
+  }, [headersWithU, savedInfo, email]);
 
   const normalizeDocsForSubmit = (arr) => {
     const kindMap = (s0 = '') => {
@@ -533,6 +632,317 @@ const WorkerReviewPost = ({ handleBack }) => {
     return 'jpg';
   };
 
+  const getDocsForDisplay = () => {
+    const fromApi = requiredDocsRow && typeof requiredDocsRow === 'object' ? requiredDocsRow : null;
+    const localRow = savedDocsObj && typeof savedDocsObj === 'object' ? savedDocsObj : null;
+
+    const pickVal = (k) => {
+      const a = fromApi?.[k];
+      if (a !== undefined && a !== null && String(a).trim() !== '') return a;
+      const b = localRow?.[k];
+      if (b !== undefined && b !== null && String(b).trim() !== '') return b;
+      return '';
+    };
+
+    const docs = [
+      { key: 'primary_id_front', label: 'Primary ID (Front)', value: pickVal('primary_id_front') },
+      { key: 'primary_id_back', label: 'Primary ID (Back)', value: pickVal('primary_id_back') },
+      { key: 'secondary_id', label: 'Secondary ID', value: pickVal('secondary_id') },
+      { key: 'nbi_police_clearance', label: 'NBI / Police Clearance', value: pickVal('nbi_police_clearance') },
+      { key: 'proof_of_address', label: 'Proof of Address', value: pickVal('proof_of_address') },
+      { key: 'medical_certificate', label: 'Medical Certificate', value: pickVal('medical_certificate') }
+    ];
+
+    const certs = [
+      { key: 'tesda_carpentry_certificate', label: 'TESDA Carpentry Certificate', value: pickVal('tesda_carpentry_certificate') },
+      { key: 'tesda_electrician_certificate', label: 'TESDA Electrician Certificate', value: pickVal('tesda_electrician_certificate') },
+      { key: 'tesda_plumbing_certificate', label: 'TESDA Plumbing Certificate', value: pickVal('tesda_plumbing_certificate') },
+      { key: 'tesda_carwashing_certificate', label: 'TESDA Carwashing Certificate', value: pickVal('tesda_carwashing_certificate') },
+      { key: 'tesda_laundry_certificate', label: 'TESDA Laundry Certificate', value: pickVal('tesda_laundry_certificate') }
+    ];
+
+    const docsClean = docs
+      .map((d) => ({ ...d, list: parseStoredMulti(d.value) }))
+      .filter((d) => d.list.length > 0);
+
+    const certsClean = certs
+      .map((c) => ({ ...c, list: parseStoredMulti(c.value) }))
+      .filter((c) => c.list.length > 0);
+
+    return { docs: docsClean, certs: certsClean };
+  };
+
+  const { docs: docsToShow, certs: certsToShow } = useMemo(() => getDocsForDisplay(), [requiredDocsRow, savedDocsObj]);
+
+  const openDoc = (u) => {
+    const url = String(u || '').trim();
+    if (!url) return;
+    try {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {}
+  };
+
+  const openPreview = (title, list) => {
+    const arr = Array.isArray(list) ? list.map((x) => String(x || '').trim()).filter(Boolean) : [];
+    if (!arr.length) return;
+    setPreviewTitle(String(title || '').trim() || 'Preview');
+    setPreviewItems(arr);
+    setPreviewIndex(0);
+    setPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreviewItems([]);
+    setPreviewIndex(0);
+    setPreviewTitle('');
+  };
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') closePreview();
+      if (e.key === 'ArrowRight' && previewItems.length > 1) setPreviewIndex((x) => (x + 1) % previewItems.length);
+      if (e.key === 'ArrowLeft' && previewItems.length > 1) setPreviewIndex((x) => (x - 1 + previewItems.length) % previewItems.length);
+    };
+    window.addEventListener('keydown', onKey, true);
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      html.style.overflow = prevHtmlOverflow || '';
+      body.style.overflow = prevBodyOverflow || '';
+    };
+  }, [previewOpen, previewItems.length]);
+
+  const PreviewModal = () => {
+    if (!previewOpen) return null;
+    const cur = previewItems[previewIndex] || '';
+    const pdf = isPdfLike(cur);
+    const img = isImageLike(cur);
+    const total = previewItems.length;
+
+    return createPortal(
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Preview"
+        tabIndex={-1}
+        className="fixed inset-0 z-[2147483647] flex items-center justify-center px-4"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) closePreview();
+        }}
+      >
+        <div className="absolute inset-0 bg-black/45 backdrop-blur-md" />
+        <div className="relative w-[980px] max-w-[96vw] max-h-[92vh] rounded-3xl border border-white/30 bg-white shadow-2xl overflow-hidden">
+          <div className="px-5 md:px-6 py-4 flex items-center justify-between gap-3 border-b border-gray-100 bg-white/90 backdrop-blur">
+            <div className="min-w-0">
+              <div className="text-base md:text-lg font-semibold text-gray-900 truncate">{previewTitle || 'Preview'}</div>
+              {total > 1 ? (
+                <div className="text-xs md:text-sm text-gray-500 mt-0.5">
+                  {previewIndex + 1} / {total}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={closePreview}
+                className="h-9 w-9 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                aria-label="Close"
+              >
+                <span className="text-lg leading-none">×</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="relative bg-gradient-to-b from-white to-gray-50">
+            {total > 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setPreviewIndex((x) => (x - 1 + total) % total)}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-2xl bg-white/90 border border-gray-200 shadow-sm hover:bg-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                  aria-label="Previous"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewIndex((x) => (x + 1) % total)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-2xl bg-white/90 border border-gray-200 shadow-sm hover:bg-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+                  aria-label="Next"
+                >
+                  ›
+                </button>
+              </>
+            ) : null}
+
+            <div className="p-4 md:p-6">
+              <div className="w-full h-[62vh] max-h-[62vh] rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-black/5 overflow-hidden flex items-center justify-center">
+                {img ? (
+                  <img src={cur} alt="" className="w-full h-full object-contain bg-white" />
+                ) : pdf ? (
+                  <iframe title="PDF preview" src={cur} className="w-full h-full bg-white" />
+                ) : (
+                  <div className="text-center px-6">
+                    <div className="text-sm font-semibold text-gray-900">File preview not available</div>
+                  </div>
+                )}
+              </div>
+
+              {total > 1 ? (
+                <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+                  {previewItems.slice(0, 12).map((u, i) => {
+                    const active = i === previewIndex;
+                    const thumbImg = isImageLike(u);
+                    return (
+                      <button
+                        key={`${u}-${i}`}
+                        type="button"
+                        onClick={() => setPreviewIndex(i)}
+                        className={`h-14 w-14 rounded-2xl border overflow-hidden grid place-items-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40 ${
+                          active ? 'border-[#008cfc] ring-2 ring-[#008cfc]/15' : 'border-gray-200 bg-white'
+                        }`}
+                        aria-label={`Preview ${i + 1}`}
+                      >
+                        {thumbImg ? (
+                          <img src={u} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-[11px] font-semibold text-gray-600">{isPdfLike(u) ? 'PDF' : 'FILE'}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {previewItems.length > 12 ? <div className="text-xs text-gray-500 px-2">+{previewItems.length - 12} more</div> : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  const FileBadge = ({ type }) => {
+    const isImg = type === 'image';
+    const isPdf = type === 'pdf';
+    return (
+      <span
+        className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+          isImg ? 'bg-blue-50 text-[#008cfc] border-blue-100' : isPdf ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-gray-50 text-gray-700 border-gray-200'
+        }`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${isImg ? 'bg-[#008cfc]' : isPdf ? 'bg-amber-500' : 'bg-gray-400'}`} />
+        {isImg ? 'Image' : isPdf ? 'PDF' : 'File'}
+      </span>
+    );
+  };
+
+  const DocumentTile = ({ title, list }) => {
+    const items = Array.isArray(list) ? list : [];
+    const first = items[0] || '';
+    const img = isImageLike(first);
+    const pdf = isPdfLike(first);
+
+    return (
+      <div className="rounded-3xl border border-gray-200 bg-white shadow-sm ring-1 ring-black/5 overflow-hidden">
+        <div className="p-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-gray-900 truncate">{title}</div>
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
+              <FileBadge type={img ? 'image' : pdf ? 'pdf' : 'file'} />
+              <span className="text-xs text-gray-500">
+                {items.length} file{items.length > 1 ? 's' : ''}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => openPreview(title, items)}
+            className="shrink-0 h-9 px-3 rounded-xl bg-[#008cfc] text-white text-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
+          >
+            Preview
+          </button>
+        </div>
+
+        <div className="px-4 pb-4">
+          <div className="w-full h-44 rounded-2xl overflow-hidden border border-gray-200 bg-gradient-to-br from-gray-50 to-white flex items-center justify-center">
+            {img ? (
+              <img
+                src={first}
+                alt={title}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            ) : pdf ? (
+              <div className="text-center">
+                <div className="mx-auto h-12 w-12 rounded-2xl bg-amber-50 border border-amber-100 grid place-items-center">
+                  <span className="text-sm font-extrabold text-amber-700">PDF</span>
+                </div>
+                <div className="text-xs text-gray-600 mt-2">Ready to preview</div>
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="mx-auto h-12 w-12 rounded-2xl bg-gray-50 border border-gray-200 grid place-items-center">
+                  <span className="text-xs font-extrabold text-gray-700">FILE</span>
+                </div>
+                <div className="text-xs text-gray-600 mt-2">Ready to preview</div>
+              </div>
+            )}
+          </div>
+
+          {items.length > 1 ? (
+            <div className="mt-3 flex items-center justify-between">
+              <div className="text-xs text-gray-500">Multiple uploads detected</div>
+              <button
+                type="button"
+                onClick={() => openDoc(first)}
+                className="text-xs font-semibold text-[#008cfc] hover:underline focus:outline-none"
+              >
+                Open first
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
+  const CertGrid = ({ title, items }) => {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg md:text-xl font-semibold text-gray-900">{title}</h3>
+          </div>
+        </div>
+        <div className="border-t border-gray-100" />
+        <div className="px-6 py-6">
+          {items.length ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {items.map((c) => {
+                const list = Array.isArray(c.list) ? c.list : parseStoredMulti(c.value);
+                return <DocumentTile key={c.key} title={c.label} list={list} />;
+              })}
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500">No certificates found.</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const handleConfirm = async () => {
     try {
       setSubmitError('');
@@ -704,35 +1114,25 @@ const WorkerReviewPost = ({ handleBack }) => {
         const objMeta = readJson('workerDocuments', '{}');
 
         const pickOne = (v) => {
-  const take = (x) => {
-    if (!x) return '';
-    if (typeof x === 'string') return x;
-    if (typeof x === 'object') {
-      return (
-        x.data_url ||
-        x.dataUrl ||
-        x.dataURL ||
-        x.base64 ||
-        x.url ||
-        x.link ||
-        x.href ||
-        ''
-      );
-    }
-    return String(x);
-  };
+          const take = (x) => {
+            if (!x) return '';
+            if (typeof x === 'string') return x;
+            if (typeof x === 'object') {
+              return x.data_url || x.dataUrl || x.dataURL || x.base64 || x.url || x.link || x.href || '';
+            }
+            return String(x);
+          };
 
-  if (Array.isArray(v)) {
-    for (const item of v) {
-      const got = take(item);
-      if (got && String(got).trim()) return String(got);
-    }
-    return '';
-  }
+          if (Array.isArray(v)) {
+            for (const item of v) {
+              const got = take(item);
+              if (got && String(got).trim()) return String(got);
+            }
+            return '';
+          }
 
-  return String(take(v) || '');
-};
-
+          return String(take(v) || '');
+        };
 
         const mapAnyToCanon = (o) => {
           if (!o || typeof o !== 'object') return {};
@@ -1119,7 +1519,7 @@ const WorkerReviewPost = ({ handleBack }) => {
             <div className="text-2xl md:text-[28px] font-semibold tracking-tight text-gray-900">Review Worker Application</div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden sm:block text-sm text-gray-500">Step 6 of 6</div>
+            <div className="hidden sm:block text-sm text-gray-500">Step 4 of 4</div>
             <div className="h-2 w-40 rounded-full bg-gray-200 overflow-hidden ring-1 ring-white">
               <div className="h-full w-full bg-[#008cfc]" />
             </div>
@@ -1180,6 +1580,28 @@ const WorkerReviewPost = ({ handleBack }) => {
                   </div>
                 </div>
               </div>
+
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg md:text-xl font-semibold text-gray-900">Required Documents</h3>
+                  </div>
+                </div>
+                <div className="border-t border-gray-100" />
+                <div className="px-6 py-6">
+                  {docsToShow.length ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {docsToShow.map((d) => (
+                        <DocumentTile key={d.key} title={d.label} list={d.list || parseStoredMulti(d.value)} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500">No required documents found.</div>
+                  )}
+                </div>
+              </div>
+
+              <CertGrid title="TESDA Certificates" items={certsToShow} />
             </div>
 
             <aside className="lg:col-span-1 flex flex-col">
@@ -1234,6 +1656,8 @@ const WorkerReviewPost = ({ handleBack }) => {
           {false && <></>}
         </div>
       </div>
+
+      <PreviewModal />
 
       {isSubmitting && (
         <div
@@ -1365,7 +1789,6 @@ const WorkerReviewPost = ({ handleBack }) => {
             <div className="mt-6 text-center space-y-2">
               <div className="text-lg font-semibold text-gray-900">Application Submitted!</div>
               <div className="mt-1 text-sm text-gray-600">Your application has been successfully submitted.</div>
-          
             </div>
 
             <div className="mt-6">

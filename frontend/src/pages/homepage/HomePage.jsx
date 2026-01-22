@@ -5,7 +5,6 @@ import WhyChooseUsSection from '../../homecomponents/WhyChooseUsSection';
 import AvailableServiceSection from '../../homecomponents/AvailableServiceSection';
 import WorkingProcessSection from '../../homecomponents/WorkingProcessSection';
 import Footer from '../../homecomponents/Footer'
-import ContactUsSection from '../../homecomponents/ContactUsSection';
 import FAQSection from '../../homecomponents/FAQSection';
 
 const HomePage = () => {
@@ -17,7 +16,6 @@ const HomePage = () => {
       <AvailableServiceSection />
       <WorkingProcessSection />
       <FAQSection />
-      <ContactUsSection />
       <Footer />
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
@@ -6,6 +6,9 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const boxBase = 'relative flex items-center justify-center w-full h-48 rounded-2xl border-2 border-dashed transition';
 const boxInner = 'text-center text-sm text-gray-700';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+const DRAFT_KEY = 'worker_required_documents_draft_v1';
+const NAV_KEEP_KEY = 'worker_required_documents_nav_keep_v1';
 
 function humanSize(bytes) {
   if (!bytes && bytes !== 0) return '';
@@ -25,6 +28,58 @@ async function fileToDataUrl(file) {
     r.readAsDataURL(file);
   });
   return String(b64 || '');
+}
+
+function dataUrlToFile(dataUrl, name, type) {
+  try {
+    if (!dataUrl) return null;
+    const m = String(dataUrl).match(/^data:([^;]+);base64,(.+)$/);
+    if (!m) return null;
+    const mime = type || m[1] || 'application/octet-stream';
+    const b64 = m[2];
+    const bin = atob(b64);
+    const len = bin.length;
+    const arr = new Uint8Array(len);
+    for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
+    const blob = new Blob([arr], { type: mime });
+    return new File([blob], name || 'file', { type: mime });
+  } catch {
+    return null;
+  }
+}
+
+function safeJsonParse(s, fallback) {
+  try { return JSON.parse(s); } catch { return fallback; }
+}
+
+function getDraft() {
+  try {
+    return safeJsonParse(sessionStorage.getItem(DRAFT_KEY) || '', {}) || {};
+  } catch {
+    return {};
+  }
+}
+
+function setDraft(next) {
+  try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(next || {})); } catch { }
+}
+
+function clearDraft() {
+  try { sessionStorage.removeItem(DRAFT_KEY); } catch { }
+}
+
+function setNavKeep() {
+  try { sessionStorage.setItem(NAV_KEEP_KEY, '1'); } catch { }
+}
+
+function consumeNavKeep() {
+  try {
+    const v = sessionStorage.getItem(NAV_KEEP_KEY) === '1';
+    sessionStorage.removeItem(NAV_KEEP_KEY);
+    return v;
+  } catch {
+    return false;
+  }
 }
 
 function buildAppU() {
@@ -61,15 +116,55 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState(undefined);
   const [previewURL, setPreviewURL] = useState(null);
+  const [fileURL, setFileURL] = useState(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   useEffect(() => {
-    if (value && value.type && value.type.startsWith('image/')) {
-      const url = URL.createObjectURL(value);
-      setPreviewURL(url);
-      return () => URL.revokeObjectURL(url);
+    let url = null;
+
+    if (value) {
+      url = URL.createObjectURL(value);
+      setFileURL(url);
+
+      if (value.type && value.type.startsWith('image/')) {
+        setPreviewURL(url);
+      } else {
+        setPreviewURL(null);
+      }
+    } else {
+      setFileURL(null);
+      setPreviewURL(null);
     }
-    setPreviewURL(null);
+
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
   }, [value]);
+
+  useEffect(() => {
+    if (!isPreviewOpen) return;
+
+    const y = window.scrollY || 0;
+    const b = document.body;
+
+    const prevOverflow = b.style.overflow;
+    const prevPosition = b.style.position;
+    const prevTop = b.style.top;
+    const prevWidth = b.style.width;
+
+    b.style.overflow = 'hidden';
+    b.style.position = 'fixed';
+    b.style.top = `-${y}px`;
+    b.style.width = '100%';
+
+    return () => {
+      b.style.overflow = prevOverflow;
+      b.style.position = prevPosition;
+      b.style.top = prevTop;
+      b.style.width = prevWidth;
+      window.scrollTo(0, y);
+    };
+  }, [isPreviewOpen]);
 
   const validateAndSet = useCallback(
     (file) => {
@@ -96,6 +191,9 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
 
   const statusPill = value ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-50 text-blue-700 border-blue-200';
   const borderState = dragOver ? 'border-[#008cfc]' : 'border-blue-300';
+
+  const closePreview = () => setIsPreviewOpen(false);
+  const openPreview = () => { if (fileURL) setIsPreviewOpen(true); };
 
   return (
     <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
@@ -166,16 +264,13 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
         </div>
         {value ? (
           <div className="flex items-center gap-2">
-            {previewURL && (
-              <a
-                href={previewURL}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs px-2.5 py-1 rounded-md border border-blue-200 hover:bg-blue-50 text-blue-700"
-              >
-                View
-              </a>
-            )}
+            <button
+              type="button"
+              onClick={openPreview}
+              className="text-xs px-2.5 py-1 rounded-md border border-blue-200 hover:bg-blue-50 text-blue-700"
+            >
+              View
+            </button>
             <button
               type="button"
               onClick={() => validateAndSet(null)}
@@ -191,6 +286,65 @@ function DocDrop({ label, hint, required = false, value, onChange }) {
 
       {hint && value && <p className="text-[11px] text-gray-500 mt-2">{hint}</p>}
       {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+
+      {isPreviewOpen && fileURL &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="File preview"
+            tabIndex={-1}
+            autoFocus
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) closePreview();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') closePreview();
+              e.stopPropagation();
+            }}
+            className="fixed inset-0 z-[2147483646] flex items-center justify-center px-4"
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
+            <div className="relative z-[2147483647] w-full max-w-4xl rounded-2xl border border-blue-100 bg-white shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-900 truncate">{value?.name || 'Preview'}</div>
+                  <div className="text-[11px] text-gray-500">{humanSize(value?.size || 0)}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closePreview}
+                  className="shrink-0 rounded-xl border border-blue-200 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-50"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="bg-gray-50">
+                {value?.type?.startsWith('image/') ? (
+                  <div className="p-4">
+                    <img
+                      src={fileURL}
+                      alt="Preview"
+                      className="w-full max-h-[70vh] object-contain rounded-xl bg-white border border-gray-200"
+                    />
+                  </div>
+                ) : value?.type === 'application/pdf' ? (
+                  <div className="p-3">
+                    <iframe
+                      title="PDF Preview"
+                      src={fileURL}
+                      className="w-full h-[70vh] rounded-xl bg-white border border-gray-200"
+                    />
+                  </div>
+                ) : (
+                  <div className="p-6 text-sm text-gray-600">Preview not available for this file type.</div>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
@@ -278,8 +432,36 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
   const [selectedServices, setSelectedServices] = useState([]);
   const [tesdaCertFiles, setTesdaCertFiles] = useState({});
 
+  const scrollLockRef = useRef(0);
+
   const appU = useMemo(() => buildAppU(), []);
   const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+
+  useEffect(() => {
+    if (!isLoadingNext) return;
+
+    const y = window.scrollY || 0;
+    scrollLockRef.current = y;
+
+    const b = document.body;
+    const prevOverflow = b.style.overflow;
+    const prevPosition = b.style.position;
+    const prevTop = b.style.top;
+    const prevWidth = b.style.width;
+
+    b.style.overflow = 'hidden';
+    b.style.position = 'fixed';
+    b.style.top = `-${y}px`;
+    b.style.width = '100%';
+
+    return () => {
+      b.style.overflow = prevOverflow;
+      b.style.position = prevPosition;
+      b.style.top = prevTop;
+      b.style.width = prevWidth;
+      window.scrollTo(0, scrollLockRef.current || 0);
+    };
+  }, [isLoadingNext]);
 
   useEffect(() => {
     setSelectedServices(readSelectedServiceTypes());
@@ -323,19 +505,144 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
     }
   }, [requiredCertTypes, showCerts]);
 
-  const uploadedCount = useMemo(() => {
-    const base = [primaryFront, primaryBack, secondaryId, nbi, address, medical].filter(Boolean).length;
-    const certCount = requiredCertTypes.reduce((n, t) => n + (tesdaCertFiles?.[t] ? 1 : 0), 0);
-    return base + certCount;
-  }, [primaryFront, primaryBack, secondaryId, nbi, address, medical, requiredCertTypes, tesdaCertFiles]);
-
-  const totalRequired = useMemo(() => 6 + (showCerts ? requiredCertTypes.length : 0), [showCerts, requiredCertTypes]);
-
-  const jumpTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch { } };
-
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
+
+  useEffect(() => {
+    const navKeep = consumeNavKeep();
+    let alive = true;
+
+    const restore = async () => {
+      const d = getDraft();
+      const restored = {};
+
+      const fields = [
+        ['primaryFront', d?.primaryFront],
+        ['primaryBack', d?.primaryBack],
+        ['secondaryId', d?.secondaryId],
+        ['nbi', d?.nbi],
+        ['address', d?.address],
+        ['medical', d?.medical],
+        ['certs', d?.certs],
+      ];
+
+      for (const [k, v] of fields) {
+        if (!v?.dataUrl) continue;
+        const f = dataUrlToFile(v.dataUrl, v.name, v.type);
+        if (f) restored[k] = f;
+      }
+
+      const tesda = d?.tesdaCertFiles || {};
+      const nextTesda = {};
+      for (const t of Object.keys(tesda || {})) {
+        const v = tesda?.[t];
+        if (!v?.dataUrl) continue;
+        const f = dataUrlToFile(v.dataUrl, v.name, v.type);
+        if (f) nextTesda[t] = f;
+      }
+
+      if (!alive) return;
+
+      if (restored.primaryFront) setPrimaryFront(restored.primaryFront);
+      if (restored.primaryBack) setPrimaryBack(restored.primaryBack);
+      if (restored.secondaryId) setSecondaryId(restored.secondaryId);
+      if (restored.nbi) setNbi(restored.nbi);
+      if (restored.address) setAddress(restored.address);
+      if (restored.medical) setMedical(restored.medical);
+      if (restored.certs) setCerts(restored.certs);
+      if (Object.keys(nextTesda).length) setTesdaCertFiles((p) => ({ ...(p || {}), ...nextTesda }));
+
+      if (!navKeep) {
+        clearDraft();
+      }
+    };
+
+    restore();
+
+    return () => {
+      alive = false;
+      const keep = sessionStorage.getItem(NAV_KEEP_KEY) === '1';
+      if (!keep) clearDraft();
+    };
+  }, []);
+
+  const persistField = useCallback(async (key, file) => {
+    const d = getDraft();
+    if (!file) {
+      const next = { ...(d || {}) };
+      delete next[key];
+      setDraft(next);
+      return;
+    }
+    const dataUrl = await fileToDataUrl(file);
+    const next = {
+      ...(d || {}),
+      [key]: {
+        dataUrl: dataUrl || '',
+        name: file?.name || '',
+        type: file?.type || '',
+        size: file?.size || 0
+      }
+    };
+    setDraft(next);
+  }, []);
+
+  const persistTesda = useCallback(async (t, file) => {
+    const d = getDraft();
+    const base = { ...(d || {}) };
+    const cur = { ...(base.tesdaCertFiles || {}) };
+    if (!file) {
+      delete cur[t];
+      base.tesdaCertFiles = cur;
+      setDraft(base);
+      return;
+    }
+    const dataUrl = await fileToDataUrl(file);
+    cur[t] = {
+      dataUrl: dataUrl || '',
+      name: file?.name || '',
+      type: file?.type || '',
+      size: file?.size || 0
+    };
+    base.tesdaCertFiles = cur;
+    setDraft(base);
+  }, []);
+
+  const onPrimaryFrontChange = useCallback((f) => {
+    setPrimaryFront(f);
+    persistField('primaryFront', f);
+  }, [persistField]);
+
+  const onPrimaryBackChange = useCallback((f) => {
+    setPrimaryBack(f);
+    persistField('primaryBack', f);
+  }, [persistField]);
+
+  const onSecondaryIdChange = useCallback((f) => {
+    setSecondaryId(f);
+    persistField('secondaryId', f);
+  }, [persistField]);
+
+  const onNbiChange = useCallback((f) => {
+    setNbi(f);
+    persistField('nbi', f);
+  }, [persistField]);
+
+  const onAddressChange = useCallback((f) => {
+    setAddress(f);
+    persistField('address', f);
+  }, [persistField]);
+
+  const onMedicalChange = useCallback((f) => {
+    setMedical(f);
+    persistField('medical', f);
+  }, [persistField]);
+
+  const onCertsChange = useCallback((f) => {
+    setCerts(f);
+    persistField('certs', f);
+  }, [persistField]);
 
   useEffect(() => {
     const run = async () => {
@@ -361,6 +668,27 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
   }, [showCerts, requiredCertTypes, tesdaCertFiles]);
 
   const isFormValid = !!primaryFront && !!primaryBack && !!secondaryId && !!nbi && !!address && !!medical && hasAllTesdaCerts;
+
+  const uploadedCount = useMemo(() => {
+    const base = [primaryFront, primaryBack, secondaryId, nbi, address, medical].filter(Boolean).length;
+    const certCount = requiredCertTypes.reduce((n, t) => n + (tesdaCertFiles?.[t] ? 1 : 0), 0);
+    return base + certCount;
+  }, [primaryFront, primaryBack, secondaryId, nbi, address, medical, requiredCertTypes, tesdaCertFiles]);
+
+  const totalRequired = useMemo(() => 6 + (showCerts ? requiredCertTypes.length : 0), [showCerts, requiredCertTypes]);
+
+  const jumpTop = () => { try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch { } };
+
+  const resetDocuments = useCallback(() => {
+    setPrimaryFront(null);
+    setPrimaryBack(null);
+    setSecondaryId(null);
+    setNbi(null);
+    setAddress(null);
+    setMedical(null);
+    setCerts(null);
+    setTesdaCertFiles({});
+  }, []);
 
   const proceed = async () => {
     const tesdaCertsData = {};
@@ -442,15 +770,21 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
     setAttempted(true);
     if (!isFormValid) return;
     jumpTop();
+    setNavKeep();
     setIsLoadingNext(true);
     setTimeout(async () => {
       await proceed();
+      clearDraft();
+      resetDocuments();
       setIsLoadingNext(false);
     }, 2000);
   };
 
   const onBackClick = () => {
     jumpTop();
+    setNavKeep();
+    clearDraft();
+    resetDocuments();
     setIsLoadingBack(true);
     setTimeout(() => {
       setIsLoadingBack(false);
@@ -489,27 +823,27 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
           <div className="px-6 pb-6 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <>
-                <DocDrop label="Primary ID (Front)" required hint="UMID, Passport, Driver’s License, etc." value={primaryFront} onChange={setPrimaryFront} />
+                <DocDrop label="Primary ID (Front)" required hint="UMID, Passport, Driver’s License, etc." value={primaryFront} onChange={onPrimaryFrontChange} />
                 {attempted && !primaryFront && <p className="text-xs text-red-600 -mt-3">Please upload your Primary ID (Front).</p>}
               </>
               <>
-                <DocDrop label="Primary ID (Back)" required hint="UMID, Passport, Driver’s License, etc." value={primaryBack} onChange={setPrimaryBack} />
+                <DocDrop label="Primary ID (Back)" required hint="UMID, Passport, Driver’s License, etc." value={primaryBack} onChange={onPrimaryBackChange} />
                 {attempted && !primaryBack && <p className="text-xs text-red-600 -mt-3">Please upload your Primary ID (Back).</p>}
               </>
               <>
-                <DocDrop label="Secondary ID" required hint="UMID, Passport, Driver’s License, etc." value={secondaryId} onChange={setSecondaryId} />
+                <DocDrop label="Secondary ID" required hint="UMID, Passport, Driver’s License, etc." value={secondaryId} onChange={onSecondaryIdChange} />
                 {attempted && !secondaryId && <p className="text-xs text-red-600 -mt-3">Please upload a Secondary ID.</p>}
               </>
               <>
-                <DocDrop label="NBI/Police Clearance" required hint="Barangay Certificate also accepted" value={nbi} onChange={setNbi} />
+                <DocDrop label="NBI/Police Clearance" required hint="Barangay Certificate also accepted" value={nbi} onChange={onNbiChange} />
                 {attempted && !nbi && <p className="text-xs text-red-600 -mt-3">Please upload your NBI/Police Clearance.</p>}
               </>
               <>
-                <DocDrop label="Proof of Address" required hint="Barangay Certificate, Utility Bill" value={address} onChange={setAddress} />
+                <DocDrop label="Proof of Address" required hint="Barangay Certificate, Utility Bill" value={address} onChange={onAddressChange} />
                 {attempted && !address && <p className="text-xs text-red-600 -mt-3">Please upload a Proof of Address.</p>}
               </>
               <>
-                <DocDrop label="Medical Certificate" required hint="Latest medical/fit-to-work certificate" value={medical} onChange={setMedical} />
+                <DocDrop label="Medical Certificate" required hint="Latest medical/fit-to-work certificate" value={medical} onChange={onMedicalChange} />
                 {attempted && !medical && <p className="text-xs text-red-600 -mt-3">Please upload your Medical Certificate.</p>}
               </>
 
@@ -540,7 +874,10 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
                             required
                             hint="Upload your TESDA certificate (PDF, JPG, or PNG)."
                             value={file}
-                            onChange={(f) => setTesdaCertFiles((p) => ({ ...(p || {}), [t]: f }))}
+                            onChange={(f) => {
+                              setTesdaCertFiles((p) => ({ ...(p || {}), [t]: f }));
+                              persistTesda(t, f);
+                            }}
                           />
                           {attempted && !file && <p className="text-xs text-red-600 -mt-3">Please upload your {label}.</p>}
                         </div>
@@ -559,7 +896,7 @@ const WorkerRequiredDocuments = ({ title, setTitle, handleNext, handleBack, onCo
 
         <div className="flex flex-col sm:flex-row justify-between gap-3 mt-6">
           <button type="button" onClick={onBackClick} className="w-full sm:w-1/3 px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Back : Work Information</button>
-          <button type="button" onClick={onNextClick} disabled={!isFormValid} aria-disabled={!isFormValid} className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}>Next : Set Your Price Rate</button>
+          <button type="button" onClick={onNextClick} disabled={!isFormValid} aria-disabled={!isFormValid} className={`w-full sm:w-1/3 px-6 py-3 rounded-xl transition shadow-sm ${isFormValid ? 'bg-[#008cfc] text-white hover:bg-blue-700' : 'bg-[#008cfc] text-white opacity-50 cursor-not-allowed'}`}>Next : Review Application</button>
         </div>
       </div>
 
