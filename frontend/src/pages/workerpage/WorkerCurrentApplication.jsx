@@ -1,3 +1,4 @@
+// WorkerCurrentApplication.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import WorkerNavigation from "../../workercomponents/WorkerNavigation";
@@ -216,9 +217,6 @@ const Card = ({ item, onView, onReason, onDelete, onEdit }) => {
     return out.length ? out.join(" • ") : "-";
   };
 
-  const rateTypeText = formatRateType(item?.rate?.rate_type);
-  const rateTextNode = <RateText rate={item?.rate || {}} />;
-
   const showReasonBtn = isDeclined || isCancelled;
 
   return (
@@ -340,6 +338,7 @@ export default function WorkerCurrentApplication() {
   const [page, setPage] = useState(1);
   const [showReason, setShowReason] = useState(false);
   const [reasonTarget, setReasonTarget] = useState(null);
+  const [reasonBusy, setReasonBusy] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
@@ -448,7 +447,8 @@ export default function WorkerCurrentApplication() {
         reason_choice: r.reason_choice || null,
         reason_other: r.reason_other || null,
         decided_at: r.decided_at || null,
-        email_address: r.email_address || null
+        email_address: r.email_address || null,
+        request_group_id: r.request_group_id || r.group_id || null
       };
     });
   };
@@ -507,7 +507,8 @@ export default function WorkerCurrentApplication() {
           reason_choice: r.reason_choice || null,
           reason_other: r.reason_other || null,
           decided_at: r.decided_at || null,
-          email_address: r.email_address || null
+          email_address: r.email_address || null,
+          request_group_id: r.request_group_id || r.group_id || null
         }));
         setItems(normalized.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
       } catch {
@@ -624,19 +625,63 @@ export default function WorkerCurrentApplication() {
   };
 
   const getReasonText = (row) => {
-    const rc = row?.reason_choice;
-    const ro = row?.reason_other;
+    const s = String(row?.status || "").toLowerCase();
+    const isCancelled = s === "cancelled" || s === "canceled";
+
+    const rc =
+      (isCancelled ? row?.cancel_reason_choice : row?.reason_choice) ||
+      row?.reason_choice ||
+      null;
+
+    const ro =
+      (isCancelled ? row?.cancel_reason_other : row?.reason_other) ||
+      row?.reason_other ||
+      null;
+
     const parts = [];
     if (rc) parts.push(rc);
     if (ro) parts.push(ro);
+
     const fb = row?.decision_reason;
     if (!parts.length && fb) parts.push(fb);
+
     return parts.join(" — ") || "No reason provided.";
   };
 
-  const onReason = (item) => {
+  const fetchCancelReason = async (item) => {
+    const gid = getGroupId(item);
+    if (!gid) return null;
+    const appU = buildAppU();
+    const headers = { "x-app-u": encodeURIComponent(JSON.stringify(appU)) };
+    const url = `${API_BASE}/api/workerapplications/cancel-reason/${encodeURIComponent(gid)}`;
+    const { data } = await axios.get(url, { headers, withCredentials: true });
+    return data || null;
+  };
+
+  const onReason = async (item) => {
     setReasonTarget(item);
     setShowReason(true);
+
+    const statusLower = String(item?.status || "").toLowerCase();
+    const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
+
+    if (!isCancelled) return;
+
+    setReasonBusy(true);
+    try {
+      const got = await fetchCancelReason(item);
+      if (got) {
+        setReasonTarget((prev) => ({
+          ...(prev || item || {}),
+          cancel_reason_choice: got.reason_choice || null,
+          cancel_reason_other: got.reason_other || null,
+          cancel_canceled_at: got.canceled_at || null
+        }));
+      }
+    } catch {} 
+    finally {
+      setReasonBusy(false);
+    }
   };
 
   const onDelete = (item) => {
@@ -667,43 +712,6 @@ export default function WorkerCurrentApplication() {
       setDeleting(false);
       setDeleteTarget(null);
     }
-  };
-
-  const buildServiceTypeList = (work) => {
-    const arr = Array.isArray(work?.service_types)
-      ? work.service_types.filter(Boolean)
-      : typeof work?.service_types === "string"
-      ? work.service_types.split(",").map((x) => String(x || "").trim()).filter(Boolean)
-      : [];
-    return arr.length ? arr.join(", ") : "-";
-  };
-
-  const buildServiceTypeArray = (work) => {
-    const arr = Array.isArray(work?.service_types)
-      ? work.service_types.filter(Boolean)
-      : typeof work?.service_types === "string"
-      ? work.service_types.split(",").map((x) => String(x || "").trim()).filter(Boolean)
-      : [];
-    return arr;
-  };
-
-  const buildServiceTasks = (work) => {
-    const jd = work?.job_details || work?.service_task;
-    const set = new Set();
-    if (Array.isArray(jd)) {
-      jd.forEach((v) => {
-        if (v) set.add(String(v));
-      });
-    } else if (jd && typeof jd === "object") {
-      Object.values(jd).forEach((v) => {
-        if (Array.isArray(v)) v.forEach((x) => { if (x) set.add(String(x)); });
-        else if (v) set.add(String(v));
-      });
-    } else if (typeof jd === "string") {
-      set.add(jd);
-    }
-    const out = Array.from(set);
-    return out.length ? out.join(", ") : "-";
   };
 
   return (
@@ -885,127 +893,58 @@ export default function WorkerCurrentApplication() {
       <WorkerFooter />
 
       {showReason && (
-        <>
-          {(() => {
-            const isCancel =
-              String(reasonTarget?.status || "").toLowerCase() === "cancelled" ||
-              String(reasonTarget?.status || "").toLowerCase() === "canceled";
-            const headGrad = isCancel ? "from-orange-50" : "from-red-50";
-            const borderCol = isCancel ? "border-orange-300" : "border-red-300";
-            const titleCol = isCancel ? "text-orange-700" : "text-red-700";
-            const badgeBg = isCancel ? "bg-orange-50" : "bg-red-50";
-            const badgeText = isCancel ? "text-orange-700" : "text-red-700";
-            const badgeBorder = isCancel ? "border-orange-200" : "border-red-200";
-            const panelBorder = isCancel ? "border-orange-200" : "border-red-200";
-            const panelBg = isCancel ? "bg-orange-50/60" : "bg-red-50/60";
-            const closeBorder = isCancel ? "border-orange-300" : "border-red-300";
-            const closeText = isCancel ? "text-orange-600" : "text-red-600";
-            const closeHover = isCancel ? "hover:bg-orange-50" : "hover:bg-red-50";
-            const title = isCancel ? "Cancel Reason" : "Decline Reason";
-            const work = reasonTarget?.work || {};
-            const serviceTypesText = buildServiceTypeList(work);
-            const serviceTypesArr = buildServiceTypeArray(work);
-            const serviceTasksText = buildServiceTasks(work);
-
-            return (
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label={title}
-                tabIndex={-1}
-                className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4"
-              >
-                <div
-                  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-                  onClick={() => setShowReason(false)}
-                />
-                <div
-                  className={`relative w-full max-w-[720px] rounded-2xl border ${borderCol} bg-white shadow-2xl overflow-hidden`}
-                >
-                  <div
-                    className={`px-6 py-4 bg-gradient-to-r ${headGrad} to-white border ${
-                      isCancel ? "border-orange-200" : "border-red-200"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className={`text-lg font-semibold ${titleCol}`}>{title}</h3>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${badgeBg} ${badgeText} ${badgeBorder}`}
-                      >
-                        <span className="h-3 w-3 rounded-full bg-current opacity-30" />
-                        {(Array.isArray(work?.service_types) &&
-                          work.service_types[0]) ||
-                          "Application"}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-sm text-gray-600">
-                      Created{" "}
-                      {reasonTarget?.created_at
-                        ? formatDate(reasonTarget.created_at)
-                        : "-"}
-                    </div>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="View reason"
+          tabIndex={-1}
+          autoFocus
+          className="fixed inset-0 z-[2147483646] flex items-center justify-center"
+        >
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowReason(false)}
+          />
+          <div className="relative w-full max-w-[560px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="px-6 pt-6">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-100 grid place-items-center">
+                  <span className="text-blue-600 text-lg">ⓘ</span>
+                </div>
+                <div className="flex-1">
+                  <div className="text-xl font-semibold text-gray-900">
+                    {String(reasonTarget?.status || "").toLowerCase() === "cancelled" ||
+                    String(reasonTarget?.status || "").toLowerCase() === "canceled"
+                      ? "Cancel Reason"
+                      : "Decline Reason"}
                   </div>
-                  <div className="p-6">
-                    <div
-                      className={`rounded-xl border ${panelBorder} ${panelBg} p-4`}
-                    >
-                      <div
-                        className={`text-[11px] font-semibold tracking-widest ${
-                          isCancel ? "text-orange-700" : "text-red-700"
-                        } uppercase`}
-                      >
-                        Reason
-                      </div>
-                      <div className="mt-2 text-[15px] font-semibold text-gray-900 whitespace-pre-line">
-                        {getReasonText(reasonTarget)}
-                      </div>
-                    </div>
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="rounded-xl border border-gray-200 bg-white p-4">
-                        <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">
-                          Service Type
-                        </div>
-                        <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                          {serviceTypesArr.length ? (
-                            <span className="text-gray-900">
-                              {serviceTypesArr.map((t, idx) => (
-                                <span key={`${t}-${idx}`} className="inline-flex items-center gap-2 mr-3">
-                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-current" />
-                                  <span>{t}</span>
-                                </span>
-                              ))}
-                            </span>
-                          ) : (
-                            serviceTypesText
-                          )}
-                        </div>
-                      </div>
-                      <div className="rounded-xl border border-gray-200 bg-white p-4">
-                        <div className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase">
-                          Service Task
-                        </div>
-                        <div className="mt-1 text-[15px] font-semibold text-gray-900">
-                          {serviceTasksText}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="px-6 pb-6 pt-4 border-t border-gray-200 bg-white">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowReason(false);
-                      }}
-                      className={`w-full inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium ${closeBorder} ${closeText} ${closeHover}`}
-                    >
-                      Close
-                    </button>
-                  </div>
+                  <div className="text-sm text-gray-600">Here is the reason for your application.</div>
                 </div>
               </div>
-            );
-          })()}
-        </>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="space-y-2">
+                <div className="text-sm font-semibold text-gray-700">Reason</div>
+                <textarea
+                  value={reasonBusy ? "Loading reason..." : getReasonText(reasonTarget)}
+                  readOnly
+                  className="w-full min-h-[120px] rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowReason(false)}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showOpenBusy && (

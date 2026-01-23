@@ -1,7 +1,7 @@
 // WorkerPost.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt, Trash2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -931,13 +931,6 @@ function WorkerPost() {
                   className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
                 >
                   Edit Application
-                </button>
-                <button
-                  type="button"
-                  onClick={startDeleteCurrent}
-                  className="h-10 w-10 inline-flex items-center justify-center rounded-md border border-red-200 text-red-600 hover:bg-red-50 transition"
-                >
-                  <Trash2 className="h-5 w-5" />
                 </button>
               </div>
             </div>

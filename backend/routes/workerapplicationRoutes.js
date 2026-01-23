@@ -8,6 +8,8 @@ router.post('/cancel', controller.cancel);
 router.get('/approved', controller.listApproved);
 router.get('/', controller.listMine);
 
+router.get('/cancel-reason/:id', controller.getCancelReasonByGroup);
+
 router.get('/by-group/:id', controller.getByGroupFull);
 router.put('/by-group/:id', controller.updateByGroup);
 

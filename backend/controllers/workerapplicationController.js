@@ -1305,6 +1305,32 @@ exports.listMine = async (req, res) => {
   }
 };
 
+exports.getCancelReasonByGroup = async (req, res) => {
+  try {
+    const gid = String(req.params.id || '').trim();
+    if (!gid) return res.status(400).json({ message: 'Missing id' });
+
+    const { data, error } = await supabaseAdmin
+      .from('worker_cancel_application')
+      .select('request_group_id, reason_choice, reason_other, canceled_at')
+      .eq('request_group_id', gid)
+      .order('canceled_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      request_group_id: gid,
+      reason_choice: data?.reason_choice || null,
+      reason_other: data?.reason_other || null,
+      canceled_at: data?.canceled_at || null
+    });
+  } catch (e) {
+    return res.status(500).json({ message: friendlyError(e) });
+  }
+};
+
 exports.getByGroup = async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
