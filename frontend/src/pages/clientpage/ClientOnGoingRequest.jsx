@@ -295,8 +295,6 @@ export default function ClientOnGoingRequest() {
 
   const statusNow = String(fx.status || fx.request_status || detR.status || '').toLowerCase();
   const startedAt = progressR.started_at || progressR.service_started_at || fx.started_at || fx.service_started_at || null;
-  const enrouteAt = progressR.enroute_at || progressR.worker_on_the_way_at || progressR.arrived_eta_at || null;
-  const arrivedAt = progressR.arrived_at || progressR.worker_arrived_at || null;
   const workStartAt = progressR.work_started_at || progressR.begin_at || null;
   const workEndAt = progressR.work_completed_at || progressR.completed_at || null;
   const clientConfirmAt = progressR.client_confirmed_at || progressR.confirmed_done_at || null;
@@ -314,8 +312,6 @@ export default function ClientOnGoingRequest() {
 
   const steps = [
     { key: 'scheduled', label: 'Scheduled', at: scheduledAt },
-    { key: 'enroute', label: 'On The Way', at: enrouteAt || null },
-    { key: 'arrived', label: 'Arrived', at: arrivedAt || null },
     { key: 'inservice', label: 'In Service', at: workStartAt || null },
     { key: 'review', label: 'Quality Review', at: workEndAt || null },
     {
@@ -326,17 +322,16 @@ export default function ClientOnGoingRequest() {
   ];
 
   const stepIndex = (() => {
-    if (clientConfirmAt || statusNow === 'completed') return 5;
-    if (workEndAt) return 4;
-    if (workStartAt) return 3;
-    if (arrivedAt) return 2;
-    if (enrouteAt) return 1;
+    if (clientConfirmAt || statusNow === 'completed') return 3;
+    if (workEndAt) return 2;
+    if (workStartAt) return 1;
     if (steps[0].at) return 0;
     return 0;
   })();
 
   const [progressPct, setProgressPct] = useState(0);
   const targetPct = steps.length > 1 ? (stepIndex / (steps.length - 1)) * 100 : 0;
+
   useEffect(() => {
     const t = setTimeout(() => setProgressPct(targetPct), 60);
     return () => clearTimeout(t);
@@ -541,44 +536,61 @@ export default function ClientOnGoingRequest() {
             </div>
 
             <div className="space-y-6 mt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
-                <div className="lg:col-span-2 space-y-6">
+              <div className="grid grid-cols-1 gap-6 lg:items-stretch">
+                <div className="space-y-6">
                   <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
                     <div className="flex items-center justify-between px-6 py-4">
                       <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Request Details</h3>
+                      <div
+                        className={`text-xs px-2 py-1 rounded-md ${
+                          stepIndex === steps.length - 1 ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-[#008cfc]'
+                        } font-semibold`}
+                      >
+                        {stepIndex < steps.length - 1 ? 'In Progress' : 'Completed'}
+                      </div>
                     </div>
                     <div className="border-t border-gray-100" />
                     <div className="px-6 py-6">
-                      <div className="text-base grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                        <LabelValue label="Service Type" value={service_type} />
-                        <LabelValue label="Service Task" value={service_task} />
-                        <LabelValue label="Preferred Date" value={formatDateMDY(preferred_date)} />
-                        <LabelValue label="Preferred Time" value={formatTime12h(preferred_time)} />
-                        <LabelValue
-                          label="Urgent"
-                          value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(is_urgent) ? 'Yes' : 'No'}</span>}
-                        />
-                        <LabelValue
-                          label="Tools Provided"
-                          value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(tools_provided) ? 'Yes' : 'No'}</span>}
-                        />
-                        <LabelValue label="Workers Needed" value={workers_needed} />
-                        <LabelValue label="Units" value={unitsDisplay} />
-                        <LabelValue label="Total Rate" value={totalRateDisplay} />
-                        <div className="md:col-span-2">
-                          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                            <span className="text-gray-700 font-semibold">Description:</span>
-                            <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">{service_description || '-'}</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                        <div className={`space-y-6 ${review_image ? '' : 'md:col-span-2'}`}>
+                          <LabelValue label="Service Type" value={service_type} />
+                          <LabelValue label="Service Task" value={service_task} />
+                          <LabelValue label="Preferred Date" value={formatDateMDY(preferred_date)} />
+                          <LabelValue label="Preferred Time" value={formatTime12h(preferred_time)} />
+                          <LabelValue
+                            label="Urgent"
+                            value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(is_urgent) ? 'Yes' : 'No'}</span>}
+                          />
+                          <LabelValue
+                            label="Tools Provided"
+                            value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(tools_provided) ? 'Yes' : 'No'}</span>}
+                          />
+                          <LabelValue label="Workers Needed" value={workers_needed} />
+                          <LabelValue label="Units" value={unitsDisplay} />
+                          <LabelValue label="Total Rate" value={totalRateDisplay} />
+                          <div>
+                            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                              <span className="text-gray-700 font-semibold">Description:</span>
+                              <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">{service_description || '-'}</span>
+                            </div>
                           </div>
                         </div>
+
                         {review_image ? (
-                          <div className="md:col-span-2">
-                            <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
-                              <span className="text-gray-700 font-semibold">Request Image:</span>
-                              <div className="w-full">
-                                <div className="w-full h-64 rounded-xl overflow-hidden ring-2 ring-blue-100 bg-gray-50">
-                                  <img src={review_image} alt="" className="w-full h-full object-cover object-center" />
-                                </div>
+                          <div className="w-full">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-gray-700 font-semibold">Request Image</span>
+                              <span className="text-xs font-semibold text-[#008cfc] bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg">
+                                Attached
+                              </span>
+                            </div>
+                            <div className="w-full rounded-2xl border border-blue-100 bg-white shadow-sm ring-1 ring-black/5 overflow-hidden">
+                              <div className="w-full h-56 sm:h-60 md:h-64 bg-gray-50">
+                                <img
+                                  src={review_image}
+                                  alt=""
+                                  className="w-full h-full object-cover object-center select-none pointer-events-none"
+                                />
                               </div>
                             </div>
                           </div>
@@ -586,70 +598,19 @@ export default function ClientOnGoingRequest() {
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <aside className="lg:col-span-1 flex flex-col">
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden flex flex-col">
-                    <div className="px-6 py-4 flex items-center justify-between">
-                      <div className="text-base font-semibold text-gray-900">Summary</div>
-                      <div
-                        className={`text-xs px-2 py-1 rounded-md ${stepIndex === steps.length - 1 ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-[#008cfc]'} font-semibold`}
+                  {hasAssignedWorker && workerEmail ? (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleMessageWorker}
+                        className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold bg-[#008cfc] text-white"
                       >
-                        {stepIndex < steps.length - 1 ? 'In Progress' : 'Completed'}
-                      </div>
+                        Message Worker
+                      </button>
                     </div>
-                    <div className="border-t border-gray-100" />
-                    <div className="px-6 py-5 space-y-4 flex-1">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-gray-600">Service:</span>
-                        <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{service_type || '-'}</span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-gray-600">Task:</span>
-                        <span className="text-base font-semibold text-[#008cfc] truncate max-w-[60%] text-right sm:text-left">{service_task || '-'}</span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-gray-600">Schedule:</span>
-                        <span className="text-base font-semibold text-[#008cfc]">
-                          {formatDateMDY(preferred_date) || '-'} • {formatTime12h(preferred_time) || '-'}
-                        </span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-gray-600">Urgent:</span>
-                        <span className="text-base font-semibold text-[#008cfc]">{toBoolStrict(is_urgent) ? 'Yes' : 'No'}</span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-gray-600">Tools:</span>
-                        <span className="text-base font-semibold text-[#008cfc]">{toBoolStrict(tools_provided) ? 'Yes' : 'No'}</span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-gray-600">Workers Needed:</span>
-                        <span className="text-base font-semibold text-[#008cfc]">{workers_needed ?? '-'}</span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-gray-600">Units:</span>
-                        <span className="text-base font-semibold text-[#008cfc]">{unitsDisplay || '-'}</span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-gray-600">Total Rate:</span>
-                        <span className="text-base font-semibold text-[#008cfc]">{totalRateDisplay || '-'}</span>
-                      </div>
-                    </div>
-                    {hasAssignedWorker && workerEmail ? (
-                      <div className="px-6 py-4 border-t border-gray-100">
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            type="button"
-                            onClick={handleMessageWorker}
-                            className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold bg-[#008cfc] text-white"
-                          >
-                            Message Worker
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </aside>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
