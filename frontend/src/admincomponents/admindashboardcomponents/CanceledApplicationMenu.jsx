@@ -11,38 +11,6 @@ const ACTION_ALIGN_RIGHT = false;
 const avatarFromName = (name) =>
   `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
-function getWorkerAuthHeader() {
-  try {
-    const raw = localStorage.getItem("workerAuth");
-    const auth = raw ? JSON.parse(raw) : {};
-    const email =
-      auth?.email ||
-      auth?.email_address ||
-      localStorage.getItem("workerEmail") ||
-      localStorage.getItem("email_address") ||
-      localStorage.getItem("email") ||
-      "";
-    const auth_uid =
-      auth?.auth_uid ||
-      auth?.authUid ||
-      localStorage.getItem("auth_uid") ||
-      localStorage.getItem("authUid") ||
-      "";
-    return encodeURIComponent(JSON.stringify({ email, email_address: email, auth_uid }));
-  } catch {
-    const email =
-      localStorage.getItem("workerEmail") ||
-      localStorage.getItem("email_address") ||
-      localStorage.getItem("email") ||
-      "";
-    const auth_uid =
-      localStorage.getItem("auth_uid") ||
-      localStorage.getItem("authUid") ||
-      "";
-    return encodeURIComponent(JSON.stringify({ email, email_address: email, auth_uid }));
-  }
-}
-
 function StatusPill({ value }) {
   const v = String(value || "").toLowerCase();
   const isCancelled = v === "cancelled" || v === "canceled";
@@ -278,6 +246,13 @@ function extractTaskFromJobDetails(job_details, primaryService) {
   return "";
 }
 
+function fmtMoney(v) {
+  if (v === null || v === undefined || v === "") return "-";
+  const n = Number(String(v).toString().replace(/[^0-9.-]/g, ""));
+  if (isNaN(n)) return String(v);
+  return `₱${n.toLocaleString()}`;
+}
+
 function rate_toNumber(x) {
   return x === null || x === undefined || x === "" ? null : Number(x);
 }
@@ -335,7 +310,7 @@ export default function CanceledApplicationMenu() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const [sort, setSort] = useState({ key: "created_at_ts", dir: "desc" });
+  const [sort, setSort] = useState({ key: "full_name", dir: "asc" });
   const [viewRow, setViewRow] = useState(null);
   const [reasonRow, setReasonRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -347,106 +322,87 @@ export default function CanceledApplicationMenu() {
     setLoading(true);
     setLoadError("");
     try {
-      const hdr = getWorkerAuthHeader();
-      const res = await axios.get(`${API_BASE}/api/workerapplications`, {
-        params: { scope: "cancelled", limit: 200 },
-        headers: { "x-app-u": hdr },
-        withCredentials: true
+      const params = { status: "canceled" };
+      if (searchTerm && searchTerm.trim()) params.q = searchTerm.trim();
+      const res = await axios.get(`${API_BASE}/api/admin/workerapplications`, { params, withCredentials: true });
+      const items = Array.isArray(res?.data?.items) ? res.data.items : [];
+      const mapped = items.map((r) => {
+        const i = r.info || {};
+        const w = r.work || {};
+        const d = r.documents || r.docs || {};
+        const rate = r.rate || w.rate || {};
+        const createdRaw = r.created_at || r.createdAt || i.created_at || w.created_at || null;
+        const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
+        const serviceTypes = toArray(w.service_types).filter(Boolean);
+        const primaryService =
+          firstNonEmpty(
+            w.primary_service,
+            w.service_type,
+            serviceTypes[0],
+            r.service_type
+          ) || "";
+        const taskFromDetails = extractTaskFromJobDetails(w.job_details, primaryService);
+        const taskOrRole = firstNonEmpty(
+          w.primary_task,
+          w.role,
+          r.task,
+          r.position,
+          taskFromDetails,
+          w.work_description
+        );
+        const rate_type = firstNonEmpty(rate.rate_type, w.rate_type, w.payment_type, w.billing_type);
+        const rate_from = firstNonEmpty(rate.rate_from, w.rate_from, w.hourly_from, w.hourly_rate, w.rate_per_hour, w.rate_min, w.minimum_rate);
+        const rate_to = firstNonEmpty(rate.rate_to, w.rate_to, w.hourly_to, w.rate_max);
+        const rate_value = firstNonEmpty(rate.rate_value, w.rate_value, w.daily_rate, w.rate_per_day);
+        const dob = firstNonEmpty(
+          i.date_of_birth,
+          i.dob,
+          i.birthdate,
+          i.birth_date,
+          r.date_of_birth,
+          r.dob,
+          r.birthdate,
+          r.birth_date,
+          w.date_of_birth,
+          w.dob,
+          w.birthdate,
+          w.birth_date
+        );
+        const infoNormalized = { ...i, date_of_birth: dob || i.date_of_birth };
+
+        const first_name = infoNormalized.first_name || r.first_name || "";
+        const last_name = infoNormalized.last_name || r.last_name || "";
+        const full_name = [first_name, last_name].filter(Boolean).join(" ");
+
+        return {
+          id: r.id,
+          status: "canceled",
+          ui_status: "cancelled",
+          name_first: first_name,
+          name_last: last_name,
+          full_name,
+          email: infoNormalized.email_address || infoNormalized.email || r.email || "",
+          info: infoNormalized,
+          work: w,
+          rate: { rate_type, rate_from, rate_to, rate_value },
+          documents: d,
+          service_types: serviceTypes,
+          service_types_lex: serviceTypes.join(", "),
+          primary_service: primaryService,
+          task_or_role: taskOrRole,
+          years_experience: w.years_experience ?? w.experience_years ?? r.years_experience,
+          tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
+          has_certifications: isYes(w.has_certifications) || w.has_certifications === true || isYes(w.certified),
+          service_description: w.work_description || w.description || "",
+          created_at_raw: createdRaw,
+          created_at_ts: createdTs,
+          created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
+          reason_choice: r.reason_choice || null,
+          reason_other: r.reason_other || null,
+          canceled_at: r.canceled_at || r.cancelled_at || null,
+          profile_picture: infoNormalized.profile_picture_url || infoNormalized.profile_picture || r.profile_picture || ""
+        };
       });
-
-      const itemsRaw = Array.isArray(res?.data?.items) ? res.data.items : [];
-      const cancelledOnly = itemsRaw.filter((r) => {
-        const st = String(r?.status || "").toLowerCase();
-        return st === "cancelled" || st === "canceled";
-      });
-
-      const mapped = cancelledOnly
-        .map((r) => {
-          const i = r.info || {};
-          const w = r.details || r.work || {};
-          const d = r.required_documents || r.documents || r.docs || {};
-          const createdRaw = r.created_at || r.createdAt || i.created_at || w.created_at || null;
-          const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
-
-          const serviceTypes = toArray(w.service_types).filter(Boolean);
-          const primaryService =
-            firstNonEmpty(
-              w.primary_service,
-              w.service_type,
-              serviceTypes[0],
-              r.service_type
-            ) || "";
-
-          const taskFromDetails = extractTaskFromJobDetails(w.service_task || w.job_details, primaryService);
-
-          const taskOrRole = firstNonEmpty(
-            w.primary_task,
-            w.role,
-            r.task,
-            r.position,
-            taskFromDetails,
-            w.work_description
-          );
-
-          const dob = firstNonEmpty(
-            i.date_of_birth,
-            i.dob,
-            i.birthdate,
-            i.birth_date,
-            r.date_of_birth,
-            r.dob,
-            r.birthdate,
-            r.birth_date,
-            w.date_of_birth,
-            w.dob,
-            w.birthdate,
-            w.birth_date
-          );
-          const infoNormalized = { ...i, date_of_birth: dob || i.date_of_birth };
-
-          const first_name = infoNormalized.first_name || r.first_name || "";
-          const last_name = infoNormalized.last_name || r.last_name || "";
-          const full_name = [first_name, last_name].filter(Boolean).join(" ");
-
-          return {
-            id: r.id || r.request_group_id,
-            request_group_id: r.request_group_id,
-            status: "cancelled",
-            ui_status: "cancelled",
-            name_first: first_name,
-            name_last: last_name,
-            full_name,
-            email: infoNormalized.email_address || infoNormalized.email || r.email_address || r.email || "",
-            info: infoNormalized,
-            work: w,
-            documents: d,
-            service_types: serviceTypes,
-            service_types_lex: serviceTypes.join(", "),
-            primary_service: primaryService,
-            task_or_role: taskOrRole,
-            years_experience: w.years_experience ?? w.experience_years ?? r.years_experience,
-            tools_provided: isYes(w.tools_provided) || w.tools_provided === true,
-            service_description: w.work_description || w.description || "",
-            created_at_raw: createdRaw,
-            created_at_ts: createdTs,
-            created_at_display: createdRaw ? fmtDateTime(createdRaw) : "",
-            reason_choice: r.reason_choice || null,
-            reason_other: r.reason_other || null,
-            canceled_at: r.decided_at || r.canceled_at || r.cancelled_at || null,
-            profile_picture: infoNormalized.profile_picture_url || infoNormalized.profile_picture || r.profile_picture || ""
-          };
-        })
-        .filter((x) => {
-          if (!searchTerm.trim()) return true;
-          const q = searchTerm.trim().toLowerCase();
-          return (
-            String(x.full_name || "").toLowerCase().includes(q) ||
-            String(x.email || "").toLowerCase().includes(q) ||
-            String(x.primary_service || "").toLowerCase().includes(q) ||
-            String(x.service_types_lex || "").toLowerCase().includes(q)
-          );
-        });
-
       setRows(mapped);
     } catch (err) {
       setLoadError(err?.response?.data?.message || err?.message || "Failed to load");
@@ -466,7 +422,6 @@ export default function CanceledApplicationMenu() {
     }, 400);
     return () => clearTimeout(t);
   }, [searchTerm]);
-
   useEffect(() => {
     const onCancelled = () => fetchItems();
     window.addEventListener("worker-application-cancelled", onCancelled);
@@ -540,7 +495,6 @@ export default function CanceledApplicationMenu() {
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(1);
   }, [totalPages]);
-
   const pageRows = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return sortedRows.slice(start, start + pageSize);
@@ -608,7 +562,67 @@ export default function CanceledApplicationMenu() {
     { key: "plumber", label: "Plumber" }
   ];
 
-  const renderServiceRateSection = () => null;
+  const renderServiceRateSection = () => {
+    if (!viewRow) return null;
+    const t = String(viewRow?.rate?.rate_type || "").toLowerCase();
+    if (t.includes("by the job")) {
+      return (
+        <SectionCard
+          title="Service Rate"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+              Pricing
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 max-w-3xl">
+            <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+            <Field label="Rate Value" value={peso(rate_toNumber(viewRow?.rate?.rate_value))} />
+          </div>
+        </SectionCard>
+      );
+    }
+    if (t.includes("hourly")) {
+      return (
+        <SectionCard
+          title="Service Rate"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+              Pricing
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 max-w-4xl">
+            <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+            <Field label="Rate From" value={peso(rate_toNumber(viewRow?.rate?.rate_from))} />
+            <Field label="Rate To" value={peso(rate_toNumber(viewRow?.rate?.rate_to))} />
+          </div>
+        </SectionCard>
+      );
+    }
+    return (
+      <SectionCard
+        title="Service Rate"
+        badge={
+          <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium bg-white text-gray-700 border-gray-200">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#0b82ff]" />
+            Pricing
+          </span>
+        }
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
+          <Field label="Rate Type" value={viewRow?.rate?.rate_type || "-"} />
+          <Field label="Rate From" value={peso(rate_toNumber(viewRow?.rate?.rate_from))} />
+          <Field label="Rate To" value={peso(rate_toNumber(viewRow?.rate?.rate_to))} />
+          <div className="sm:col-span-3">
+            <Field label="Rate Value" value={peso(rate_toNumber(viewRow?.rate?.rate_value))} />
+          </div>
+        </div>
+      </SectionCard>
+    );
+  };
 
   const renderSection = () => {
     if (!viewRow) return null;
@@ -800,7 +814,6 @@ export default function CanceledApplicationMenu() {
               </button>
             </div>
           </div>
-
           <div className="px-6">
             <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
               {loading && <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">Loading…</div>}
@@ -840,6 +853,9 @@ export default function CanceledApplicationMenu() {
                             <ChevronsUpDown className="h-4 w-4 text-gray-400" />
                           </span>
                         </th>
+                        <th className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-[160px] min-w-[160px]">
+                          Status
+                        </th>
                         <th className="sticky top-0 z-10 bg-white px-4 py-3 w-40 font-semibold text-gray-700 border border-gray-200">
                           Action
                         </th>
@@ -865,6 +881,11 @@ export default function CanceledApplicationMenu() {
                               <ServiceTypesInline list={u.service_types?.length ? u.service_types : toArray(u.work?.service_types)} nowrap />
                             </td>
                             <td className="px-4 py-4 border border-gray-200 whitespace-nowrap w-[220px]">{u.created_at_display || "-"}</td>
+                            <td className="px-4 py-4 border border-gray-200 w-[160px] min-w-[160px]">
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <StatusPill value="cancelled" />
+                              </div>
+                            </td>
                             <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}>
                               <div className="inline-flex gap-2 flex-nowrap">
                                 <button
@@ -892,7 +913,7 @@ export default function CanceledApplicationMenu() {
 
                       {!loading && !loadError && pageRows.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="px-4 py-16 text-center text-gray-500 border border-gray-200">
+                          <td colSpan={6} className="px-4 py-16 text-center text-gray-500 border border-gray-200">
                             No cancelled applications.
                           </td>
                         </tr>
@@ -998,6 +1019,7 @@ export default function CanceledApplicationMenu() {
                 <div className="flex flex-wrap items-center gap-2">
                   <SectionButton k="info" label="Personal Information" />
                   <SectionButton k="work" label="Work Details" />
+                  <SectionButton k="rate" label="Service Rate" />
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto blue-scroll pt-3">
@@ -1038,7 +1060,6 @@ export default function CanceledApplicationMenu() {
             <div className="px-6 py-4 border-b bg-gray-50">
               <div className="text-base font-semibold text-gray-900">Documents</div>
             </div>
-
             <div className="p-6 overflow-y-auto max-h-[65vh] [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
               {viewRow && (viewRow.documents || viewRow.docs) && Object.keys(viewRow.documents || viewRow.docs).length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1090,7 +1111,6 @@ export default function CanceledApplicationMenu() {
                 <div className="text-center text-gray-600">No documents.</div>
               )}
             </div>
-
             <div className="px-6 py-4 border-t bg-white">
               <button
                 onClick={() => setShowDocs(false)}

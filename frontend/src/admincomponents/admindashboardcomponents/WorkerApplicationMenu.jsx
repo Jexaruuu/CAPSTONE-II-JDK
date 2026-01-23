@@ -1,11 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import {
-  ChevronsUpDown,
-  RotateCcw,
-  ShieldCheck,
-  CalendarDays,
-} from "lucide-react";
+import { ChevronsUpDown, RotateCcw, X, Mail, ShieldCheck, CalendarDays, ClipboardList, Briefcase } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -13,41 +8,32 @@ const ENABLE_SELECTION = false;
 const BOLD_FIRST_NAME = false;
 const ACTION_ALIGN_RIGHT = false;
 
+const REASONS_ADMIN = [
+  "Incomplete details",
+  "Not clear documents",
+  "Outside service area",
+  "Pricing too high"
+];
+
 const parseMaybe = (v) => {
   if (!v) return {};
   if (typeof v === "string") {
-    try {
-      return JSON.parse(v);
-    } catch {
-      return {};
-    }
+    try { return JSON.parse(v); } catch { return {}; }
   }
   return v;
 };
+
+const avatarFromName = (name) =>
+  `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name || "User")}`;
 
 function StatusPill({ value }) {
   const v = String(value || "").toLowerCase();
   const cfg =
     v === "approved"
-      ? {
-          bg: "bg-emerald-50",
-          text: "text-emerald-700",
-          br: "border-emerald-200",
-          label: "Approved",
-        }
+      ? { bg: "bg-emerald-50", text: "text-emerald-700", br: "border-emerald-200", label: "Approved" }
       : v === "declined"
-      ? {
-          bg: "bg-red-50",
-          text: "text-red-700",
-          br: "border-red-200",
-          label: "Declined",
-        }
-      : {
-          bg: "bg-amber-50",
-          text: "text-amber-700",
-          br: "border-amber-200",
-          label: "Pending",
-        };
+      ? { bg: "bg-red-50", text: "text-red-700", br: "border-red-200", label: "Declined" }
+      : { bg: "bg-amber-50", text: "text-amber-700", br: "border-amber-200", label: "Pending" };
   return (
     <span
       className={[
@@ -68,30 +54,27 @@ function StatusPill({ value }) {
 const normalizeServiceTask = (raw) => {
   if (Array.isArray(raw)) {
     return raw
-      .map((x) => ({
-        category: String(x?.category || "General"),
+      .map(x => ({
+        category: String(x?.category || 'General'),
         tasks: (Array.isArray(x?.tasks) ? x.tasks : [])
-          .map((t) => String(t || "").trim())
-          .filter(Boolean),
+          .map(t => String(t || '').trim())
+          .filter(Boolean)
       }))
-      .filter((g) => g.tasks.length);
+      .filter(g => g.tasks.length);
   }
-  if (raw && typeof raw === "object") {
-    return Object.entries(raw)
-      .map(([k, v]) => ({
-        category: String(k || "General"),
-        tasks: (Array.isArray(v) ? v : [v])
-          .map((t) => String(t || "").trim())
-          .filter(Boolean),
-      }))
-      .filter((g) => g.tasks.length);
+  if (raw && typeof raw === 'object') {
+    return Object.entries(raw).map(([k, v]) => ({
+      category: String(k || 'General'),
+      tasks: (Array.isArray(v) ? v : [v])
+        .map(t => String(t || '').trim())
+        .filter(Boolean)
+    })).filter(g => g.tasks.length);
   }
   return [];
 };
 
 const isYes = (v) => String(v ?? "").toLowerCase() === "yes";
-const rate_toNumber = (x) =>
-  x === null || x === undefined || x === "" ? null : Number(x);
+const rate_toNumber = (x) => (x === null || x === undefined || x === "" ? null : Number(x));
 
 function ServiceTypePill({ value }) {
   const v = String(value || "").toLowerCase().trim();
@@ -155,6 +138,38 @@ function TaskPill({ value }) {
     </span>
   );
 }
+function YesNoPill({ yes }) {
+  const truthy =
+    yes === true ||
+    yes === 1 ||
+    String(yes).toLowerCase() === "yes" ||
+    String(yes).toLowerCase() === "true";
+  const falsy =
+    yes === false ||
+    yes === 0 ||
+    String(yes).toLowerCase() === "no" ||
+    String(yes).toLowerCase() === "false";
+
+  const cfg = truthy
+    ? { bg: "bg-emerald-50", text: "text-emerald-700", br: "border-emerald-200", label: "Yes" }
+    : falsy
+    ? { bg: "bg-red-50", text: "text-red-700", br: "border-red-200", label: "No" }
+    : { bg: "bg-gray-50", text: "text-gray-600", br: "border-gray-200", label: "-" };
+
+  return (
+    <span
+      className={[
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide whitespace-nowrap",
+        cfg.bg,
+        cfg.text,
+        cfg.br,
+      ].join(" ")}
+    >
+      <span className="h-3 w-3 rounded-full bg-current opacity-30" />
+      {cfg.label}
+    </span>
+  );
+}
 
 function ServiceTypesInline({ list, nowrap }) {
   const arr = Array.isArray(list) ? list.filter(Boolean) : [];
@@ -176,7 +191,7 @@ function ServiceTypesInline({ list, nowrap }) {
 
 function ServiceTasksInline({ list, fallback }) {
   const base = Array.isArray(list) ? list.filter(Boolean) : [];
-  const arr = base.length ? base : fallback ? [fallback] : [];
+  const arr = base.length ? base : (fallback ? [fallback] : []);
   if (!arr.length) return <span className="text-gray-500 text-sm">-</span>;
   return (
     <div className="flex flex-wrap items-center gap-1.5 w-full min-w-0">
@@ -189,12 +204,8 @@ function ServiceTasksInline({ list, fallback }) {
 
 const Field = ({ label, value }) => (
   <div className="text-left space-y-0.5">
-    <div className="text-[11px] font-medium tracking-wide text-gray-500 uppercase">
-      {label}
-    </div>
-    <div className="text-[14px] font-semibold text-gray-900 break-words">
-      {value ?? "-"}
-    </div>
+    <div className="text-[11px] font-medium tracking-wide text-gray-500 uppercase">{label}</div>
+    <div className="text-[14px] font-semibold text-gray-900 break-words">{value ?? "-"}</div>
   </div>
 );
 
@@ -214,19 +225,41 @@ const QuickItem = ({ icon, label, value }) => (
       {icon}
     </div>
     <div className="min-w-0">
-      <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
-        {label}
-      </div>
+      <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">{label}</div>
 
       {value === null || value === undefined || value === "" ? (
         <div className="text-sm font-semibold text-gray-900 break-words">-</div>
       ) : typeof value === "string" || typeof value === "number" ? (
-        <div className="text-sm font-semibold text-gray-900 break-words">
-          {value}
-        </div>
+        <div className="text-sm font-semibold text-gray-900 break-words">{value}</div>
       ) : (
         <div className="min-w-0 w-full break-words">{value}</div>
       )}
+    </div>
+  </div>
+);
+
+const QuickItemRow = ({ icon, label, value }) => (
+  <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2">
+    <div className="mt-0.5 rounded-lg border border-gray-200 bg-gray-50 p-2 text-gray-700">
+      {icon}
+    </div>
+
+    <div className="min-w-0 flex-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500 whitespace-nowrap">
+          {label}
+        </div>
+
+        <div className="min-w-0 flex-1 flex justify-end">
+          {value === null || value === undefined || value === "" ? (
+            <div className="text-sm font-semibold text-gray-900">-</div>
+          ) : typeof value === "string" || typeof value === "number" ? (
+            <div className="text-sm font-semibold text-gray-900 break-words text-right">{value}</div>
+          ) : (
+            <div className="min-w-0 text-right">{value}</div>
+          )}
+        </div>
+      </div>
     </div>
   </div>
 );
@@ -251,7 +284,7 @@ function fmtDateTime(val) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: true,
+    hour12: true
   });
 }
 function fmtDateOnly(val) {
@@ -277,17 +310,29 @@ function resolveDoc(docs, keys, fuzzy) {
   if (!allKeys.length || !fuzzy) return null;
   for (const k of allKeys) {
     const lk = k.toLowerCase();
-    if (fuzzy.all && fuzzy.all.length && !fuzzy.all.every((s) => lk.includes(s)))
-      continue;
-    if (fuzzy.any && fuzzy.any.length && !fuzzy.any.some((s) => lk.includes(s)))
-      continue;
+    if (fuzzy.all && fuzzy.all.length && !fuzzy.all.every((s) => lk.includes(s))) continue;
+    if (fuzzy.any && fuzzy.any.length && !fuzzy.any.some((s) => lk.includes(s))) continue;
     return docs[k];
   }
   return null;
 }
 
-const firstNonEmpty = (...vals) =>
-  vals.find((x) => String(x || "").trim().length > 0) || "";
+function toDocUrl(v) {
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  if (Array.isArray(v) && v.length > 0) {
+    const first = v[0];
+    if (typeof first === "string") return first;
+    if (first && typeof first === "object" && first.url) return first.url;
+  }
+  if (typeof v === "object") {
+    if (v.url) return v.url;
+    if (v.link) return v.link;
+  }
+  return "";
+}
+
+const firstNonEmpty = (...vals) => vals.find((x) => String(x || "").trim().length > 0) || "";
 
 function extractTaskFromJobDetails(job_details, primaryService) {
   const grab = (obj) =>
@@ -449,9 +494,7 @@ function extractTasksListFromJobDetails(job_details, primaryService) {
       obj.title,
       typeof obj.name === "string" ? obj.name : ""
     );
-
   if (!job_details) return tasks;
-
   if (typeof job_details === "string") {
     job_details
       .split(/[,/]/)
@@ -460,7 +503,6 @@ function extractTasksListFromJobDetails(job_details, primaryService) {
       .forEach(add);
     return tasks;
   }
-
   if (Array.isArray(job_details)) {
     job_details.forEach((it) => {
       if (!it) return;
@@ -496,7 +538,6 @@ function extractTasksListFromJobDetails(job_details, primaryService) {
     });
     return tasks;
   }
-
   if (typeof job_details === "object") {
     if (primaryService && job_details[primaryService]) {
       const scoped = job_details[primaryService];
@@ -544,8 +585,20 @@ function extractTasksListFromJobDetails(job_details, primaryService) {
       });
     }
   }
-
   return tasks;
+}
+
+function peso(val) {
+  if (val === null || val === undefined || val === "") return "-";
+  const n = Number(val);
+  if (!isNaN(n)) {
+    try {
+      return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(n);
+    } catch {
+      return `₱${n}`;
+    }
+  }
+  return `₱${val}`;
 }
 
 function normalizeLocalPH10(v) {
@@ -597,13 +650,6 @@ function isImageUrl(url) {
   return /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(s);
 }
 
-function isPdfUrl(url) {
-  const s = String(url || "").trim().toLowerCase();
-  if (!s) return false;
-  if (s.startsWith("data:application/pdf")) return true;
-  return /\.pdf(\?|#|$)/i.test(s);
-}
-
 export default function WorkerApplicationMenu() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -616,12 +662,7 @@ export default function WorkerApplicationMenu() {
   const [searchTerm, setSearchTerm] = useState("");
   const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0, total: 0 });
   const [showDocs, setShowDocs] = useState(false);
-
-  const [previewDoc, setPreviewDoc] = useState({
-    open: false,
-    url: "",
-    label: "",
-  });
+  const [previewDoc, setPreviewDoc] = useState({ open: false, url: "", label: "" });
 
   const [docsFetched, setDocsFetched] = useState(null);
   const [docsLoading, setDocsLoading] = useState(false);
@@ -637,6 +678,30 @@ export default function WorkerApplicationMenu() {
   const [showReason, setShowReason] = useState(false);
   const [reasonTarget, setReasonTarget] = useState(null);
 
+  const [submittingConfirmCancel, setSubmittingConfirmCancel] = useState(false);
+  const [showConfirmCancelSuccess, setShowConfirmCancelSuccess] = useState(false);
+  const prevSubmittingRef = useRef(submittingConfirmCancel);
+
+  const [showDeclineLoading, setShowDeclineLoading] = useState(false);
+  const [showDeclineSuccess, setShowDeclineSuccess] = useState(false);
+  const [logoBrokenDecline, setLogoBrokenDecline] = useState(false);
+  const [logoBrokenDecline2, setLogoBrokenDecline2] = useState(false);
+
+  const [sectionOpen, setSectionOpen] = useState("info");
+
+  const fetchCounts = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/admin/workerapplications/count`, { withCredentials: true });
+      const c = res?.data || {};
+      setCounts({
+        pending: c.pending || 0,
+        approved: c.approved || 0,
+        declined: c.declined || 0,
+        total: c.total || 0,
+      });
+    } catch {}
+  };
+
   const closeView = () => setViewRow(null);
 
   const initialsFrom = (first, last) => {
@@ -650,21 +715,6 @@ export default function WorkerApplicationMenu() {
     </div>
   );
 
-  const fetchCounts = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/api/admin/workerapplications/count`, {
-        withCredentials: true,
-      });
-      const c = res?.data || {};
-      setCounts({
-        pending: c.pending || 0,
-        approved: c.approved || 0,
-        declined: c.declined || 0,
-        total: c.total || 0,
-      });
-    } catch {}
-  };
-
   const fetchItems = async (_statusArg = filter, qArg = searchTerm) => {
     setLoading(true);
     setLoadError("");
@@ -676,10 +726,8 @@ export default function WorkerApplicationMenu() {
         params,
         withCredentials: true,
       });
-
       const rawItems = Array.isArray(res?.data?.items) ? res.data.items : [];
       const items = rawItems.filter((r) => String(r.status || "").toLowerCase() !== "cancelled");
-
       const mapped = items.map((r) => {
         const i = parseMaybe(r.info || r.information || r.profile || {});
         const w = parseMaybe(r.work || r.details || r.work_details || {});
@@ -689,65 +737,62 @@ export default function WorkerApplicationMenu() {
           : Array.isArray(r.service_types)
           ? r.service_types
           : [];
-
-        const createdRaw = r.created_at || r.createdAt || i.created_at || i.createdAt || null;
+        const createdRaw =
+          r.created_at || r.createdAt || i.created_at || i.createdAt || null;
         const createdTs = parseDateTime(createdRaw)?.getTime() || 0;
         const s = String(r.status ?? "").trim().toLowerCase();
         const primaryService = st[0] || "";
         const taskFromDetails = extractTaskFromJobDetails(w.job_details, primaryService);
         const taskOrRole = firstNonEmpty(w.primary_task, w.role, taskFromDetails, w.work_description);
-
         const tasksList = [];
         const addTask = (val) => {
           const v = String(val || "").trim();
           if (!v) return;
           if (!tasksList.includes(v)) tasksList.push(v);
         };
-
         const fromDetailsList = extractTasksListFromJobDetails(w.job_details, primaryService);
         fromDetailsList.forEach(addTask);
         addTask(w.primary_task);
         addTask(w.role);
         addTask(taskFromDetails);
-
-        if (Array.isArray(w.service_tasks)) w.service_tasks.forEach(addTask);
-        if (Array.isArray(w.serviceTasks)) w.serviceTasks.forEach(addTask);
-
+        if (Array.isArray(w.service_tasks)) {
+          w.service_tasks.forEach(addTask);
+        }
+        if (Array.isArray(w.serviceTasks)) {
+          w.serviceTasks.forEach(addTask);
+        }
         if (typeof w.service_tasks === "string") {
           w.service_tasks
-            .split(/,/)
-            .map((x) => x.trim())
+            .split([/,/])
+            .map((s) => s.trim())
             .filter(Boolean)
             .forEach(addTask);
         }
-
         if (typeof w.serviceTasks === "string") {
           w.serviceTasks
-            .split(/,/)
-            .map((x) => x.trim())
+            .split([/,/])
+            .map((s) => s.trim())
             .filter(Boolean)
             .forEach(addTask);
         }
-
         const groupsFromServiceTask = normalizeServiceTask(w.service_task);
-        groupsFromServiceTask.forEach((g) => g.tasks.forEach(addTask));
+        groupsFromServiceTask.forEach(g => g.tasks.forEach(addTask));
 
-        const dobRaw =
-          firstNonEmpty(
-            i.date_of_birth,
-            i.birth_date,
-            i.birthdate,
-            i.birthDate,
-            i.dateOfBirth,
-            i.dob,
-            r.date_of_birth,
-            r.dob,
-            r.dateOfBirth,
-            r.birth_date,
-            r.birthDate,
-            r.date_of_birth_raw,
-            i.date_of_birth_raw
-          ) || null;
+        const dobRaw = firstNonEmpty(
+          i.date_of_birth,
+          i.birth_date,
+          i.birthdate,
+          i.birthDate,
+          i.dateOfBirth,
+          i.dob,
+          r.date_of_birth,
+          r.dob,
+          r.dateOfBirth,
+          r.birth_date,
+          r.birthDate,
+          r.date_of_birth_raw,
+          i.date_of_birth_raw
+        ) || null;
 
         const dobDisplay = firstNonEmpty(
           i.date_of_birth_display,
@@ -808,20 +853,14 @@ export default function WorkerApplicationMenu() {
           reason_other: r.reason_other || r.decline_reason_other || null,
           decision_reason: r.decision_reason || r.reason || null,
           decided_at_raw: r.decided_at || null,
-          decided_at_display: r.decided_at ? fmtDateTime(r.decided_at) : r.decided_at_display || "",
+          decided_at_display: r.decided_at ? fmtDateTime(r.decided_at) : r.decided_at_display || ""
         };
       });
 
       setRows(mapped);
-      const norm = (x) => String(x ?? "").trim().toLowerCase();
-      const pc = mapped.filter((x) => norm(x.status) === "pending").length;
-      const ac = mapped.filter((x) => norm(x.status) === "approved").length;
-      const dc = mapped.filter((x) => norm(x.status) === "declined").length;
-      setCounts({ pending: pc, approved: ac, declined: dc, total: pc + ac + dc });
     } catch (err) {
       setLoadError(err?.response?.data?.message || err?.message || "Failed to load");
       setRows([]);
-      setCounts({ pending: 0, approved: 0, declined: 0, total: 0 });
     } finally {
       setLoading(false);
     }
@@ -847,7 +886,9 @@ export default function WorkerApplicationMenu() {
         root.requiredDocs ||
         null;
 
-      const topLevel = (root?.data && (root.data.required_documents || root.data.requiredDocuments)) || null;
+      const topLevel =
+        (root?.data && (root.data.required_documents || root.data.requiredDocuments)) ||
+        null;
 
       const rd = parseMaybe(rdRaw || topLevel);
 
@@ -858,7 +899,7 @@ export default function WorkerApplicationMenu() {
     try {
       const urls = [
         `${API_BASE}/api/admin/workerapplications/group/${encodeURIComponent(gid)}`,
-        `${API_BASE}/api/workerapplications/group/${encodeURIComponent(gid)}`,
+        `${API_BASE}/api/workerapplications/group/${encodeURIComponent(gid)}`
       ];
 
       let merged = null;
@@ -914,9 +955,6 @@ export default function WorkerApplicationMenu() {
     }
   }, [selected, rows.length]);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 7;
-
   useEffect(() => {
     const t = setTimeout(() => {
       fetchItems(filter, searchTerm);
@@ -945,6 +983,29 @@ export default function WorkerApplicationMenu() {
       fetchRequiredDocs(viewRow.request_group_id);
     }
   }, [showDocs, viewRow?.request_group_id]);
+
+  useEffect(() => {
+    if (showConfirmCancelSuccess) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+  }, [showConfirmCancelSuccess]);
+
+  useEffect(() => {
+    if (prevSubmittingRef.current && !submittingConfirmCancel) {
+      setShowConfirmCancelSuccess(true);
+    }
+    prevSubmittingRef.current = submittingConfirmCancel;
+  }, [submittingConfirmCancel]);
+
+  useEffect(() => {
+    if (showDeclineLoading || showDeclineSuccess) {
+      document.body.style.overflow = "hidden";
+    } else if (!viewRow && !showConfirmCancelSuccess) {
+      document.body.style.overflow = "";
+    }
+  }, [showDeclineLoading, showDeclineSuccess, viewRow, showConfirmCancelSuccess]);
 
   const filteredRows = useMemo(() => {
     const f = String(filter || "all").toLowerCase();
@@ -995,12 +1056,7 @@ export default function WorkerApplicationMenu() {
         n.delete(id);
         return n;
       });
-      setCounts((c) => ({
-        ...c,
-        pending: Math.max(0, c.pending - 1),
-        approved: c.approved + 1,
-        total: Math.max(0, c.pending - 1) + c.approved + 1 + c.declined,
-      }));
+      fetchCounts();
     } catch (err) {
       setLoadError(err?.response?.data?.message || err?.message || "Failed to approve");
     }
@@ -1009,9 +1065,7 @@ export default function WorkerApplicationMenu() {
   const decline = async (id, payload = null) => {
     setLoadError("");
     try {
-      const res = await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/decline`, payload || {}, {
-        withCredentials: true,
-      });
+      const res = await axios.post(`${API_BASE}/api/admin/workerapplications/${id}/decline`, payload || {}, { withCredentials: true });
       const d = res?.data || {};
       setRows((r) =>
         r.map((x) =>
@@ -1023,7 +1077,7 @@ export default function WorkerApplicationMenu() {
                 reason_other: d.reason_other ?? payload?.reason_other ?? x.reason_other ?? null,
                 decision_reason: d.decision_reason ?? x.decision_reason ?? null,
                 decided_at_raw: d.decided_at || x.decided_at_raw || null,
-                decided_at_display: d.decided_at ? fmtDateTime(d.decided_at) : x.decided_at_display || "",
+                decided_at_display: d.decided_at ? fmtDateTime(d.decided_at) : (x.decided_at_display || "")
               }
             : x
         )
@@ -1033,12 +1087,7 @@ export default function WorkerApplicationMenu() {
         n.delete(id);
         return n;
       });
-      setCounts((c) => ({
-        ...c,
-        pending: Math.max(0, c.pending - 1),
-        declined: c.declined + 1,
-        total: Math.max(0, c.pending - 1) + c.approved + c.declined + 1,
-      }));
+      fetchCounts();
     } catch (err) {
       setLoadError(err?.response?.data?.message || err?.message || "Failed to decline");
       throw err;
@@ -1062,14 +1111,18 @@ export default function WorkerApplicationMenu() {
     setDeclineErr("");
     setShowDecline(false);
     await new Promise((r) => setTimeout(r, 30));
+    setShowDeclineLoading(true);
     setSubmittingDecline(true);
     try {
       await decline(declineTarget.id, { reason_choice: declineReason || null, reason_other: other || null });
       setDeclineTarget(null);
       await Promise.all([fetchCounts(), fetchItems(filter, searchTerm)]);
+      setShowDeclineLoading(false);
+      setShowDeclineSuccess(true);
     } catch (e) {
       setDeclineErr(e?.response?.data?.message || "Failed to decline. Try again.");
       setShowDecline(true);
+      setShowDeclineLoading(false);
     } finally {
       setSubmittingDecline(false);
     }
@@ -1091,7 +1144,17 @@ export default function WorkerApplicationMenu() {
     return parts.join(" — ") || "No reason provided.";
   };
 
+  const tabs = [
+    { key: "all", label: "All", count: counts.total },
+    { key: "pending", label: "Pending", count: counts.pending },
+    { key: "approved", label: "Approved", count: counts.approved },
+    { key: "declined", label: "Declined", count: counts.declined },
+  ];
+
   const COLSPAN = ENABLE_SELECTION ? 7 : 6;
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 7;
 
   const totalPages = useMemo(() => {
     const t = Math.ceil(sortedRows.length / pageSize);
@@ -1107,8 +1170,6 @@ export default function WorkerApplicationMenu() {
     return sortedRows.slice(start, start + pageSize);
   }, [sortedRows, currentPage]);
 
-  const [sectionOpen, setSectionOpen] = useState("info");
-
   const SectionButton = ({ k, label }) => {
     const active = sectionOpen === k;
     return (
@@ -1116,9 +1177,7 @@ export default function WorkerApplicationMenu() {
         onClick={() => setSectionOpen(k)}
         className={[
           "rounded-full px-3 py-1.5 text-xs md:text-sm border transition",
-          active
-            ? "bg-[#0b82ff] text-white border-[#0b82ff] shadow-sm"
-            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
+          active ? "bg-[#0b82ff] text-white border-[#0b82ff] shadow-sm" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
         ].join(" ")}
       >
         {label}
@@ -1152,7 +1211,8 @@ export default function WorkerApplicationMenu() {
     }
 
     if (sectionOpen === "work") {
-      const toolsText = viewRow?.tools_provided === true ? "Yes" : viewRow?.tools_provided === false ? "No" : "-";
+      const toolsText =
+        viewRow?.tools_provided === true ? "Yes" : viewRow?.tools_provided === false ? "No" : "-";
 
       return (
         <SectionCard
@@ -1174,7 +1234,10 @@ export default function WorkerApplicationMenu() {
             </div>
 
             <div className="lg:col-span-3">
-              <Field label="Service Type(s)" value={<ServiceTypesInline list={viewRow?.service_types} />} />
+              <Field
+                label="Service Type(s)"
+                value={<ServiceTypesInline list={viewRow?.service_types} />}
+              />
             </div>
 
             <div className="lg:col-span-3">
@@ -1195,6 +1258,37 @@ export default function WorkerApplicationMenu() {
     return null;
   };
 
+  const [serviceFilter, setServiceFilter] = useState("all");
+  const categoryMap = (serviceOrTask) => {
+    const s = String(serviceOrTask || "").trim().toLowerCase();
+    if (s === "car washing" || s === "carwasher" || s === "car washer" || /car\s*wash/.test(s)) return "carwasher";
+    if (s === "carpentry" || s === "carpenter") return "carpenter";
+    if (s === "electrical works" || s === "electrical work" || s === "electrician" || /electric/.test(s)) return "electrician";
+    if (s === "laundry" || /laund/.test(s)) return "laundry";
+    if (s === "plumbing" || s === "plumber") return "plumber";
+    return "";
+  };
+  const serviceCounts = useMemo(() => {
+    const counts = { all: rows.length, carwasher: 0, carpenter: 0, electrician: 0, laundry: 0, plumber: 0 };
+    for (const r of rows) {
+      const cand =
+        r.primary_service ||
+        (Array.isArray(r.service_types) && r.service_types.length ? r.service_types[0] : "") ||
+        r.task_or_role;
+      const k = categoryMap(cand);
+      if (k && counts[k] !== undefined) counts[k]++;
+    }
+    return counts;
+  }, [rows]);
+  const serviceTabs = [
+    { key: "all", label: "All" },
+    { key: "carwasher", label: "Carwasher" },
+    { key: "carpenter", label: "Carpenter" },
+    { key: "electrician", label: "Electrician" },
+    { key: "laundry", label: "Laundry" },
+    { key: "plumber", label: "Plumber" }
+  ];
+
   const docsObj = useMemo(() => {
     const fallback = viewRow?.docs || {};
     return docsFetched || viewRow?.required_documents || fallback;
@@ -1212,45 +1306,83 @@ export default function WorkerApplicationMenu() {
       {
         label: "Primary ID (Front)",
         links: getLinks(
-          ["primary_id_front", "primaryIdFront", "primary_id_front_url", "primary_id_front_link", "primary_id_front_image"],
+          [
+            "primary_id_front",
+            "primaryIdFront",
+            "primary_id_front_url",
+            "primary_id_front_link",
+            "primary_id_front_image",
+          ],
           { all: ["primary"], any: ["front"] }
         ),
       },
       {
         label: "Primary ID (Back)",
         links: getLinks(
-          ["primary_id_back", "primaryIdBack", "primary_id_back_url", "primary_id_back_link", "primary_id_back_image"],
+          [
+            "primary_id_back",
+            "primaryIdBack",
+            "primary_id_back_url",
+            "primary_id_back_link",
+            "primary_id_back_image",
+          ],
           { all: ["primary"], any: ["back"] }
         ),
       },
       {
         label: "Secondary ID",
         links: getLinks(
-          ["secondary_id", "secondaryId", "secondary_id_url", "secondary_id_link", "secondary_id_image"],
+          [
+            "secondary_id",
+            "secondaryId",
+            "secondary_id_url",
+            "secondary_id_link",
+            "secondary_id_image",
+          ],
           { all: ["secondary"], any: ["id"] }
         ),
       },
       {
         label: "NBI/Police Clearance",
         links: getLinks(
-          ["nbi_police_clearance", "nbiPoliceClearance", "police_clearance", "policeClearance", "nbi_clearance", "nbiClearance"],
+          [
+            "nbi_police_clearance",
+            "nbiPoliceClearance",
+            "police_clearance",
+            "policeClearance",
+            "nbi_clearance",
+            "nbiClearance",
+          ],
           { any: ["nbi", "police", "clearance"] }
         ),
       },
       {
         label: "Proof of Address",
         links: getLinks(
-          ["proof_of_address", "proofOfAddress", "address_proof", "addressProof", "billing_proof", "billingProof"],
+          [
+            "proof_of_address",
+            "proofOfAddress",
+            "address_proof",
+            "addressProof",
+            "billing_proof",
+            "billingProof",
+          ],
           { all: ["proof"], any: ["address", "billing"] }
         ),
       },
       {
         label: "Medical Certificate",
-        links: getLinks(["medical_certificate", "medicalCertificate", "med_certificate", "medCertificate"], {
-          all: ["medical"],
-          any: ["certificate", "cert"],
-        }),
+        links: getLinks(
+          [
+            "medical_certificate",
+            "medicalCertificate",
+            "med_certificate",
+            "medCertificate",
+          ],
+          { all: ["medical"], any: ["certificate", "cert"] }
+        ),
       },
+
       {
         label: "TESDA Carpentry Certificate",
         links: getLinks(
@@ -1284,7 +1416,14 @@ export default function WorkerApplicationMenu() {
       {
         label: "TESDA Plumbing Certificate",
         links: getLinks(
-          ["tesda_plumbing_certificate", "tesdaPlumbingCertificate", "tesda_plumbing", "tesdaPlumbing", "plumbing_certificate", "plumbingCertificate"],
+          [
+            "tesda_plumbing_certificate",
+            "tesdaPlumbingCertificate",
+            "tesda_plumbing",
+            "tesdaPlumbing",
+            "plumbing_certificate",
+            "plumbingCertificate",
+          ],
           { all: ["tesda"], any: ["plumb"] }
         ),
       },
@@ -1309,17 +1448,19 @@ export default function WorkerApplicationMenu() {
       {
         label: "TESDA Laundry Certificate",
         links: getLinks(
-          ["tesda_laundry_certificate", "tesdaLaundryCertificate", "tesda_laundry", "tesdaLaundry", "laundry_certificate", "laundryCertificate"],
+          [
+            "tesda_laundry_certificate",
+            "tesdaLaundryCertificate",
+            "tesda_laundry",
+            "tesdaLaundry",
+            "laundry_certificate",
+            "laundryCertificate",
+          ],
           { all: ["tesda"], any: ["laundry"] }
         ),
       },
     ];
   }, [docsObj]);
-
-  const openPreview = (url, label) => {
-    if (!url) return;
-    setPreviewDoc({ open: true, url, label });
-  };
 
   return (
     <>
@@ -1347,12 +1488,7 @@ export default function WorkerApplicationMenu() {
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium text-gray-700">Filter</span>
                 <div className="flex items-center gap-2">
-                  {[
-                    { key: "all", label: "All", count: counts.total },
-                    { key: "pending", label: "Pending", count: counts.pending },
-                    { key: "approved", label: "Approved", count: counts.approved },
-                    { key: "declined", label: "Declined", count: counts.declined },
-                  ].map((t) => {
+                  {[{ key:"all",label:"All",count:counts.total },{ key:"pending",label:"Pending",count:counts.pending },{ key:"approved",label:"Approved",count:counts.approved },{ key:"declined",label:"Declined",count:counts.declined }].map((t) => {
                     const active = filter === t.key;
                     return (
                       <button
@@ -1416,10 +1552,14 @@ export default function WorkerApplicationMenu() {
             <div className="px-6 mt-3">
               <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
                 {loading && (
-                  <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">Loading…</div>
+                  <div className="px-4 py-3 text-sm text-blue-700 bg-blue-50 border-b border-blue-100">
+                    Loading…
+                  </div>
                 )}
                 {loadError && !loading && (
-                  <div className="px-4 py-3 text-sm text-red-700 bg-red-50 border-b border-red-100">{loadError}</div>
+                  <div className="px-4 py-3 text-sm text-red-700 bg-red-50 border-b border-red-100">
+                    {loadError}
+                  </div>
                 )}
 
                 <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
@@ -1456,7 +1596,9 @@ export default function WorkerApplicationMenu() {
                             className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 min-w-[260px]"
                             onClick={() => toggleSort("service_types_lex")}
                           >
-                            <span className="inline-flex items-center">Service Type</span>
+                            <span className="inline-flex items-center">
+                              Service Type
+                            </span>
                           </th>
                           <th
                             className="sticky top-0 z-10 bg-white px-4 py-3 font-semibold text-gray-700 cursor-pointer select-none border border-gray-200 whitespace-nowrap w-[220px]"
@@ -1502,11 +1644,7 @@ export default function WorkerApplicationMenu() {
 
                               <td className="px-4 py-4 border border-gray-200 w-[180px] min-w-[180px]">
                                 <div className="min-w-0">
-                                  <div
-                                    className={`text-gray-900 truncate ${
-                                      BOLD_FIRST_NAME ? "font-medium" : "font-normal"
-                                    } font-semibold`}
-                                  >
+                                  <div className={`text-gray-900 truncate ${BOLD_FIRST_NAME ? "font-medium" : "font-normal"} font-semibold`}>
                                     {fullName || "-"}
                                   </div>
                                 </div>
@@ -1525,20 +1663,14 @@ export default function WorkerApplicationMenu() {
                                 <StatusPill value={u.status} />
                               </td>
 
-                              <td
-                                className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}
-                              >
+                              <td className={`px-4 py-4 w-40 ${ACTION_ALIGN_RIGHT ? "text-right" : "text-left"} border border-gray-200`}>
                                 <div className="inline-flex gap-2">
                                   <button
-                                    onClick={() => {
-                                      setViewRow(u);
-                                      setSectionOpen("info");
-                                    }}
+                                    onClick={() => { setViewRow(u); setSectionOpen("info"); }}
                                     className="inline-flex items-center rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                                   >
                                     View
                                   </button>
-
                                   {isDeclined ? (
                                     <button
                                       onClick={() => openReasonModal(u)}
@@ -1609,7 +1741,7 @@ export default function WorkerApplicationMenu() {
                         </button>
                       ))}
                       <button
-                        className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        className="h-9 px-3 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
                         disabled={currentPage >= totalPages}
                         aria-label="Next page"
                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
@@ -1668,10 +1800,7 @@ export default function WorkerApplicationMenu() {
                               currentTarget.style.display = "none";
                               const parent = currentTarget.parentElement;
                               if (parent) {
-                                parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${initialsFrom(
-                                  viewRow?.name_first,
-                                  viewRow?.name_last
-                                )}</div>`;
+                                parent.innerHTML = `<div class="w-full h-full grid place-items-center text-xl font-semibold text-[#0b82ff]">${initialsFrom(viewRow?.name_first, viewRow?.name_last)}</div>`;
                               }
                             }}
                           />
@@ -1692,14 +1821,22 @@ export default function WorkerApplicationMenu() {
                     </div>
 
                     <div className="mt-5 grid grid-cols-1 gap-3">
-                      <QuickItem icon={<CalendarDays className="h-4 w-4" />} label="Created" value={viewRow?.created_at_display || "-"} />
+                      <QuickItem
+                        icon={<CalendarDays className="h-4 w-4" />}
+                        label="Created"
+                        value={viewRow?.created_at_display || "-"}
+                      />
                     </div>
 
                     <div className="mt-5">
                       <div className="mt-2 grid grid-cols-1 gap-2">
                         <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                          <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">Application ID</div>
-                          <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">{viewRow?.id || "-"}</div>
+                          <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
+                            Application ID
+                          </div>
+                          <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
+                            {viewRow?.id || "-"}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1729,7 +1866,9 @@ export default function WorkerApplicationMenu() {
                       </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto blue-scroll pt-3">{renderSection()}</div>
+                    <div className="flex-1 overflow-y-auto blue-scroll pt-3">
+                      {renderSection()}
+                    </div>
 
                     <div className="pt-4 flex justify-end shrink-0">
                       <button
@@ -1740,6 +1879,7 @@ export default function WorkerApplicationMenu() {
                         Done
                       </button>
                     </div>
+
                   </div>
                 </section>
               </div>
@@ -1755,7 +1895,10 @@ export default function WorkerApplicationMenu() {
             tabIndex={-1}
             className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4"
           >
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDocs(false)} />
+            <div
+              className="absolute inset-0 bg-black/0.5 backdrop-blur-sm"
+              onClick={() => setShowDocs(false)}
+            />
 
             {previewDoc.open && (
               <div className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4">
@@ -1764,7 +1907,7 @@ export default function WorkerApplicationMenu() {
                   onClick={() => setPreviewDoc({ open: false, url: "", label: "" })}
                 />
 
-                <div className="relative w-full max-w-4xl max-h-[85vh] rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+                <div className="relative w-full max-w-3xl max-h-[85vh] rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
                   <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 bg-gray-50">
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-gray-900 truncate">
@@ -1781,35 +1924,12 @@ export default function WorkerApplicationMenu() {
                     </button>
                   </div>
 
-                  <div className="p-4 bg-white flex flex-col gap-3 items-center justify-center max-h-[75vh] overflow-auto">
-                    {isImageUrl(previewDoc.url) ? (
-                      <img
-                        src={previewDoc.url}
-                        alt={previewDoc.label || "Preview"}
-                        className="max-w-full max-h-[70vh] object-contain rounded-lg border border-gray-200 pointer-events-none select-none"
-                        draggable={false}
-                      />
-                    ) : (
-                      <div className="w-full">
-                        <div className="w-full h-[70vh] rounded-lg border border-gray-200 overflow-hidden bg-white">
-                          <iframe
-                            title={previewDoc.label || "Document"}
-                            src={previewDoc.url}
-                            className="w-full h-full"
-                          />
-                        </div>
-
-                        {!isPdfUrl(previewDoc.url) && (
-                          <div className="mt-3 text-center text-xs text-gray-500">
-                            If preview is blocked, click{" "}
-                            <a href={previewDoc.url} className="text-blue-600 underline">
-                              open here
-                            </a>
-                            .
-                          </div>
-                        )}
-                      </div>
-                    )}
+                  <div className="p-4 bg-white flex items-center justify-center max-h-[75vh] overflow-auto">
+                    <img
+                      src={previewDoc.url}
+                      alt={previewDoc.label || "Preview"}
+                      className="max-w-full max-h-[70vh] object-contain rounded-lg border border-gray-200"
+                    />
                   </div>
                 </div>
               </div>
@@ -1820,7 +1940,9 @@ export default function WorkerApplicationMenu() {
                 <div className="px-6 sm:px-8 py-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="text-[11px] font-semibold tracking-[0.25em] uppercase text-gray-500">Worker Application</div>
+                      <div className="text-[11px] font-semibold tracking-[0.25em] uppercase text-gray-500">
+                        Worker Application
+                      </div>
                       <div className="mt-1 text-lg font-semibold text-gray-900">Documents</div>
                     </div>
 
@@ -1872,14 +1994,22 @@ export default function WorkerApplicationMenu() {
                     </div>
 
                     <div className="mt-5 grid grid-cols-1 gap-3">
-                      <QuickItem icon={<CalendarDays className="h-4 w-4" />} label="Created" value={viewRow?.created_at_display || "-"} />
+                      <QuickItem
+                        icon={<CalendarDays className="h-4 w-4" />}
+                        label="Created"
+                        value={viewRow?.created_at_display || "-"}
+                      />
                     </div>
 
                     <div className="mt-5">
                       <div className="mt-2 grid grid-cols-1 gap-2">
                         <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                          <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">Application ID</div>
-                          <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">{viewRow?.id || "-"}</div>
+                          <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500">
+                            Application ID
+                          </div>
+                          <div className="mt-1 font-mono text-[13px] text-gray-900 break-all">
+                            {viewRow?.id || "-"}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1917,28 +2047,17 @@ export default function WorkerApplicationMenu() {
                             const links = Array.isArray(cfg.links) ? cfg.links.filter(Boolean) : [];
                             const first = links[0] || "";
                             const img = first && isImageUrl(first);
-
                             return (
                               <div key={cfg.label} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                                 <div className="p-4">
-                                  {first ? (
-                                    img ? (
-                                      <img
-                                        src={first}
-                                        alt={cfg.label}
-                                        className="w-full h-44 object-contain pointer-events-none select-none"
-                                        draggable={false}
-                                      />
-                                    ) : (
-                                      <div className="h-44 grid place-items-center text-sm text-gray-500">
-                                        Preview not available
-                                      </div>
-                                    )
+                                  {img && first ? (
+                                    <img src={first} alt={cfg.label} className="w-full h-44 object-contain" />
                                   ) : (
-                                    <div className="h-44 grid place-items-center text-sm text-gray-500">No document</div>
+                                    <div className="h-44 grid place-items-center text-sm text-gray-500">
+                                      {first ? "Preview not available" : "No document"}
+                                    </div>
                                   )}
                                 </div>
-
                                 <div className="px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                   <div className="flex-1 min-w-0 overflow-hidden">
                                     <div className="flex items-center gap-2 min-w-0 text-sm font-semibold text-gray-800">
@@ -1947,18 +2066,31 @@ export default function WorkerApplicationMenu() {
                                     </div>
 
                                     {links.length > 1 && (
-                                      <div className="text-[11px] text-gray-500 mt-0.5">{links.length} files</div>
+                                      <div className="text-[11px] text-gray-500 mt-0.5">
+                                        {links.length} files
+                                      </div>
                                     )}
                                   </div>
 
                                   {first ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => openPreview(first, cfg.label)}
-                                      className="shrink-0 inline-flex items-center justify-center rounded-md border border-blue-300 px-4 h-9 text-sm font-medium text-blue-600 hover:bg-blue-50 whitespace-nowrap"
-                                    >
-                                      Open
-                                    </button>
+                                    isImageUrl(first) ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setPreviewDoc({ open: true, url: first, label: cfg.label })}
+                                        className="shrink-0 inline-flex items-center justify-center rounded-md border border-blue-300 px-4 h-9 text-sm font-medium text-blue-600 hover:bg-blue-50 whitespace-nowrap"
+                                      >
+                                        Open
+                                      </button>
+                                    ) : (
+                                      <a
+                                        href={first}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="shrink-0 inline-flex items-center justify-center rounded-md border border-blue-300 px-4 h-9 text-sm font-medium text-blue-600 hover:bg-blue-50 whitespace-nowrap"
+                                      >
+                                        Open
+                                      </a>
+                                    )
                                   ) : (
                                     <span className="text-sm text-gray-400 shrink-0 whitespace-nowrap">No link</span>
                                   )}
@@ -1967,16 +2099,28 @@ export default function WorkerApplicationMenu() {
                                 {links.length > 1 && (
                                   <div className="px-4 pb-4">
                                     <div className="flex flex-wrap gap-2">
-                                      {links.slice(1).map((u, idx) => (
-                                        <button
-                                          key={`${cfg.label}-${idx}`}
-                                          type="button"
-                                          onClick={() => openPreview(u, `${cfg.label} #${idx + 2}`)}
-                                          className="inline-flex items-center justify-center rounded-md border border-gray-200 px-3 h-8 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                                        >
-                                          Open #{idx + 2}
-                                        </button>
-                                      ))}
+                                      {links.slice(1).map((u, idx) =>
+                                        isImageUrl(u) ? (
+                                          <button
+                                            key={`${cfg.label}-${idx}`}
+                                            type="button"
+                                            onClick={() => setPreviewDoc({ open: true, url: u, label: `${cfg.label} #${idx + 2}` })}
+                                            className="inline-flex items-center justify-center rounded-md border border-gray-200 px-3 h-8 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                          >
+                                            Open #{idx + 2}
+                                          </button>
+                                        ) : (
+                                          <a
+                                            key={`${cfg.label}-${idx}`}
+                                            href={u}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center justify-center rounded-md border border-gray-200 px-3 h-8 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                          >
+                                            Open #{idx + 2}
+                                          </a>
+                                        )
+                                      )}
                                     </div>
                                   </div>
                                 )}
@@ -1989,105 +2133,9 @@ export default function WorkerApplicationMenu() {
                       )}
                     </div>
 
-                    <div className="pt-4 flex justify-end shrink-0" />
+                    <div className="pt-4 flex justify-end shrink-0"></div>
                   </div>
                 </section>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showDecline && (
-          <div className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDecline(false)} />
-            <div className="relative w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
-                <div className="text-sm font-semibold text-gray-900">Decline Application</div>
-              </div>
-              <div className="p-5 space-y-3">
-                <div className="text-sm text-gray-600">
-                  Select a reason or write your own.
-                </div>
-
-                <div className="space-y-2">
-                  {["Incomplete details", "Not clear documents", "Outside service area", "Pricing too high"].map((r) => {
-                    const active = declineReason === r;
-                    return (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setDeclineReason(active ? "" : r)}
-                        className={[
-                          "w-full text-left rounded-xl border px-4 py-3 text-sm font-semibold transition",
-                          active
-                            ? "border-red-300 bg-red-50 text-red-700"
-                            : "border-gray-200 bg-white text-gray-800 hover:bg-gray-50",
-                        ].join(" ")}
-                      >
-                        {r}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div>
-                  <div className="text-[11px] font-semibold tracking-wide uppercase text-gray-500 mb-1">
-                    Other (optional)
-                  </div>
-                  <input
-                    value={declineOther}
-                    onChange={(e) => setDeclineOther(e.target.value)}
-                    placeholder="Write your reason…"
-                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30"
-                  />
-                </div>
-
-                {declineErr && (
-                  <div className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
-                    {declineErr}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowDecline(false)}
-                    className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={submittingDecline}
-                    onClick={submitDecline}
-                    className="inline-flex items-center justify-center rounded-xl border border-red-300 bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-                  >
-                    Decline
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showReason && (
-          <div className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowReason(false)} />
-            <div className="relative w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
-                <div className="text-sm font-semibold text-gray-900">Decline Reason</div>
-              </div>
-              <div className="p-5 space-y-3">
-                <div className="text-sm text-gray-700 leading-relaxed">{getReasonText(reasonTarget)}</div>
-                <div className="flex items-center justify-end pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowReason(false)}
-                    className="inline-flex items-center justify-center rounded-xl border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
-                  >
-                    Close
-                  </button>
-                </div>
               </div>
             </div>
           </div>
