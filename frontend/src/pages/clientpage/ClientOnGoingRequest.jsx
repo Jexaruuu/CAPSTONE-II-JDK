@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
-import ClientNavigation from '../../clientcomponents/ClientNavigation';
-import ClientFooter from '../../clientcomponents/ClientFooter';
+import React, { useState, useEffect, useMemo } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
+import ClientNavigation from "../../clientcomponents/ClientNavigation";
+import ClientFooter from "../../clientcomponents/ClientFooter";
+import { supabase } from "../../../supabase-client";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-const GLOBAL_DESC_KEY = 'clientServiceDescription';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const GLOBAL_DESC_KEY = "clientServiceDescription";
 
 export default function ClientOnGoingRequest() {
   const location = useLocation();
@@ -19,43 +20,63 @@ export default function ClientOnGoingRequest() {
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, []);
 
   const buildAppU = () => {
     try {
-      const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
-      const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
-      const e = a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
-      return encodeURIComponent(JSON.stringify({ r: 'client', e, au }));
+      const a = JSON.parse(localStorage.getItem("clientAuth") || "{}");
+      const au =
+        a.auth_uid ||
+        a.authUid ||
+        a.uid ||
+        a.id ||
+        localStorage.getItem("auth_uid") ||
+        "";
+      const e =
+        a.email ||
+        localStorage.getItem("client_email") ||
+        localStorage.getItem("email_address") ||
+        localStorage.getItem("email") ||
+        "";
+      return encodeURIComponent(JSON.stringify({ r: "client", e, au }));
     } catch {
-      return '';
+      return "";
     }
   };
 
   const appU = useMemo(() => buildAppU(), []);
-  const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
+  const headersWithU = useMemo(() => (appU ? { "x-app-u": appU } : {}), [appU]);
 
   const getClientEmail = () => {
     try {
-      const a = JSON.parse(localStorage.getItem('clientAuth') || '{}');
-      return a.email || localStorage.getItem('client_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+      const a = JSON.parse(localStorage.getItem("clientAuth") || "{}");
+      return (
+        a.email ||
+        localStorage.getItem("client_email") ||
+        localStorage.getItem("email_address") ||
+        localStorage.getItem("email") ||
+        ""
+      );
     } catch {
-      return '';
+      return "";
     }
   };
 
   useEffect(() => {
     const fetchMe = async () => {
       try {
-        const { data } = await axios.get(`${API_BASE}/api/clients/me`, { withCredentials: true, headers: headersWithU });
+        const { data } = await axios.get(`${API_BASE}/api/clients/me`, {
+          withCredentials: true,
+          headers: headersWithU,
+        });
         const cid = data?.id || null;
         const au = data?.auth_uid || null;
-        if (cid) localStorage.setItem('client_id', String(cid));
-        if (au) localStorage.setItem('auth_uid', String(au));
+        if (cid) localStorage.setItem("client_id", String(cid));
+        if (au) localStorage.setItem("auth_uid", String(au));
         setClientIdState(cid || null);
       } catch {
-        const cidLS = localStorage.getItem('client_id');
+        const cidLS = localStorage.getItem("client_id");
         setClientIdState(cidLS ? Number(cidLS) : null);
       }
     };
@@ -68,10 +89,15 @@ export default function ClientOnGoingRequest() {
       if (!id) return;
       setLoading(true);
       try {
-        const { data } = await axios.get(`${API_BASE}/api/clientservicerequests/by-group/${encodeURIComponent(id)}`, {
-          withCredentials: true,
-          headers: headersWithU
-        });
+        const { data } = await axios.get(
+          `${API_BASE}/api/clientservicerequests/by-group/${encodeURIComponent(
+            id,
+          )}`,
+          {
+            withCredentials: true,
+            headers: headersWithU,
+          },
+        );
         if (!cancelled) setRow(data || null);
       } catch {
         if (!cancelled) setRow(null);
@@ -96,9 +122,9 @@ export default function ClientOnGoingRequest() {
           if (!cancelled) setRow(null);
         } else {
           const { data } = await axios.get(`${API_BASE}/api/clientservicerequests`, {
-            params: { scope: 'current', email, limit: 1 },
+            params: { scope: "current", email, limit: 1 },
             withCredentials: true,
-            headers: headersWithU
+            headers: headersWithU,
           });
           const item = Array.isArray(data?.items) ? data.items[0] || null : null;
           if (!cancelled) setRow(item);
@@ -121,15 +147,15 @@ export default function ClientOnGoingRequest() {
     const prevH = html.style.overflow;
     const prevB = body.style.overflow;
     if (loading || leaving) {
-      html.style.overflow = 'hidden';
-      body.style.overflow = 'hidden';
+      html.style.overflow = "hidden";
+      body.style.overflow = "hidden";
     } else {
-      html.style.overflow = prevH || '';
-      body.style.overflow = prevB || '';
+      html.style.overflow = prevH || "";
+      body.style.overflow = prevB || "";
     }
     return () => {
-      html.style.overflow = prevH || '';
-      body.style.overflow = prevB || '';
+      html.style.overflow = prevH || "";
+      body.style.overflow = prevB || "";
     };
   }, [loading, leaving]);
 
@@ -142,25 +168,33 @@ export default function ClientOnGoingRequest() {
 
   const savedDetails = (() => {
     try {
-      return JSON.parse(localStorage.getItem('clientServiceRequestDetails') || '{}');
+      return JSON.parse(localStorage.getItem("clientServiceRequestDetails") || "{}");
     } catch {
       return {};
     }
   })();
 
-  const service_type = detR.service_type ?? s.service_type ?? savedDetails.serviceType;
-  const service_task = detR.service_task ?? s.service_task ?? savedDetails.serviceTask;
-  const preferred_date = detR.preferred_date ?? s.preferred_date ?? savedDetails.preferredDate;
-  const preferred_time = detR.preferred_time ?? s.preferred_time ?? savedDetails.preferredTime;
+  const service_type =
+    detR.service_type ?? s.service_type ?? savedDetails.serviceType;
+  const service_task =
+    detR.service_task ?? s.service_task ?? savedDetails.serviceTask;
+  const preferred_date =
+    detR.preferred_date ?? s.preferred_date ?? savedDetails.preferredDate;
+  const preferred_time =
+    detR.preferred_time ?? s.preferred_time ?? savedDetails.preferredTime;
   const is_urgent = detR.is_urgent ?? s.is_urgent ?? savedDetails.isUrgent;
-  const tools_provided = detR.tools_provided ?? s.tools_provided ?? savedDetails.toolsProvided;
-  const service_description = detR.service_description ?? s.service_description ?? savedDetails.serviceDescription;
+  const tools_provided =
+    detR.tools_provided ?? s.tools_provided ?? savedDetails.toolsProvided;
+  const service_description =
+    detR.service_description ??
+    s.service_description ??
+    savedDetails.serviceDescription;
   const review_image =
     detR.request_image_url ||
     detR.image ||
     (Array.isArray(savedDetails.attachments) && savedDetails.attachments[0]) ||
     savedDetails.image ||
-    '';
+    "";
 
   const workers_needed =
     detR.workers_needed ??
@@ -171,34 +205,15 @@ export default function ClientOnGoingRequest() {
     savedDetails.workers_need ??
     null;
 
-  const unitsVal =
-    rateR.units ??
-    rateR.unit ??
-    s.units ??
-    savedDetails.units ??
-    null;
+  const unitsVal = rateR.units ?? rateR.unit ?? s.units ?? savedDetails.units ?? null;
 
   const unitKgVal =
-    rateR.unit_kg ??
-    rateR.unitKg ??
-    s.unit_kg ??
-    savedDetails.unit_kg ??
-    null;
+    rateR.unit_kg ?? rateR.unitKg ?? s.unit_kg ?? savedDetails.unit_kg ?? null;
 
-  const sqMVal =
-    rateR.sq_m ??
-    rateR.sqm ??
-    rateR.sqM ??
-    s.sq_m ??
-    savedDetails.sq_m ??
-    null;
+  const sqMVal = rateR.sq_m ?? rateR.sqm ?? rateR.sqM ?? s.sq_m ?? savedDetails.sq_m ?? null;
 
   const piecesVal =
-    rateR.pieces ??
-    rateR.pcs ??
-    s.pieces ??
-    savedDetails.pieces ??
-    null;
+    rateR.pieces ?? rateR.pcs ?? s.pieces ?? savedDetails.pieces ?? null;
 
   const total_rate_php =
     rateR.total_rate_php ??
@@ -210,94 +225,115 @@ export default function ClientOnGoingRequest() {
     null;
 
   const normalizePeso = (v) => {
-    if (v === null || v === undefined || v === '') return null;
+    if (v === null || v === undefined || v === "") return null;
     const s2 = String(v).trim();
     if (!s2) return null;
-    if (s2.startsWith('₱')) return s2;
-    const m = s2.replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+    if (s2.startsWith("₱")) return s2;
+    const m = s2.replace(/,/g, "").match(/-?\d+(\.\d+)?/);
     if (!m) return s2;
     const n = Number(m[0]);
     if (!Number.isFinite(n)) return s2;
-    return `₱${new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`;
+    return `₱${new Intl.NumberFormat("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(n)}`;
   };
 
   const totalRateDisplay = normalizePeso(total_rate_php);
 
   const unitsDisplay = (() => {
-    const hasSq = sqMVal !== null && sqMVal !== undefined && String(sqMVal).trim() !== '';
-    const hasPc = piecesVal !== null && piecesVal !== undefined && String(piecesVal).trim() !== '';
-    const hasKg = unitKgVal !== null && unitKgVal !== undefined && String(unitKgVal).trim() !== '';
-    const hasU = unitsVal !== null && unitsVal !== undefined && String(unitsVal).trim() !== '';
+    const hasSq = sqMVal !== null && sqMVal !== undefined && String(sqMVal).trim() !== "";
+    const hasPc =
+      piecesVal !== null && piecesVal !== undefined && String(piecesVal).trim() !== "";
+    const hasKg =
+      unitKgVal !== null && unitKgVal !== undefined && String(unitKgVal).trim() !== "";
+    const hasU = unitsVal !== null && unitsVal !== undefined && String(unitsVal).trim() !== "";
 
     if (hasSq) return `${sqMVal} sq.m`;
     if (hasPc) return `${piecesVal} pcs`;
-    if (String(service_type || '').toLowerCase() === 'laundry' && hasKg) return `${unitKgVal} kg`;
+    if (String(service_type || "").toLowerCase() === "laundry" && hasKg) return `${unitKgVal} kg`;
     if (hasKg) return `${unitKgVal}`;
     if (hasU) return `${unitsVal}`;
     return null;
   })();
 
   const formatTime12h = (t) => {
-    if (!t || typeof t !== 'string' || !t.includes(':')) return t || '-';
-    const [hh, mm] = t.split(':');
+    if (!t || typeof t !== "string" || !t.includes(":")) return t || "-";
+    const [hh, mm] = t.split(":");
     let h = parseInt(hh, 10);
     if (Number.isNaN(h)) return t;
-    const suffix = h >= 12 ? 'PM' : 'AM';
+    const suffix = h >= 12 ? "PM" : "AM";
     h = h % 12;
     if (h === 0) h = 12;
     return `${h}:${mm} ${suffix}`;
   };
 
   const formatDateMDY = (d) => {
-    if (!d) return d || '-';
+    if (!d) return d || "-";
     const tryDate = new Date(d);
     if (!Number.isNaN(tryDate.getTime())) {
-      const mm = String(tryDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(tryDate.getDate()).padStart(2, '0');
+      const mm = String(tryDate.getMonth() + 1).padStart(2, "0");
+      const dd = String(tryDate.getDate()).padStart(2, "0");
       const yyyy = String(tryDate.getFullYear());
       return `${mm}/${dd}/${yyyy}`;
     }
-    const parts = String(d).split('-');
+    const parts = String(d).split("-");
     if (parts.length === 3) {
       const [yyyy, mm, dd] = parts;
-      return `${String(mm).padStart(2, '0')}/${String(dd).padStart(2, '0')}/${yyyy}`;
+      return `${String(mm).padStart(2, "0")}/${String(dd).padStart(2, "0")}/${yyyy}`;
     }
     return d;
   };
 
   const toBoolStrict = (v) => {
-    if (typeof v === 'boolean') return v;
-    if (v === 1 || v === '1') return true;
-    if (v === 0 || v === '0') return false;
-    const s2 = String(v ?? '').trim().toLowerCase();
-    if (['yes', 'y', 'true', 't'].includes(s2)) return true;
-    if (['no', 'n', 'false', 'f'].includes(s2)) return false;
+    if (typeof v === "boolean") return v;
+    if (v === 1 || v === "1") return true;
+    if (v === 0 || v === "0") return false;
+    const s2 = String(v ?? "")
+      .trim()
+      .toLowerCase();
+    if (["yes", "y", "true", "t"].includes(s2)) return true;
+    if (["no", "n", "false", "f"].includes(s2)) return false;
     return false;
   };
 
-  const LabelValue = ({ label, value, emptyAs = '-' }) => {
+  const LabelValue = ({ label, value, emptyAs = "-" }) => {
     const isElement = React.isValidElement(value);
-    const mapped = typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value;
-    const isEmpty = !isElement && (mapped === null || mapped === undefined || (typeof mapped === 'string' && mapped.trim() === ''));
+    const mapped = typeof value === "boolean" ? (value ? "Yes" : "No") : value;
+    const isEmpty =
+      !isElement &&
+      (mapped === null ||
+        mapped === undefined ||
+        (typeof mapped === "string" && mapped.trim() === ""));
     const display = isElement ? value : isEmpty ? emptyAs : mapped;
-    const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
+    const labelText = `${String(label || "").replace(/:?\s*$/, "")}:`;
     return (
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="text-gray-700 font-semibold">{labelText}</span>
         {isElement ? (
-          <div className="text-[15px] md:text-base text-[#008cfc] font-semibold">{display}</div>
+          <div className="text-[15px] md:text-base text-[#008cfc] font-semibold">
+            {display}
+          </div>
         ) : (
-          <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">{display}</span>
+          <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">
+            {display}
+          </span>
         )}
       </div>
     );
   };
 
-  const statusNow = String(fx.status || fx.request_status || detR.status || '').toLowerCase();
-  const startedAt = progressR.started_at || progressR.service_started_at || fx.started_at || fx.service_started_at || null;
+  const statusNow = String(fx.status || fx.request_status || detR.status || "").toLowerCase();
+  const startedAt =
+    progressR.started_at ||
+    progressR.service_started_at ||
+    fx.started_at ||
+    fx.service_started_at ||
+    null;
   const workStartAt = progressR.work_started_at || progressR.begin_at || null;
   const workEndAt = progressR.work_completed_at || progressR.completed_at || null;
-  const clientConfirmAt = progressR.client_confirmed_at || progressR.confirmed_done_at || null;
+  const clientConfirmAt =
+    progressR.client_confirmed_at || progressR.confirmed_done_at || null;
 
   const scheduledAt =
     preferred_date ||
@@ -311,18 +347,20 @@ export default function ClientOnGoingRequest() {
     null;
 
   const steps = [
-    { key: 'scheduled', label: 'Scheduled', at: scheduledAt },
-    { key: 'inservice', label: 'In Service', at: workStartAt || null },
-    { key: 'review', label: 'Quality Review', at: workEndAt || null },
+    { key: "scheduled", label: "Scheduled", at: scheduledAt },
+    { key: "inservice", label: "In Service", at: workStartAt || null },
+    { key: "review", label: "Quality Review", at: workEndAt || null },
     {
-      key: 'completed',
-      label: 'Completed',
-      at: clientConfirmAt || (statusNow === 'completed' ? workEndAt || new Date().toISOString() : null)
-    }
+      key: "completed",
+      label: "Completed",
+      at:
+        clientConfirmAt ||
+        (statusNow === "completed" ? workEndAt || new Date().toISOString() : null),
+    },
   ];
 
   const stepIndex = (() => {
-    if (clientConfirmAt || statusNow === 'completed') return 3;
+    if (clientConfirmAt || statusNow === "completed") return 3;
     if (workEndAt) return 2;
     if (workStartAt) return 1;
     if (steps[0].at) return 0;
@@ -344,7 +382,7 @@ export default function ClientOnGoingRequest() {
     } catch {}
     await new Promise((r) => setTimeout(r, 250));
     if (window.history.length > 1) navigate(-1);
-    else navigate('/clientdashboard', { replace: true });
+    else navigate("/clientdashboard", { replace: true });
   };
 
   const pick = (obj, keys) => {
@@ -355,14 +393,24 @@ export default function ClientOnGoingRequest() {
     return null;
   };
 
-  const workerRaw = fx.worker || fx.accepted_worker || fx.assigned_worker || fx.assignee || fx.provider || fx.worker_info || {};
+  const workerRaw =
+    fx.worker ||
+    fx.accepted_worker ||
+    fx.assigned_worker ||
+    fx.assignee ||
+    fx.provider ||
+    fx.worker_info ||
+    {};
   const workerObj = workerRaw.info || workerRaw.worker || workerRaw || {};
-  const workerFirst = pick(workerObj, ['first_name', 'firstName']) || '';
-  const workerLast = pick(workerObj, ['last_name', 'lastName']) || '';
-  const workerFullName = pick(workerObj, ['full_name', 'fullName']) || `${workerFirst} ${workerLast}`.trim();
-  const workerEmail = pick(workerObj, ['email_address', 'email']) || '';
-  const workerPhoto = pick(workerObj, ['profile_picture_url', 'profile_picture']) || '';
-  const hasAssignedWorker = Boolean(workerEmail || workerFullName || workerFirst || workerLast || workerPhoto);
+  const workerFirst = pick(workerObj, ["first_name", "firstName"]) || "";
+  const workerLast = pick(workerObj, ["last_name", "lastName"]) || "";
+  const workerFullName =
+    pick(workerObj, ["full_name", "fullName"]) || `${workerFirst} ${workerLast}`.trim();
+  const workerEmail = pick(workerObj, ["email_address", "email"]) || "";
+  const workerPhoto = pick(workerObj, ["profile_picture_url", "profile_picture"]) || "";
+  const hasAssignedWorker = Boolean(
+    workerEmail || workerFullName || workerFirst || workerLast || workerPhoto,
+  );
 
   const Stepper = ({ steps, active }) => {
     return (
@@ -382,17 +430,20 @@ export default function ClientOnGoingRequest() {
                   <div className="relative">
                     <div
                       className={[
-                        'h-10 w-10 rounded-full grid place-items-center border text-sm font-semibold transition-all duration-500',
+                        "h-10 w-10 rounded-full grid place-items-center border text-sm font-semibold transition-all duration-500",
                         done
-                          ? 'bg-[#008cfc] text-white border-[#008cfc] scale-95'
+                          ? "bg-[#008cfc] text-white border-[#008cfc] scale-95"
                           : current
-                            ? 'bg-white text-[#008cfc] border-[#008cfc] shadow-[0_0_0_4px_rgba(0,140,252,0.12)] animate-pulse'
-                            : 'bg-white text-gray-400 border-gray-300'
-                      ].join(' ')}
+                            ? "bg-white text-[#008cfc] border-[#008cfc] shadow-[0_0_0_4px_rgba(0,140,252,0.12)] animate-pulse"
+                            : "bg-white text-gray-400 border-gray-300",
+                      ].join(" ")}
                     >
                       {done ? (
                         <svg viewBox="0 0 20 20" className="h-4 w-4">
-                          <path fill="currentColor" d="M8.5 13.5l-3-3 1.4-1.4 1.6 1.6 4.6-4.6L14.5 7l-6 6z" />
+                          <path
+                            fill="currentColor"
+                            d="M8.5 13.5l-3-3 1.4-1.4 1.6 1.6 4.6-4.6L14.5 7l-6 6z"
+                          />
                         </svg>
                       ) : (
                         i + 1
@@ -400,8 +451,18 @@ export default function ClientOnGoingRequest() {
                     </div>
                   </div>
                   <div className="mt-2 text-center">
-                    <div className={`text-[11px] sm:text-xs md:text-sm font-medium ${i <= active ? 'text-gray-900' : 'text-gray-400'}`}>{st.label}</div>
-                    {st.at ? <div className="text-[10px] sm:text-[11px] text-gray-500">{formatDateMDY(st.at)}</div> : null}
+                    <div
+                      className={`text-[11px] sm:text-xs md:text-sm font-medium ${
+                        i <= active ? "text-gray-900" : "text-gray-400"
+                      }`}
+                    >
+                      {st.label}
+                    </div>
+                    {st.at ? (
+                      <div className="text-[10px] sm:text-[11px] text-gray-500">
+                        {formatDateMDY(st.at)}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -413,25 +474,158 @@ export default function ClientOnGoingRequest() {
   };
 
   const handleMessageWorker = () => {
-    const to = workerEmail || '';
+    const to = workerEmail || "";
     if (to) window.location.href = `mailto:${to}`;
   };
 
-  const groupId = fx.request_group_id || fx.group_id || detR.request_group_id || fx.groupId || id || '';
+  const groupId =
+    fx.request_group_id || fx.group_id || detR.request_group_id || fx.groupId || id || "";
   const bookingAuthUid =
-    fx.auth_uid ||
-    infoR.auth_uid ||
-    detR.auth_uid ||
-    localStorage.getItem('auth_uid') ||
-    '';
+    fx.auth_uid || infoR.auth_uid || detR.auth_uid || localStorage.getItem("auth_uid") || "";
 
   const bookingId = useMemo(() => {
-    const raw = String(bookingAuthUid || '').trim();
+    const raw = String(bookingAuthUid || "").trim();
     if (!raw) return null;
     return `JDK-${raw}`;
   }, [bookingAuthUid]);
 
   const hasRequest = Boolean(row && (groupId || detR?.service_type || infoR?.email_address));
+
+  const [applicants, setApplicants] = useState([]);
+  const [loadingApplicants, setLoadingApplicants] = useState(false);
+
+  const initialsFromName = (name) => {
+    const s2 = String(name || "").trim();
+    if (!s2) return "WK";
+    const parts = s2.split(/\s+/).filter(Boolean);
+    const a = (parts[0] || "").slice(0, 1);
+    const b = (parts[parts.length - 1] || "").slice(0, 1);
+    const out = `${a}${b}`.toUpperCase();
+    return out || "WK";
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchApplicants = async () => {
+      if (!groupId) {
+        if (!cancelled) {
+          setApplicants([]);
+          setLoadingApplicants(false);
+        }
+        return;
+      }
+
+      setLoadingApplicants(true);
+
+      try {
+        const { data: apps, error: appErr } = await supabase
+          .from("client_service_request_worker_applications")
+          .select("id, request_group_id, worker_auth_uid, worker_email, worker_id, applied_at")
+          .eq("request_group_id", groupId)
+          .order("applied_at", { ascending: false });
+
+        if (appErr) {
+          if (!cancelled) {
+            setApplicants([]);
+            setLoadingApplicants(false);
+          }
+          return;
+        }
+
+        const list = Array.isArray(apps) ? apps : [];
+        if (list.length === 0) {
+          if (!cancelled) {
+            setApplicants([]);
+            setLoadingApplicants(false);
+          }
+          return;
+        }
+
+        const authUids = Array.from(
+          new Set(list.map((x) => String(x?.worker_auth_uid || "").trim()).filter(Boolean)),
+        );
+        const emails = Array.from(
+          new Set(list.map((x) => String(x?.worker_email || "").trim()).filter(Boolean)),
+        );
+
+        let workers = [];
+        if (authUids.length > 0) {
+          const { data: ws, error: wErr } = await supabase
+            .from("worker_information")
+            .select(
+              "auth_uid, first_name, last_name, email_address, profile_picture_url, profile_picture",
+            )
+            .in("auth_uid", authUids);
+
+          if (!wErr && Array.isArray(ws)) workers = ws;
+        }
+
+        if (workers.length === 0 && emails.length > 0) {
+          const { data: ws2, error: wErr2 } = await supabase
+            .from("worker_information")
+            .select(
+              "auth_uid, first_name, last_name, email_address, profile_picture_url, profile_picture",
+            )
+            .in("email_address", emails);
+
+          if (!wErr2 && Array.isArray(ws2)) workers = ws2;
+        }
+
+        const byAuth = new Map();
+        const byEmail = new Map();
+
+        for (const w of workers) {
+          const au = String(w?.auth_uid || "").trim();
+          const em = String(w?.email_address || "").trim();
+          if (au) byAuth.set(au, w);
+          if (em) byEmail.set(em, w);
+        }
+
+        const merged = list.map((a) => {
+          const au = String(a?.worker_auth_uid || "").trim();
+          const em = String(a?.worker_email || "").trim();
+          const w = byAuth.get(au) || byEmail.get(em) || null;
+
+          const first = w?.first_name || "";
+          const last = w?.last_name || "";
+          const full =
+            `${first} ${last}`.trim() ||
+            (w?.full_name || w?.fullName || "").trim() ||
+            "Worker";
+
+          const emailFinal = w?.email_address || em || "";
+          const photoFinal = w?.profile_picture_url || w?.profile_picture || "";
+
+          return {
+            ...a,
+            worker: {
+              ...w,
+              full_name: full,
+              email_address: emailFinal,
+              profile_picture_url: photoFinal,
+            },
+          };
+        });
+
+        if (!cancelled) {
+          setApplicants(merged);
+          setLoadingApplicants(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setApplicants([]);
+          setLoadingApplicants(false);
+        }
+      }
+    };
+
+    fetchApplicants();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [groupId]);
 
   return (
     <>
@@ -444,7 +638,9 @@ export default function ClientOnGoingRequest() {
               alt="JDK Homecare"
               className="mx-auto w-64 h-64 md:w-56 md:h-56 object-contain select-none pointer-events-none"
             />
-            <div className="mt-4 text-base md:text-lg font-semibold text-gray-500">There is no On-going request yet.</div>
+            <div className="mt-4 text-base md:text-lg font-semibold text-gray-500">
+              There is no On-going request yet.
+            </div>
           </div>
         </div>
       ) : (
@@ -458,17 +654,26 @@ export default function ClientOnGoingRequest() {
                     alt=""
                     className="h-6 w-6 object-contain"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.style.display = "none";
                     }}
                   />
                 </div>
-                <div className="text-2xl md:text-3xl font-semibold text-gray-900">Ongoing Service</div>
+                <div className="text-2xl md:text-3xl font-semibold text-gray-900">
+                  Ongoing Service
+                </div>
               </div>
 
               {hasAssignedWorker ? (
                 <div className="flex items-center gap-4 max-w-[55%]">
                   {(() => {
-                    const workerRaw2 = fx.worker || fx.accepted_worker || fx.assigned_worker || fx.assignee || fx.provider || fx.worker_info || {};
+                    const workerRaw2 =
+                      fx.worker ||
+                      fx.accepted_worker ||
+                      fx.assigned_worker ||
+                      fx.assignee ||
+                      fx.provider ||
+                      fx.worker_info ||
+                      {};
                     const workerObj2 = workerRaw2.info || workerRaw2.worker || workerRaw2 || {};
                     const pick2 = (o, arr) => {
                       for (const k of arr) {
@@ -476,18 +681,20 @@ export default function ClientOnGoingRequest() {
                       }
                       return null;
                     };
-                    const wf = pick2(workerObj2, ['first_name', 'firstName']) || '';
-                    const wl = pick2(workerObj2, ['last_name', 'lastName']) || '';
-                    const wname = pick2(workerObj2, ['full_name', 'fullName']) || `${wf} ${wl}`.trim();
-                    const wemail = pick2(workerObj2, ['email_address', 'email']) || '';
-                    const wphoto = pick2(workerObj2, ['profile_picture_url', 'profile_picture']) || '';
+                    const wf = pick2(workerObj2, ["first_name", "firstName"]) || "";
+                    const wl = pick2(workerObj2, ["last_name", "lastName"]) || "";
+                    const wname =
+                      pick2(workerObj2, ["full_name", "fullName"]) || `${wf} ${wl}`.trim();
+                    const wemail = pick2(workerObj2, ["email_address", "email"]) || "";
+                    const wphoto =
+                      pick2(workerObj2, ["profile_picture_url", "profile_picture"]) || "";
                     const initials = (() => {
-                      const f = String(wf || '').trim().slice(0, 1);
-                      const l = String(wl || '').trim().slice(0, 1);
+                      const f = String(wf || "").trim().slice(0, 1);
+                      const l = String(wl || "").trim().slice(0, 1);
                       if (wname && !f && !l) {
                         const parts = String(wname).trim().split(/\s+/);
-                        const a = (parts[0] || '').slice(0, 1);
-                        const b = (parts[parts.length - 1] || '').slice(0, 1);
+                        const a = (parts[0] || "").slice(0, 1);
+                        const b = (parts[parts.length - 1] || "").slice(0, 1);
                         return `${a}${b}`.toUpperCase();
                       }
                       return `${f}${l}`.toUpperCase();
@@ -496,16 +703,24 @@ export default function ClientOnGoingRequest() {
                     return (
                       <>
                         {wphoto ? (
-                          <img src={wphoto} alt="" className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover ring-2 ring-blue-100 flex-shrink-0" />
+                          <img
+                            src={wphoto}
+                            alt=""
+                            className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover ring-2 ring-blue-100 flex-shrink-0"
+                          />
                         ) : (
                           <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-blue-50 text-[#008cfc] border border-blue-200 grid place-items-center text-sm font-semibold flex-shrink-0">
-                            {initials || 'WK'}
+                            {initials || "WK"}
                           </div>
                         )}
                         <div className="min-w-0 text-right">
                           <div className="text-[11px] md:text-xs text-gray-600">Assigned Worker</div>
-                          <div className="text-sm md:text-base font-semibold text-gray-900 truncate">{wname || '—'}</div>
-                          <div className="text-[11px] md:text-xs text-[#008cfc] truncate">{wemail || ''}</div>
+                          <div className="text-sm md:text-base font-semibold text-gray-900 truncate">
+                            {wname || "—"}
+                          </div>
+                          <div className="text-[11px] md:text-xs text-[#008cfc] truncate">
+                            {wemail || ""}
+                          </div>
                         </div>
                       </>
                     );
@@ -526,7 +741,7 @@ export default function ClientOnGoingRequest() {
               <div className="flex items-center justify-between px-6 py-4">
                 <h3 className="text-lg md:text-xl font-semibold text-gray-900">Progress</h3>
                 <div className="text-xs md:text-sm px-2 py-1 rounded-lg bg-blue-50 text-[#008cfc] font-semibold">
-                  {stepIndex < steps.length - 1 ? `Step ${stepIndex + 1} of ${steps.length}` : 'Completed'}
+                  {stepIndex < steps.length - 1 ? `Step ${stepIndex + 1} of ${steps.length}` : "Completed"}
                 </div>
               </div>
               <div className="border-t border-gray-100" />
@@ -540,30 +755,42 @@ export default function ClientOnGoingRequest() {
                 <div className="space-y-6">
                   <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
                     <div className="flex items-center justify-between px-6 py-4">
-                      <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Request Details</h3>
+                      <h3 className="text-lg md:text-xl font-semibold text-gray-900">
+                        Service Request Details
+                      </h3>
                       <div
                         className={`text-xs px-2 py-1 rounded-md ${
-                          stepIndex === steps.length - 1 ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-[#008cfc]'
+                          stepIndex === steps.length - 1
+                            ? "bg-green-50 text-green-600"
+                            : "bg-blue-50 text-[#008cfc]"
                         } font-semibold`}
                       >
-                        {stepIndex < steps.length - 1 ? 'In Progress' : 'Completed'}
+                        {stepIndex < steps.length - 1 ? "In Progress" : "Completed"}
                       </div>
                     </div>
                     <div className="border-t border-gray-100" />
                     <div className="px-6 py-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                        <div className={`space-y-6 ${review_image ? '' : 'md:col-span-2'}`}>
+                        <div className={`space-y-6 ${review_image ? "" : "md:col-span-2"}`}>
                           <LabelValue label="Service Type" value={service_type} />
                           <LabelValue label="Service Task" value={service_task} />
                           <LabelValue label="Preferred Date" value={formatDateMDY(preferred_date)} />
                           <LabelValue label="Preferred Time" value={formatTime12h(preferred_time)} />
                           <LabelValue
                             label="Urgent"
-                            value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(is_urgent) ? 'Yes' : 'No'}</span>}
+                            value={
+                              <span className="text-base md:text-lg font-semibold text-[#008cfc]">
+                                {toBoolStrict(is_urgent) ? "Yes" : "No"}
+                              </span>
+                            }
                           />
                           <LabelValue
                             label="Tools Provided"
-                            value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(tools_provided) ? 'Yes' : 'No'}</span>}
+                            value={
+                              <span className="text-base md:text-lg font-semibold text-[#008cfc]">
+                                {toBoolStrict(tools_provided) ? "Yes" : "No"}
+                              </span>
+                            }
                           />
                           <LabelValue label="Workers Needed" value={workers_needed} />
                           <LabelValue label="Units" value={unitsDisplay} />
@@ -571,7 +798,9 @@ export default function ClientOnGoingRequest() {
                           <div>
                             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                               <span className="text-gray-700 font-semibold">Description:</span>
-                              <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">{service_description || '-'}</span>
+                              <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">
+                                {service_description || "-"}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -595,6 +824,87 @@ export default function ClientOnGoingRequest() {
                             </div>
                           </div>
                         ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  {hasAssignedWorker && workerEmail ? (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleMessageWorker}
+                        className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold bg-[#008cfc] text-white"
+                      >
+                        Message Worker
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6 mt-6">
+              <div className="grid grid-cols-1 gap-6 lg:items-stretch">
+                <div className="space-y-6">
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+                    <div className="flex items-center justify-between px-6 py-4">
+                      <h3 className="text-lg md:text-xl font-semibold text-gray-900">
+                        List of Applicants
+                      </h3>
+                    </div>
+                    <div className="border-t border-gray-100" />
+                    <div className="px-6 py-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                        {loadingApplicants ? (
+                          <div className="md:col-span-2 text-sm text-gray-500 font-semibold">
+                            Loading applicants...
+                          </div>
+                        ) : applicants.length === 0 ? (
+                          <div className="md:col-span-2 text-sm text-gray-500 font-semibold">
+                            No applicants yet.
+                          </div>
+                        ) : (
+                          applicants.map((a) => {
+                            const w = a?.worker || {};
+                            const fullName =
+                              String(w?.full_name || "").trim() ||
+                              `${w?.first_name || ""} ${w?.last_name || ""}`.trim() ||
+                              "Worker";
+                            const email = w?.email_address || a?.worker_email || "";
+                            const photo = w?.profile_picture_url || "";
+
+                            return (
+                              <div
+                                key={a.id}
+                                className="rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 bg-white p-4 flex items-center gap-4"
+                              >
+                                {photo ? (
+                                  <img
+                                    src={photo}
+                                    alt=""
+                                    className="h-12 w-12 rounded-full object-cover ring-2 ring-blue-100 flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className="h-12 w-12 rounded-full bg-blue-50 text-[#008cfc] border border-blue-200 grid place-items-center text-sm font-semibold flex-shrink-0">
+                                    {initialsFromName(fullName)}
+                                  </div>
+                                )}
+
+                                <div className="min-w-0">
+                                  <div className="text-sm font-semibold text-gray-900 truncate">
+                                    {fullName}
+                                  </div>
+                                  <div className="text-xs text-[#008cfc] font-semibold truncate">
+                                    {email}
+                                  </div>
+                                  <div className="text-[11px] text-gray-500">
+                                    Applied: {a?.applied_at ? formatDateMDY(a.applied_at) : "-"}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
                   </div>
@@ -638,17 +948,22 @@ export default function ClientOnGoingRequest() {
                   <div
                     className="absolute inset-0 animate-spin rounded-full"
                     style={{
-                      borderWidth: '10px',
-                      borderStyle: 'solid',
-                      borderColor: '#008cfc22',
-                      borderTopColor: '#008cfc',
-                      borderRadius: '9999px'
+                      borderWidth: "10px",
+                      borderStyle: "solid",
+                      borderColor: "#008cfc22",
+                      borderTopColor: "#008cfc",
+                      borderRadius: "9999px",
                     }}
                   />
                   <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     {!logoBroken ? (
-                      <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                      <img
+                        src="/jdklogo.png"
+                        alt="JDK Homecare Logo"
+                        className="w-20 h-20 object-contain"
+                        onError={() => setLogoBroken(true)}
+                      />
                     ) : (
                       <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                         <span className="font-bold text-[#008cfc]">JDK</span>
@@ -687,17 +1002,22 @@ export default function ClientOnGoingRequest() {
                   <div
                     className="absolute inset-0 animate-spin rounded-full"
                     style={{
-                      borderWidth: '10px',
-                      borderStyle: 'solid',
-                      borderColor: '#008cfc22',
-                      borderTopColor: '#008cfc',
-                      borderRadius: '9999px'
+                      borderWidth: "10px",
+                      borderStyle: "solid",
+                      borderColor: "#008cfc22",
+                      borderTopColor: "#008cfc",
+                      borderRadius: "9999px",
                     }}
                   />
                   <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     {!logoBroken ? (
-                      <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                      <img
+                        src="/jdklogo.png"
+                        alt="JDK Homecare Logo"
+                        className="w-20 h-20 object-contain"
+                        onError={() => setLogoBroken(true)}
+                      />
                     ) : (
                       <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                         <span className="font-bold text-[#008cfc]">JDK</span>

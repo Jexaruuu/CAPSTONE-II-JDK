@@ -1,10 +1,76 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Hammer, Zap, Wrench, Car, Shirt } from "lucide-react";
+import { supabase } from "../../../../supabase-client";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 export default function WorkerViewRequest({ open, onClose, request, onApply }) {
+  console.log('this', request);
+  const [formData, setFormData] = useState({
+    client_id: "",
+    worker_id: "",
+    service_task: "",
+    service_type: "",
+    address: "",
+    rate: "",
+    schedule: "",
+    price: "",
+  });
+
+  const new_worker_id = useMemo(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("user") || "{}");
+      return u?.id || "";
+    } catch {
+      return "";
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!request?.id) return;
+    setFormData((prev) => ({
+      ...prev,
+      client_id: request.request_group_id,
+      worker_id: new_worker_id,
+      service_task: request.service_task,
+      service_type: request.service_type,
+      address: request.addressLine,
+      rate: request.rate,
+      schedule: request.preferred_time + " " + request.preferred_date,
+      price: request.price,
+    }));
+  }, [request?.id, new_worker_id]);
+
+  const handleSubmit = async () => {
+    const payload = {
+      client_id: formData.client_id,
+      worker_id: formData.worker_id,
+      service_task: formData.service_task,
+      service_type: formData.service_type,
+      address: formData.address,
+      rate: formData.rate,
+      schedule: formData.schedule,
+      price: formData.price,
+    };
+
+    const { data, error } = await supabase
+      .from("requests")
+      .insert([payload])
+      .select()
+      .single();
+
+    if (error) {
+      console.log("Insert error:", error.message);
+      return;
+    }
+
+    console.log("Inserted:", data);
+
+    if (onApply) onApply(data);
+    if (onClose) onClose();
+  };
+
   const [fetched, setFetched] = useState(null);
   const [checkingApply, setCheckingApply] = useState(false);
   const [showNoApproved, setShowNoApproved] = useState(false);
@@ -16,6 +82,7 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
   const [approvedApp, setApprovedApp] = useState(null);
   const [approvedTasksCanon, setApprovedTasksCanon] = useState([]);
   const [approvedApps, setApprovedApps] = useState([]);
+
 
   const base = request || {};
   const info = base.info || {};
@@ -56,7 +123,6 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
     }
   }, []);
   const headersWithU = useMemo(() => (appU ? { "x-app-u": appU } : {}), [appU]);
-
   const canonType = (s) => {
     const k = String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
     if (/carpent/.test(k)) return "carpentry";
@@ -926,12 +992,13 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                       Message
                     </a>
 
-                    <a
-                      href="/workerpostapplication"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        applyNow();
-                      }}
+                    <button
+                      // href="/workerpostapplication"
+                      // onClick={(e) => {
+                      //   e.preventDefault();
+                      //   applyNow();
+                      // }}
+                      onClick={handleSubmit}
                       aria-disabled={!canAccept}
                       className={`h-9 px-4 rounded-md ${
                         btnLoading ? "opacity-60 pointer-events-none" : ""
@@ -942,7 +1009,15 @@ export default function WorkerViewRequest({ open, onClose, request, onApply }) {
                       } text-sm inline-flex items-center justify-center`}
                     >
                       Apply Request
-                    </a>
+                    </button>
+
+                    {/* <button
+        onClick={handleSubmit}
+        disabled={!formData.client_id || !formData.worker_id}
+      >
+        Submit
+      </button> */}
+
                   </div>
                 </div>
               </div>

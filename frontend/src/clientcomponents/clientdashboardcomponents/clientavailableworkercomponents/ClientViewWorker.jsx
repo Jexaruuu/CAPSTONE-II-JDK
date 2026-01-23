@@ -88,6 +88,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const [checkedTypes, setCheckedTypes] = useState(false);
   const [approvedClientRequests, setApprovedClientRequests] = useState([]);
   const [worksState, setWorksState] = useState({ best_works: [null, null, null], previous_works: [null, null, null] });
+  const [bookConfirmOpen, setBookConfirmOpen] = useState(false);
 
   const base = worker || {};
   const baseInfo = base.info || {};
@@ -556,18 +557,28 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const allTwoMatch = matchedRequests.some((m) => m.matches.service_type && m.matches.service_task);
   const allowBook = canBook && allTwoMatch;
 
-  const handleBookClick = async (e) => {
-    e.preventDefault();
+  const handleBookClick = async (e, confirmed = false) => {
+    e?.preventDefault?.();
     if (btnLoading) return;
+
+    if (!confirmed && allowBook) {
+      setBookConfirmOpen(true);
+      return;
+    }
+
     if (!allTwoMatch) {
       setShowNoApproved(true);
       return;
     }
+
     const clientEmail = getClientEmail();
     if (!clientEmail) {
       setShowNoApproved(true);
       return;
     }
+
+    setBtnLoading(true);
+
     try {
       const res = await axios.get(`${API_BASE}/api/clientservicerequests/approved`, {
         params: { email: clientEmail, limit: 20 }
@@ -581,11 +592,13 @@ export default function ClientViewWorker({ open, onClose, worker }) {
       const wSet = new Set(workerCanonTypes);
       const ok = Array.from(wSet).some((x) => cSet.has(x));
       if (!ok) {
+        setBtnLoading(false);
         setShowNoApproved(true);
         return;
       }
       window.location.href = "/clientpostrequest";
     } catch {
+      setBtnLoading(false);
       setShowNoApproved(true);
     }
   };
@@ -594,7 +607,6 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const taskMatchOk = matchedRequests.some((m) => m.matches.service_task);
 
   const matchCount = [typeMatchOk, taskMatchOk].filter(Boolean).length;
-  const statusLabel = allTwoMatch ? "Match" : "Not Match";
   const statusClasses = allTwoMatch
     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
     : "bg-rose-50 text-rose-700 border-rose-200";
@@ -887,7 +899,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
 
                     <a
                       href="/clientpostrequest"
-                      onClick={handleBookClick}
+                      onClick={(e) => handleBookClick(e, false)}
                       aria-disabled={!allowBook}
                       className={`h-9 px-4 rounded-md ${btnLoading ? "opacity-60 pointer-events-none" : ""} ${
                         allowBook
@@ -902,6 +914,41 @@ export default function ClientViewWorker({ open, onClose, worker }) {
               </div>
             </div>
           </div>
+
+          {bookConfirmOpen ? (
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+              <div
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                onClick={() => setBookConfirmOpen(false)}
+              />
+              <div className="relative z-[1001] w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-100">
+                <h4 className="text-lg font-semibold text-gray-900">Book this worker?</h4>
+                <p className="mt-1 text-sm text-gray-600">Are you sure you want to book this worker?</p>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setBookConfirmOpen(false)}
+                    className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!allowBook}
+                    onClick={(e) => {
+                      setBookConfirmOpen(false);
+                      handleBookClick(e, true);
+                    }}
+                    className={`rounded-xl px-5 py-2 text-sm font-medium transition ${
+                      allowBook ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"
+                    }`}
+                  >
+                    Book
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {showNoApproved ? (
             <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">

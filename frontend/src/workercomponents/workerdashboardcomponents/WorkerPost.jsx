@@ -958,32 +958,83 @@ function WorkerPost() {
         )}
       </div>
 
-      {showProfileGate && (
+      {navLoading && (
         <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowProfileGate(false)} />
-          <div className="relative w-[420px] max-w-[92vw] rounded-2xl border border-gray-200 bg-white shadow-2xl p-6">
-            <div className="text-lg font-semibold text-gray-900">Complete your profile</div>
-            <div className="mt-2 text-sm text-gray-600">
-              Please complete your profile details (valid PH mobile number and date of birth) before posting an application.
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading next step"
+            tabIndex={-1}
+            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
+          >
+            <div className="relative mx-auto w-40 h-40">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-20 h-20 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-6 text-center">
+              <div className="text-base font-semibold text-gray-900">Preparing Step</div>
+              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProfileGate && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowProfileGate(false)} />
+          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483648]">
+            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+              {!logoBroken ? (
+                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <span className="font-bold text-[#008cfc]">JDK</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Please setup your personal information first to proceed</div>
+              <div className="text-sm text-gray-600">Contact Number and Date of Birth are required. Social links are optional.</div>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setShowProfileGate(false)}
-                className="h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition"
               >
-                Close
+                Cancel
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowProfileGate(false);
-                  navigate('/workerprofile');
-                }}
-                className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
+              <Link
+                to="/workerprofile"
+                onClick={goTop}
+                className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition text-center"
               >
                 Go to Profile
-              </button>
+              </Link>
             </div>
           </div>
         </div>
