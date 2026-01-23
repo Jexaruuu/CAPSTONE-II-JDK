@@ -1,3 +1,4 @@
+// workerapplicationController.js
 const {
   uploadDataUrlToBucket,
   insertWorkerInformation,
@@ -385,6 +386,41 @@ function extractTaskList(service_task) {
   return [];
 }
 
+async function hasActiveWorkerApplicationByEmail(email) {
+  const canonicalEmail = String(email || '').trim();
+  if (!canonicalEmail) return false;
+
+  const { data: existing } = await supabaseAdmin
+    .from('worker_application_status')
+    .select('request_group_id,status,created_at')
+    .ilike('email_address', canonicalEmail)
+    .in('status', ['pending', 'approved'])
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  const rows = Array.isArray(existing) ? existing : [];
+  if (!rows.length) return false;
+
+  const gids = [...new Set(rows.map((r) => String(r.request_group_id || '').trim()).filter(Boolean))];
+  if (!gids.length) return true;
+
+  let canceledSet = new Set();
+  try {
+    const { data: canc } = await supabaseAdmin.from('worker_cancel_application').select('request_group_id').in('request_group_id', gids);
+    (canc || []).forEach((r) => {
+      const gid = String(r?.request_group_id || '').trim();
+      if (gid) canceledSet.add(gid);
+    });
+  } catch {}
+
+  const active = rows.filter((r) => {
+    const gid = String(r?.request_group_id || '').trim();
+    return gid && !canceledSet.has(gid);
+  });
+
+  return active.length > 0;
+}
+
 exports.submitFullApplication = async (req, res) => {
   try {
     const src = req.body || {};
@@ -494,16 +530,8 @@ exports.submitFullApplication = async (req, res) => {
     const request_group_id = newGroupId();
 
     try {
-      const { data: existing } = await supabaseAdmin
-        .from('worker_application_status')
-        .select('request_group_id,status')
-        .ilike('email_address', canonicalEmail)
-        .in('status', ['pending', 'approved'])
-        .order('created_at', { ascending: false })
-        .limit(50);
-      const rows = Array.isArray(existing) ? existing : [];
-      const active = rows.filter((r) => ['pending', 'approved'].includes(String(r.status || '').toLowerCase()));
-      if (active.length > 0) return res.status(409).json({ message: 'You already have an active worker application.' });
+      const active = await hasActiveWorkerApplicationByEmail(canonicalEmail);
+      if (active) return res.status(409).json({ message: 'You already have an active worker application.' });
     } catch {}
 
     let profileUpload = null;
@@ -1003,16 +1031,8 @@ exports.submitFullApplication = async (req, res) => {
     };
 
     try {
-      const { data: existing } = await supabaseAdmin
-        .from('worker_application_status')
-        .select('request_group_id,status')
-        .ilike('email_address', canonicalEmail)
-        .in('status', ['pending', 'approved'])
-        .order('created_at', { ascending: false })
-        .limit(50);
-      const rows = Array.isArray(existing) ? existing : [];
-      const active = rows.filter((r) => ['pending', 'approved'].includes(String(r.status || '').toLowerCase()));
-      if (active.length > 0) return res.status(409).json({ message: 'You already have an active worker application.' });
+      const active = await hasActiveWorkerApplicationByEmail(canonicalEmail);
+      if (active) return res.status(409).json({ message: 'You already have an active worker application.' });
     } catch {}
 
     let pendingRow;
@@ -1130,8 +1150,7 @@ exports.listPublicApproved = async (req, res) => {
         const wTaskSet = new Set(wTaskList.map(canonTask).filter(Boolean));
 
         const typeOk = filterServiceType ? wCanonTypes.has(filterServiceType) : true;
-        const taskOk =
-          filterTaskSet.size === 0 ? true : Array.from(filterTaskSet).some((t) => wTaskSet.has(t));
+        const taskOk = filterTaskSet.size === 0 ? true : Array.from(filterTaskSet).some((t) => wTaskSet.has(t));
 
         return typeOk && taskOk;
       });
@@ -1196,16 +1215,34 @@ exports.listMine = async (req, res) => {
     const { data: statusRows } = await q;
 
     const rows = Array.isArray(statusRows) ? statusRows : [];
-    let base = rows;
-    const isCancelled = (r) => ['cancelled', 'canceled'].includes(String(r.status || '').toLowerCase());
+
+    const allGroups = [...new Set(rows.map((r) => r.request_group_id).filter(Boolean))];
+    let canceledSet = new Set();
+    if (allGroups.length) {
+      try {
+        const { data: canc } = await supabaseAdmin.from('worker_cancel_application').select('request_group_id').in('request_group_id', allGroups);
+        (canc || []).forEach((r) => {
+          if (r?.request_group_id) canceledSet.add(r.request_group_id);
+        });
+      } catch {}
+    }
+
+    const isCancelledStatus = (r) => ['cancelled', 'canceled'].includes(String(r.status || '').toLowerCase());
     const isExpired = (r) => String(r.status || '').toLowerCase() === 'expired';
     const isCurrent = (r) => ['pending', 'approved', 'declined'].includes(String(r.status || '').toLowerCase());
     const isActive = (r) => ['pending', 'approved'].includes(String(r.status || '').toLowerCase());
 
-    if (scope === 'cancelled') base = rows.filter(isCancelled);
-    else if (scope === 'expired') base = rows.filter(isExpired);
-    else if (scope === 'active') base = rows.filter(isActive);
-    else base = rows.filter(isCurrent);
+    const isCanceledByTable = (r) => {
+      const gid = String(r?.request_group_id || '').trim();
+      return gid ? canceledSet.has(gid) : false;
+    };
+
+    let base = rows;
+
+    if (scope === 'cancelled') base = rows.filter((r) => isCancelledStatus(r) || isCanceledByTable(r));
+    else if (scope === 'expired') base = rows.filter((r) => isExpired(r) && !isCanceledByTable(r));
+    else if (scope === 'active') base = rows.filter((r) => isActive(r) && !isCanceledByTable(r));
+    else base = rows.filter((r) => isCurrent(r) && !isCanceledByTable(r));
 
     let targetGroups = base.map((r) => r.request_group_id).filter(Boolean);
     if (groupIdFilter) targetGroups = targetGroups.includes(groupIdFilter) ? [groupIdFilter] : [];
@@ -1254,8 +1291,13 @@ exports.listMine = async (req, res) => {
         const mergedInfo = infoMap[gid] || r.info || {};
         const mergedDetails = detailsMap[gid] || r.details || {};
         const mergedDocs = docsMap[gid] || null;
-        return { ...r, info: mergedInfo, details: mergedDetails, required_documents: mergedDocs };
-      });
+
+        const st = String(r.status || '').toLowerCase();
+        const finalStatus = canceledSet.has(String(gid || '')) && !['cancelled', 'canceled'].includes(st) ? 'cancelled' : r.status;
+
+        return { ...r, status: finalStatus, info: mergedInfo, details: mergedDetails, required_documents: mergedDocs };
+      })
+      .slice(0, limit);
 
     return res.status(200).json({ items });
   } catch (err) {

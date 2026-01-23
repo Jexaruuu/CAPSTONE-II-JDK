@@ -1,3 +1,4 @@
+// WorkerPost.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Hammer, Zap, Wrench, Car, Shirt, Trash2 } from 'lucide-react';
@@ -133,6 +134,34 @@ function WorkerPost() {
 
   const [showViewLoading, setShowViewLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
+
+  const hiddenIdsSet = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('workerPostHiddenIds') || '[]';
+      const arr = JSON.parse(raw);
+      const list = Array.isArray(arr) ? arr : [];
+      return new Set(list.map((x) => String(x || '').trim()).filter(Boolean));
+    } catch {
+      return new Set();
+    }
+  }, [showViewLoading, editLoading, showDeleteConfirm, showDeleteBusy, showDeleteDone]);
+
+  const isHiddenApp = (item) => {
+    if (!item) return false;
+    const cands = [
+      item?.request_group_id,
+      item?.requestGroupId,
+      item?.application_group_id,
+      item?.applicationGroupId,
+      item?.group_id,
+      item?.groupId,
+      item?.id
+    ]
+      .filter((v) => v !== null && v !== undefined)
+      .map((v) => String(v).trim())
+      .filter(Boolean);
+    return cands.some((id) => hiddenIdsSet.has(id));
+  };
 
   const getServiceTasks = (item) => {
     const d = item?.details || item?.work || item?.work_information || {};
@@ -661,7 +690,7 @@ function WorkerPost() {
       const items = Array.isArray(data?.items) ? data.items : [];
       const onlyActive = items.filter(r => {
         const st = String(r.status || '').toLowerCase();
-        return st === 'pending' || st === 'approved';
+        return (st === 'pending' || st === 'approved') && !isHiddenApp(r);
       });
       const pick =
         onlyActive.find((r) => String(r.status || '').toLowerCase() === 'pending') ||
@@ -683,13 +712,18 @@ function WorkerPost() {
     const onSubmitted = () => loadCurrentApplication();
     const onCancelled = () => loadCurrentApplication();
     const onFocus = () => loadCurrentApplication();
+    const onStorage = (e) => {
+      if (e?.key === 'workerPostHiddenIds') loadCurrentApplication();
+    };
     window.addEventListener('worker-application-submitted', onSubmitted);
     window.addEventListener('worker-application-cancelled', onCancelled);
     window.addEventListener('focus', onFocus);
+    window.addEventListener('storage', onStorage);
     return () => {
       window.removeEventListener('worker-application-submitted', onSubmitted);
       window.removeEventListener('worker-application-cancelled', onCancelled);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('storage', onStorage);
     };
   }, []);
 
@@ -725,6 +759,13 @@ function WorkerPost() {
     };
   }, [showDeleteConfirm, showDeleteBusy, showDeleteDone]);
 
+  const startDeleteCurrent = () => {
+    const id = String(currentApp?.id || currentApp?.request_group_id || '').trim();
+    if (!id) return;
+    setDeleteTarget({ id, label: 'current' });
+    setShowDeleteConfirm(true);
+  };
+
   return (
     <div className="max-w-[1525px] mx-auto bg-white px-6 py-8">
       <div className="w-full overflow-hidden rounded-md border border-gray-200 shadow-sm mb-8">
@@ -746,26 +787,6 @@ function WorkerPost() {
         <h2 className="text-4xl font-semibold">
           Welcome, {honorific ? `${honorific} ` : ''}<span className="text-[#008cfc]">{capFirst}</span>
         </h2>
-        {false && hasCurrent && (
-          <div className="flex items-center gap-2">
-            <span className="text-gray-700 font-semibold">Status:</span>
-            {isApproved && (
-              <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                <span className="h-3 w-3 rounded-md bg-current opacity-30" />
-                Approved Application
-              </span>
-            )}
-            {isPending && (
-              <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
-                <span className="relative inline-flex">
-                  <span className="absolute inline-flex h-3 w-3 rounded-md bg-current opacity-30 animate-ping" />
-                  <span className="relative inline-flex h-3 w-3 rounded-md bg-current" />
-                </span>
-                Pending Application
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="mb-8">
@@ -876,21 +897,6 @@ function WorkerPost() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {false && isApproved && (
-                    <span className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                      <span className="h-3 w-3 rounded-md bg-current opacity-30" />
-                      Approved Application
-                    </span>
-                  )}
-                  {false && isPending && (
-                    <span className="relative inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 border-yellow-200">
-                      <span className="relative inline-flex">
-                        <span className="absolute inline-flex h-3 w-3 rounded-md bg-current opacity-30 animate-ping" />
-                        <span className="relative inline-flex h-3 w-3 rounded-md bg-current" />
-                      </span>
-                      Pending Application
-                    </span>
-                  )}
                   <div className="flex items-center gap-2">
                     {(() => {
                       const types = buildServiceTypesArr(currentApp);
@@ -926,6 +932,13 @@ function WorkerPost() {
                 >
                   Edit Application
                 </button>
+                <button
+                  type="button"
+                  onClick={startDeleteCurrent}
+                  className="h-10 w-10 inline-flex items-center justify-center rounded-md border border-red-200 text-red-600 hover:bg-red-50 transition"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
               </div>
             </div>
           </div>
@@ -952,323 +965,31 @@ function WorkerPost() {
         )}
       </div>
 
-      {false && approved.length > 0 && (
-        <div className="mb-8">
-          <div className="relative w-full flex justify-center items-center">
-            <button
-              onClick={() => handleScroll('left')}
-              className="absolute -left-2 md:left-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
-            >
-              <ArrowLeft size={22} />
-            </button>
-
-            <div className="w-full max-w-[1425px] overflow-hidden px-12 py-2">
-              <div
-                ref={trackRef}
-                onScroll={onTrackScroll}
-                onPointerDown={onDragPointerDown}
-                onPointerMove={onDragPointerMove}
-                onPointerUp={onDragPointerUp}
-                onPointerLeave={onDragPointerLeave}
-                onClickCapture={onTrackClickCapture}
-                className="flex space-x-6 overflow-x-scroll scroll-smooth pl-4 pr-4 select-none cursor-grab active:cursor-grabbing [touch-action:pan-x] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              >
-                {approved.map((item, i) => {
-                  const type = buildServiceType(item) || '';
-                  const title = type || 'Approved Application';
-                  const IconComp = getServiceIcon(type);
-                  const years =
-                    item?.details?.years_experience ??
-                    item?.experience?.years ??
-                    item?.details?.yearsExperience ??
-                    '';
-                  const tools =
-                    item?.details?.tools_provided ??
-                    item?.details?.tools_provide ??
-                    item?.details?.toolsProvided ??
-                    item?.tools?.provided ??
-                    '';
-
-                  const tBool = toBoolStrict(tools);
-                  const tText =
-                    tBool === null ? (String(tools || '').trim() || '-') : tBool ? 'Yes' : 'No';
-                  const tClass =
-                    tBool === null ? 'text-gray-700' : tBool ? 'text-green-600 font-medium' : 'text-red-600 font-medium';
-
-                  return (
-                    <div
-                      key={item.id || i}
-                      ref={(el) => (cardRefs.current[i] = el)}
-                      className="overflow-hidden min-w-[320px] sm:min-w-[360px] md:min-w-[400px] w-[320px] sm:w-[360px] md:w-[400px] h-auto min-h-[220px] flex flex-col flex-shrink-0 border rounded-xl p-6 text-left cursor-default shadow-sm transition-all duration-300 hover:ring-2 hover:shadow-xl hover:ring-inset bg-blue-50 border-[#008cfc] hover:border-[#008cfc] hover:ring-[#008cfc]"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="text-lg font-semibold text-gray-900">{title}</div>
-                        <div className="h-9 w-9 rounded-lg border border-gray-400 text-[#008cfc] flex items-center justify-center bg-white">
-                          <IconComp className="h-5 w-5" />
-                        </div>
-                      </div>
-
-                      <div className="mt-3 text-sm text-gray-700 space-y-1">
-                        <div className="text-gray-600">
-                          <span className="font-medium text-gray-800">Location:</span> {buildLocation(item) || '-'}
-                        </div>
-                        <div className="text-gray-600">
-                          <span className="font-medium text-gray-800">Years of Experience:</span>{' '}
-                          {years !== '' && years !== null && years !== undefined ? String(years) : '-'}
-                        </div>
-                        <div className="text-gray-600">
-                          <span className="font-medium text-gray-800">Tools Provided:</span>{' '}
-                          <span className={tClass}>{tText}</span>
-                        </div>
-                        <div className="text-gray-600">
-                          <span className="font-medium text-gray-800">Service Price Rate:</span> {getRateType(item) || '-'}
-                        </div>
-                      </div>
-
-                      <div className="mt-auto pt-4 flex items-center justify-between">
-                        <div className="inline-flex items-center !h-11 whitespace-nowrap rounded-lg border border-yellow-200 bg-yellow-50 px-3 text-xs font-medium text-yellow-700">
-                          Active Application
-                          <span className="ml-2 inline-flex w-6 justify-between font-mono">
-                            <span className={`transition-opacity duration-200 ${dotStep >= 1 ? 'opacity-100' : 'opacity-0'}`}>.</span>
-                            <span className={`transition-opacity duration-200 ${dotStep >= 2 ? 'opacity-100' : 'opacity-0'}`}>.</span>
-                            <span className={`transition-opacity duration-200 ${dotStep >= 3 ? 'opacity-100' : 'opacity-0'}`}>.</span>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleView(item)}
-                            className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-blue-300 text-blue-600 hover:bg-blue-50"
-                          >
-                            View
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const gid = getGroupId(item);
-                              if (!gid || editLoading) return;
-                              setEditLoading(true);
-                              setTimeout(() => {
-                                navigate(`/edit-work-application/${encodeURIComponent(gid)}`);
-                              }, 2000);
-                            }}
-                            className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
-                          >
-                            Edit Application
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <button
-              onClick={() => handleScroll('right')}
-              className="absolute -right-2 md:right-4 top-1/2 -translate-y-1/2 bg-white border border-gray-300 hover:bg-gray-100 rounded-full shadow-md p-2 z-10 transition"
-            >
-              <ArrowRight size={22} />
-            </button>
-          </div>
-
-          <div className="mt-4 flex justify-center gap-2">
-            {Array.from({ length: totalSlides }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => scrollToIndex(i)}
-                className={`h-2.5 w-2.5 rounded-full ${current === i ? 'bg-blue-600' : 'bg-gray-300'}`}
-                aria-label={`Go to slide ${i + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {navLoading && (
+      {showProfileGate && (
         <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Loading next step"
-            tabIndex={-1}
-            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
-          >
-            <div className="relative mx-auto w-40 h-40">
-              <div
-                className="absolute inset-0 animate-spin rounded-full"
-                style={{
-                  borderWidth: '10px',
-                  borderStyle: 'solid',
-                  borderColor: '#008cfc22',
-                  borderTopColor: '#008cfc',
-                  borderRadius: '9999px'
-                }}
-              />
-              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                {!logoBroken ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
-                    <span className="font-bold text-[#008cfc]">JDK</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="mt-6 text-center">
-              <div className="text-base font-semibold text-gray-900">Preparing Step</div>
-              <div className="text-sm text-gray-500 animate-pulse">Please wait a moment</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showProfileGate ? (
-        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowProfileGate(false)} />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483648]">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-              {!logoBroken ? (
-                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
-              ) : (
-                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
-                  <span className="font-bold text-[#008cfc]">JDK</span>
-                </div>
-              )}
+          <div className="relative w-[420px] max-w-[92vw] rounded-2xl border border-gray-200 bg-white shadow-2xl p-6">
+            <div className="text-lg font-semibold text-gray-900">Complete your profile</div>
+            <div className="mt-2 text-sm text-gray-600">
+              Please complete your profile details (valid PH mobile number and date of birth) before posting an application.
             </div>
-            <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">
-                Please setup your personal information first to proceed
-              </div>
-              <div className="text-sm text-gray-600">
-                Contact Number and Date of Birth are required. Social links are optional.
-              </div>
-            </div>
-            <div className="mt-6 grid grid-cols-2 gap-2">
+            <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowProfileGate(false)}
-                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition"
+                className="h-10 px-4 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
               >
-                Cancel
+                Close
               </button>
-              <Link
-                to="/worker-account-settings"
+              <button
+                type="button"
                 onClick={() => {
                   setShowProfileGate(false);
-                  goTop();
+                  navigate('/workerprofile');
                 }}
-                className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition text-center"
+                className="h-10 px-4 rounded-md bg-[#008cfc] text-white hover:bg-blue-700 transition"
               >
                 Go to Profile
-              </Link>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-              {!logoBroken ? (
-                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
-              ) : (
-                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
-                  <span className="font-bold text-[#008cfc]">JDK</span>
-                </div>
-              )}
-            </div>
-            <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">
-                Are you sure do you get to delete this application?
-              </div>
-            </div>
-            <div className="mt-6 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition"
-              >
-                No
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteNow}
-                className="px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
-              >
-                Yes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showDeleteBusy && (
-        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="relative mx-auto w-32 h-32">
-              <div
-                className="absolute inset-0 animate-spin rounded-full"
-                style={{
-                  borderWidth: '8px',
-                  borderStyle: 'solid',
-                  borderColor: '#008cfc22',
-                  borderTopColor: '#008cfc',
-                  borderRadius: '9999px'
-                }}
-              />
-              <div className="absolute inset-4 rounded-full border-2 border-[#008cfc33]" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                {!logoBroken ? (
-                  <img src="/jdklogo.png" alt="Logo" className="w-14 h-14 object-contain" onError={() => setLogoBroken(true)} />
-                ) : (
-                  <div className="w-14 h-14 rounded-full border border-[#008cfc] flex items-center justify-center">
-                    <span className="font-bold text-[#008cfc]">JDK</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="mt-4 text-center">
-              <div className="text-base font-semibold text-gray-900">Deleting Application</div>
-              <div className="text-sm text-gray-500 animate-pulse">Please wait</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showDeleteDone && (
-        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteDone(false)} />
-          <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
-            <div className="mx-auto w-24 h-24 rounded-full border-2 border-[#008cfc33] flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-              {!logoBroken ? (
-                <img src="/jdklogo.png" alt="Logo" className="w-16 h-16 object-contain" onError={() => setLogoBroken(true)} />
-              ) : (
-                <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
-                  <span className="font-bold text-[#008cfc]">JDK</span>
-                </div>
-              )}
-            </div>
-            <div className="mt-6 text-center space-y-2">
-              <div className="text-lg font-semibold text-gray-900">Application Successfully Deleted</div>
-            </div>
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => setShowDeleteDone(false)}
-                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-blue-700 transition"
-              >
-                Done
               </button>
             </div>
           </div>
@@ -1276,61 +997,10 @@ function WorkerPost() {
       )}
 
       {showViewLoading && (
-        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Loading request"
-            tabIndex={-1}
-            className="relative w-[340px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
-          >
-            <div className="relative mx-auto w-40 h-40">
-              <div
-                className="absolute inset-0 rounded-full animate-spin"
-                style={{
-                  borderWidth: '10px',
-                  borderStyle: 'solid',
-                  borderColor: '#008cfc22',
-                  borderRightColor: '#008cfc',
-                  borderRadius: '9999px'
-                }}
-              />
-              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc1f]" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                {!logoBroken ? (
-                  <img
-                    src="/jdklogo.png"
-                    alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
-                    <span className="font-bold text-[#008cfc]">JDK</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="mt-6 text-center">
-              <div className="text-lg font-semibold text-gray-900">Loading Request</div>
-              <div className="text-sm text-gray-500">Please wait a moment</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editLoading && (
-        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Loading next step"
-            tabIndex={-1}
-            className="relative w-[320px] max-w-[90vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8 z-[2147483647]"
-          >
-            <div className="relative mx-auto w-40 h-40">
+          <div className="relative w-[360px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-32 h-32">
               <div
                 className="absolute inset-0 animate-spin rounded-full"
                 style={{
@@ -1347,18 +1017,137 @@ function WorkerPost() {
                   <img
                     src="/jdklogo.png"
                     alt="JDK Homecare Logo"
-                    className="w-20 h-20 object-contain"
+                    className="w-16 h-16 object-contain"
                     onError={() => setLogoBroken(true)}
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
                     <span className="font-bold text-[#008cfc]">JDK</span>
                   </div>
                 )}
               </div>
             </div>
-            <div className="mt-6 text-center">
-              <div className="text-base font-semibold text-gray-900 animate-pulse">Please wait a moment</div>
+            <div className="mt-5 text-center space-y-1">
+              <div className="text-lg font-semibold text-gray-900">Opening Application</div>
+              <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editLoading && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[360px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
+            <div className="relative mx-auto w-32 h-32">
+              <div
+                className="absolute inset-0 animate-spin rounded-full"
+                style={{
+                  borderWidth: '10px',
+                  borderStyle: 'solid',
+                  borderColor: '#008cfc22',
+                  borderTopColor: '#008cfc',
+                  borderRadius: '9999px'
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                {!logoBroken ? (
+                  <img
+                    src="/jdklogo.png"
+                    alt="JDK Homecare Logo"
+                    className="w-16 h-16 object-contain"
+                    onError={() => setLogoBroken(true)}
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full border border-[#008cfc] flex items-center justify-center">
+                    <span className="font-bold text-[#008cfc]">JDK</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-5 text-center space-y-1">
+              <div className="text-lg font-semibold text-gray-900">Opening Editor</div>
+              <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !deleting && setShowDeleteConfirm(false)} />
+          <div className="relative w-full max-w-[520px] mx-4 rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="px-6 pt-6">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-full bg-red-50 border border-red-100 grid place-items-center">
+                  <span className="text-red-600 text-lg">!</span>
+                </div>
+                <div className="flex-1">
+                  <div className="text-xl font-semibold text-gray-900">Delete Application</div>
+                  <div className="text-sm text-gray-600">This will permanently delete your application.</div>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-5">
+              <div className="text-sm text-gray-700">
+                Are you sure you want to delete this application?
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => !deleting && setShowDeleteConfirm(false)}
+                className="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteNow}
+                className="h-10 px-4 rounded-md bg-red-600 text-white hover:bg-red-700 transition disabled:opacity-60"
+                disabled={deleting}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteBusy && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[360px] max-w-[92vw] rounded-2xl border border-red-200 bg-white shadow-2xl p-8">
+            <div className="text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Deleting…</div>
+              <div className="text-sm text-gray-600 animate-pulse">Please wait a moment</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteDone && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-[360px] max-w-[92vw] rounded-2xl border border-gray-200 bg-white shadow-2xl p-8">
+            <div className="text-center space-y-2">
+              <div className="text-lg font-semibold text-gray-900">Deleted</div>
+              <div className="text-sm text-gray-600">Your application has been deleted.</div>
+            </div>
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteDone(false);
+                  setShowDeleteBusy(false);
+                  setShowDeleteConfirm(false);
+                }}
+                className="w-full px-6 py-3 bg-[#008cfc] text-white rounded-xl shadow-sm hover:bg-[#0077d6] transition"
+              >
+                OK
+              </button>
             </div>
           </div>
         </div>

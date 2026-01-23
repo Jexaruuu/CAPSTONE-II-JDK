@@ -182,13 +182,6 @@ const WorkerViewApplication = () => {
       return {};
     }
   })();
-  const savedDocs = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]');
-    } catch {
-      return [];
-    }
-  })();
 
   const s = location.state || {};
 
@@ -197,7 +190,51 @@ const WorkerViewApplication = () => {
   const workR = fx.work || {};
   const detailsR = fx.details || {};
   const rateR = fx.rate || {};
-  const docsR = Array.isArray(fx.documents) ? fx.documents : fx.docs || [];
+
+  const requestGroupId = useMemo(() => {
+    const candidates = [
+      fx?.request_group_id,
+      fx?.requestGroupId,
+      fx?.request_group,
+      fx?.group_id,
+      fx?.groupId,
+      detailsR?.request_group_id,
+      detailsR?.requestGroupId,
+      workR?.request_group_id,
+      workR?.requestGroupId,
+      s?.request_group_id,
+      s?.requestGroupId
+    ];
+    for (const c of candidates) {
+      if (c === null || c === undefined) continue;
+      const str = String(c).trim();
+      if (str) return str;
+    }
+    return '';
+  }, [fx, detailsR, workR, s]);
+
+  const statusRowId = useMemo(() => {
+    const candidates = [
+      fx?.id,
+      fx?.application_id,
+      fx?.applicationId,
+      fx?.worker_application_id,
+      fx?.workerApplicationId,
+      s?.id,
+      s?.application_id,
+      s?.applicationId
+    ];
+    for (const c of candidates) {
+      if (c === null || c === undefined) continue;
+      const str = String(c).trim();
+      if (str) return str;
+    }
+    return '';
+  }, [fx, s]);
+
+  const cancelTargetId = useMemo(() => {
+    return requestGroupId || statusRowId || String(id || '').trim();
+  }, [requestGroupId, statusRowId, id]);
 
   const applicationIdDisplay = useMemo(() => {
     const candidates = [
@@ -323,41 +360,6 @@ const WorkerViewApplication = () => {
   const rate_to = rateR.rate_to ?? s.rate_to ?? savedRate.rateTo;
   const rate_value = rateR.rate_value ?? s.rate_value ?? savedRate.rateValue;
 
-  const review_image =
-    workR.image_url ||
-    workR.image ||
-    (Array.isArray(savedWork.attachments) && savedWork.attachments[0]) ||
-    savedWork.image ||
-    '';
-
-  const formatTime12h = t => {
-    if (!t || typeof t !== 'string' || !t.includes(':')) return t || '-';
-    const [hh, mm] = t.split(':');
-    let h = parseInt(hh, 10);
-    if (Number.isNaN(h)) return t;
-    const suffix = h >= 12 ? 'PM' : 'AM';
-    h = h % 12;
-    if (h === 0) h = 12;
-    return `${h}:${mm} ${suffix}`;
-  };
-
-  const formatDateMDY = d => {
-    if (!d) return d || '-';
-    const tryDate = new Date(d);
-    if (!Number.isNaN(tryDate.getTime())) {
-      const mm = String(tryDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(tryDate.getDate()).padStart(2, '0');
-      const yyyy = String(tryDate.getFullYear());
-      return `${mm}/${dd}/${yyyy}`;
-    }
-    const parts = String(d).split('-');
-    if (parts.length === 3) {
-      const [yyyy, mm, dd] = parts;
-      return `${String(mm).padStart(2, '0')}/${String(dd).padStart(2, '0')}/${yyyy}`;
-    }
-    return d;
-  };
-
   const toBoolStrict = v => {
     if (typeof v === 'boolean') return v;
     if (v === 1 || v === '1') return true;
@@ -439,32 +441,82 @@ const WorkerViewApplication = () => {
       setCancelErr('Please select a reason or write one.');
       return;
     }
+
+    const decidedAt = new Date().toISOString();
+    const groupIdToSend = requestGroupId || '';
+    const statusIdToSend = statusRowId || '';
+    const fallbackId = String(id || '').trim();
+
+    const finalGroupId = groupIdToSend || (statusIdToSend && statusIdToSend.length > 0 ? '' : fallbackId) || fallbackId;
+    const finalStatusId = statusIdToSend || (finalGroupId ? '' : fallbackId) || fallbackId;
+
     setCancelErr('');
     setShowCancel(false);
     await new Promise(r => setTimeout(r, 30));
     setSubmittingCancel(true);
+
     try {
+      await axios.post(
+        `${API_BASE}/api/workerapplications/cancel`,
+        {
+          request_group_id: finalGroupId || null,
+          application_id: finalStatusId || null,
+          id: finalStatusId || finalGroupId || fallbackId || null,
+          reason_choice: reason || null,
+          reason_other: otherReason || null,
+          worker_id: workerIdState || null,
+          email_address: email || null
+        },
+        { withCredentials: true, headers: headersWithU }
+      );
+
       try {
         const key = 'workerApplications';
         const raw = localStorage.getItem(key) || '[]';
-        const base = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+        const parsed = JSON.parse(raw);
+        const base = Array.isArray(parsed) ? parsed : [];
+        const matchAny = cand => {
+          const a = String(cand || '').trim();
+          if (!a) return false;
+          const ids = [
+            statusRowId,
+            requestGroupId,
+            fx?.application_id,
+            fx?.worker_application_id,
+            fx?.id,
+            fx?.request_group_id,
+            fx?.group_id,
+            id
+          ]
+            .filter(v => v !== null && v !== undefined)
+            .map(v => String(v).trim())
+            .filter(Boolean);
+          return ids.includes(a);
+        };
+
         const updated = base.map(app => {
-          const appId = String(app.id ?? app.application_id ?? app.request_group_id ?? '');
-          if (appId !== String(id || '')) return app;
+          const appId = String(app.id ?? app.application_id ?? app.worker_application_id ?? app.request_group_id ?? app.group_id ?? '');
+          if (!matchAny(appId)) return app;
           return {
             ...app,
             status: 'cancelled',
             reason_choice: reason || null,
             reason_other: otherReason || null,
             decision_reason: app.decision_reason || null,
-            decided_at: new Date().toISOString()
+            decided_at: decidedAt
           };
         });
         localStorage.setItem(key, JSON.stringify(updated));
       } catch {}
+
       try {
-        window.dispatchEvent(new CustomEvent('worker-application-cancelled', { detail: { id } }));
+        window.dispatchEvent(
+          new CustomEvent('worker-application-cancelled', {
+            detail: { id: finalStatusId || fallbackId, request_group_id: finalGroupId || requestGroupId || null }
+          })
+        );
       } catch {}
+
       try {
         localStorage.removeItem('workerInformationForm');
         localStorage.removeItem('workerWorkInformation');
@@ -474,27 +526,15 @@ const WorkerViewApplication = () => {
         localStorage.removeItem(GLOBAL_DESC_KEY);
         sessionStorage.removeItem('worker_app_view_payload');
         sessionStorage.removeItem('wa_view_payload');
+
         const k = 'workerPostHiddenIds';
         const raw = localStorage.getItem(k);
         const arr = Array.isArray(JSON.parse(raw || '[]')) ? JSON.parse(raw || '[]') : [];
-        if (!arr.includes(id)) arr.push(id);
+        const hideId = finalGroupId || requestGroupId || finalStatusId || fallbackId;
+        if (hideId && !arr.includes(hideId)) arr.push(hideId);
         localStorage.setItem(k, JSON.stringify(arr));
       } catch {}
-      try {
-        await axios.post(
-          `${API_BASE}/api/workerapplications/cancel`,
-          {
-            request_group_id: id,
-            application_id: id,
-            id,
-            reason_choice: reason || null,
-            reason_other: otherReason || null,
-            worker_id: workerIdState || null,
-            email_address: email || null
-          },
-          { withCredentials: true, headers: headersWithU }
-        );
-      } catch {}
+
       setRow(prev =>
         prev
           ? {
@@ -502,16 +542,17 @@ const WorkerViewApplication = () => {
               status: 'cancelled',
               reason_choice: reason || null,
               reason_other: otherReason || null,
-              decided_at: new Date().toISOString()
+              decided_at: decidedAt
             }
           : prev
       );
+
       setShowCancelSuccess(true);
-    } catch (e) {
-      const msg = 'Failed to cancel. Try again.';
-      setCancelErr(msg);
+    } catch {
+      setCancelErr('Failed to cancel. Try again.');
       setSubmittingCancel(false);
       setShowCancel(true);
+      return;
     } finally {
       setSubmittingCancel(false);
     }
@@ -519,11 +560,8 @@ const WorkerViewApplication = () => {
 
   const handleGoAfterCancel = () => {
     jumpTop();
-    navigate('/workerdashboard', { replace: true, state: { cancelled: id } });
+    navigate('/workerdashboard', { replace: true, state: { cancelled: cancelTargetId } });
   };
-
-  const schedule_date = fx?.details?.preferred_date || fx?.work?.preferred_date || '';
-  const schedule_time = fx?.details?.preferred_time || fx?.work?.preferred_time || '';
 
   return (
     <>
@@ -603,10 +641,7 @@ const WorkerViewApplication = () => {
                     value={Array.isArray(service_types) ? service_types.join(', ') : service_types || '-'}
                   />
                   <LabelValue label="Years of Experience" value={years_experience ? `${years_experience}` : '-'} />
-                  <LabelValue
-                    label="Service Task"
-                    value={service_tasks_list.length ? service_tasks_list.join(', ') : '-'}
-                  />
+                  <LabelValue label="Service Task" value={service_tasks_list.length ? service_tasks_list.join(', ') : '-'} />
                   <LabelValue label="Tools Provided" value={toBoolStrict(tools_provided) ? 'Yes' : 'No'} />
                   <div className="md:col-span-2">
                     <LabelValue label="Work Description" value={application_description || '-'} />
@@ -719,9 +754,7 @@ const WorkerViewApplication = () => {
                     <label
                       key={r}
                       className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
-                        reason === r
-                          ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50'
-                          : 'border-gray-200 hover:bg-gray-50'
+                        reason === r ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
                       <input
