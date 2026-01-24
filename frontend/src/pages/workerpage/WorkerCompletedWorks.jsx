@@ -82,33 +82,26 @@ export default function WorkerCompletedWorks() {
     (async () => {
       setLoading(true);
       try {
-        const { data } = await axios.get(
-          `${API_BASE}/api/worker/applications?scope=completed`,
-          { withCredentials: true }
-        );
-        if (!cancelled) {
-          const arr = Array.isArray(data) ? data : data?.items || [];
-          const normalized = arr.map((r, i) => ({
+        const { data } = await axios.get(`${API_BASE}/api/worker/applications?scope=completed`, {
+          withCredentials: true
+        });
+
+        if (cancelled) return;
+
+        const arr = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+        const normalized = arr
+          .filter(Boolean)
+          .map((r, i) => ({
             id: r.id ?? `${i}`,
             title: r.title ?? "Untitled work",
-            completed_at: r.completed_at || r.updated_at || r.created_at || new Date().toISOString(),
+            completed_at: r.completed_at || r.updated_at || r.created_at || new Date().toISOString()
           }));
-          setItems(
-            normalized.sort(
-              (a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
-            )
-          );
-        }
+
+        setItems(
+          normalized.sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
+        );
       } catch {
-        if (!cancelled) {
-          setItems([
-            {
-              id: "wcmp-1",
-              title: "Residential Cleaning: 2BR Apartment",
-              completed_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-            },
-          ]);
-        }
+        if (!cancelled) setItems([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -121,7 +114,7 @@ export default function WorkerCompletedWorks() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return items;
-    return items.filter((i) => i.title.toLowerCase().includes(q));
+    return items.filter((i) => String(i.title || "").toLowerCase().includes(q));
   }, [items, query]);
 
   const onOpen = (item) => {

@@ -334,9 +334,7 @@ export default function WorkerOnGoingRequest() {
     {
       key: 'completed',
       label: 'Completed',
-      at:
-        clientConfirmAt ||
-        (statusNow === 'completed' ? workEndAt || new Date().toISOString() : null)
+      at: clientConfirmAt || (statusNow === 'completed' ? workEndAt || new Date().toISOString() : null)
     }
   ];
 
@@ -382,8 +380,7 @@ export default function WorkerOnGoingRequest() {
     return `${f}${l}`.toUpperCase();
   })();
 
-  const groupId =
-    fx.request_group_id || fx.group_id || detR.request_group_id || fx.groupId || id || '';
+  const groupId = fx.request_group_id || fx.group_id || detR.request_group_id || fx.groupId || id || '';
 
   const bookingId = useMemo(() => {
     if (!groupId) return null;
@@ -444,9 +441,7 @@ export default function WorkerOnGoingRequest() {
                       {st.label}
                     </div>
                     {st.at ? (
-                      <div className="text-[10px] sm:text-[11px] text-gray-500">
-                        {formatDateMDY(st.at)}
-                      </div>
+                      <div className="text-[10px] sm:text-[11px] text-gray-500">{formatDateMDY(st.at)}</div>
                     ) : null}
                   </div>
                 </div>
@@ -457,6 +452,8 @@ export default function WorkerOnGoingRequest() {
       </div>
     );
   };
+
+  const noOngoing = !loading && !row;
 
   return (
     <>
@@ -505,106 +502,121 @@ export default function WorkerOnGoingRequest() {
         </div>
 
         <div className="mx-auto w-full max-w-[1420px] px-6">
-          {bookingId ? (
-            <div className="mt-6 mb-2 text-sm md:text-base font-semibold text-gray-600">
-              Booking ID: <span className="text-[#008cfc]">{bookingId}</span>
-            </div>
-          ) : null}
-
-          <div className="mt-2 bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4">
-              <h3 className="text-lg md:text-xl font-semibold text-gray-900">Progress</h3>
-              <div className="text-xs md:text-sm px-2 py-1 rounded-lg bg-blue-50 text-[#008cfc] font-semibold">
-                {stepIndex < steps.length - 1 ? `Step ${stepIndex + 1} of ${steps.length}` : 'Completed'}
-              </div>
-            </div>
-            <div className="border-t border-gray-100" />
-            <div className="px-6 py-6">
-              <Stepper steps={steps} active={stepIndex} />
-            </div>
-          </div>
-
-          <div className="space-y-6 mt-6">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4">
-                <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Request Details</h3>
-                <div
-                  className={`text-xs px-2 py-1 rounded-md ${
-                    stepIndex === steps.length - 1 ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-[#008cfc]'
-                  } font-semibold`}
-                >
-                  {stepIndex < steps.length - 1 ? 'In Progress' : 'Completed'}
+          {noOngoing ? (
+            <div className="min-h-[70vh] flex items-center justify-center">
+              <div className="w-full max-w-xl rounded-2xl border border-blue-100 bg-white shadow-sm ring-1 ring-black/5 px-10 py-14 text-center">
+                <div className="mx-auto h-28 w-28 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+                  <img src="/Bluelogo.png" alt="Blue Logo" className="h-20 w-20 object-contain" />
+                </div>
+                <div className="mt-6 text-xl md:text-2xl font-semibold text-gray-900">
+                  Theres no On-going service
                 </div>
               </div>
-              <div className="border-t border-gray-100" />
-              <div className="px-6 py-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                  <div className={`space-y-6 ${review_image ? '' : 'md:col-span-2'}`}>
-                    <LabelValue label="Service Type" value={service_type} />
-                    <LabelValue label="Service Task" value={service_task} />
-                    <LabelValue label="Preferred Date" value={formatDateMDY(preferred_date)} />
-                    <LabelValue label="Preferred Time" value={formatTime12h(preferred_time)} />
-                    <LabelValue
-                      label="Urgent"
-                      value={
-                        <span className="text-base md:text-lg font-semibold text-[#008cfc]">
-                          {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
-                        </span>
-                      }
-                    />
-                    <LabelValue
-                      label="Tools Provided"
-                      value={
-                        <span className="text-base md:text-lg font-semibold text-[#008cfc]">
-                          {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
-                        </span>
-                      }
-                    />
-                    <div>
-                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                        <span className="text-gray-700 font-semibold">Description:</span>
-                        <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">
-                          {service_description || '-'}
-                        </span>
-                      </div>
+            </div>
+          ) : (
+            <>
+              {bookingId ? (
+                <div className="mt-6 mb-2 text-sm md:text-base font-semibold text-gray-600">
+                  Booking ID: <span className="text-[#008cfc]">{bookingId}</span>
+                </div>
+              ) : null}
+
+              <div className="mt-2 bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4">
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-900">Progress</h3>
+                  <div className="text-xs md:text-sm px-2 py-1 rounded-lg bg-blue-50 text-[#008cfc] font-semibold">
+                    {stepIndex < steps.length - 1 ? `Step ${stepIndex + 1} of ${steps.length}` : 'Completed'}
+                  </div>
+                </div>
+                <div className="border-t border-gray-100" />
+                <div className="px-6 py-6">
+                  <Stepper steps={steps} active={stepIndex} />
+                </div>
+              </div>
+
+              <div className="space-y-6 mt-6">
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
+                  <div className="flex items-center justify-between px-6 py-4">
+                    <h3 className="text-lg md:text-xl font-semibold text-gray-900">Service Request Details</h3>
+                    <div
+                      className={`text-xs px-2 py-1 rounded-md ${
+                        stepIndex === steps.length - 1 ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-[#008cfc]'
+                      } font-semibold`}
+                    >
+                      {stepIndex < steps.length - 1 ? 'In Progress' : 'Completed'}
                     </div>
                   </div>
-
-                  {review_image ? (
-                    <div className="w-full">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-700 font-semibold">Request Image</span>
-                        <span className="text-xs font-semibold text-[#008cfc] bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg">
-                          Attached
-                        </span>
-                      </div>
-                      <div className="w-full rounded-2xl border border-blue-100 bg-white shadow-sm ring-1 ring-black/5 overflow-hidden">
-                        <div className="w-full h-56 sm:h-60 md:h-64 bg-gray-50">
-                          <img
-                            src={review_image}
-                            alt=""
-                            className="w-full h-full object-cover object-center select-none pointer-events-none"
-                          />
+                  <div className="border-t border-gray-100" />
+                  <div className="px-6 py-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                      <div className={`space-y-6 ${review_image ? '' : 'md:col-span-2'}`}>
+                        <LabelValue label="Service Type" value={service_type} />
+                        <LabelValue label="Service Task" value={service_task} />
+                        <LabelValue label="Preferred Date" value={formatDateMDY(preferred_date)} />
+                        <LabelValue label="Preferred Time" value={formatTime12h(preferred_time)} />
+                        <LabelValue
+                          label="Urgent"
+                          value={
+                            <span className="text-base md:text-lg font-semibold text-[#008cfc]">
+                              {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
+                            </span>
+                          }
+                        />
+                        <LabelValue
+                          label="Tools Provided"
+                          value={
+                            <span className="text-base md:text-lg font-semibold text-[#008cfc]">
+                              {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
+                            </span>
+                          }
+                        />
+                        <div>
+                          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <span className="text-gray-700 font-semibold">Description:</span>
+                            <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">
+                              {service_description || '-'}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
 
-            {row ? (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleMessageClient}
-                  className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold bg-[#008cfc] text-white"
-                >
-                  Message Client
-                </button>
+                      {review_image ? (
+                        <div className="w-full">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-gray-700 font-semibold">Request Image</span>
+                            <span className="text-xs font-semibold text-[#008cfc] bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg">
+                              Attached
+                            </span>
+                          </div>
+                          <div className="w-full rounded-2xl border border-blue-100 bg-white shadow-sm ring-1 ring-black/5 overflow-hidden">
+                            <div className="w-full h-56 sm:h-60 md:h-64 bg-gray-50">
+                              <img
+                                src={review_image}
+                                alt=""
+                                className="w-full h-full object-cover object-center select-none pointer-events-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                {row ? (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleMessageClient}
+                      className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold bg-[#008cfc] text-white"
+                    >
+                      Message Client
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
+            </>
+          )}
         </div>
 
         {loading && (

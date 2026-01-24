@@ -1,10 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import ClientNavigation from "../../clientcomponents/ClientNavigation";
 import ClientFooter from "../../clientcomponents/ClientFooter";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const timeAgo = (iso) => {
   try {
@@ -43,7 +40,9 @@ const Card = ({ item, onOpen }) => {
               {item.title}
             </h3>
           </Link>
-          <p className="mt-1 text-sm text-gray-500">Completed {timeAgo(item.completed_at)} • {formatDate(item.completed_at)}</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Completed {timeAgo(item.completed_at)} • {formatDate(item.completed_at)}
+          </p>
           <div className="mt-3 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium text-blue-700 border-blue-200 bg-blue-50">
             Completed
           </div>
@@ -70,57 +69,23 @@ const Card = ({ item, onOpen }) => {
 };
 
 export default function ClientCompletedRequest() {
-  const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState([]);
-  const [query, setQuery] = useState("");
   const navigate = useNavigate();
+  const [query, setQuery] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const { data } = await axios.get(
-          `${API_BASE}/api/client/service-requests?scope=completed`,
-          { withCredentials: true }
-        );
-        if (!cancelled) {
-          const arr = Array.isArray(data) ? data : data?.items || [];
-          const normalized = arr.map((r, i) => ({
-            id: r.id ?? `${i}`,
-            title: r.title ?? "Untitled request",
-            completed_at: r.completed_at || r.updated_at || r.created_at || new Date().toISOString(),
-          }));
-          setItems(
-            normalized.sort(
-              (a, b) =>
-                new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
-            )
-          );
-        }
-      } catch {
-        if (!cancelled) {
-          setItems([
-            {
-              id: "cmp-1",
-              title: "General Plumbing: Leak Fix and Faucet Replacement",
-              completed_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-            },
-          ]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const [loading] = useState(false);
+
+  const [items] = useState([
+    // {
+    //   id: "cmp-1",
+    //   title: "General Plumbing: Leak Fix and Faucet Replacement",
+    //   completed_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+    // },
+  ]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return items;
-    return items.filter((i) => i.title.toLowerCase().includes(q));
+    return items.filter((i) => String(i.title || "").toLowerCase().includes(q));
   }, [items, query]);
 
   const onOpen = (item) => {
@@ -173,9 +138,7 @@ export default function ClientCompletedRequest() {
               No completed requests found.
             </div>
           ) : (
-            filtered.map((item) => (
-              <Card key={item.id} item={item} onOpen={onOpen} />
-            ))
+            filtered.map((item) => <Card key={item.id} item={item} onOpen={onOpen} />)
           )}
 
           {!loading && (
