@@ -1,4 +1,3 @@
-// WorkerWorkInformation.jsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 const STORAGE_KEY = 'workerWorkInformation';
@@ -34,7 +33,7 @@ function buildAppU() {
   }
 }
 
-const TASK_HEADERS = new Set(['Electrical', 'Appliances']);
+const TASK_HEADERS = new Set(['Regular Clothes', 'Dry Cleaning (Per Piece)', 'Electrical', 'Appliances']);
 
 const normalizeHeader = (t) =>
   String(t || '')
@@ -167,11 +166,23 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
       'Shower Installation'
     ],
     Laundry: [
+      'Regular Clothes',
       'Regular Clothes (Wash + Dry + Fold)',
       'Handwash',
-      'Towels/Linens/Demin (Wash + Dry + Fold)',
+      'Towels/Linens/Denim (Wash + Dry + Fold)',
       'Blankets/Comforters (Wash + Dry + Fold)',
-      'Dry Cleaning'
+      'Dry Cleaning (Per Piece)',
+      'Barong',
+      'Coat (Men-Adult)',
+      'Coat (Men-Kids)',
+      'Vest (Men)',
+      'Vest (Kids)',
+      'Polo (Long Sleeves)',
+      'Polo (Short Sleeves)',
+      'Pants (Men/Women)',
+      'Blazer (Women)',
+      'Dress (Long)',
+      'Dress (Short)'
     ]
   };
 
@@ -670,6 +681,7 @@ const WorkerWorkInformation = ({ title, setTitle, handleNext, handleBack, onColl
                               );
                             })}
 
+ڍ
                             {!hasDetail && attempted && (
                               <p className="text-xs text-red-600 mt-1">Choose at least one {jobType} service.</p>
                             )}

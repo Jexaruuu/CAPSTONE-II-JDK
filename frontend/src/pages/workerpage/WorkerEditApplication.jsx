@@ -6,6 +6,20 @@ import WorkerFooter from '../../workercomponents/WorkerFooter';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
+const TASK_HEADERS = new Set(['Regular Clothes', 'Dry Cleaning (Per Piece)', 'Electrical', 'Appliances']);
+
+const normalizeHeader = t =>
+  String(t || '')
+    .replace(/^[—\-–\s]+|[—\-–\s]+$/g, '')
+    .trim();
+
+const isTaskHeader = t => {
+  const raw = String(t || '').trim();
+  if (TASK_HEADERS.has(raw)) return true;
+  const n = normalizeHeader(raw);
+  return TASK_HEADERS.has(n);
+};
+
 const toYesNo = v => {
   const s = String(v ?? '').trim().toLowerCase();
   if (s === 'yes' || s === 'y' || s === 'true' || s === 't' || s === '1') return 'Yes';
@@ -114,68 +128,100 @@ export default function WorkerEditApplication() {
   const fileRef = useRef(null);
 
   const serviceTypes = ['Carpenter', 'Electrician', 'Plumber', 'Carwasher', 'Laundry'];
+
   const serviceTasksMap = {
     Carpenter: [
-      'General Carpentry',
-      'Furniture Repair',
-      'Wood Polishing',
-      'Door & Window Fitting',
-      'Custom Furniture Design',
-      'Modular Kitchen Installation',
-      'Flooring & Decking',
-      'Cabinet & Wardrobe Fixing',
-      'Wall Paneling & False Ceiling',
-      'Wood Restoration & Refinishing'
+      'Furniture Setup (Small Items)',
+      'Furniture Setup (Large Items)',
+      'Basic Door & Lock Repair',
+      'Smart Lock Repair',
+      'Wall & Ceiling Repair',
+      'Waterproofing Inspection',
+      'Waterproofing Repair',
+      'Roofing Inspection',
+      'Roofing Repair'
     ],
     Electrician: [
+      'Electrical',
+      'Electrical Inspection',
+      'Light Fixture Installation',
+      'Light Fixture Repair',
+      'Wiring Installation',
       'Wiring Repair',
-      'Appliance Installation',
-      'Lighting Fixtures',
-      'Circuit Breaker & Fuse Repair',
-      'CCTV & Security System Setup',
-      'Fan & Exhaust Installation',
-      'Inverter & Battery Setup',
-      'Switchboard & Socket Repair',
-      'Electrical Safety Inspection',
-      'Smart Home Automation'
+      'Outlet Installation',
+      'Outlet Repair',
+      'Circuit Breaker Installation',
+      'Circuit Breaker Repair',
+      'Switch Installation',
+      'Switch Repair',
+      'Ceiling Fan Installation',
+      'Ceiling Fan Repair',
+      'Outdoor Lightning Installation',
+      'Outdoor Lightning Repair',
+      'Doorbell Installation',
+      'Doorbell Repair',
+      'Appliances',
+      'Refrigerator Repair',
+      'Commercial Freezer Repair',
+      'TV Repair (50" to 90")',
+      'TV Installation (50" to 90")',
+      'Washing Machine Repair',
+      'Washing Machine Installation',
+      'Stand Fan Repair',
+      'Tower Fan Repair',
+      'Dishwasher Repair',
+      'Dishwasher Installation',
+      'Microwave Repair',
+      'Oven Repair',
+      'Rice Cooker Repair'
     ],
     Plumber: [
-      'Leak Fixing',
-      'Pipe Installation',
-      'Bathroom Fittings',
-      'Drain Cleaning & Unclogging',
-      'Water Tank Installation',
-      'Gas Pipeline Installation',
-      'Septic Tank & Sewer Repair',
+      'Plumbing Inspection',
+      'Faucet Leak Repair',
+      'Grease Trap Cleaning',
+      'Sink Declogging',
+      'Pipe Repair (Exposed Pipe)',
+      'Toilet Repair',
+      'Drainage Declogging',
+      'Pipe Line Declogging',
       'Water Heater Installation',
-      'Toilet & Sink Repair',
-      'Kitchen Plumbing Solutions'
+      'Water Heater Repair',
+      'Shower Installation'
     ],
     Carwasher: [
-      'Exterior Wash',
-      'Interior Cleaning',
-      'Wax & Polish',
-      'Underbody Cleaning',
-      'Engine Bay Cleaning',
-      'Headlight Restoration',
-      'Ceramic Coating',
-      'Tire & Rim Cleaning',
-      'Vacuum & Odor Removal',
-      'Paint Protection Film Application'
+      '5 Seater Sedan (Interior + Carpet)',
+      '7 Seater MPV (Interior + Carpet)',
+      '7 - 8 Seater SUV (Interior + Carpet)',
+      '5 Seater Pick Up (Interior + Carpet)',
+      '10 Seater Family Van (Interior + Carpet)',
+      '1 - 2 Seater (Interior + Carpet)',
+      '5 Seater Sedan (Interior + Exterior)',
+      '7 Seater MPV (Interior + Exterior)',
+      '7 - 8 Seater SUV (Interior + Exterior)',
+      '5 Seater Pick Up (Interior + Exterior)',
+      '10 Seater Family Van (Interior + Exterior)'
     ],
     Laundry: [
-      'Dry Cleaning',
-      'Ironing',
-      'Wash & Fold',
-      'Steam Pressing',
-      'Stain Removal Treatment',
-      'Curtains & Upholstery Cleaning',
-      'Delicate Fabric Care',
-      'Shoe & Leather Cleaning',
-      'Express Same-Day Laundry',
-      'Eco-Friendly Washing'
+      'Regular Clothes',
+      'Regular Clothes (Wash + Dry + Fold)',
+      'Handwash',
+      'Towels/Linens/Denim (Wash + Dry + Fold)',
+      'Blankets/Comforters (Wash + Dry + Fold)',
+      'Dry Cleaning (Per Piece)',
+      'Barong',
+      'Coat (Men-Adult)',
+      'Coat (Men-Kids)',
+      'Vest (Men)',
+      'Vest (Kids)',
+      'Polo (Long Sleeves)',
+      'Polo (Short Sleeves)',
+      'Pants (Men/Women)',
+      'Blazer (Women)',
+      'Dress (Long)',
+      'Dress (Short)'
     ]
   };
+
   const sortedServiceTypes = [...serviceTypes].sort();
 
   const SERVICE_TYPE_CANON = {
@@ -183,11 +229,9 @@ export default function WorkerEditApplication() {
     'electrical work': 'Electrician',
     'electrical works': 'Electrician',
     electric: 'Electrician',
-
     'car wash': 'Carwasher',
     'car washing': 'Carwasher',
     carwashing: 'Carwasher',
-
     laundry: 'Laundry',
     plumbing: 'Plumber',
     carpentry: 'Carpenter'
@@ -220,7 +264,10 @@ export default function WorkerEditApplication() {
 
   const normalizeTasks = arr => {
     const a = Array.isArray(arr) ? arr : [];
-    const cleaned = a.map(x => String(x ?? '').trim()).filter(Boolean);
+    const cleaned = a
+      .map(x => String(x ?? '').trim())
+      .filter(Boolean)
+      .filter(x => !isTaskHeader(x));
     return cleaned.length ? cleaned : [];
   };
 
@@ -906,47 +953,10 @@ export default function WorkerEditApplication() {
     navigateWithRelease('/workerdashboard');
   };
 
-  const setPairType = (i, v) => {
-    const vv = normType(v);
-    setPairs(prev => {
-      const base = dedupePairs(prev);
-      const n = base.map((p, idx) => (idx === i ? { serviceType: vv, serviceTasks: [''] } : p));
-      const final = dedupePairs(n).slice(0, 5);
-      const first = final[0] || { serviceType: '', serviceTasks: [''] };
-      setServiceType(first.serviceType || '');
-      setServiceTask((first.serviceTasks || [''])[0] || '');
-      return final.length ? final : [{ serviceType: '', serviceTasks: [''] }];
-    });
-  };
-
-  const addPair = () =>
-    setPairs(prev => {
-      const clean = dedupePairs(prev);
-      const filled = clean.filter(p => normType(p.serviceType)).length;
-      if (filled >= 5) return clean;
-      return [...clean, { serviceType: '', serviceTasks: [''] }].slice(0, 6);
-    });
-
-  const removePair = i =>
-    setPairs(prev => {
-      const base = dedupePairs(prev);
-      const n = base.filter((_, idx) => idx !== i);
-      const final = dedupePairs(n).slice(0, 5);
-      const first = final[0] || { serviceType: '', serviceTasks: [''] };
-      setServiceType(first.serviceType || '');
-      setServiceTask((first.serviceTasks || [''])[0] || '');
-      return final.length ? final : [{ serviceType: '', serviceTasks: [''] }];
-    });
-
   const selectedTypes = useMemo(() => {
     const clean = dedupePairs(pairs);
     return Array.from(new Set(clean.map(p => normType(p.serviceType)).filter(Boolean)));
   }, [pairs]);
-
-  const availableTypes = idx => {
-    const current = normType(pairs[idx]?.serviceType || '');
-    return sortedServiceTypes.filter(t => t === current || !selectedTypes.includes(normType(t)));
-  };
 
   const toggleServiceTypeMirror = type => {
     const t = normType(type);
@@ -1042,6 +1052,7 @@ export default function WorkerEditApplication() {
     const filtered = hideSearch
       ? items || []
       : (items || []).filter(it => String(it || '').toLowerCase().includes(q.trim().toLowerCase()));
+
     return (
       <div
         className={`absolute z-[9999] mt-2 ${fullWidth ? 'left-0 right-0 w-full' : 'w-80'} rounded-xl border border-gray-200 bg-white shadow-xl p-3`}
@@ -1065,6 +1076,20 @@ export default function WorkerEditApplication() {
             filtered.map(it => {
               const isSel = value === it;
               const disabled = disabledLabel && disabledLabel(it);
+
+              if (disabled && isTaskHeader(it)) {
+                const headerText = normalizeHeader(it);
+                return (
+                  <div key={it} className="py-2">
+                    <div className="flex items-center gap-3">
+                      <div className="h-px bg-gray-200 flex-1" />
+                      <div className="text-xs font-bold text-gray-900">{headerText}</div>
+                      <div className="h-px bg-gray-200 flex-1" />
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <button
                   key={it}
@@ -1676,13 +1701,14 @@ export default function WorkerEditApplication() {
                                                 value={curVal}
                                                 fullWidth
                                                 title={`Select ${jobType} Service`}
-                                                disabledLabel={opt => used.includes(opt)}
+                                                disabledLabel={opt => isTaskHeader(opt) || used.includes(opt)}
                                                 clearable
                                                 onClear={() => {
                                                   handleJobDetailChangeMirror(jobType, index, '');
                                                   setOpenTaskKey(null);
                                                 }}
                                                 onSelect={val => {
+                                                  if (isTaskHeader(val)) return;
                                                   handleJobDetailChangeMirror(jobType, index, val);
                                                   setOpenTaskKey(null);
                                                 }}

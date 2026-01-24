@@ -117,35 +117,6 @@ const pickPicAny = (...vals) => {
   return '';
 };
 
-const parseStoredMulti = (v) => {
-  if (!v) return [];
-  if (Array.isArray(v)) return v.map((x) => String(x || '').trim()).filter(Boolean);
-  if (typeof v === 'object') {
-    const s =
-      v.url ||
-      v.link ||
-      v.href ||
-      v.data_url ||
-      v.dataUrl ||
-      v.dataURL ||
-      v.base64 ||
-      '';
-    const raw = String(s || '').trim();
-    return raw ? [raw] : [];
-  }
-  const s = String(v || '').trim();
-  if (!s) return [];
-  if (s.startsWith('[')) {
-    try {
-      const j = JSON.parse(s);
-      if (Array.isArray(j)) return j.map((x) => String(x || '').trim()).filter(Boolean);
-    } catch {}
-  }
-  if (s.includes('|')) return s.split('|').map((x) => String(x || '').trim()).filter(Boolean);
-  if (s.includes('\n')) return s.split('\n').map((x) => String(x || '').trim()).filter(Boolean);
-  return [s];
-};
-
 const isPdfLike = (u) => {
   const s = String(u || '').trim().toLowerCase();
   if (!s) return false;
@@ -176,9 +147,6 @@ const WorkerReviewPost = ({ handleBack }) => {
   const [resolvedProfileSrc, setResolvedProfileSrc] = useState('');
   const [resolvedProfileDataUrl, setResolvedProfileDataUrl] = useState('');
   const [resolvedProfileHttpUrl, setResolvedProfileHttpUrl] = useState('');
-
-  const [requiredDocsRow, setRequiredDocsRow] = useState(null);
-  const [requiredDocsLoading, setRequiredDocsLoading] = useState(false);
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewTitle, setPreviewTitle] = useState('');
@@ -231,29 +199,6 @@ const WorkerReviewPost = ({ handleBack }) => {
       return {};
     }
   })();
-  const savedDocsData = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('workerDocumentsData') || '[]');
-    } catch {
-      return [];
-    }
-  })();
-  const savedDocsAlt = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('workerDocuments') || '[]');
-    } catch {
-      return [];
-    }
-  })();
-  const savedDocsObj = (() => {
-    try {
-      const a = localStorage.getItem('worker_required_documents') || localStorage.getItem('workerRequiredDocuments') || '{}';
-      const o = JSON.parse(a || '{}');
-      return o && typeof o === 'object' ? o : {};
-    } catch {
-      return {};
-    }
-  })();
   const savedAgree = (() => {
     try {
       return JSON.parse(localStorage.getItem('workerAgreements') || '{}');
@@ -281,9 +226,6 @@ const WorkerReviewPost = ({ handleBack }) => {
   const years_experience = s.years_experience ?? savedWork.years_experience ?? savedWork.yearsExperience ?? '';
   const tools_provided = s.tools_provided ?? savedWork.tools_provided ?? savedWork.toolsProvided ?? '';
   const service_description = s.service_description ?? savedWork.service_description ?? savedWork.serviceDescription ?? '';
-
-  const docsFromState = Array.isArray(s.docs) ? s.docs : [];
-  const docs = docsFromState.length ? docsFromState : [...(Array.isArray(savedDocsData) ? savedDocsData : []), ...(Array.isArray(savedDocsAlt) ? savedDocsAlt : [])];
 
   const formatList = (arr) => (Array.isArray(arr) && arr.length ? arr.join(', ') : '-');
 
@@ -383,166 +325,6 @@ const WorkerReviewPost = ({ handleBack }) => {
     };
   }, [s, profile_picture, profile_picture_url_preview, savedInfo]);
 
-  useEffect(() => {
-    let alive = true;
-
-    const fetchRequiredDocs = async () => {
-      try {
-        const emailVal =
-          (savedInfo.email ||
-            localStorage.getItem('worker_email') ||
-            localStorage.getItem('email_address') ||
-            localStorage.getItem('email') ||
-            email ||
-            '')?.toString().trim();
-
-        if (!emailVal) {
-          if (alive) setRequiredDocsRow(null);
-          return;
-        }
-
-        setRequiredDocsLoading(true);
-
-        const { data } = await axios.get(`${API_BASE}/api/workerapplications`, {
-          params: { scope: 'current', limit: 1, email: emailVal },
-          withCredentials: true,
-          headers: headersWithU
-        });
-
-        const items = Array.isArray(data?.items) ? data.items : [];
-        const latest = items[0] || null;
-        const docsRow = latest?.required_documents || null;
-
-        if (alive) setRequiredDocsRow(docsRow);
-      } catch {
-        if (alive) setRequiredDocsRow(null);
-      } finally {
-        if (alive) setRequiredDocsLoading(false);
-      }
-    };
-
-    fetchRequiredDocs();
-
-    return () => {
-      alive = false;
-    };
-  }, [headersWithU, savedInfo, email]);
-
-  const normalizeDocsForSubmit = (arr) => {
-    const kindMap = (s0 = '') => {
-      const t = String(s0).toLowerCase().replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ').trim();
-
-      const hasTesda = /tesda|nc|ncii|nc2/.test(t);
-      const isCert = /certificate|cert\b|certs\b/.test(t) || hasTesda;
-
-      const isCarp = /carpentry|carpenter/.test(t);
-      const isElec = /electric|electrician|eim|electrical installation/.test(t);
-      const isPlum = /plumb|plumbing|plumber/.test(t);
-      const isCarwash = /carwash|car washing|car wash|automotive/.test(t);
-      const isLaundry = /laundry|housekeeping/.test(t);
-
-      if (/^tesda carpentry certificate$/.test(t) || (hasTesda && isCert && isCarp)) return 'tesda_carpentry_certificate';
-      if (/^tesda electrician certificate$/.test(t) || (hasTesda && isCert && isElec)) return 'tesda_electrician_certificate';
-      if (/^tesda plumbing certificate$/.test(t) || (hasTesda && isCert && isPlum)) return 'tesda_plumbing_certificate';
-      if (/^tesda carwashing certificate$/.test(t) || /^tesda car washing certificate$/.test(t) || (hasTesda && isCert && isCarwash)) return 'tesda_carwashing_certificate';
-      if (/^tesda laundry certificate$/.test(t) || (hasTesda && isCert && isLaundry)) return 'tesda_laundry_certificate';
-
-      if ((/primary|main/.test(t) && /(front|face|id front)/.test(t)) || t === 'primary id front') return 'primary_id_front';
-      if ((/primary|main/.test(t) && /(back|rear|reverse|id back)/.test(t)) || t === 'primary id back') return 'primary_id_back';
-      if (/secondary|alternate|alt/.test(t) || t === 'secondary id') return 'secondary_id';
-      if (/(nbi|police)/.test(t)) return 'nbi_police_clearance';
-      if (/proof of address|address proof|billing|bill/.test(t)) return 'proof_of_address';
-      if (/medical|med cert|health/.test(t)) return 'medical_certificate';
-      if (/^tesda_.*_certificate$/.test(String(s0).toLowerCase())) return String(s0).toLowerCase();
-      return '';
-    };
-
-    const extFromData = (s1 = '') => {
-      const m = /^data:([^;]+);base64,/.exec(s1);
-      if (!m) return 'bin';
-      const mime = m[1].toLowerCase();
-      if (mime === 'image/jpeg') return 'jpg';
-      if (mime === 'image/png') return 'png';
-      if (mime === 'image/webp') return 'webp';
-      if (mime === 'image/gif') return 'gif';
-      if (mime === 'image/svg+xml') return 'svg';
-      if (mime === 'application/pdf') return 'pdf';
-      return 'bin';
-    };
-
-    const pickDataUrl = (v) => {
-      const s1 = typeof v?.data_url === 'string' ? v.data_url : '';
-      const s2 = typeof v?.dataUrl === 'string' ? v.dataUrl : '';
-      const s3 = typeof v?.dataURL === 'string' ? v.dataURL : '';
-      const s4 = typeof v?.imageData === 'string' ? v.imageData : '';
-      const s5 = typeof v?.blobData === 'string' ? v.blobData : '';
-      const b64 = typeof v?.base64 === 'string' ? v.base64 : '';
-      if (s1.startsWith('data:')) return s1;
-      if (s2.startsWith('data:')) return s2;
-      if (s3.startsWith('data:')) return s3;
-      if (s4.startsWith('data:')) return s4;
-      if (s5.startsWith('data:')) return s5;
-      if (b64 && /^[A-Za-z0-9+/]+={0,2}$/.test(b64)) return `data:image/jpeg;base64,${b64}`;
-      return '';
-    };
-
-    const pull = (v) => {
-      if (!v) return { url: '', data_url: '', guess: '' };
-      if (typeof v === 'string')
-        return {
-          url: /^https?:\/\//i.test(v) ? v : '',
-          data_url: v.startsWith('data:') ? v : coerceImageToDataUrl(v, 'image/jpeg'),
-          guess: ''
-        };
-      const url =
-        typeof v.url === 'string' && /^https?:\/\//i.test(v.url)
-          ? v.url
-          : typeof v.link === 'string' && /^https?:\/\//i.test(v.link)
-          ? v.link
-          : typeof v.href === 'string' && /^https?:\/\//i.test(v.href)
-          ? v.href
-          : '';
-      const data_url = pickDataUrl(v) || coerceImageToDataUrl(v?.base64 || '', 'image/jpeg');
-      const guess = v.kind || v.type || v.label || v.name || v.field || v.filename || v.fileName || v.title || v.meta?.kind || v.meta?.label || v.meta?.name || '';
-      return { url, data_url, guess: String(guess || '') };
-    };
-
-    const pushDoc = (out, guessedKind, v) => {
-      const { url, data_url, guess } = pull(v);
-      if (!(url || data_url)) return;
-      const k = kindMap(guessedKind || guess);
-      if (!k) return;
-      const ext = data_url ? extFromData(data_url) : ((url.split('.').pop() || 'bin').split('?')[0]);
-      const filename = `${k}.${ext}`;
-      out.push({ kind: k, url, data_url, filename });
-    };
-
-    const out = [];
-    if (arr && !Array.isArray(arr) && typeof arr === 'object') {
-      pushDoc(out, 'primary_id_front', arr.primary_id_front || arr.primary_front || arr.front);
-      pushDoc(out, 'primary_id_back', arr.primary_id_back || arr.primary_back || arr.back);
-      pushDoc(out, 'secondary_id', arr.secondary_id || arr.secondary || arr.alt);
-      pushDoc(out, 'nbi_police_clearance', arr.nbi_police_clearance || arr.nbi || arr.police);
-      pushDoc(out, 'proof_of_address', arr.proof_of_address || arr.address || arr.billing);
-      pushDoc(out, 'medical_certificate', arr.medical_certificate || arr.medical);
-
-      pushDoc(out, 'tesda_carpentry_certificate', arr.tesda_carpentry_certificate || arr.tesdaCarpentryCertificate || arr.carpentry_certificate || arr.carpentry);
-      pushDoc(out, 'tesda_electrician_certificate', arr.tesda_electrician_certificate || arr.tesdaElectricianCertificate || arr.electrician_certificate || arr.electrical_certificate || arr.electrician);
-      pushDoc(out, 'tesda_plumbing_certificate', arr.tesda_plumbing_certificate || arr.tesdaPlumbingCertificate || arr.plumbing_certificate || arr.plumbing);
-      pushDoc(out, 'tesda_carwashing_certificate', arr.tesda_carwashing_certificate || arr.tesdaCarwashingCertificate || arr.carwashing_certificate || arr.carwash_certificate || arr.automotive_certificate || arr.carwashing);
-      pushDoc(out, 'tesda_laundry_certificate', arr.tesda_laundry_certificate || arr.tesdaLaundryCertificate || arr.laundry_certificate || arr.housekeeping_certificate || arr.laundry);
-
-      return out.filter((d) => d.kind && (d.url || d.data_url));
-    }
-
-    (Array.isArray(arr) ? arr : []).forEach((d) => {
-      const guess = d?.kind || d?.type || d?.label || d?.name || d?.field || d?.filename || d?.fileName || d?.title || d?.meta?.kind || d?.meta?.label || d?.meta?.name || '';
-      pushDoc(out, guess, d);
-    });
-
-    return out.filter((d) => d.kind && (d.url || d.data_url));
-  };
-
   const contactLocal10 = normalizeLocalPH10(contact_number);
 
   const contactDisplay = (
@@ -631,48 +413,6 @@ const WorkerReviewPost = ({ handleBack }) => {
     if (mime === 'image/svg+xml') return 'svg';
     return 'jpg';
   };
-
-  const getDocsForDisplay = () => {
-    const fromApi = requiredDocsRow && typeof requiredDocsRow === 'object' ? requiredDocsRow : null;
-    const localRow = savedDocsObj && typeof savedDocsObj === 'object' ? savedDocsObj : null;
-
-    const pickVal = (k) => {
-      const a = fromApi?.[k];
-      if (a !== undefined && a !== null && String(a).trim() !== '') return a;
-      const b = localRow?.[k];
-      if (b !== undefined && b !== null && String(b).trim() !== '') return b;
-      return '';
-    };
-
-    const docs = [
-      { key: 'primary_id_front', label: 'Primary ID (Front)', value: pickVal('primary_id_front') },
-      { key: 'primary_id_back', label: 'Primary ID (Back)', value: pickVal('primary_id_back') },
-      { key: 'secondary_id', label: 'Secondary ID', value: pickVal('secondary_id') },
-      { key: 'nbi_police_clearance', label: 'NBI / Police Clearance', value: pickVal('nbi_police_clearance') },
-      { key: 'proof_of_address', label: 'Proof of Address', value: pickVal('proof_of_address') },
-      { key: 'medical_certificate', label: 'Medical Certificate', value: pickVal('medical_certificate') }
-    ];
-
-    const certs = [
-      { key: 'tesda_carpentry_certificate', label: 'TESDA Carpentry Certificate', value: pickVal('tesda_carpentry_certificate') },
-      { key: 'tesda_electrician_certificate', label: 'TESDA Electrician Certificate', value: pickVal('tesda_electrician_certificate') },
-      { key: 'tesda_plumbing_certificate', label: 'TESDA Plumbing Certificate', value: pickVal('tesda_plumbing_certificate') },
-      { key: 'tesda_carwashing_certificate', label: 'TESDA Carwashing Certificate', value: pickVal('tesda_carwashing_certificate') },
-      { key: 'tesda_laundry_certificate', label: 'TESDA Laundry Certificate', value: pickVal('tesda_laundry_certificate') }
-    ];
-
-    const docsClean = docs
-      .map((d) => ({ ...d, list: parseStoredMulti(d.value) }))
-      .filter((d) => d.list.length > 0);
-
-    const certsClean = certs
-      .map((c) => ({ ...c, list: parseStoredMulti(c.value) }))
-      .filter((c) => c.list.length > 0);
-
-    return { docs: docsClean, certs: certsClean };
-  };
-
-  const { docs: docsToShow, certs: certsToShow } = useMemo(() => getDocsForDisplay(), [requiredDocsRow, savedDocsObj]);
 
   const openDoc = (u) => {
     const url = String(u || '').trim();
@@ -827,119 +567,6 @@ const WorkerReviewPost = ({ handleBack }) => {
         </div>
       </div>,
       document.body
-    );
-  };
-
-  const FileBadge = ({ type }) => {
-    const isImg = type === 'image';
-    const isPdf = type === 'pdf';
-    return (
-      <span
-        className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold border ${
-          isImg ? 'bg-blue-50 text-[#008cfc] border-blue-100' : isPdf ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-gray-50 text-gray-700 border-gray-200'
-        }`}
-      >
-        <span className={`h-1.5 w-1.5 rounded-full ${isImg ? 'bg-[#008cfc]' : isPdf ? 'bg-amber-500' : 'bg-gray-400'}`} />
-        {isImg ? 'Image' : isPdf ? 'PDF' : 'File'}
-      </span>
-    );
-  };
-
-  const DocumentTile = ({ title, list }) => {
-    const items = Array.isArray(list) ? list : [];
-    const first = items[0] || '';
-    const img = isImageLike(first);
-    const pdf = isPdfLike(first);
-
-    return (
-      <div className="rounded-3xl border border-gray-200 bg-white shadow-sm ring-1 ring-black/5 overflow-hidden">
-        <div className="p-4 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-gray-900 truncate">{title}</div>
-            <div className="mt-1 flex items-center gap-2 flex-wrap">
-              <FileBadge type={img ? 'image' : pdf ? 'pdf' : 'file'} />
-              <span className="text-xs text-gray-500">
-                {items.length} file{items.length > 1 ? 's' : ''}
-              </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => openPreview(title, items)}
-            className="shrink-0 h-9 px-3 rounded-xl bg-[#008cfc] text-white text-sm hover:bg-[#0077d6] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008cfc]/40"
-          >
-            Preview
-          </button>
-        </div>
-
-        <div className="px-4 pb-4">
-          <div className="w-full h-44 rounded-2xl overflow-hidden border border-gray-200 bg-gradient-to-br from-gray-50 to-white flex items-center justify-center">
-            {img ? (
-              <img
-                src={first}
-                alt={title}
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            ) : pdf ? (
-              <div className="text-center">
-                <div className="mx-auto h-12 w-12 rounded-2xl bg-amber-50 border border-amber-100 grid place-items-center">
-                  <span className="text-sm font-extrabold text-amber-700">PDF</span>
-                </div>
-                <div className="text-xs text-gray-600 mt-2">Ready to preview</div>
-              </div>
-            ) : (
-              <div className="text-center">
-                <div className="mx-auto h-12 w-12 rounded-2xl bg-gray-50 border border-gray-200 grid place-items-center">
-                  <span className="text-xs font-extrabold text-gray-700">FILE</span>
-                </div>
-                <div className="text-xs text-gray-600 mt-2">Ready to preview</div>
-              </div>
-            )}
-          </div>
-
-          {items.length > 1 ? (
-            <div className="mt-3 flex items-center justify-between">
-              <div className="text-xs text-gray-500">Multiple uploads detected</div>
-              <button
-                type="button"
-                onClick={() => openDoc(first)}
-                className="text-xs font-semibold text-[#008cfc] hover:underline focus:outline-none"
-              >
-                Open first
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    );
-  };
-
-  const CertGrid = ({ title, items }) => {
-    return (
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg md:text-xl font-semibold text-gray-900">{title}</h3>
-          </div>
-        </div>
-        <div className="border-t border-gray-100" />
-        <div className="px-6 py-6">
-          {items.length ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {items.map((c) => {
-                const list = Array.isArray(c.list) ? c.list : parseStoredMulti(c.value);
-                return <DocumentTile key={c.key} title={c.label} list={list} />;
-              })}
-            </div>
-          ) : (
-            <div className="text-sm text-gray-500">No certificates found.</div>
-          )}
-        </div>
-      </div>
     );
   };
 
@@ -1099,178 +726,6 @@ const WorkerReviewPost = ({ handleBack }) => {
         })
       );
 
-      const docsObjPrepared = await (async () => {
-        const readJson = (k, d) => {
-          try {
-            return JSON.parse(localStorage.getItem(k) || d);
-          } catch {
-            return JSON.parse(d);
-          }
-        };
-
-        const objCanon = readJson('worker_required_documents', '{}');
-        const objCanonAlt = readJson('workerRequiredDocuments', '{}');
-        const objData = readJson('workerDocumentsData', '{}');
-        const objMeta = readJson('workerDocuments', '{}');
-
-        const pickOne = (v) => {
-          const take = (x) => {
-            if (!x) return '';
-            if (typeof x === 'string') return x;
-            if (typeof x === 'object') {
-              return x.data_url || x.dataUrl || x.dataURL || x.base64 || x.url || x.link || x.href || '';
-            }
-            return String(x);
-          };
-
-          if (Array.isArray(v)) {
-            for (const item of v) {
-              const got = take(item);
-              if (got && String(got).trim()) return String(got);
-            }
-            return '';
-          }
-
-          return String(take(v) || '');
-        };
-
-        const mapAnyToCanon = (o) => {
-          if (!o || typeof o !== 'object') return {};
-          return {
-            primary_id_front: pickOne(o.primary_id_front || o.primary_front || o.front || o.primaryIdFront),
-            primary_id_back: pickOne(o.primary_id_back || o.primary_back || o.back || o.primaryIdBack),
-            secondary_id: pickOne(o.secondary_id || o.secondary || o.alt || o.secondaryId),
-            nbi_police_clearance: pickOne(o.nbi_police_clearance || o.nbi || o.police || o.nbiPoliceClearance),
-            proof_of_address: pickOne(o.proof_of_address || o.address || o.billing || o.proofOfAddress),
-            medical_certificate: pickOne(o.medical_certificate || o.medical || o.medicalCertificate),
-            tesda_carpentry_certificate: pickOne(o.tesda_carpentry_certificate || o.tesdaCarpentryCertificate || o.carpentry_certificate || o.carpentry),
-            tesda_electrician_certificate: pickOne(o.tesda_electrician_certificate || o.tesdaElectricianCertificate || o.electrician_certificate || o.electrical_certificate || o.electrician),
-            tesda_plumbing_certificate: pickOne(o.tesda_plumbing_certificate || o.tesdaPlumbingCertificate || o.plumbing_certificate || o.plumbing),
-            tesda_carwashing_certificate: pickOne(o.tesda_carwashing_certificate || o.tesdaCarwashingCertificate || o.carwashing_certificate || o.carwash_certificate || o.automotive_certificate || o.carwashing),
-            tesda_laundry_certificate: pickOne(o.tesda_laundry_certificate || o.tesdaLaundryCertificate || o.laundry_certificate || o.housekeeping_certificate || o.laundry)
-          };
-        };
-
-        let base = Object.assign({}, mapAnyToCanon(objCanon), mapAnyToCanon(objCanonAlt));
-
-        const hasAny = (b) => {
-          const keys = [
-            'primary_id_front',
-            'primary_id_back',
-            'secondary_id',
-            'nbi_police_clearance',
-            'proof_of_address',
-            'medical_certificate',
-            'tesda_carpentry_certificate',
-            'tesda_electrician_certificate',
-            'tesda_plumbing_certificate',
-            'tesda_carwashing_certificate',
-            'tesda_laundry_certificate'
-          ];
-          return keys.some((k) => !!String(b?.[k] || '').trim());
-        };
-
-        if (!hasAny(base)) base = mapAnyToCanon(objData);
-        if (!hasAny(base)) base = mapAnyToCanon(objMeta);
-
-        const keys = [
-          'primary_id_front',
-          'primary_id_back',
-          'secondary_id',
-          'nbi_police_clearance',
-          'proof_of_address',
-          'medical_certificate',
-          'tesda_carpentry_certificate',
-          'tesda_electrician_certificate',
-          'tesda_plumbing_certificate',
-          'tesda_carwashing_certificate',
-          'tesda_laundry_certificate'
-        ];
-
-        for (const k of keys) {
-          const v = base[k];
-          const resolved = await ensureBase64DataUrl(v, 'image/jpeg');
-          if (resolved.startsWith('data:')) base[k] = resolved;
-          else if (looksLikeBase64(resolved)) base[k] = `data:image/jpeg;base64,${resolved}`;
-          else base[k] = resolved || '';
-        }
-
-        return base;
-      })();
-
-      const docsObjHasAny = (() => {
-        const keys = [
-          'primary_id_front',
-          'primary_id_back',
-          'secondary_id',
-          'nbi_police_clearance',
-          'proof_of_address',
-          'medical_certificate',
-          'tesda_carpentry_certificate',
-          'tesda_electrician_certificate',
-          'tesda_plumbing_certificate',
-          'tesda_carwashing_certificate',
-          'tesda_laundry_certificate'
-        ];
-        return keys.some((k) => !!String(docsObjPrepared?.[k] || '').trim());
-      })();
-
-      const documentsNormalized = docsObjHasAny ? normalizeDocsForSubmit(docsObjPrepared) : normalizeDocsForSubmit(docsDraftProcessed);
-
-      const docsObject = await (async () => {
-        const out = {};
-        for (const d of documentsNormalized || []) {
-          const k = d?.kind || '';
-          if (!k) continue;
-          const val = d?.data_url || d?.url || '';
-          if (!val) continue;
-          const resolved = await ensureBase64DataUrl(val, 'image/jpeg');
-          out[k] = resolved || val;
-        }
-
-        const srcObj = savedDocsObj && typeof savedDocsObj === 'object' ? savedDocsObj : {};
-        const keys = [
-          'primary_id_front',
-          'primary_id_back',
-          'secondary_id',
-          'nbi_police_clearance',
-          'proof_of_address',
-          'medical_certificate',
-          'tesda_carpentry_certificate',
-          'tesda_electrician_certificate',
-          'tesda_plumbing_certificate',
-          'tesda_carwashing_certificate',
-          'tesda_laundry_certificate'
-        ];
-
-        for (const k of keys) {
-          const v = srcObj[k] || srcObj[k.replace(/_([a-z])/g, (_, c) => c.toUpperCase())];
-          if (typeof v === 'string' && v && !out[k]) {
-            const resolved = await ensureBase64DataUrl(v, 'image/jpeg');
-            out[k] = resolved || v;
-          }
-        }
-
-        if ('certificates' in out) delete out.certificates;
-
-        return out;
-      })();
-
-      const certificatesObject = (() => {
-        const out = {};
-        [
-          'tesda_carpentry_certificate',
-          'tesda_electrician_certificate',
-          'tesda_plumbing_certificate',
-          'tesda_carwashing_certificate',
-          'tesda_laundry_certificate'
-        ].forEach((k) => {
-          const v = docsObject?.[k] || '';
-          if (typeof v === 'string' && v.trim()) out[k] = v;
-        });
-        return out;
-      })();
-
       const emailVal =
         (savedInfo.email ||
           localStorage.getItem('worker_email') ||
@@ -1302,9 +757,7 @@ const WorkerReviewPost = ({ handleBack }) => {
         years_experience: coerceYears(years_experience),
         tools_provided: normalizeToolsProvided(tools_provided),
         service_description: (service_description || '').trim(),
-        documents: documentsNormalized,
-        required_documents_object: docsObject,
-        certificates: certificatesObject,
+        documents: docsDraftProcessed || [],
         agreements: {
           consent_background_checks: !!initialPayload.agreements.consent_background_checks,
           consent_terms_privacy: !!initialPayload.agreements.consent_terms_privacy,
@@ -1314,8 +767,7 @@ const WorkerReviewPost = ({ handleBack }) => {
           profile_picture_name: initialPayload.info.profilePictureName || '',
           auth_uid: authUidVal,
           profile_picture_data_url: profilePicData || '',
-          profile_picture_url: profilePicUrl || '',
-          certificates: certificatesObject
+          profile_picture_url: profilePicUrl || ''
         }
       };
 
@@ -1380,27 +832,12 @@ const WorkerReviewPost = ({ handleBack }) => {
         work_description: normalized.service_description
       };
 
-      const requiredDocsPayload = {
-        ...normalized.required_documents_object,
-        worker_id: normalized.worker_id,
-        email_address: normalized.email_address,
-        auth_uid: normalized.metadata.auth_uid,
-        certificates: normalized.certificates
-      };
-
-      if ('certificates' in requiredDocsPayload && (!requiredDocsPayload.certificates || typeof requiredDocsPayload.certificates !== 'object')) {
-        delete requiredDocsPayload.certificates;
-      }
-
       const res = await axios.post(
         `${API_BASE}/api/workerapplications/submit`,
         {
           info: infoPayload,
           details: workPayload,
           documents: normalized.documents,
-          required_documents: requiredDocsPayload,
-          required_documents_object: normalized.required_documents_object,
-          certificates: normalized.certificates,
           agreements: normalized.agreements,
           email_address: normalized.email_address,
           worker_id: normalized.worker_id,
@@ -1464,29 +901,6 @@ const WorkerReviewPost = ({ handleBack }) => {
       window.removeEventListener('keydown', blockKeys, true);
     };
   }, [isSubmitting, showSuccess, isLoadingBack]);
-
-  const TaskPill = ({ children }) => (
-    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 text-xs md:text-sm px-2.5 py-1">{children}</span>
-  );
-
-  const TaskGroup = ({ title, items = [] }) => (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-xs ring-1 ring-black/5">
-      <div className="px-4 pt-3">
-        <div className="text-sm font-semibold text-gray-800">{title}</div>
-      </div>
-      <div className="p-4">
-        {items.length ? (
-          <div className="flex flex-wrap gap-2">
-            {items.map((it, i) => (
-              <TaskPill key={`${title}-${i}`}>{it}</TaskPill>
-            ))}
-          </div>
-        ) : (
-          <div className="text-xs text-gray-500">No tasks selected</div>
-        )}
-      </div>
-    </div>
-  );
 
   const formatServiceTasksText = (obj) => {
     if (!obj) return '-';
@@ -1580,28 +994,6 @@ const WorkerReviewPost = ({ handleBack }) => {
                   </div>
                 </div>
               </div>
-
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm ring-1 ring-black/5 overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg md:text-xl font-semibold text-gray-900">Required Documents</h3>
-                  </div>
-                </div>
-                <div className="border-t border-gray-100" />
-                <div className="px-6 py-6">
-                  {docsToShow.length ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {docsToShow.map((d) => (
-                        <DocumentTile key={d.key} title={d.label} list={d.list || parseStoredMulti(d.value)} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-500">No required documents found.</div>
-                  )}
-                </div>
-              </div>
-
-              <CertGrid title="TESDA Certificates" items={certsToShow} />
             </div>
 
             <aside className="lg:col-span-1 flex flex-col">

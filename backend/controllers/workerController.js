@@ -436,6 +436,121 @@ const getPublicWorks = async (req, res) => {
   }
 };
 
+async function resolveWorkerIdFromSess(req) {
+  const s = sess(req);
+  if (s.role !== "worker" || (!s.auth_uid && !s.email)) return null;
+
+  if (s.auth_uid) {
+    try {
+      const { data } = await supabaseAdmin
+        .from("user_worker")
+        .select("id,auth_uid,email_address")
+        .eq("auth_uid", s.auth_uid)
+        .limit(1)
+        .maybeSingle();
+      if (data?.id) return data.id;
+    } catch {}
+  }
+
+  if (s.email) {
+    try {
+      const { data } = await supabaseAdmin
+        .from("user_worker")
+        .select("id,auth_uid,email_address")
+        .ilike("email_address", s.email)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data?.id) return data.id;
+    } catch {}
+  }
+
+  return null;
+}
+
+const applyToOngoingService = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "worker") return res.status(401).json({ message: "Unauthorized" });
+
+    const worker_id = await resolveWorkerIdFromSess(req);
+    if (!worker_id) return res.status(401).json({ message: "Unauthorized" });
+
+    const src = req.body || {};
+    const request_group_id = String(src.request_group_id || src.client_id || "").trim();
+    if (!request_group_id) return res.status(400).json({ message: "Missing request_group_id" });
+
+    const payload = {
+      request_group_id,
+      client_id: request_group_id,
+      worker_id,
+      service_task: src.service_task ?? null,
+      service_type: src.service_type ?? null,
+      address: src.address ?? null,
+      rate: src.rate ?? null,
+      schedule: src.schedule ?? null,
+      price: src.price ?? null,
+      status: "ongoing",
+      created_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabaseAdmin.from("requests").insert([payload]).select("*").single();
+    if (error) return res.status(400).json({ message: error.message });
+
+    return res.status(201).json({ message: "Applied and stored to ongoing services", data });
+  } catch (e) {
+    return res.status(500).json({ message: e?.message || "Failed to apply request" });
+  }
+};
+
+const listMyOngoingServices = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "worker") return res.status(401).json({ message: "Unauthorized" });
+
+    const worker_id = await resolveWorkerIdFromSess(req);
+    if (!worker_id) return res.status(401).json({ message: "Unauthorized" });
+
+    const { data, error } = await supabaseAdmin
+      .from("requests")
+      .select("*")
+      .eq("worker_id", worker_id)
+      .order("created_at", { ascending: false });
+
+    if (error) return res.status(200).json({ items: [] });
+    return res.status(200).json({ items: Array.isArray(data) ? data : [] });
+  } catch {
+    return res.status(200).json({ items: [] });
+  }
+};
+
+const getMyOngoingByGroup = async (req, res) => {
+  try {
+    const s = sess(req);
+    if (s.role !== "worker") return res.status(401).json({ message: "Unauthorized" });
+
+    const worker_id = await resolveWorkerIdFromSess(req);
+    if (!worker_id) return res.status(401).json({ message: "Unauthorized" });
+
+    const gid = String(req.params.groupId || "").trim();
+    if (!gid) return res.status(400).json({ message: "Missing groupId" });
+
+    const { data, error } = await supabaseAdmin
+      .from("requests")
+      .select("*")
+      .eq("worker_id", worker_id)
+      .eq("request_group_id", gid)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) return res.status(404).json({ message: "Not found" });
+    return res.status(200).json({ data: data || null });
+  } catch {
+    return res.status(404).json({ message: "Not found" });
+  }
+};
+
 module.exports = {
   registerWorker,
   me,
@@ -446,4 +561,7 @@ module.exports = {
   getMyWorks,
   saveMyWorks,
   getPublicWorks,
+  applyToOngoingService,
+  listMyOngoingServices,
+  getMyOngoingByGroup,
 };

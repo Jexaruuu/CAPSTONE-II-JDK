@@ -7,7 +7,7 @@ import WorkerFooter from '../../workercomponents/WorkerFooter';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const GLOBAL_DESC_KEY = 'clientServiceDescription';
 
-export default function WorkerOnGoingService() {
+export default function WorkerOnGoingRequest() {
   const location = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
@@ -18,30 +18,51 @@ export default function WorkerOnGoingService() {
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
 
-  useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); }, []);
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, []);
 
   const buildAppU = () => {
     try {
       const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
       const au = a.auth_uid || a.authUid || a.uid || a.id || localStorage.getItem('auth_uid') || '';
-      const e = a.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
+      const e =
+        a.email ||
+        localStorage.getItem('worker_email') ||
+        localStorage.getItem('email_address') ||
+        localStorage.getItem('email') ||
+        '';
       return encodeURIComponent(JSON.stringify({ r: 'worker', e, au }));
-    } catch { return ''; }
+    } catch {
+      return '';
+    }
   };
+
   const appU = useMemo(() => buildAppU(), []);
   const headersWithU = useMemo(() => (appU ? { 'x-app-u': appU } : {}), [appU]);
 
   const getWorkerEmail = () => {
     try {
       const a = JSON.parse(localStorage.getItem('workerAuth') || '{}');
-      return a.email || localStorage.getItem('worker_email') || localStorage.getItem('email_address') || localStorage.getItem('email') || '';
-    } catch { return ''; }
+      return (
+        a.email ||
+        localStorage.getItem('worker_email') ||
+        localStorage.getItem('email_address') ||
+        localStorage.getItem('email') ||
+        ''
+      );
+    } catch {
+      return '';
+    }
   };
 
   useEffect(() => {
     const fetchMe = async () => {
       try {
-        const { data } = await axios.get(`${API_BASE}/api/workers/me`, { withCredentials: true, headers: headersWithU });
+        const { data } = await axios.get(`${API_BASE}/api/workers/me`, {
+          withCredentials: true,
+          headers: headersWithU
+        });
         const wid = data?.id || null;
         const au = data?.auth_uid || null;
         if (wid) localStorage.setItem('worker_id', String(wid));
@@ -61,7 +82,10 @@ export default function WorkerOnGoingService() {
       if (!id) return;
       setLoading(true);
       try {
-        const { data } = await axios.get(`${API_BASE}/api/clientservicerequests/by-group/${encodeURIComponent(id)}`, { withCredentials: true, headers: headersWithU });
+        const { data } = await axios.get(
+          `${API_BASE}/api/clientservicerequests/by-group/${encodeURIComponent(id)}`,
+          { withCredentials: true, headers: headersWithU }
+        );
         if (!cancelled) setRow(data || null);
       } catch {
         if (!cancelled) setRow(null);
@@ -70,7 +94,9 @@ export default function WorkerOnGoingService() {
       }
     };
     run();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id, headersWithU]);
 
   useEffect(() => {
@@ -83,7 +109,11 @@ export default function WorkerOnGoingService() {
         if (!email) {
           setRow(null);
         } else {
-          const { data } = await axios.get(`${API_BASE}/api/workers/requests/ongoing`, { params: { email, limit: 1 }, withCredentials: true, headers: headersWithU });
+          const { data } = await axios.get(`${API_BASE}/api/workers/requests/ongoing`, {
+            params: { email, limit: 1 },
+            withCredentials: true,
+            headers: headersWithU
+          });
           const item = Array.isArray(data?.items) ? data.items[0] || null : null;
           if (!cancelled) setRow(item);
         }
@@ -94,7 +124,9 @@ export default function WorkerOnGoingService() {
       }
     };
     run();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id, headersWithU]);
 
   useEffect(() => {
@@ -102,9 +134,17 @@ export default function WorkerOnGoingService() {
     const body = document.body;
     const prevH = html.style.overflow;
     const prevB = body.style.overflow;
-    if (loading || leaving) { html.style.overflow = 'hidden'; body.style.overflow = 'hidden'; }
-    else { html.style.overflow = prevH || ''; body.style.overflow = prevB || ''; }
-    return () => { html.style.overflow = prevH || ''; body.style.overflow = prevB || ''; };
+    if (loading || leaving) {
+      html.style.overflow = 'hidden';
+      body.style.overflow = 'hidden';
+    } else {
+      html.style.overflow = prevH || '';
+      body.style.overflow = prevB || '';
+    }
+    return () => {
+      html.style.overflow = prevH || '';
+      body.style.overflow = prevB || '';
+    };
   }, [loading, leaving]);
 
   const s = location.state || {};
@@ -114,9 +154,29 @@ export default function WorkerOnGoingService() {
   const rateR = fx.rate || {};
   const progressR = fx.progress || fx.timeline || {};
 
-  const savedInfo = (() => { try { return JSON.parse(localStorage.getItem('clientInformationForm') || '{}'); } catch { return {}; } })();
-  const savedDetails = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRequestDetails') || '{}'); } catch { return {}; } })();
-  const savedRate = (() => { try { return JSON.parse(localStorage.getItem('clientServiceRate') || '{}'); } catch { return {}; } })();
+  const savedInfo = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('clientInformationForm') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+
+  const savedDetails = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('clientServiceRequestDetails') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+
+  const savedRate = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('clientServiceRate') || '{}');
+    } catch {
+      return {};
+    }
+  })();
 
   const first_name = infoR.first_name ?? s.first_name ?? savedInfo.firstName;
   const last_name = infoR.last_name ?? s.last_name ?? savedInfo.lastName;
@@ -134,7 +194,12 @@ export default function WorkerOnGoingService() {
   const is_urgent = detR.is_urgent ?? s.is_urgent ?? savedDetails.isUrgent;
   const tools_provided = detR.tools_provided ?? s.tools_provided ?? savedDetails.toolsProvided;
   const service_description = detR.service_description ?? s.service_description ?? savedDetails.serviceDescription;
-  const review_image = detR.request_image_url || detR.image || (Array.isArray(savedDetails.attachments) && savedDetails.attachments[0]) || savedDetails.image || '';
+  const review_image =
+    detR.request_image_url ||
+    detR.image ||
+    (Array.isArray(savedDetails.attachments) && savedDetails.attachments[0]) ||
+    savedDetails.image ||
+    '';
 
   const inferredRateType = rateR.rate_type ?? s.rate_type ?? savedRate.rateType;
   const rate_type = (() => {
@@ -143,6 +208,7 @@ export default function WorkerOnGoingService() {
     if (t === 'fixed' || t === 'by_job' || t === 'by the job' || t === 'by_the_job') return 'By the Job Rate';
     return inferredRateType || '';
   })();
+
   const rate_from = rateR.rate_from ?? s.rate_from ?? savedRate.rateFrom;
   const rate_to = rateR.rate_to ?? s.rate_to ?? savedRate.rateTo;
   const rate_value = rateR.rate_value ?? s.rate_value ?? savedRate.rateValue;
@@ -199,7 +265,11 @@ export default function WorkerOnGoingService() {
   const LabelValue = ({ label, value, emptyAs = '-' }) => {
     const isElement = React.isValidElement(value);
     const mapped = typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value;
-    const isEmpty = !isElement && (mapped === null || mapped === undefined || (typeof mapped === 'string' && mapped.trim() === ''));
+    const isEmpty =
+      !isElement &&
+      (mapped === null ||
+        mapped === undefined ||
+        (typeof mapped === 'string' && mapped.trim() === ''));
     const display = isElement ? value : isEmpty ? emptyAs : mapped;
     const labelText = `${String(label || '').replace(/:?\s*$/, '')}:`;
     return (
@@ -217,24 +287,57 @@ export default function WorkerOnGoingService() {
   const contactDisplay = (
     <div className="inline-flex items-center gap-2">
       <img src="/philippines.png" alt="PH" className="h-5 w-7 rounded-sm object-cover" />
-      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-[#008cfc] font-semibold' : 'text-gray-400'}`}>+63</span>
-      <span className={`text-base md:text-lg leading-6 ${contactLocal10 ? 'text-[#008cfc] font-semibold' : 'text-gray-400'}`}>{contactLocal10 || '9XXXXXXXXX'}</span>
+      <span
+        className={`text-base md:text-lg leading-6 ${
+          contactLocal10 ? 'text-[#008cfc] font-semibold' : 'text-gray-400'
+        }`}
+      >
+        +63
+      </span>
+      <span
+        className={`text-base md:text-lg leading-6 ${
+          contactLocal10 ? 'text-[#008cfc] font-semibold' : 'text-gray-400'
+        }`}
+      >
+        {contactLocal10 || '9XXXXXXXXX'}
+      </span>
     </div>
   );
 
   const statusNow = String(fx.status || fx.request_status || detR.status || '').toLowerCase();
-  const startedAt = progressR.started_at || progressR.service_started_at || fx.started_at || fx.service_started_at || null;
+  const startedAt =
+    progressR.started_at ||
+    progressR.service_started_at ||
+    fx.started_at ||
+    fx.service_started_at ||
+    null;
+
   const workStartAt = progressR.work_started_at || progressR.begin_at || null;
   const workEndAt = progressR.work_completed_at || progressR.completed_at || null;
   const clientConfirmAt = progressR.client_confirmed_at || progressR.confirmed_done_at || null;
 
-  const scheduledAt = preferred_date || fx.preferred_date || detR.preferred_date || fx.approved_at || detR.approved_at || startedAt || fx.created_at || fx.requested_at || null;
+  const scheduledAt =
+    preferred_date ||
+    fx.preferred_date ||
+    detR.preferred_date ||
+    fx.approved_at ||
+    detR.approved_at ||
+    startedAt ||
+    fx.created_at ||
+    fx.requested_at ||
+    null;
 
   const steps = [
     { key: 'scheduled', label: 'Scheduled', at: scheduledAt },
     { key: 'inservice', label: 'In Service', at: workStartAt || null },
     { key: 'review', label: 'Quality Review', at: workEndAt || null },
-    { key: 'completed', label: 'Completed', at: clientConfirmAt || (statusNow === 'completed' ? (workEndAt || new Date().toISOString()) : null) }
+    {
+      key: 'completed',
+      label: 'Completed',
+      at:
+        clientConfirmAt ||
+        (statusNow === 'completed' ? workEndAt || new Date().toISOString() : null)
+    }
   ];
 
   const stepIndex = (() => {
@@ -247,7 +350,11 @@ export default function WorkerOnGoingService() {
 
   const [progressPct, setProgressPct] = useState(0);
   const targetPct = steps.length > 1 ? (stepIndex / (steps.length - 1)) * 100 : 0;
-  useEffect(() => { const t = setTimeout(() => setProgressPct(targetPct), 60); return () => clearTimeout(t); }, [targetPct, stepIndex]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setProgressPct(targetPct), 60);
+    return () => clearTimeout(t);
+  }, [targetPct, stepIndex]);
 
   const pick = (obj, keys) => {
     for (const k of keys) {
@@ -276,12 +383,7 @@ export default function WorkerOnGoingService() {
   })();
 
   const groupId =
-    fx.request_group_id ||
-    fx.group_id ||
-    detR.request_group_id ||
-    fx.groupId ||
-    id ||
-    '';
+    fx.request_group_id || fx.group_id || detR.request_group_id || fx.groupId || id || '';
 
   const bookingId = useMemo(() => {
     if (!groupId) return null;
@@ -317,20 +419,35 @@ export default function WorkerOnGoingService() {
                         done
                           ? 'bg-[#008cfc] text-white border-[#008cfc] scale-95'
                           : current
-                            ? 'bg-white text-[#008cfc] border-[#008cfc] shadow-[0_0_0_4px_rgba(0,140,252,0.12)] animate-pulse'
-                            : 'bg-white text-gray-400 border-gray-300'
+                          ? 'bg-white text-[#008cfc] border-[#008cfc] shadow-[0_0_0_4px_rgba(0,140,252,0.12)] animate-pulse'
+                          : 'bg-white text-gray-400 border-gray-300'
                       ].join(' ')}
                     >
                       {done ? (
-                        <svg viewBox="0 0 20 20" className="h-4 w-4"><path fill="currentColor" d="M8.5 13.5l-3-3 1.4-1.4 1.6 1.6 4.6-4.6L14.5 7l-6 6z" /></svg>
+                        <svg viewBox="0 0 20 20" className="h-4 w-4">
+                          <path
+                            fill="currentColor"
+                            d="M8.5 13.5l-3-3 1.4-1.4 1.6 1.6 4.6-4.6L14.5 7l-6 6z"
+                          />
+                        </svg>
                       ) : (
                         i + 1
                       )}
                     </div>
                   </div>
                   <div className="mt-2 text-center">
-                    <div className={`text-[11px] sm:text-xs md:text-sm font-medium ${i <= active ? 'text-gray-900' : 'text-gray-400'}`}>{st.label}</div>
-                    {st.at ? <div className="text-[10px] sm:text-[11px] text-gray-500">{formatDateMDY(st.at)}</div> : null}
+                    <div
+                      className={`text-[11px] sm:text-xs md:text-sm font-medium ${
+                        i <= active ? 'text-gray-900' : 'text-gray-400'
+                      }`}
+                    >
+                      {st.label}
+                    </div>
+                    {st.at ? (
+                      <div className="text-[10px] sm:text-[11px] text-gray-500">
+                        {formatDateMDY(st.at)}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -354,7 +471,9 @@ export default function WorkerOnGoingService() {
                   src="/jdklogo.png"
                   alt=""
                   className="h-6 w-6 object-contain"
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
               </div>
               <div className="text-2xl md:text-3xl font-semibold text-gray-900">Ongoing Service</div>
@@ -363,7 +482,11 @@ export default function WorkerOnGoingService() {
             {row ? (
               <div className="flex items-center gap-4 max-w-[55%]">
                 {clientPhoto ? (
-                  <img src={clientPhoto} alt="" className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover ring-2 ring-blue-100 flex-shrink-0" />
+                  <img
+                    src={clientPhoto}
+                    alt=""
+                    className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover ring-2 ring-blue-100 flex-shrink-0"
+                  />
                 ) : (
                   <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-blue-50 text-[#008cfc] border border-blue-200 grid place-items-center text-sm font-semibold flex-shrink-0">
                     {clientInitials || 'CL'}
@@ -371,7 +494,9 @@ export default function WorkerOnGoingService() {
                 )}
                 <div className="min-w-0 text-right">
                   <div className="text-[11px] md:text-xs text-gray-600">Assigned Client</div>
-                  <div className="text-sm md:text-base font-semibold text-gray-900 truncate">{clientFullName || '—'}</div>
+                  <div className="text-sm md:text-base font-semibold text-gray-900 truncate">
+                    {clientFullName || '—'}
+                  </div>
                   <div className="text-[11px] md:text-xs text-[#008cfc] truncate">{email || ''}</div>
                 </div>
               </div>
@@ -421,16 +546,26 @@ export default function WorkerOnGoingService() {
                     <LabelValue label="Preferred Time" value={formatTime12h(preferred_time)} />
                     <LabelValue
                       label="Urgent"
-                      value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(is_urgent) ? 'Yes' : 'No'}</span>}
+                      value={
+                        <span className="text-base md:text-lg font-semibold text-[#008cfc]">
+                          {toBoolStrict(is_urgent) ? 'Yes' : 'No'}
+                        </span>
+                      }
                     />
                     <LabelValue
                       label="Tools Provided"
-                      value={<span className="text-base md:text-lg font-semibold text-[#008cfc]">{toBoolStrict(tools_provided) ? 'Yes' : 'No'}</span>}
+                      value={
+                        <span className="text-base md:text-lg font-semibold text-[#008cfc]">
+                          {toBoolStrict(tools_provided) ? 'Yes' : 'No'}
+                        </span>
+                      }
                     />
                     <div>
                       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                         <span className="text-gray-700 font-semibold">Description:</span>
-                        <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">{service_description || '-'}</span>
+                        <span className="text-[15px] md:text-base text-[#008cfc] font-semibold">
+                          {service_description || '-'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -473,15 +608,44 @@ export default function WorkerOnGoingService() {
         </div>
 
         {loading && (
-          <div role="dialog" aria-modal="true" aria-label="Loading request" tabIndex={-1} autoFocus onKeyDown={(e)=>{e.preventDefault();e.stopPropagation();}} onClick={(e)=>{e.preventDefault();e.stopPropagation();}} className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Loading request"
+            tabIndex={-1}
+            autoFocus
+            onKeyDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
               <div className="relative mx-auto w-40 h-40">
-                <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
+                <div
+                  className="absolute inset-0 animate-spin rounded-full"
+                  style={{
+                    borderWidth: '10px',
+                    borderStyle: 'solid',
+                    borderColor: '#008cfc22',
+                    borderTopColor: '#008cfc',
+                    borderRadius: '9999px'
+                  }}
+                />
                 <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   {!logoBroken ? (
-                    <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                    <img
+                      src="/jdklogo.png"
+                      alt="JDK Homecare Logo"
+                      className="w-20 h-20 object-contain"
+                      onError={() => setLogoBroken(true)}
+                    />
                   ) : (
                     <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                       <span className="font-bold text-[#008cfc]">JDK</span>
@@ -498,15 +662,44 @@ export default function WorkerOnGoingService() {
         )}
 
         {leaving && (
-          <div role="dialog" aria-modal="true" aria-label="Please wait a moment" tabIndex={-1} autoFocus onKeyDown={(e)=>{e.preventDefault();e.stopPropagation();}} onClick={(e)=>{e.preventDefault();e.stopPropagation();}} className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Please wait a moment"
+            tabIndex={-1}
+            autoFocus
+            onKeyDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            className="fixed inset-0 z-[2147483647] flex items-center justify-center cursor-wait"
+          >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div className="relative w-[380px] max-w-[92vw] rounded-2xl border border-[#008cfc] bg-white shadow-2xl p-8">
               <div className="relative mx-auto w-40 h-40">
-                <div className="absolute inset-0 animate-spin rounded-full" style={{ borderWidth: '10px', borderStyle: 'solid', borderColor: '#008cfc22', borderTopColor: '#008cfc', borderRadius: '9999px' }} />
+                <div
+                  className="absolute inset-0 animate-spin rounded-full"
+                  style={{
+                    borderWidth: '10px',
+                    borderStyle: 'solid',
+                    borderColor: '#008cfc22',
+                    borderTopColor: '#008cfc',
+                    borderRadius: '9999px'
+                  }}
+                />
                 <div className="absolute inset-6 rounded-full border-2 border-[#008cfc33]" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   {!logoBroken ? (
-                    <img src="/jdklogo.png" alt="JDK Homecare Logo" className="w-20 h-20 object-contain" onError={() => setLogoBroken(true)} />
+                    <img
+                      src="/jdklogo.png"
+                      alt="JDK Homecare Logo"
+                      className="w-20 h-20 object-contain"
+                      onError={() => setLogoBroken(true)}
+                    />
                   ) : (
                     <div className="w-20 h-20 rounded-full border border-[#008cfc] flex items-center justify-center">
                       <span className="font-bold text-[#008cfc]">JDK</span>

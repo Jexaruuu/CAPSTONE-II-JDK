@@ -14,4 +14,8 @@ router.post("/myworks", workerController.saveMyWorks);
 
 router.get("/public/works", workerController.getPublicWorks);
 
+router.post("/ongoing/apply", workerController.applyToOngoingService);
+router.get("/ongoing", workerController.listMyOngoingServices);
+router.get("/ongoing/by-group/:groupId", workerController.getMyOngoingByGroup);
+
 module.exports = router;
