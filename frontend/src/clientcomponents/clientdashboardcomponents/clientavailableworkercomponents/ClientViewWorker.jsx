@@ -88,7 +88,6 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const [checkedTypes, setCheckedTypes] = useState(false);
   const [approvedClientRequests, setApprovedClientRequests] = useState([]);
   const [worksState, setWorksState] = useState({ best_works: [null, null, null], previous_works: [null, null, null] });
-  const [bookConfirmOpen, setBookConfirmOpen] = useState(false);
 
   const base = worker || {};
   const baseInfo = base.info || {};
@@ -399,9 +398,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
     const d = fetched.details || fetched.work || {};
     const r = fetched.rate || {};
     const withGender = fetched.gender ? { gender: fetched.gender } : {};
-    const withContact = fetched.contact_number
-      ? { info: { contact_number: fetched.contact_number } }
-      : {};
+    const withContact = fetched.contact_number ? { info: { contact_number: fetched.contact_number } } : {};
     return {
       ...base,
       info: { ...(base.info || {}), ...i, ...(withContact.info || {}) },
@@ -440,11 +437,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const street = i.street || d.street || "";
   const age = Number.isFinite(i.age) ? i.age : Number.isFinite(w.age) ? w.age : null;
   const gender = w.gender || w.sex || i.sex || "";
-  const yearsExp = Number.isFinite(d.years_experience)
-    ? d.years_experience
-    : Number.isFinite(w.years)
-    ? w.years
-    : null;
+  const yearsExp = Number.isFinite(d.years_experience) ? d.years_experience : Number.isFinite(w.years) ? w.years : null;
 
   const contactNumber =
     i.contact_number ||
@@ -534,10 +527,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
       const clientTasks = extractTasks(clientTasksRaw);
       const clientTaskSet = new Set(clientTasks.map(canonTask).filter(Boolean));
 
-      const taskOk =
-        clientTaskSet.size > 0
-          ? Array.from(clientTaskSet).some((t) => workerTaskSet.has(t))
-          : false;
+      const taskOk = clientTaskSet.size > 0 ? Array.from(clientTaskSet).some((t) => workerTaskSet.has(t)) : false;
 
       if (typeOk || taskOk) {
         out.push({
@@ -557,49 +547,16 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const allTwoMatch = matchedRequests.some((m) => m.matches.service_type && m.matches.service_task);
   const allowBook = canBook && allTwoMatch;
 
-  const handleBookClick = async (e, confirmed = false) => {
+  const handleBookClick = async (e) => {
     e?.preventDefault?.();
-    if (btnLoading) return;
-
-    if (!confirmed && allowBook) {
-      setBookConfirmOpen(true);
-      return;
-    }
-
     if (!allTwoMatch) {
       setShowNoApproved(true);
       return;
     }
-
     const clientEmail = getClientEmail();
     if (!clientEmail) {
       setShowNoApproved(true);
       return;
-    }
-
-    setBtnLoading(true);
-
-    try {
-      const res = await axios.get(`${API_BASE}/api/clientservicerequests/approved`, {
-        params: { email: clientEmail, limit: 20 }
-      });
-      const items = Array.isArray(res.data?.items) ? res.data.items : [];
-      const cTypes = items
-        .map((it) => it?.details?.service_type || it?.details?.category || "")
-        .filter(Boolean)
-        .map(canonType);
-      const cSet = new Set(cTypes);
-      const wSet = new Set(workerCanonTypes);
-      const ok = Array.from(wSet).some((x) => cSet.has(x));
-      if (!ok) {
-        setBtnLoading(false);
-        setShowNoApproved(true);
-        return;
-      }
-      window.location.href = "/clientpostrequest";
-    } catch {
-      setBtnLoading(false);
-      setShowNoApproved(true);
     }
   };
 
@@ -607,18 +564,14 @@ export default function ClientViewWorker({ open, onClose, worker }) {
   const taskMatchOk = matchedRequests.some((m) => m.matches.service_task);
 
   const matchCount = [typeMatchOk, taskMatchOk].filter(Boolean).length;
-  const statusClasses = allTwoMatch
-    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-    : "bg-rose-50 text-rose-700 border-rose-200";
+  const statusClasses = allTwoMatch ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200";
 
   const progressWidth = `${Math.max(0, Math.min(100, Math.round((matchCount / 2) * 100)))}%`;
 
   return (
     <div className={`fixed inset-0 z-[120] ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
       <div
-        className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity ${
-          open ? "opacity-100" : "opacity-0"
-        }`}
+        className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity ${open ? "opacity-100" : "opacity-0"}`}
         onClick={onClose}
       />
 
@@ -662,9 +615,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                         <div className="min-w-0">
                           <div className="flex items-baseline gap-1">
                             <span className="text-sm md:text-lg font-semibold text-gray-700">Worker:</span>
-                            <span className="text-lg md:text-xl font-semibold text-[#008cfc] leading-tight truncate">
-                              {name}
-                            </span>
+                            <span className="text-lg md:text-xl font-semibold text-[#008cfc] leading-tight truncate">{name}</span>
                           </div>
                           {emailAddress ? <div className="text-xs text-gray-600 truncate">{emailAddress}</div> : null}
                         </div>
@@ -722,9 +673,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
 
                   <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="rounded-xl border border-gray-200 p-4 bg-white sm:col-span-2">
-                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
-                        Contact Number
-                      </div>
+                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Contact Number</div>
 
                       {phMobile ? (
                         <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 border border-gray-100">
@@ -762,9 +711,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                     </div>
 
                     <div className="rounded-xl border border-gray-200 p-4 bg-white sm:col-span-2">
-                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
-                        Years of Experience
-                      </div>
+                      <div className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Years of Experience</div>
                       <div className="text-sm text-[#008cfc]">{Number.isFinite(yearsExp) ? `${yearsExp}` : "—"}</div>
                     </div>
                   </div>
@@ -785,9 +732,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold text-gray-700">Match With Your Approved Request</div>
                       <div className="flex items-center gap-2">
-                        <span
-                          className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border ${statusClasses}`}
-                        >
+                        <span className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium border ${statusClasses}`}>
                           {allTwoMatch ? "Match" : "Not Match"}
                         </span>
                       </div>
@@ -806,9 +751,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                       <div className="mt-4 grid grid-cols-1 sm:grid-cols-1 gap-2">
                         <div
                           className={`rounded-lg border px-3 py-2 text-xs font-medium ${
-                            typeMatchOk
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-rose-50 text-rose-700 border-rose-200"
+                            typeMatchOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
                           }`}
                         >
                           Service Type {typeMatchOk ? "✓" : "✗"}
@@ -816,9 +759,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
 
                         <div
                           className={`rounded-lg border px-3 py-2 text-xs font-medium ${
-                            taskMatchOk
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-rose-50 text-rose-700 border-rose-200"
+                            taskMatchOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
                           }`}
                         >
                           Service Task {taskMatchOk ? "✓" : "✗"}
@@ -851,10 +792,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                     <div className="text-sm font-semibold text-gray-700">Ratings & Reviews</div>
 
                     <div className="mt-4 space-y-3">
-                      {(reviewItems.length
-                        ? reviewItems
-                        : [{ id: "empty", rating: 0, text: "No reviews yet.", created_at: null }]
-                      ).map((rv) => {
+                      {(reviewItems.length ? reviewItems : [{ id: "empty", rating: 0, text: "No reviews yet.", created_at: null }]).map((rv) => {
                         const rf = Math.round(Math.max(0, Math.min(5, rv.rating || 0)));
                         const date = rv.created_at ? new Date(rv.created_at) : null;
                         const dstr =
@@ -898,13 +836,11 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                     </a>
 
                     <a
-                      href="/clientpostrequest"
-                      onClick={(e) => handleBookClick(e, false)}
+                      href="#"
+                      onClick={handleBookClick}
                       aria-disabled={!allowBook}
-                      className={`h-9 px-4 rounded-md ${btnLoading ? "opacity-60 pointer-events-none" : ""} ${
-                        allowBook
-                          ? "bg-[#008cfc] text-white hover:bg-[#0078d6]"
-                          : "bg-gray-200 text-gray-500 pointer-events-none"
+                      className={`h-9 px-4 rounded-md ${
+                        allowBook ? "bg-[#008cfc] text-white hover:bg-[#0078d6]" : "bg-gray-200 text-gray-500 pointer-events-none"
                       } text-sm inline-flex items-center justify-center`}
                     >
                       Book Worker
@@ -914,41 +850,6 @@ export default function ClientViewWorker({ open, onClose, worker }) {
               </div>
             </div>
           </div>
-
-          {bookConfirmOpen ? (
-            <div className="fixed inset-0 z-[1000] flex items-center justify-center">
-              <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-                onClick={() => setBookConfirmOpen(false)}
-              />
-              <div className="relative z-[1001] w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-100">
-                <h4 className="text-lg font-semibold text-gray-900">Book this worker?</h4>
-                <p className="mt-1 text-sm text-gray-600">Are you sure you want to book this worker?</p>
-                <div className="mt-6 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setBookConfirmOpen(false)}
-                    className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!allowBook}
-                    onClick={(e) => {
-                      setBookConfirmOpen(false);
-                      handleBookClick(e, true);
-                    }}
-                    className={`rounded-xl px-5 py-2 text-sm font-medium transition ${
-                      allowBook ? "bg-[#008cfc] text-white hover:bg-blue-700" : "bg-[#008cfc] text-white opacity-60 cursor-not-allowed"
-                    }`}
-                  >
-                    Book
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
 
           {showNoApproved ? (
             <div className="fixed inset-0 z-[2147483647] flex items-center justify-center">
@@ -970,9 +871,7 @@ export default function ClientViewWorker({ open, onClose, worker }) {
                 </div>
 
                 <div className="mt-6 text-center space-y-2">
-                  <div className="text-lg font-semibold text-gray-900">
-                    You need an approved service request to book a worker
-                  </div>
+                  <div className="text-lg font-semibold text-gray-900">You need an approved service request to book a worker</div>
                   <div className="text-sm text-gray-600">
                     Post a service request first. Once approved and active, you can hire a worker.
                   </div>
